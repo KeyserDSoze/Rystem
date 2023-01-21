@@ -1,4 +1,4 @@
-﻿### [What is Rystem?](https://github.com/KeyserDSoze/RystemV3)
+﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
 ## Api auto-generated
 In your web application you have only to add one row after service build.

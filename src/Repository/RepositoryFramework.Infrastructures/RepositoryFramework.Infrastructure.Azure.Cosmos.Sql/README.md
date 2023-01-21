@@ -1,4 +1,4 @@
-﻿### [What is Rystem?](https://github.com/KeyserDSoze/RystemV3)
+﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
 ## Integration with Azure Cosmos Sql and Repository Framework
 

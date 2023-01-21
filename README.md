@@ -11,16 +11,16 @@ Reach out us on [Discord](https://discord.gg/wUh2fppr)
 ## Get Started
 
 ### Rystem (core library)
-You may find the documentation at [this link](https://github.com/KeyserDSoze/RystemV3/tree/master/src/Rystem)
+You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Core/Rystem)
 
 ### Concurrency (Deal with async Lock and Race Condition)
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem.Concurrency/tree/master/src/Rystem.Concurrency)
+You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/Concurrency/Rystem.Concurrency)
 
 ### Background job
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem.BackgroundJob/tree/master/src/Rystem.BackgroundJob)
+You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/BackgroundJob/Rystem.BackgroundJob)
 
 ### Queue
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem.Queue/tree/master/src/Rystem.Queue)
+You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/Queue/Rystem.Queue)
 
 ### Repository Framework (for Repository pattern or CQRS)
-You may find the documentation at [this link](https://github.com/KeyserDSoze/RepositoryFramework)
+You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository)

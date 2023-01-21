@@ -14,6 +14,12 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Extensions", "Extensions", "{D3C3AC4B-1339-4EB3-920B-99CF3D492DF4}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Repository", "Repository", "{2B79D3F0-8FBE-4F69-996D-51933E5756FD}"
+	ProjectSection(SolutionItems) = preProject
+		src\Repository\README.md = src\Repository\README.md
+		src\Repository\RepositoryFramework.Abstractions.png = src\Repository\RepositoryFramework.Abstractions.png
+		src\Repository\RepositoryFramework.CacheFlow.png = src\Repository\RepositoryFramework.CacheFlow.png
+		src\Repository\RepositoryFramework.png = src\Repository\RepositoryFramework.png
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem", "src\Core\Rystem\Rystem.csproj", "{538809CE-85A8-4607-9E2C-C8390E40FA7E}"
 EndProject
@@ -126,6 +132,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Workflows", "Workflows", "{
 		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Web.Components.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Web.Components.yml
 		.github\workflows\PackageDeploy.Rystem.yml = .github\workflows\PackageDeploy.Rystem.yml
 		.github\workflows\SonarLint.RepositoryFramework.yml = .github\workflows\SonarLint.RepositoryFramework.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Miscellaneous", "Miscellaneous", "{5DD75C59-63B8-400E-8F63-EA1CE6664910}"
+	ProjectSection(SolutionItems) = preProject
+		CODE-OF-CONDUCT.md = CODE-OF-CONDUCT.md
+		LICENSE.txt = LICENSE.txt
+		README.md = README.md
+		icons\rystem.icons.psd = icons\rystem.icons.psd
 	EndProjectSection
 EndProject
 Global

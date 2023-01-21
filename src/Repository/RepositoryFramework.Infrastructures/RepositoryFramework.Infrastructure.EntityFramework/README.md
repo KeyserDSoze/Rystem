@@ -1,4 +1,4 @@
-﻿### [What is Rystem?](https://github.com/KeyserDSoze/RystemV3)
+﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
 ## Integration with Entity Framework and Repository Framework
 

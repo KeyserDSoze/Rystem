@@ -1,4 +1,4 @@
-﻿### [What is Rystem?](https://github.com/KeyserDSoze/RystemV3)
+﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
 ## Add to service collection the UI service in your blazor DI
 
