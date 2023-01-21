@@ -25,10 +25,11 @@ var retryPolicy = HttpPolicyExtensions
 builder.Services
     .AddRepository<User, string>(settings =>
     {
-        settings.WithApiClient()
-        .WithHttpClient("localhost:7058")
-            .ClientBuilder
-        .AddPolicyHandler(retryPolicy);
+        settings
+            .WithApiClient()
+            .WithHttpClient("localhost:7058")
+                .ClientBuilder
+            .AddPolicyHandler(retryPolicy);
     })
     .AddRepository<SuperUser, string>(settings =>
     {

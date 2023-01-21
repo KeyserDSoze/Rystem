@@ -22,10 +22,12 @@ and query
 ### HttpClient to use your API (example)
 You can add a client for a specific url
 
-     .AddRepositoryApiClient<User, string>(serviceLifetime: ServiceLifetime.Scoped)
-        .WithHttpClient("localhost:7058")
-        .WithVersion("v2")
-        .WithStartingPath("api");
+    builder.Services.AddRepository<User, string>(settings =>
+    {
+        settings
+            .WithApiClient()
+            .WithHttpClient("localhost:7058");
+    });
 
 You may add a Polly policy to your api client for example:
 
@@ -34,11 +36,14 @@ You may add a Polly policy to your api client for example:
       .Or<TimeoutRejectedException>()
       .RetryAsync(3);
 
-    builder.Services
-        .AddRepositoryApiClient<User, string>(serviceLifetime: ServiceLifetime.Scoped)
-        .WithHttpClient("localhost:7058")
-        .ClientBuilder
+    builder.Services.AddRepository<User, string>(settings =>
+    {
+        settings
+            .WithApiClient()
+            .WithHttpClient("localhost:7058")
+                .ClientBuilder
             .AddPolicyHandler(retryPolicy);
+    });
     
 and use it in DI with
     
@@ -47,8 +52,16 @@ and use it in DI with
 ### Query and Command
 In DI you install the services
 
-    services.AddCommandApiClient<User, string>("localhost:7058");
-    services.AddQueryApiClient<User, string>("localhost:7058");
+    services.AddCommand<User, string>(settings => {
+        settings
+            .WithApiClient()
+            .WithHttpClient("localhost:7058");
+    });
+    services.AddQuery<User, string>(settings => {
+        settings
+            .WithApiClient()
+            .WithHttpClient("localhost:7058");
+    });
 
 And you may inject the objects
 ## Please, use ICommand, IQuery and not ICommandPattern, IQueryPattern
@@ -59,9 +72,21 @@ And you may inject the objects
 ### With a non default key
 In DI you install the services with a bool key for example.
 
-    services.AddRepositoryApiClient<User, bool>("localhost:7058");
-    services.AddCommandApiClient<User, bool>("localhost:7058");
-    services.AddQueryApiClient<User, bool>("localhost:7058");
+    services.AddRepository<User, bool>(settings => {
+        settings
+            .WithApiClient()
+            .WithHttpClient("localhost:7058");
+    });
+    services.AddCommand<User, bool>(settings => {
+        settings
+            .WithApiClient()
+            .WithHttpClient("localhost:7058");
+    });
+    services.AddQuery<User, bool>(settings => {
+        settings
+            .WithApiClient()
+            .WithHttpClient("localhost:7058");
+    });
 
 And you may inject the objects
 ## Please, use ICommand, IQuery, IRepository and not ICommandPattern, IQueryPattern, IRepositoryPattern
@@ -73,33 +98,39 @@ And you may inject the objects
 ### Interceptors
 You may add a custom interceptor for every request for every model
 
-    public static IServiceCollection AddRepositoryApiClientInterceptor<TInterceptor>(this IServiceCollection services,
+    public static IServiceCollection AddApiClientInterceptor<TInterceptor>(this IServiceCollection services,
         ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
         where TInterceptor : class, IRepositoryClientInterceptor
 
 or a specific interceptor for each model
     
-    public static RepositoryBuilder<T, TKey> AddApiClientSpecificInterceptor<T, TKey, TInterceptor>(this RepositoryBuilder<T, TKey> builder,
+    public static IServiceCollection AddApiClientInterceptor<TInterceptor>(this IServiceCollection services,
         ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
-        where TInterceptor : class, IRepositoryClientInterceptor<T>
-        where TKey : notnull
+        where TInterceptor : class, IRepositoryClientInterceptor
 
 or for a string as default TKey
 
-    public static RepositoryBuilder<T> AddApiClientSpecificInterceptor<T, TInterceptor>(this RepositoryBuilder<T> builder,
+     public static RepositorySettings<T, TKey> AddApiClientSpecificInterceptor<T, TKey, TInterceptor>(
+        this RepositorySettings<T, TKey> settings,
         ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
-        where TInterceptor : class, IRepositoryClientInterceptor<T>   
+        where TInterceptor : class, IRepositoryClientInterceptor<T>
+        where TKey : notnull   
 
 Maybe you can use it to add a token as JWT o another pre-request things.
 
 ### Default interceptor for Authentication with JWT
 You may use the default interceptor to deal with the identity manager in .Net DI.
 
-    builder.Services.AddApiClientAuthorizationInterceptor();
+    builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient();
 
 This line of code inject an interceptor that works with ITokenAcquisition, injected by the framework during OpenId integration (for example AAD integration).
 Automatically it adds the token to each request.
 
 You may use the default identity interceptor not on all repositories, you can specificy them with
 
-    builder.Services.AddApiClientSpecificAuthorizationInterceptor<T>();
+    builder.Services.AddRepository(settings => {
+        settings
+            .WithApiClient()
+            .WithHttpClient("localhost:7058")
+            .AddCustomAuthorizationInterceptorForApiHttpClient<T, TKey>();
+    });

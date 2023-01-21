@@ -84,8 +84,12 @@ You may configure the scoper for each method of your repository and for each rep
 
     var builder = WebApplication.CreateBuilder(args);
     builder.Services
-        .AddRepositoryInMemoryStorage<User>()
-        .PopulateWithRandomData(x => x.Email!, 120, 5);
+        .AddRepository<User, string>(settings => {
+            settings
+                .WithInMemory()
+                .PopulateWithRandomData(120, 5);
+        });
+        
     builder.Services.AddApiFromRepositoryFramework()
         .WithDescriptiveName("Repository Api")
         .WithPath(Path)

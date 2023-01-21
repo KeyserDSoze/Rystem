@@ -236,11 +236,15 @@ In some cases you need to "translate" your query for your database context query
     {
         options.UseSqlServer(configuration["ConnectionString:Database"]);
     }, ServiceLifetime.Scoped)
-    .AddRepository<AppUser, AppUserKey, AppUserStorage>()
-    .Translate<User>()
-        .With(x => x.Id, x => x.Identificativo)
-        .With(x => x.Username, x => x.Nome)
-        .With(x => x.Email, x => x.IndirizzoElettronico)
+    .AddRepository<AppUser, AppUserKey, AppUserStorage>(settings => 
+    {
+        settings
+            .Translate<User>()
+                .With(x => x.Id, x => x.Identificativo)
+                .With(x => x.Username, x => x.Nome)
+                .With(x => x.Email, x => x.IndirizzoElettronico);
+    });
+    
 
 In this case I'm helping the Filter class to understand how to transform itself when used in a different context.
 Use Filter methods to help to translate and apply to your context the right query.
@@ -256,15 +260,17 @@ You can add more translations for the same model
     {
         options.UseSqlServer(configuration["ConnectionString:Database"]);
     }, ServiceLifetime.Scoped)
-    .AddRepository<AppUser, AppUserKey, AppUserStorage>()
-    .Translate<User>()
-        .With(x => x.Id, x => x.Identificativo)
-        .With(x => x.Username, x => x.Nome)
-        .With(x => x.Email, x => x.IndirizzoElettronico)
-    .AndTranslate<AnotherUser>()
-        .With(x => x.Id, x => x.Identificativo)
-        .With(x => x.Username, x => x.Nome)
-        .With(x => x.Email, x => x.IndirizzoElettronico)
+    .AddRepository<AppUser, AppUserKey, AppUserStorage>(settings => {
+        settings
+            .Translate<User>()
+                .With(x => x.Id, x => x.Identificativo)
+                .With(x => x.Username, x => x.Nome)
+                .With(x => x.Email, x => x.IndirizzoElettronico)
+            .AndTranslate<AnotherUser>()
+                .With(x => x.Id, x => x.Identificativo)
+                .With(x => x.Username, x => x.Nome)
+                .With(x => x.Email, x => x.IndirizzoElettronico)
+    });
 
 ### Entity framework examples
 [Here you may find the example](https://github.com/KeyserDSoze/RepositoryFramework/tree/master/src/RepositoryFramework.Test/RepositoryFramework.Test.Infrastructure.EntityFramework)
@@ -278,15 +284,23 @@ For instance, you have to check before an update or insert the value of an entit
 ### Example
 In this example BeforeInsertAsync runs before InsertAsync of IRepository/ICommand and AfterInsertAsync runs after InsertAsync of IRepository/ICommand.
 
-    .AddRepositoryInMemoryStorage<Animal, long>()
-        .AddBusinessAfterInsert<AnimalBusiness>()
-        .AddBusinessBeforeInsert<AnimalBusiness>()
+    .AddRepositoryInMemoryStorage<Animal, long>(settings => {
+        settings
+            .AddBusiness()
+                .AddBusinessAfterInsert<AnimalBusiness>()
+                .AddBusinessBeforeInsert<AnimalBusiness>();
+    });
+        
 
 more interesting usage comes to move business in another project, you can add to your infrastructure in the following way
 
-    .AddBusinessForRepository<Animal, long>()
-        .AddBusinessAfterInsert<AnimalBusiness>()
-        .AddBusinessBeforeInsert<AnimalBusiness>()
+    .AddBusinessForRepository<Animal, long>(settings => {
+        settings
+            .AddBusiness()
+                .AddBusinessAfterInsert<AnimalBusiness>()
+                .AddBusinessBeforeInsert<AnimalBusiness>();
+    });
+       
 
 Then, you could have a library for infrastructure (or more than one) and a library for business to separate furthermore the concepts.
 

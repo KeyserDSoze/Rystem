@@ -226,9 +226,10 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                 services
                     .AddRepository<SuperUser, string>(settings =>
                     {
-                        settings.WithApiClient(serviceLifetime: ServiceLifetime.Scoped)
-                        .WithVersion(Version)
-                        .WithStartingPath(Path);
+                        settings
+                            .WithApiClient(serviceLifetime: ServiceLifetime.Scoped)
+                            .WithVersion(Version)
+                            .WithStartingPath(Path);
                     })
                     .AddRepository<AppUser, AppUserKey>(settings =>
                     {

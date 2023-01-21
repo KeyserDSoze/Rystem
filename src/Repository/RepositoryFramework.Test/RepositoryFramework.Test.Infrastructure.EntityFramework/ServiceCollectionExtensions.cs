@@ -16,17 +16,17 @@ namespace Microsoft.Extensions.DependencyInjection
                 options.UseSqlServer(configuration["ConnectionString:Database"]);
             }, ServiceLifetime.Scoped);
 
-            services.AddRepository<AppUser, AppUserKey>(x =>
+            services.AddRepository<AppUser, AppUserKey>(settings =>
                    {
-                       x.SetStorage<AppUserStorage>();
-                       x.Translate<User>()
+                       settings.SetStorage<AppUserStorage>();
+                       settings.Translate<User>()
                            .With(x => x.Id, x => x.Identificativo)
                            .With(x => x.Username, x => x.Nome)
                            .With(x => x.Email, x => x.IndirizzoElettronico);
-                        x
-                            .AddBusiness()
-                                .AddBusinessBeforeInsert<AppUserBeforeInsertBusiness>()
-                                .AddBusinessBeforeInsert<AppUserBeforeInsertBusiness2>();
+                       settings
+                           .AddBusiness()
+                               .AddBusinessBeforeInsert<AppUserBeforeInsertBusiness>()
+                               .AddBusinessBeforeInsert<AppUserBeforeInsertBusiness2>();
                    });
 
             services

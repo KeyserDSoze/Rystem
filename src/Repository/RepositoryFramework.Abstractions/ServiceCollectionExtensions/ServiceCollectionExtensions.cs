@@ -46,11 +46,9 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="TKey">Key to manage your data from repository.</typeparam>
         /// <param name="services">IServiceCollection.</param>
         /// <param name="settings">Settings for your repository.</param>
-        /// <param name="serviceLifetime">Service Lifetime</param>
         /// <returns>IServiceCollection</returns>
         public static IServiceCollection AddCommand<T, TKey>(this IServiceCollection services,
-              Action<RepositorySettings<T, TKey>>? settings = null,
-              ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
+              Action<RepositorySettings<T, TKey>>? settings = null)
             where TKey : notnull
         {
             var defaultSettings = new RepositorySettings<T, TKey>(services, PatternType.Command);
@@ -83,11 +81,9 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="TKey">Key to manage your data from repository.</typeparam>
         /// <param name="services">IServiceCollection.</param>
         /// <param name="settings">Settings for your repository.</param>
-        /// <param name="serviceLifetime">Service Lifetime</param>
         /// <returns>IServiceCollection</returns>
         public static IServiceCollection AddQuery<T, TKey>(this IServiceCollection services,
-              Action<RepositorySettings<T, TKey>>? settings = null,
-              ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
+              Action<RepositorySettings<T, TKey>>? settings = null)
             where TKey : notnull
         {
             var defaultSettings = new RepositorySettings<T, TKey>(services, PatternType.Query);
