@@ -17,7 +17,7 @@
 		<Copyright>2022</Copyright>
 		<PackageIcon>rystem.queue.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem.Queue</RepositoryUrl>
+		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/Queue/Rystem.Queue</RepositoryUrl>
 		<PackageId>Rystem.Queue</PackageId>
 		<Version>4.1.9</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>

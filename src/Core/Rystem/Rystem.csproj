@@ -16,7 +16,7 @@
 		<Copyright>2022</Copyright>
 		<PackageIcon>rystem.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<RepositoryUrl>https://github.com/KeyserDSoze/RystemV3</RepositoryUrl>
+		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Core/Rystem</RepositoryUrl>
 		<PackageId>Rystem</PackageId>
 		<Version>4.1.9</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>

@@ -17,7 +17,7 @@
 		<Copyright>2022</Copyright>
 		<PackageIcon>rystem.xunittest.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem.Concurrency</RepositoryUrl>
+		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/XUnitTest/Rystem.XUnitTest</RepositoryUrl>
 		<PackageId>Rystem.XUnitTest</PackageId>
 		<Version>4.1.19</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
