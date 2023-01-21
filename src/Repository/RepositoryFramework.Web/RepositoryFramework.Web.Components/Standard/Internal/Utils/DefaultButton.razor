@@ -1,0 +1,96 @@
+﻿@namespace RepositoryFramework.Web.Components.Standard
+
+@if (_value != null)
+{
+    <div class="@Class">
+        @if (_restorableValue == null)
+        {
+            <button type="button" class="btn btn-outline-primary btn-sm border-0"
+            @onclick="@(args => SetDefaultAsync())">
+                @if (WithIcon)
+                {
+                    <span class="material-symbols-outlined material-symbols-outlined-small">
+                        star
+                    </span>
+                }
+                else
+                {
+                    @:Set default
+                }
+            </button>
+        }
+        else
+        {
+            <button type="button" class="btn btn-outline-secondary btn-sm border-0"
+            @onclick="@(args => Restore())">
+                @if (WithIcon)
+                {
+                    <span class="material-symbols-outlined material-symbols-outlined-small">
+                        arrow_back
+                    </span>
+                }
+                else
+                {
+                    @:Restore
+                }
+            </button>
+        }
+    </div>
+}
+
+@code {
+    [CascadingParameter(Name = Constant.EditParametersBearer)]
+    public EditParametersBearer EditParametersBearer { get; set; }
+    [Parameter]
+    public BaseProperty BaseProperty { get; set; }
+    [Parameter]
+    public int[]? Indexes { get; set; }
+    [Parameter]
+    public string Class { get; set; }
+    [Parameter]
+    public bool WithIcon { get; set; }
+    [Parameter]
+    public bool ForceNotEditable { get; set; }
+    private PropertyUiSettings? _propertyUiSettings;
+    public bool _disableEdit { get; set; }
+    private object? _value;
+    private object? _restorableValue;
+    protected override void OnParametersSet()
+    {
+        if (EditParametersBearer != null)
+        {
+            _propertyUiSettings = EditParametersBearer.GetSettings(BaseProperty);
+            _disableEdit = ForceNotEditable || !EditParametersBearer.CanEdit(BaseProperty);
+            if (_propertyUiSettings?.HasDefault == true && !_disableEdit)
+            {
+                var value = EditParametersBearer.GetValue(BaseProperty, Indexes);
+                if (value.Exception == null)
+                    _value = value.Entity;
+            }
+        }
+        base.OnParametersSet();
+    }
+    public async Task SetDefaultAsync()
+    {
+        object? entity;
+        if (_propertyUiSettings!.Default != null)
+            entity = _propertyUiSettings!.Default.ToDeepCopy();
+        else
+        {
+            var entityRetrieved = await EditParametersBearer.EntityRetrieverByKey.Invoke(_propertyUiSettings.DefaultKey).NoContext();
+            entity = _propertyUiSettings.ValueRetriever(entityRetrieved).ToDeepCopy();
+        }
+        _restorableValue = _value;
+        EditParametersBearer.SetValue(BaseProperty, entity);
+        _value = entity;
+        _ = InvokeAsync(() => EditParametersBearer.StateHasChanged());
+    }
+    public void Restore()
+    {
+        _value = _restorableValue;
+        EditParametersBearer.SetValue(BaseProperty, _value);
+        _restorableValue = null;
+        _ = InvokeAsync(() => EditParametersBearer.StateHasChanged());
+    }
+}
+

@@ -1,0 +1,22 @@
+﻿@namespace RepositoryFramework.Web.Components.Standard
+@using Radzen;
+@using Radzen.Blazor
+
+<div>
+    <p class="mb-4">@Message</p>
+    <div class="row">
+        <div class="col">
+            <RadzenButton Text="Ok" Click="() => Ok()" ButtonStyle="ButtonStyle.Success" />
+            <RadzenButton Text="Cancel" Click="() => DialogService.Close()" ButtonStyle="ButtonStyle.Info" />
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Func<ValueTask> Ok { get; set; }
+    [Parameter]
+    public string Message { get; set; }
+    [Inject]
+    public DialogService DialogService { get; set; }
+}

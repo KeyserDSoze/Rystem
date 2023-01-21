@@ -1,0 +1,75 @@
+﻿@namespace RepositoryFramework.Web.Components.Standard
+
+@if (EditParametersBearer != null)
+{
+    <div class="@_containerClass">
+        @foreach (var baseProperty in BaseProperty.Primitives)
+        {
+            <InternalPrimitiveEdit BaseProperty="@baseProperty" Indexes="@Indexes" ForceNotEditable="@ForceNotEditable" />
+        }
+    </div>
+    @if (BaseProperty.NonPrimitives.Count > 0)
+    {
+        <div class="row row-cols">
+            <nav class="mt-3">
+                <div class="nav nav-tabs border-bottom-0" id="@BaseProperty.GetFurtherProperty().NavigationTabId" role="tablist">
+                    @{
+                        var firstPrimitive = true;
+                    }
+                    @foreach (var baseProperty in BaseProperty.NonPrimitives)
+                    {
+                        <button class="@(firstPrimitive ? Constant.NavLinkActive : Constant.NavLink)" id="@baseProperty.GetFurtherProperty().Id"
+                    data-bs-toggle="tab"
+                    data-bs-target="@baseProperty.GetFurtherProperty().NavigationSelector"
+                    type="button"
+                    role="tab"
+                    aria-controls="@baseProperty.GetFurtherProperty().NavigationId"
+                    aria-selected="true">
+                            @baseProperty.Self.Name
+                        </button>
+                        firstPrimitive = false;
+                    }
+                </div>
+            </nav>
+            <div class="tab-content border border-1 pb-2" id="@BaseProperty.GetFurtherProperty().NavigationTabContentId">
+                @{
+                    firstPrimitive = true;
+                }
+                @foreach (var baseProperty in BaseProperty.NonPrimitives)
+                {
+                    <div class="@(firstPrimitive ? Constant.NavTabPaneActive : Constant.NavTabPane)" id="@baseProperty.GetFurtherProperty().NavigationId" role="tabpanel" aria-labelledby="@baseProperty.GetFurtherProperty().NavigationId">
+                        <DefaultButton BaseProperty="@baseProperty" Class="text-center mt-4 mb-2" Indexes="@Indexes" ForceNotEditable="@ForceNotEditable" />
+                        <div class="col-12">
+                            @if (baseProperty.Type == PropertyType.Complex)
+                            {
+                                <InternalEdit BaseProperty="@baseProperty" Indexes="@Indexes" ForceNotEditable="@ForceNotEditable" />
+                            }
+                            else
+                            {
+                                <EnumerableInternalEdit BaseProperty="@baseProperty" Indexes="@Indexes" ForceNotEditable="@ForceNotEditable" />
+                            }
+                        </div>
+                    </div>
+                    firstPrimitive = false;
+                }
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [CascadingParameter(Name = Constant.EditParametersBearer)]
+    public EditParametersBearer EditParametersBearer { get; set; }
+    [Parameter]
+    public BaseProperty BaseProperty { get; set; }
+    [Parameter]
+    public int[]? Indexes { get; set; }
+    [Parameter]
+    public bool ForceNotEditable { get; set; }
+    private string? _containerClass;
+    protected override void OnParametersSet()
+    {
+        _containerClass = BaseProperty.Deep > 3 ? "row row-cols-1" : "row row-cols-1 row-cols-lg-2";
+        base.OnParametersSet();
+    }
+}

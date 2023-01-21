@@ -1,0 +1,165 @@
+﻿@namespace RepositoryFramework.Web.Components.Standard
+@typeparam T
+@typeparam TKey where TKey: notnull
+@inherits RepositoryBase<T, TKey>
+
+<div class="mt-2">
+    <div class="row">
+        @if (Pagination.TotalItemCount.HasValue)
+        {
+            <div class="w-100 row">
+                <div class="col-12 col-xxl-7 col-xl-6 col-lg-5 col-md-4 row">
+                    <div class="col-2 text-nowrap">
+                        <button @onclick="@((x) => _ = DownloadAsCsvAsync())" class="btn btn-outline-primary btn-sm">
+                            <span class="material-symbols-outlined material-symbols-outlined-small">
+                                download
+                            </span>
+                        </button>
+                        <CopyButton GetValue="@(() => CopyAsCsv())" Icon="content_copy" Class="btn btn-outline-secondary btn-sm">
+                        </CopyButton>
+                    </div>
+                    <div class="col-10 col-xxl-5 col-xl-6 col-lg-7 col-md-8">
+                        <SelectMultipleDropdown Class="w-100"
+                                OnChange="@UpdateColumnsVisibility"
+                                PossibleValues="@GetColumns()"
+                                SelectedKeys="@GetSelectedColumns()">
+                        </SelectMultipleDropdown>
+                    </div>
+                </div>
+                <div class="col-12 col-xxl-5 col-xl-6 col-lg-7 col-md-8 float-md-end row">
+                    <div class="col-1 text-center">
+                        <button @onclick="@(() => GoToPage(0))" disabled=@(Pagination.CurrentPageIndex <= 0) class="btn btn-outline-dark btn-sm mt-1">
+                            <span class="material-symbols-outlined material-symbols-outlined-small">
+                                keyboard_double_arrow_left
+                            </span>
+                        </button>
+                    </div>
+                    <div class="col-1 text-center">
+                        <button @onclick="@(() => GoToPage(Pagination.CurrentPageIndex - 1))" disabled=@(Pagination.CurrentPageIndex <= 0) class="btn btn-outline-dark btn-sm mt-1">
+                            <span class="material-symbols-outlined material-symbols-outlined-small">
+                                chevron_left
+                            </span>
+                        </button>
+                    </div>
+                    <div class="col-8 row">
+                        <SelectDropdown PossibleValues="@GetPages()"
+                                    OnChange="@(async (x) => GoToPage((int)x.Value))"
+                                    SelectedKey="@_selectedPageKey"
+                                    NotEditable=false
+                                    Class="form-select col mx-2 text-center">
+                        </SelectDropdown>
+                        <SelectDropdown PossibleValues="@GetPaging()"
+                                    OnChange="@(async (x) => ChangeItemsPerPage((int)x.Value))"
+                                    SelectedKey="@_selectedItemsForPageKey"
+                                    NotEditable=false
+                                    Class="form-select col mx-2 text-center">
+                        </SelectDropdown>
+                    </div>
+                    <div class="col-1 text-center">
+                        <button @onclick="@(() => GoToPage(Pagination.CurrentPageIndex + 1))" disabled=@(Pagination.CurrentPageIndex >= Pagination.LastPageIndex) class="btn btn-outline-dark btn-sm mt-1">
+                            <span class="material-symbols-outlined material-symbols-outlined-small">
+                                chevron_right
+                            </span>
+                        </button>
+                    </div>
+                    <div class="col-1 text-center">
+                        <button @onclick="@(() => GoToPage(Pagination.LastPageIndex.Value))" disabled=@(Pagination.CurrentPageIndex >= Pagination.LastPageIndex) class="btn btn-outline-dark btn-sm mt-1">
+                            <span class="material-symbols-outlined material-symbols-outlined-small">
+                                keyboard_double_arrow_right
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+    <div class="w-100 overflow-auto mt-2" style="min-height:400px;" tabindex="-1">
+        <table class="table table-striped table-sticky">
+            <thead>
+                <tr>
+                    <th class="first-column">#</th>
+                    @foreach (var property in FlatProperties)
+                    {
+                        <th>
+                            <div class="row">
+                                @if (!property.NavigationPath.StartsWith(Constant.KeyWithSeparator) && property.NavigationPath != Constant.Key && property.Type != PropertyType.Enumerable)
+                                {
+                                    <div class="col">
+                                        <button class="bg-transparent p-0 border-0 fw-bold w-100 text-start"
+                                        @onclick="@((x) => OrderBy(property))">
+                                            @Translate(property.GetFurtherProperty().Title)
+                                            <span class="material-symbols-outlined material-symbols-outlined-small float-end mt-1">
+                                                @GetRightOrderingIcon(_columns[property.NavigationPath].Order)
+                                            </span>
+                                        </button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="col">@Translate(property.GetFurtherProperty().Title)</div>
+                                }
+                            </div>
+                        </th>
+                    }
+                </tr>
+                <tr>
+                    <th class="first-column">
+
+                        <input type="checkbox" checked="@_allSelected" class="form-check-input mt-2" @onchange="@(args => AddOrRemoveItemFromListAllKeys(args, _items.Select(x => x.Key)))" />
+                    </th>
+                    @foreach (var property in FlatProperties)
+                    {
+                        if (!property.NavigationPath.StartsWith(Constant.KeyWithSeparator) && property.NavigationPath != Constant.Key)
+                        {
+                            <th>
+                                @if (property.Type != PropertyType.Enumerable)
+                                {
+                                    <QueryFilter SearchValue="_searchWrapper.Get(property)"
+                                     PropertyUiSettings="GetPropertySettings(property)" Search="@Search" />
+                                }
+                            </th>
+                        }
+                        else
+                        {
+                            <th></th>
+                        }
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @if (_items != null)
+                {
+                    foreach (var item in _items)
+                    {
+                        <tr>
+                            <td class="first-column">
+                                <button type="button" class="btn btn-primary btn-sm"
+                                @onclick="@((x) => NavigateTo(GetEditUri(item.Key!)))">
+                                    <span class="material-symbols-outlined material-symbols-outlined-small">
+                                        edit
+                                    </span>
+                                </button>
+                                <input type="checkbox" class="form-check-input mt-2" checked="@_selectedKeys[item.Key]" value="@_selectedKeys[item.Key]" @onchange="@(args => AddOrRemoveItemFromList((bool)args.Value, item.Key))" />
+                            </td>
+                            @foreach (var property in FlatProperties)
+                            {
+                                <td>
+                                    @if (property.Type != PropertyType.Enumerable)
+                                    {
+                                        <CopyButton GetValue="@(() => Translate(property.Value(item, null)?.ToString() ?? string.Empty))" />
+                                    }
+                                    else
+                                    {
+                                        <RadzenButton class="bg-transparent text-dark p-0"
+                                      Click="@((x) => ShowMoreValuesAsync(item, property))"
+                                      Text="@EnumerableCountAsString(item, property)" />
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

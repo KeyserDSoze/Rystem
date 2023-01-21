@@ -1,0 +1,120 @@
+﻿@page "/"
+@using System.Linq.Expressions
+
+<PageTitle>Index</PageTitle>
+
+<h1>Hello, world!</h1>
+
+Welcome to your new app.
+<button class="btn btn-primary" @onclick="AddInBatchSomething">Batch me</button>
+<SurveyPrompt Title="How is Blazor working for you?" />
+<h1>User client manager 1</h1>
+@if (Users1 != null)
+{
+    foreach (var user in Users1)
+    {
+        <div style="position:relative;float:left;width:100%">@user.Email</div>
+    }
+}
+<h1>User client manager 2</h1>
+@if (Users2 != null)
+{
+    foreach (var user in Users2)
+    {
+        <div style="position:relative;float:left;width:100%">@user.Email -- @user.Name -- @user.GroupId</div>
+    }
+}
+<h1>User client manager 3</h1>
+@if (Users3 != null)
+{
+    foreach (var user in Users3)
+    {
+        <div style="position:relative;float:left;width:100%">@user.Email -- @user.Name -- @user.GroupId</div>
+    }
+}
+<h1>Page client manager 3</h1>
+@if (Users4 != null)
+{
+    <div>Counter: @Users4.TotalCount</div>
+    <div>Pages: @Users4.Pages</div>
+    foreach (var user in Users4.Items)
+    {
+        <div style="position:relative;float:left;width:100%">@user.Value.Email -- @user.Value.Name -- @user.Value.GroupId</div>
+    }
+}
+<h1>Animals</h1>
+@if (Animals != null)
+{
+    foreach (var animal in Animals)
+    {
+        <div style="position:relative;float:left;width:100%">@animal.Id - @animal.Name</div>
+    }
+}
+<h1>Cars</h1>
+@if (Cars != null)
+{
+    foreach (var car in Cars)
+    {
+        <div style="position:relative;float:left;width:100%">@car.Id - @car.Name</div>
+    }
+}
+<h1>Cars 2</h1>
+@if (Cars2 != null)
+{
+    foreach (var car in Cars2)
+    {
+        <div style="position:relative;float:left;width:100%">@car.Id - @car.Name</div>
+    }
+}
+@code {
+    private IEnumerable<User>? Users1;
+    private IEnumerable<User>? Users2;
+    private IEnumerable<User>? Users3;
+    private IEnumerable<Animal>? Animals;
+    private IEnumerable<Car>? Cars;
+    private IEnumerable<Car2>? Cars2;
+    private Page<IperUser, string>? Users4;
+    private static int X = 2;
+    private Guid Alfa = Guid.Parse("db429642-94e3-436d-8880-6160575978b6");
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var user = new User("@gmail.com");
+        var users4 = await UserClient1.GetAsync("dddd");
+        Users1 = (await UserClient1.Where(x => x.Email != "").OrderByDescending(x => x.Name!).ToListAsync().NoContext()).Select(x => x.Value);
+        Users2 = (await UserClient2.Where(x => x.Email!.Contains(user.Email!) && x.IsAdmin && x.GroupId.Equals(Alfa)).ToListAsync().NoContext()).Select(x => x.Value);
+        Users3 = (await UserClient3.Where(x => x.Port > X && x.IsAdmin).ToListAsync().NoContext()).Select(x => x.Value);
+        var order = $"x => x.Id".Deserialize<IperUser, object>();
+        Users4 = await UserClient3.OrderByDescending(order).PageAsync(7, 20).NoContext();
+        var key = new AnimalKey("a", 2, Guid.NewGuid());
+        await AnimalClient.InsertAsync(key, new Animal { Id = 1, Name = "Rosario" });
+        await AnimalClient.UpdateAsync(key, new Animal { Id = 1, Name = "RosarioUpdated" });
+        var exist = await AnimalClient.ExistAsync(key);
+        await AnimalClient.DeleteAsync(key);
+        exist = await AnimalClient.ExistAsync(key);
+        await AnimalClient.InsertAsync(new AnimalKey("b", 2, Guid.NewGuid()), new Animal { Id = 2, Name = "Rosario" });
+        Animals = (await AnimalClient.QueryAsync().ToListAsync()).Select(x => x.Value);
+        await CarClient.InsertAsync(Guid.NewGuid(), new Car { Id = Guid.NewGuid(), Name = "a" });
+        await CarClient.InsertAsync(Guid.NewGuid(), new Car { Id = Guid.NewGuid(), Name = "a2" });
+        await CarClient.InsertAsync(Guid.NewGuid(), new Car { Id = Guid.NewGuid(), Name = "a3" });
+        Cars = (await CarClient.QueryAsync().ToListAsync()).Select(x => x.Value);
+        await CarClient2.InsertAsync(new Range(1, 3), new Car2 { Id = Guid.NewGuid(), Name = "a" });
+        await CarClient2.InsertAsync(new Range(1, 4), new Car2 { Id = Guid.NewGuid(), Name = "a2" });
+        await CarClient2.InsertAsync(new Range(1, 5), new Car2 { Id = Guid.NewGuid(), Name = "a3" });
+        Cars2 = (await CarClient2.QueryAsync().ToListAsync()).Select(x => x.Value);
+        var sum = await UserClient3.SumAsync(x => x.Port);
+        await base.OnParametersSetAsync().NoContext();
+    }
+    private async Task AddInBatchSomething()
+    {
+        var id = Guid.NewGuid().ToString();
+        var batched = await UserClient3
+            .CreateBatchOperation()
+            .AddInsert(id, new IperUser("dsadasd") { Id = "a" })
+            .AddUpdate(id, new IperUser("dsadasd") { Id = "b" })
+            .AddInsert(Guid.NewGuid().ToString(), new IperUser("dsadasd323") { Id = "c" })
+            .AddDelete(id)
+            .ExecuteAsync().NoContext();
+        Users4 = await UserClient3.OrderBy(x => x.Name!).PageAsync(7, 20).NoContext();
+    }
+}

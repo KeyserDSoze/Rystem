@@ -1,0 +1,14 @@
+﻿@page "/"
+@using Microsoft.Extensions.Localization;
+@using Localization.RazorLibrary.Resources;
+@inject IStringLocalizer<Shared> Localization
+@inject IStringLocalizer<Shared2> Localization2
+
+<PageTitle>Index</PageTitle>
+
+<h1>Hello, world!</h1>
+<h2>@Localization["Ale"]</h2>
+<h2>@Localization2["Lisa"]</h2>
+Welcome to your new app.
+
+<SurveyPrompt Title="How is Blazor working for you?" />

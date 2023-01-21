@@ -1,0 +1,52 @@
+﻿@namespace RepositoryFramework.Web.Components.Standard
+@using Microsoft.Extensions.Localization;
+@using RepositoryFramework.Web.Components.Resources;
+
+@if (PossibleValues != null)
+{
+    <RadzenDropDown TValue="string"
+                AllowClear="true"
+                AllowFiltering="true"
+                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                Multiple=true
+                Placeholder="Select..."
+                Data="@PossibleValues"
+                Value="@SelectedKeys"
+                TextProperty="Label"
+                ValueProperty="Id"
+                Change="@((x) => OnChangeAsync(x))"
+                AllowSelectAll=false
+                SelectAllText="@Localizer[LanguageLabel.ItemsSelected]"
+                SelectedItemsText="@Localizer[LanguageLabel.ItemsSelected]"
+                class="@Class"
+                Disabled="@NotEditable" />
+}
+
+
+@code {
+    [Inject]
+    internal IStringLocalizer<SharedResource> Localizer { get; set; }
+    [Parameter]
+    public IEnumerable<LabelValueDropdownItem>? PossibleValues { get; set; }
+    [Parameter]
+    public string Class { get; set; } = string.Empty;
+    [Parameter]
+    public string Style { get; set; } = string.Empty;
+    [Parameter]
+    public bool NotEditable { get; set; }
+    [Parameter]
+    public Func<IEnumerable<LabelValueDropdownItem>, ValueTask> OnChange { get; set; }
+    [Parameter]
+    public IEnumerable<string>? SelectedKeys { get; set; }
+
+    public async ValueTask OnChangeAsync(object selected)
+    {
+        if (selected is IEnumerable<string> keys)
+        {
+            var selectedValues = keys.Select(x => PossibleValues!.First(y => y.Id == x));
+            await OnChange(selectedValues).NoContext();
+            SelectedKeys = keys;
+        }
+    }
+}
+

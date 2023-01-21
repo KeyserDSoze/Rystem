@@ -1,0 +1,47 @@
+﻿@namespace RepositoryFramework.Web.Components.Standard
+
+<div class="@Class">
+    <div class="input-group">
+        @if (Text != null)
+        {
+            <span class="input-group-text">
+                @Text
+            </span>
+        }
+        @Body
+        @if (First != null)
+        {
+            <span class="input-group-text">
+                @First
+            </span>
+        }
+        @if (Second != null)
+        {
+            <span class="input-group-text">
+                @Second
+            </span>
+        }
+        @if (Third != null)
+        {
+            <span class="input-group-text">
+                @Third
+            </span>
+        }
+    </div>
+
+</div>
+
+@code {
+    [Parameter]
+    public string? Class { get; set; } = string.Empty;
+    [Parameter]
+    public string? Text { get; set; }
+    [Parameter]
+    public RenderFragment Body { get; set; }
+    [Parameter]
+    public RenderFragment? First { get; set; }
+    [Parameter]
+    public RenderFragment? Second { get; set; }
+    [Parameter]
+    public RenderFragment? Third { get; set; }
+}

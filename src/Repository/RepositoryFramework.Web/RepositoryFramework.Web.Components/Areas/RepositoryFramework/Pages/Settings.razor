@@ -1,0 +1,27 @@
+﻿@page "/Repository/Settings"
+@namespace RepositoryFramework.Web.Components
+@using RepositoryFramework.Web.Components.Business.Language
+@using RepositoryFramework.Web.Components.Standard
+
+<div class="row">
+    @if (_paletteKey != null && AppPaletteWrapper.Skins.Count > 1)
+    {
+        <div class="col">
+            <SelectDropdown Class="form-select"
+                        OnChange="@(x => ChangeSkin(x))"
+                        SelectedKey="@_paletteKey"
+                        PossibleValues="@GetSkins()">
+            </SelectDropdown>
+        </div>
+    }
+    @if (RepositoryLocalizationOptions.Instance.HasLocalization)
+    {
+        <div class="col">
+            <SelectDropdown Class="form-select"
+                        OnChange="@(x => ChangeLanguage(x))"
+                        SelectedKey="@_languageKey"
+                        PossibleValues="@GetLanguages()">
+            </SelectDropdown>
+        </div>
+    }
+</div>

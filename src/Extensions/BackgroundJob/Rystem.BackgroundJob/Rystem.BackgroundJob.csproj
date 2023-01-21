@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+		<TargetFramework>net7.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<DebugSymbols>true</DebugSymbols>
+		<EmbedAllSources>true</EmbedAllSources>
+		<DebugType>portable</DebugType>
+		<Authors>Alessandro Rapiti</Authors>
+		<Company>Alessandro Rapiti</Company>
+		<Product>Rystem</Product>
+		<Description>Rystem.</Description>
+		<Copyright>2022</Copyright>
+		<PackageIcon>rystem.backgroundjob.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem.BackgroundJob</RepositoryUrl>
+		<PackageId>Rystem.BackgroundJob</PackageId>
+		<Version>4.1.9</Version>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Rystem.Concurrency" Version="4.1.9" />
+		<PackageReference Include="Cronos" Version="0.7.1" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="rystem.backgroundjob.png">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+		<None Include="README.md" Pack="true" PackagePath="\" />
+	</ItemGroup>
+
+</Project>

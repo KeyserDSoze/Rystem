@@ -1,0 +1,38 @@
+﻿@namespace RepositoryFramework.Web.Components.Standard
+
+<button class="@Class"
+        @onclick="@((x) => Copy.CopyAsync(GetToCopyValue()))">
+    @if (Icon != null)
+    {
+        <span class="material-symbols-outlined material-symbols-outlined-small">
+            @_text
+        </span>
+    }
+    else
+    {
+        @_text
+    }
+</button>
+
+@code {
+    [Parameter]
+    public Func<object?> GetValue { get; set; }
+    [Parameter]
+    public string? Icon { get; set; }
+    [Parameter]
+    public string? Class { get; set; } = DefaultClass;
+    private const string DefaultClass = "bg-transparent p-0 border-0";
+    [Inject]
+    public ICopyService Copy { get; set; }
+    private string _text;
+    protected override void OnParametersSet()
+    {
+        _text = Icon == null ? GetToCopyValue() : Icon;
+        base.OnParametersSet();
+    }
+    private string GetToCopyValue()
+    {
+        var tryToGetTheValue = Try.WithDefaultOnCatch(() => GetValue.Invoke()?.ToString());
+        return tryToGetTheValue.Entity ?? (tryToGetTheValue.Exception?.InnerException ?? tryToGetTheValue.Exception)?.Message ?? string.Empty;
+    }
+}

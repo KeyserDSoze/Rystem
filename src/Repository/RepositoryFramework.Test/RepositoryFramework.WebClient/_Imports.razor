@@ -1,0 +1,21 @@
+﻿@using System.Net.Http
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.JSInterop
+@using RepositoryFramework.Api.Client
+@using RepositoryFramework.Test.Domain;
+@using RepositoryFramework.WebClient
+@using RepositoryFramework.WebClient.Shared
+@using RepositoryFramework.WebClient.Data
+
+@inject IRepository<User, string> UserClient1
+@inject IRepository<SuperUser, string> UserClient2
+@inject IRepository<IperUser, string> UserClient3
+@inject IRepository<Animal, AnimalKey> AnimalClient
+@inject IRepository<Car, Guid> CarClient
+@inject IRepository<Car2, Range> CarClient2
+@inject IRepository<AppUser, AppUserKey> AppClient

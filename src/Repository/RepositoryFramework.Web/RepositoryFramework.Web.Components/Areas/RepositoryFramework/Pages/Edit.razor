@@ -1,0 +1,18 @@
+﻿@page "/Repository/{Name}/Edit/{Key}"
+@page "/Repository/{Name}/Create"
+@namespace RepositoryFramework.Web.Components
+@inherits RepositoryBase
+
+@if (IsLoadable)
+{
+    @if (_policies?.Count > 0)
+    {
+        <Microsoft.AspNetCore.Components.Authorization.AuthorizeView Policy="@string.Join(',', _policies)">
+            @LoadStandard()
+        </Microsoft.AspNetCore.Components.Authorization.AuthorizeView>
+    }
+    else
+    {
+        @LoadStandard()
+    }
+}

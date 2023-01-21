@@ -1,0 +1,1 @@
+﻿Scaffold-DbContext "Server=tcp:testdatabasev5.database.windows.net;Database=TestDatabase;user id=KeyserDSoze;password=ibaraki44@@@@" Microsoft.EntityFrameworkCore.SqlServer -OutputDir Models -Context SampleContext

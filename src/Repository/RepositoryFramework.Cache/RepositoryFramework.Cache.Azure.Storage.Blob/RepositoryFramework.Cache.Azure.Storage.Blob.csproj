@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+		<TargetFramework>net7.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<DebugSymbols>true</DebugSymbols>
+		<EmbedAllSources>true</EmbedAllSources>
+		<DebugType>portable</DebugType>
+		<Authors>Alessandro Rapiti</Authors>
+		<Company>Alessandro Rapiti</Company>
+		<Product>Rystem.RepositoryFramework</Product>
+		<Description>Rystem.RepositoryFramework allows you to use correctly concepts like repository pattern, CQRS and DDD. You have interfaces for your domains, auto-generated api, auto-generated HttpClient to simplify connection "api to front-end", a functionality for auto-population in memory of your models, a functionality to simulate exceptions and waiting time from external sources to improve your implementation/business test and load test.</Description>
+		<Copyright>2022</Copyright>
+		<PackageIcon>rystem.repositoryframework.cache.azure.storage.blob.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<RepositoryUrl>https://github.com/KeyserDSoze/RepositoryFramework</RepositoryUrl>
+		<PackageId>Rystem.RepositoryFramework.Cache.Azure.Storage.Blob</PackageId>
+		<Version>4.1.9</Version>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	</PropertyGroup>
+
+	<Choose>
+		<When Condition=" '$(Configuration)'=='Debug' ">
+			<ItemGroup>
+				<ProjectReference Include="..\RepositoryFramework.Cache\RepositoryFramework.Cache.csproj" />
+				<ProjectReference Include="..\..\RepositoryFramework.Infrastructures\RepositoryFramework.Infrastructure.Azure.Storage.Blob\RepositoryFramework.Infrastructure.Azure.Storage.Blob.csproj" />
+			</ItemGroup>
+		</When>
+		<When Condition=" '$(Configuration)'!='Debug' ">
+			<ItemGroup>
+				<PackageReference Include="Rystem.RepositoryFramework.Cache" Version="4.1.9" />
+				<PackageReference Include="Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob" Version="4.1.9" />
+			</ItemGroup>
+		</When>
+	</Choose>
+
+	<ItemGroup>
+		<None Include="rystem.repositoryframework.cache.azure.storage.blob.png">
+			<Pack>True</Pack>
+			<PackagePath></PackagePath>
+		</None>
+		<None Include="README.md" Pack="true" PackagePath="\" />
+	</ItemGroup>
+
+</Project>

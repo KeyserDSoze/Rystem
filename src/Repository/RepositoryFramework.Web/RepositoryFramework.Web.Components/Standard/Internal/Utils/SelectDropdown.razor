@@ -1,0 +1,41 @@
+﻿@namespace RepositoryFramework.Web.Components.Standard
+
+@if (PossibleValues != null)
+{
+    <select class="@Class" style="@Style" disabled=@NotEditable @onchange=@((x) => _ = OnChangeAsync(x))>
+        @foreach (var value in PossibleValues)
+        {
+            <option value="@value.Id" selected=@(value.Id == SelectedKey)>
+                @value.Label
+            </option>
+        }
+    </select>
+}
+
+
+@code {
+    [Parameter]
+    public IEnumerable<LabelValueDropdownItem>? PossibleValues { get; set; }
+    [Parameter]
+    public string Class { get; set; } = string.Empty;
+    [Parameter]
+    public string Style { get; set; } = string.Empty;
+    [Parameter]
+    public bool NotEditable { get; set; }
+    [Parameter]
+    public Func<LabelValueDropdownItem, ValueTask> OnChange { get; set; }
+    [Parameter]
+    public string? SelectedKey { get; set; }
+
+    private async ValueTask OnChangeAsync(ChangeEventArgs selectedValue)
+    {
+        var key = selectedValue.Value?.ToString();
+        if (key != null)
+        {
+            var value = PossibleValues.FirstOrDefault(x => x.Id == key);
+            await OnChange(value).NoContext();
+        }
+        SelectedKey = key;
+    }
+}
+

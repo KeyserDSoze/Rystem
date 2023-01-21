@@ -1,0 +1,193 @@
+﻿@namespace RepositoryFramework.Web.Components.Standard
+@using System.Reflection;
+@using System.Collections;
+@using System.Text.Json;
+@using System.Linq.Expressions;
+@using RepositoryFramework.Web.Components.Services;
+
+@if (EditParametersBearer != null)
+{
+    var defaultClass = "col my-2";
+    if (!_propertyUiSettings.HasValues() && _propertyUiSettings?.HasTextEditor == true)
+    {
+        defaultClass = "col-12 my-2";
+    }
+    <div class="@defaultClass">
+        <div class="input-group">
+            <span class="input-group-text">
+                @Translate(OverriddenName ?? BaseProperty.Self.Name)
+            </span>
+            @if (!_propertyUiSettings.HasValues())
+            {
+                @if (_propertyUiSettings?.HasTextEditor == true)
+                {
+                    string style = $"height: {_propertyUiSettings.MinHeight}px;";
+
+                    <RadzenHtmlEditor Value="@_value?.ToString()"
+                          ValueChanged="@((x) => InternalUpdate(x))"
+                          class="form-control"
+                          Style="@style"
+                          Change=@OnChange
+                          Paste=@OnPaste
+                          Disabled="@_disableEdit" />
+                }
+                else if (_value is bool booleanValue)
+                {
+                    if (_value.GetType().IsGenericType)
+                    {
+                        <RadzenCheckBox class="form-control" Value="@booleanValue" TriState=true TValue="bool?" Change=@(args => InternalUpdate(args)) Disabled="@_disableEdit" />
+                    }
+                    else
+                    {
+                        <RadzenCheckBox class="form-control" Value="@booleanValue" TriState=false TValue="bool" Change=@(args => InternalUpdate(args)) Disabled="@_disableEdit" />
+                    }
+                }
+                else if (_value is DateTime dateTime)
+                {
+                    <RadzenDatePicker class="form-control"
+                          TValue="DateTime?"
+                          ShowTime="true"
+                          ShowSeconds="true"
+                          HoursStep="1.5"
+                          MinutesStep="5"
+                          SecondsStep="10"
+                          Value="_value"
+                          Change=@(args => InternalUpdate(args))
+                          DateFormat="yyyy/MM/dd HH:mm:ss"
+                          Disabled="@_disableEdit" />
+                }
+                else if (_value is DateOnly dateOnly)
+                {
+                    <RadzenDatePicker class="form-control"
+                          TValue="DateOnly?"
+                          Value="_value"
+                          Change=@(args => InternalUpdate(args))
+                          DateFormat="yyyy/MM/dd"
+                          Disabled="@_disableEdit" />
+                }
+                else
+                {
+                    <RadzenTextBox class="form-control" Value="@_value?.ToString()" Change=@(args => InternalUpdate(args)) Disabled="_disableEdit" />
+                }
+            }
+            else
+            {
+                <RadzenDropDown TValue="string"
+                        AllowClear="true"
+                        AllowFiltering="true"
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        Multiple="@_isMultiple"
+                        Placeholder="Select..."
+                        Data="@_propertyUiSettings!.Values"
+                        Value="@LabelComparer()"
+                        TextProperty="Label"
+                        ValueProperty="Id"
+                        Change="@InternalProxyUpdate"
+                        class="form-control"
+                        Disabled="@_disableEdit" />
+            }
+            <DefaultButton BaseProperty="@BaseProperty" Class="input-group-text" WithIcon=true Indexes="@Indexes" />
+            <span class="input-group-text">
+                <button type="button" class="btn btn-outline-warning btn-sm border-0"
+                    @onclick="@(args => Copy.CopyAsync(_value?.ToString()))">
+                    <span class="material-symbols-outlined material-symbols-outlined-small">
+                        file_copy
+                    </span>
+                </button>
+            </span>
+            <ErrorCatcher Error="@_error" />
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter(Name = Constant.EditParametersBearer)]
+    public EditParametersBearer EditParametersBearer { get; set; }
+    [Parameter]
+    public BaseProperty BaseProperty { get; set; }
+    [Parameter]
+    public int[]? Indexes { get; set; }
+    [Parameter]
+    public string? OverriddenName { get; set; }
+    [Parameter]
+    public bool ForceNotEditable { get; set; }
+    [Inject]
+    public ICopyService Copy { get; set; }
+    private PropertyUiSettings? _propertyUiSettings;
+    private object? _value;
+    private string? _error;
+    private bool _disableEdit = true;
+    private bool _isMultiple = false;
+    protected override void OnParametersSet()
+    {
+        var value = EditParametersBearer.GetValue(BaseProperty, Indexes);
+        if (value.Exception == null)
+        {
+            _value = value.Entity;
+            _isMultiple = _value is not string && _value is IEnumerable;
+            _propertyUiSettings = EditParametersBearer.GetSettings(BaseProperty);
+            _disableEdit = ForceNotEditable || !EditParametersBearer.CanEdit(BaseProperty);
+        }
+        else
+            _error = value.Exception.Message;
+        base.OnParametersSet();
+    }
+    public void InternalUpdate(object? value)
+    {
+        EditParametersBearer.SetValue(BaseProperty, value);
+        _value = value;
+    }
+    public void InternalProxyUpdate(object selected)
+    {
+        if (selected is IEnumerable<string> keys)
+        {
+            var selectedValues = keys.Select(x => _propertyUiSettings!.Values!.First(y => y.Id == x).Value);
+            if (_value is Array)
+            {
+                InternalUpdate(selectedValues.ToArray());
+            }
+            else if (_value is IList list)
+            {
+                list.Clear();
+                foreach (var value in selectedValues)
+                    list.Add(value);
+            }
+        }
+        else
+        {
+            var id = selected?.ToString();
+            InternalUpdate(_propertyUiSettings!.Values!.FirstOrDefault(x => x.Id == id)?.Value);
+        }
+    }
+    private object LabelComparer()
+    {
+        if (_isMultiple && _value is IEnumerable enumerable)
+            return GetLabels();
+        else
+            return _propertyUiSettings.LabelComparer(_value);
+    }
+    private IEnumerable<string> GetLabels()
+    {
+        foreach (var item in _value as IEnumerable)
+            yield return _propertyUiSettings.LabelComparer(item);
+    }
+    void OnPaste(HtmlEditorPasteEventArgs args)
+    {
+        InternalUpdate(args.Html);
+    }
+    void OnChange(string html)
+    {
+        InternalUpdate(html);
+    }
+    private string Translate(string value)
+        => LocalizationHandler.Get(GetFatherType(), value);
+    private Type GetFatherType()
+    {
+        var father = BaseProperty;
+        while (father?.Father != null)
+        {
+            father = father.Father;
+        }
+        return father!.Self.PropertyType;
+    }
+}

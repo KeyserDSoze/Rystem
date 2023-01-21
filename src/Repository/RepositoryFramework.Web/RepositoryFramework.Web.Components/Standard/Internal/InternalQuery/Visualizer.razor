@@ -1,0 +1,72 @@
+﻿@namespace RepositoryFramework.Web.Components.Standard
+@using System.Reflection;
+@using System.Collections;
+@using System.Text.Json;
+@using System.Linq.Dynamic.Core;
+
+@if (Entity != null)
+{
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    @if (_isPrimitive)
+                    {
+                        <th scope="col">#</th>
+                    }
+                    else
+                    {
+                        foreach (var property in TypeShowcase.FlatProperties)
+                        {
+                            <th scope="col">@property.NavigationPath</th>
+                        }
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Entity)
+                {
+                    <tr>
+                        @if (_isPrimitive)
+                        {
+                            <td>
+                                <CopyButton GetValue="@(() => item?.ToString())" />
+                            </td>
+                        }
+                        else
+                        {
+
+                            @foreach (var property in TypeShowcase.FlatProperties)
+                            {
+                                <td>
+                                    <CopyButton GetValue="@(() => property.Value(item, null))" />
+                                </td>
+                            }
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public IEnumerable? Entity { get; set; }
+    [Inject]
+    public ICopyService Copy { get; set; }
+    private TypeShowcase TypeShowcase { get; set; } = null!;
+    private bool _isPrimitive;
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        var enumerator = Entity?.GetEnumerator();
+        if (enumerator?.MoveNext() == true)
+        {
+            var type = enumerator.Current.GetType();
+            _isPrimitive = type.IsPrimitive();
+            if (!_isPrimitive)
+                TypeShowcase = type.ToShowcase();
+        }
+    }
+}

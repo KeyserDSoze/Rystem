@@ -1,0 +1,84 @@
+﻿@namespace RepositoryFramework.Web.Components
+@using Microsoft.AspNetCore.Http;
+@using RepositoryFramework.Web.Components.Services;
+@implements IDisposable
+
+@if (_contextAppMenu != null)
+{
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="../../../../">
+                @if (AppSettings.Image != null)
+                {
+                    <img src="@AppSettings.Image" alt="logo" width="40" class="d-inline-block align-middle" />
+                }
+                @if (AppSettings.Icon != null)
+                {
+                    <span class="material-symbols-outlined material-symbols-outlined-small align-middle">
+                        @AppSettings.Icon
+                    </span>
+                }
+                <span class="align-middle mx-1">@AppSettings.Name</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    @foreach (var nav in _contextAppMenu)
+                    {
+                        <li class="nav-item dropdown">
+                            <a class="@nav.CssForSelected" href="@nav.Uri"
+                       role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span class="material-symbols-outlined material-symbols-outlined-small align-middle">
+                                    @nav.Icon
+                                </span>
+                                <span class="align-middle mx-1">@nav.Name</span>
+                            </a>
+                            @if (nav.Items?.Count > 0)
+                            {
+                                <ul class="dropdown-menu">
+                                    @foreach (var item in nav.Items)
+                                    {
+                                        <li>
+                                            <button type="button" class="@item.CssForSelectedForSub" @onclick="() => NavigateTo(item)">
+                                                @if (item.Icon != null)
+                                                {
+                                                    <span class="material-symbols-outlined material-symbols-outlined-small align-middle">
+                                                        @item.Icon
+                                                    </span>
+                                                }
+                                                <span class="align-middle mx-2">@item.Name</span>
+                                            </button>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                        </li>
+                    }
+                </ul>
+                <div>
+
+                    <div class="dropdown">
+                        <div class="dropdown-toggle d-flex align-items-center" id="navbarDropdownMenuAvatar" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="material-symbols-outlined material-symbols-outlined-small">
+                                person
+                            </span>
+                        </div>
+                        <ul class="dropdown-menu dropdown-menu-lg-end" aria-labelledby="navbarDropdownMenuAvatar">
+                            <li>
+                                <a class="dropdown-item" @onclick=@((x) => NavigateTo("Repository/Settings"))>Settings</a>
+                            </li>
+                            @if (HttpContext?.User?.Identity?.IsAuthenticated == true)
+                            {
+                                <li>
+                                    <a class="dropdown-item" @onclick=@((x) => LogOut())>Sign out</a>
+                                </li>
+                             }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+}

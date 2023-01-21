@@ -1,0 +1,111 @@
+﻿@namespace RepositoryFramework.Web.Components.Standard
+@using Radzen.Blazor
+@using Radzen;
+@using System.Collections;
+@using System.Reflection;
+
+@if (_entities != null)
+{
+    var counter = 0;
+    @if (!_propertyUiSettings.HasValues())
+    {
+        <div class="col-12">
+            <DefaultButton BaseProperty="@BaseProperty" Class="text-center mt-4 mb-2" Indexes="@Indexes" ForceNotEditable="@ForceNotEditable" />
+        </div>
+        foreach (var entity in _entities)
+        {
+            var index = counter;
+            <div class="row">
+                <div class="col-11">
+                    @if (BaseProperty.GenericType != PropertyType.Primitive)
+                    {
+                        <InternalEdit BaseProperty="@BaseProperty" Indexes="@CreateNewIndexes(index)" ForceNotEditable="@ForceNotEditable" />
+                    }
+                    else
+                    {
+                        <InternalPrimitiveEdit BaseProperty="@BaseProperty" OverriddenName="@($"{(index + 1)}. ")" Indexes="@CreateNewIndexes(index)" ForceNotEditable="@ForceNotEditable" />
+                    }
+                </div>
+                <div class="col-1">
+                    @if (!_disableEdit)
+                    {
+                        <span class="float-end mt-3">
+                            <RadzenButton Click="@((x) => Remove(index))" Icon="delete" />
+                        </span>
+                    }
+                </div>
+                @{
+                    counter++;
+                }
+            </div>
+        }
+    }
+    else
+    {
+        <InternalPrimitiveEdit BaseProperty="@BaseProperty" />
+    }
+    @if (EditParametersBearer.CanEdit(BaseProperty) && !_propertyUiSettings.HasValues())
+    {
+        <RadzenButton Click="x => New()" Icon="add" />
+    }
+}
+<ErrorCatcher Error="@_error" />
+
+@code {
+    [CascadingParameter(Name = Constant.EditParametersBearer)]
+    public EditParametersBearer EditParametersBearer { get; set; }
+    [Parameter]
+    public BaseProperty BaseProperty { get; set; } = null!;
+    [Parameter]
+    public int[]? Indexes { get; set; }
+    [Parameter]
+    public bool ForceNotEditable { get; set; }
+    private IEnumerable _entities;
+    private string? _error;
+    private bool _disableEdit;
+    private PropertyUiSettings? _propertyUiSettings;
+    protected override void OnParametersSet()
+    {
+        var retrieveEntities = EditParametersBearer.GetValue(BaseProperty, Indexes);
+        if (retrieveEntities.Exception == null)
+        {
+            _entities = retrieveEntities.Entity as IEnumerable;
+            _propertyUiSettings = EditParametersBearer.GetSettings(BaseProperty);
+            _disableEdit = !EditParametersBearer.CanEdit(BaseProperty);
+        }
+        else
+            _error = retrieveEntities.Exception.Message;
+        base.OnParametersSet();
+    }
+    private void New()
+    {
+        Type[] types = BaseProperty.Self.PropertyType.IsArray ? new Type[1] { BaseProperty.Self.PropertyType.GetElementType() } :
+            BaseProperty.Self.PropertyType.GetGenericArguments();
+        var entity = types.First().CreateWithDefaultConstructorPropertiesAndField()!;
+        if (_entities is IList list)
+            list.Add(entity);
+    }
+    private int[] CreateNewIndexes(int nextIndex)
+    {
+        if (Indexes == null)
+            return new int[1] { nextIndex };
+        else
+        {
+            var newArray = new int[Indexes.Length + 1];
+            Array.Copy(Indexes, newArray, Indexes.Length);
+            newArray[Indexes.Length] = nextIndex;
+            return newArray;
+        }
+    }
+    private void Remove(int index)
+    {
+        var result = EditParametersBearer.GetValue(BaseProperty, Indexes);
+        if (result.Exception == null)
+        {
+            if (result.Entity is IList list)
+            {
+                list.RemoveAt(index);
+            }
+        }
+    }
+}

@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+		<TargetFramework>net7.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<DebugSymbols>true</DebugSymbols>
+		<EmbedAllSources>true</EmbedAllSources>
+		<DebugType>portable</DebugType>
+		<Authors>Alessandro Rapiti</Authors>
+		<Company>Alessandro Rapiti</Company>
+		<Product>Rystem</Product>
+		<Description>Rystem.</Description>
+		<Copyright>2022</Copyright>
+		<PackageIcon>rystem.concurrency.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem.Concurrency</RepositoryUrl>
+		<PackageId>Rystem.Concurrency</PackageId>
+		<Version>4.1.9</Version>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	</PropertyGroup>
+	
+	<ItemGroup>
+		<None Include="rystem.concurrency.png">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+		<None Include="README.md" Pack="true" PackagePath="\" />
+	</ItemGroup>
+	
+	<ItemGroup>
+	  <PackageReference Include="Rystem" Version="4.1.9" />
+	</ItemGroup>
+
+</Project>

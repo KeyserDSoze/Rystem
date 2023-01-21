@@ -1,0 +1,22 @@
+﻿@page
+@using Microsoft.AspNetCore.Components.Web
+@using RepositoryFramework.Web.Components;
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="~/" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <partial name="RepositoryStyle" />
+    <component type="typeof(HeadOutlet)" render-mode="ServerPrerendered" />
+</head>
+<body>
+    <component type="typeof(RepositoryApp)" render-mode="ServerPrerendered" />
+
+    <script src="_framework/blazor.server.js"></script>
+    <partial name="RepositoryScript" />
+</body>
+</html>

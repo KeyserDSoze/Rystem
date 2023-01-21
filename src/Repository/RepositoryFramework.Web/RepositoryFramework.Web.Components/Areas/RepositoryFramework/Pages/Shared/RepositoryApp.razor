@@ -1,0 +1,22 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Routing
+@namespace RepositoryFramework.Web.Components
+
+@if (!AppInternalSettings.Instance.IsAuthenticated)
+{
+    <RepositoryRouter></RepositoryRouter>
+}
+else
+{
+    <CascadingAuthenticationState>
+        <AuthorizeView>
+            <Authorized>
+                <RepositoryRouter></RepositoryRouter>
+            </Authorized>
+            <NotAuthorized>
+                <h1>Authentication Failure!</h1>
+                <p>You're not signed in.</p>
+            </NotAuthorized>
+        </AuthorizeView>
+    </CascadingAuthenticationState>
+}

@@ -1,0 +1,29 @@
+﻿@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Http;
+@namespace RepositoryFramework.Web.Components
+@inject IHttpContextAccessor HttpContextAccessor
+
+<CascadingValue Name="@nameof(IHttpContextAccessor.HttpContext)" Value="@HttpContextAccessor.HttpContext">
+    <Router AppAssembly="@typeof(RepositoryRouter).Assembly" AdditionalAssemblies="AppSettings.RazorPagesForRoutingAdditionalAssemblies">
+        <Found Context="routeData">
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(RepositoryMainLayout)" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            @if (AppInternalSettings.Instance.RootName != null)
+            {
+                <PageTitle>@AppInternalSettings.Instance.RootName</PageTitle>
+                <LayoutView Layout="@typeof(RepositoryMainLayout)">
+                    <Query Name="@AppInternalSettings.Instance.RootName"></Query>
+                </LayoutView>
+            }
+            else
+            {
+                <PageTitle>Not found</PageTitle>
+                <LayoutView Layout="@typeof(RepositoryMainLayout)">
+                    <p role="alert">Sorry, there's nothing at this address.</p>
+                </LayoutView>
+            }
+        </NotFound>
+    </Router>
+</CascadingValue>

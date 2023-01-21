@@ -1,0 +1,15 @@
+﻿@namespace RepositoryFramework.Web.Components.Standard
+@using Radzen;
+@using Radzen.Blazor
+
+@if (Error != null)
+{
+    <RadzenAlert Variant="Variant.Filled" AlertStyle="AlertStyle.Danger" Size="AlertSize.ExtraSmall" Shade="Shade.Darker" AllowClose=true>
+        <CopyButton GetValue="@(() => Error)" />
+    </RadzenAlert>
+}
+
+@code {
+    [Parameter]
+    public string? Error { get; set; }
+}

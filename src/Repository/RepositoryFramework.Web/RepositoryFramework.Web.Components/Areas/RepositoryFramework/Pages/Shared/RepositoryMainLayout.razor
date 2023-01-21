@@ -1,0 +1,46 @@
+﻿@namespace RepositoryFramework.Web.Components
+@using Radzen.Blazor
+@inherits LayoutComponentBase
+@implements IDisposable
+
+<div class="container-fluid p-0">
+    <RepositoryMenu></RepositoryMenu>
+    <div class="container-fluid p-1">
+        <ale style="@AntiStyle">
+            @Body
+            <RadzenNotification />
+            <div class="tooltip bs-tooltip-top" role="tooltip">
+                <div class="tooltip-arrow"></div>
+                <div class="tooltip-inner">
+                </div>
+            </div>
+            <RadzenDialog />
+        </ale>
+        <div class="text-center w-100" style="@Style">
+            <div class="spinner-grow text-primary" style="margin-top:40vh;" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    public string Style => LoadService.IsVisible ? "display: block !important; height: 80vh;" : "display: none !important;";
+    public string AntiStyle => !LoadService.IsVisible ? "display: block !important;" : "display: none !important;";
+
+    protected override void OnInitialized()
+    {
+        LoadService.OnChange += OnVisibilityChangeForLoadService;
+    }
+    public void Dispose()
+    {
+        LoadService.OnChange -= OnVisibilityChangeForLoadService;
+    }
+    private async void OnVisibilityChangeForLoadService()
+    {
+        await InvokeAsync(() =>
+        {
+            StateHasChanged();
+        });
+    }
+}

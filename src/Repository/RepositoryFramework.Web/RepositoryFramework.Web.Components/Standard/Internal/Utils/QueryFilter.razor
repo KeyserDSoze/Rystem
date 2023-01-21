@@ -1,0 +1,54 @@
+﻿@namespace RepositoryFramework.Web.Components.Standard
+@using Radzen;
+@using Radzen.Blazor
+@using System.Text;
+@using System.Numerics;
+@using System.Reflection;
+
+@if (SearchValue != null)
+{
+    if (!PropertyUiSettings.HasValues())
+    {
+        if (SearchValue.BaseProperty.AssemblyType == typeof(bool) || SearchValue.BaseProperty.AssemblyType == typeof(bool?))
+        {
+            var checkIfNullIsAvailable = SearchValue.BaseProperty.AssemblyType == typeof(bool?);
+            <SelectDropdown PossibleValues="@(checkIfNullIsAvailable ? Constant.BooleanTriState : Constant.BooleanState)"
+                SelectedKey="_booleanSelectedKey"
+                OnChange="@(async (x) => BoolSearch(x, checkIfNullIsAvailable))"
+                Class="form-select">
+            </SelectDropdown>
+        }
+        else if (SearchValue.BaseProperty.AssemblyType == typeof(DateTime) || SearchValue.BaseProperty.AssemblyType == typeof(DateTime?))
+        {
+            <div class="w-100 row">
+                <input type="date" class="form-control col" @onchange="@(args => DateTimeSearch(args, true))" />
+                <input type="date" class="form-control col" @onchange="@(args => DateTimeSearch(args, false))" />
+            </div>
+        }
+        else if (SearchValue.BaseProperty.AssemblyType == typeof(DateOnly) || SearchValue.BaseProperty.AssemblyType == typeof(DateOnly?))
+        {
+            <div class="w-100 row">
+                <input type="date" class="form-control col" @onchange="@(args => DateSearch(args, true))" />
+                <input type="date" class="form-control col" @onchange="@(args => DateSearch(args, false))" />
+            </div>
+        }
+        else if (SearchValue.BaseProperty.AssemblyType.IsNumeric())
+        {
+            <div class="w-100 row">
+                <input type="number" class="form-control col" @onchange="@(args => NumberSearch(args, true))" />
+                <input type="number" class="form-control col" @onchange="@(args => NumberSearch(args, false))" />
+            </div>
+        }
+        else
+        {
+            <input type="text" class="form-control" @onchange="@(args => Contains(args))" />
+        }
+    }
+    else
+    {
+        <SelectMultipleDropdown Class="form-select"
+            PossibleValues="@PropertyUiSettings.Values"
+            SelectedKeys="@_optionKeys"
+            OnChange="@(async (x) => MultipleChoices(x))" />
+    }
+}
