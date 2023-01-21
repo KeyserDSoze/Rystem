@@ -6,44 +6,49 @@ on:
   issue_comment:
     types: [created, edited, deleted]
 jobs:
-  job01:
-    if: contains(github.event.comment.html_url, '/pull/') 
+  analyze:
     runs-on: windows-latest
+    if: contains(github.event.comment.html_url, '/sonar/') 
     steps:
-        - name: Set up JDK 11
+      - name: Set up JDK 11
         uses: actions/setup-java@v1
         with:
             java-version: 1.11
-        - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
         with:
             fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-        - name: Cache SonarCloud packages
+      - name: Cache SonarCloud packages
         uses: actions/cache@v1
         with:
             path: ~\sonar\cache
             key: ${{ runner.os }}-sonar
             restore-keys: ${{ runner.os }}-sonar
-        - name: Cache SonarCloud scanner
+      - name: Cache SonarCloud scanner
         id: cache-sonar-scanner
         uses: actions/cache@v1
         with:
             path: .\.sonar\scanner
             key: ${{ runner.os }}-sonar-scanner
             restore-keys: ${{ runner.os }}-sonar-scanner
-        - name: Install SonarCloud scanner
+      - name: Install SonarCloud scanner
         if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
         shell: powershell
         run: |
             dotnet tool install --global dotnet-coverage
             New-Item -Path .\.sonar\scanner -ItemType Directory
             dotnet tool update dotnet-sonarscanner --tool-path .\.sonar\scanner
-        - name: Build and analyze
+      - name: Build and analyze
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
             SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         shell: powershell
         run: |
-            .\.sonar\scanner\dotnet-sonarscanner begin /k:"KeyserDSoze_RepositoryFramework" /o:"keyserdsoze" /d:sonar.login="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
+            .\.sonar\scanner\dotnet-sonarscanner begin /k:"KeyserDSoze_Rystem" /o:"keyserdsoze" /d:sonar.login="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
+            dotnet build "src/Core/Rystem/Rystem.csproj" -c Debug
+            dotnet build "src/Extensions/BackgroundJob/Rystem.BackgroundJob/Rystem.BackgroundJob.csproj" -c Debug
+            dotnet build "src/Extensions/Concurrency/Rystem.Concurrency/Rystem.Concurrency.csproj" -c Debug
+            dotnet build "src/Extensions/Queue/Rystem.Queue/Rystem.Queue.csproj" -c Debug
+            dotnet build "src/Extensions/XUnitTest/Rystem.XUnitTest/Rystem.XUnitTest.csproj" -c Debug
             dotnet build "src/Repository/RepositoryFramework.Abstractions/RepositoryFramework.Abstractions.csproj" -c Debug
             dotnet build "src/Repository/RepositoryFramework.Api.Client/RepositoryFramework.Api.Client.csproj" -c Debug
             dotnet build "src/Repository/RepositoryFramework.Api.Server/RepositoryFramework.Api.Server.csproj" -c Debug
@@ -54,5 +59,9 @@ jobs:
             dotnet build "src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Cosmos.Sql/RepositoryFramework.Infrastructure.Azure.Cosmos.Sql.csproj" -c Debug
             dotnet build "src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Blob/RepositoryFramework.Infrastructure.Azure.Storage.Blob.csproj" -c Debug
             dotnet build "src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Table/RepositoryFramework.Infrastructure.Azure.Storage.Table.csproj" -c Debug
+            dotnet build "src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Dynamics.Dataverse/RepositoryFramework.Infrastructure.Dynamics.Dataverse.csproj" -c Debug
+            dotnet build "src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.EntityFramework/RepositoryFramework.Infrastructure.EntityFramework.csproj" -c Debug
+            dotnet build "src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.MsSql/RepositoryFramework.Infrastructure.MsSql.csproj" -c Debug
+            dotnet build "src/Repository/RepositoryFramework.Web/RepositoryFramework.Web.Components/RepositoryFramework.Web.Components.csproj" -c Debug
             dotnet test "src/Repository/RepositoryFramework.Test/RepositoryFramework.UnitTest/RepositoryFramework.UnitTest.csproj" -c Debug --no-build /p:CollectCoverage=true /p:CoverletOutput=$root\coverage /p:CoverletOutputFormat=opencover
             .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
