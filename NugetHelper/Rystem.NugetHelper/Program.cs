@@ -13,16 +13,15 @@ namespace Rystem.Nuget
         static readonly Regex regexForVersion = new("<Version>[^<]*</Version>");
         static readonly Dictionary<string, string> newVersionOfLibraries = new();
         static VersionType Type = VersionType.Patch;
-        static readonly Regex PackageReference = new("<PackageReference[^>]*>");
-        static readonly Regex Include = new("Include=");
+        static readonly Regex s_packageReference = new("<PackageReference[^>]*>");
+        static readonly Regex s_include = new("Include=");
         static readonly Regex VersionRegex = new(@"Version=\""[^\""]*\""");
-        static readonly Regex Repo = new(@"\\repos\\");
+        static readonly Regex s_repo = new(@"\\repos\\");
         const int AddingValueForVersion = 1;
         public static async Task Main()
         {
-            string path = @$"{Repo.Split(Directory.GetCurrentDirectory()).First()}\repos";
-            List<string> projectNames = new() { "RepositoryFramework", "RystemV3", "Rystem.Concurrency", "Rystem.BackgroundJob", "Rystem.Queue" };
-            var rystemDirectories = new DirectoryInfo(path).GetDirectories().Where(x => projectNames.Contains(x.Name)).ToList();
+            var splittedDirectory = Directory.GetCurrentDirectory().Split('\\');
+            var path = string.Join('\\', splittedDirectory.Take(splittedDirectory.Length - 5));
             Console.WriteLine("Only repository (1) or only Rystem (2) or everything (something else) with (3) you choose every turn if go ahead or not, With (4) go in debug.");
             var line = Console.ReadLine();
             Update? currentUpdateTree = line == "1" ? UpdateConfiguration.OnlyRepositoryTree : (line == "2" ? UpdateConfiguration.OnlyRystemTree : UpdateConfiguration.UpdateTree);
@@ -42,10 +41,7 @@ namespace Rystem.Nuget
                 var context = new LibraryContext("0.0.0");
                 foreach (var updateTree in currentUpdateTree.Libraries)
                 {
-                    foreach (var rystemDirectory in rystemDirectories)
-                    {
-                        await ReadInDeepAsync(rystemDirectory, context, currentUpdateTree, isDebug, specificVersion);
-                    }
+                    await ReadInDeepAsync(new DirectoryInfo(path), context, currentUpdateTree, isDebug, specificVersion);
                 }
                 Console.WriteLine($"Current major version is {context.Version.V}");
                 foreach (var toUpdate in context.RepoToUpdate)
@@ -92,9 +88,9 @@ namespace Rystem.Nuget
                             Console.WriteLine($"{file.Name} from {currentVersion} to {version.V}");
                             content = content.Replace(currentVersion, $"<Version>{version.V}</Version>");
                             newVersionOfLibraries.Add(library.LibraryName!, version.V);
-                            foreach (var reference in PackageReference.Matches(content).Select(x => x.Value))
+                            foreach (var reference in s_packageReference.Matches(content).Select(x => x.Value))
                             {
-                                var include = Include.Split(reference).Skip(1).First().Trim('"').Split('"').First();
+                                var include = s_include.Split(reference).Skip(1).First().Trim('"').Split('"').First();
                                 if (newVersionOfLibraries.ContainsKey(include) && VersionRegex.IsMatch(reference))
                                 {
                                     var newReference = reference.Replace(VersionRegex.Match(reference).Value, $"Version=\"{newVersionOfLibraries[include]}\"");
@@ -109,7 +105,7 @@ namespace Rystem.Nuget
                             Console.WriteLine(content);
                             Console.WriteLine("------------------------");
                             Console.WriteLine("------------------------");
-                            string path = @$"{Repo.Split(file.FullName).First()}\repos\{Repo.Split(file.FullName).Last().Split('\\').First()}";
+                            string path = @$"{s_repo.Split(file.FullName).First()}\repos\{s_repo.Split(file.FullName).Last().Split('\\').First()}";
                             if (!context.RepoToUpdate.Contains(path))
                                 context.RepoToUpdate.Add(path);
                             if (!isDebug)
