@@ -44,15 +44,15 @@ jobs:
         shell: powershell
         run: |
             .\.sonar\scanner\dotnet-sonarscanner begin /k:"KeyserDSoze_RepositoryFramework" /o:"keyserdsoze" /d:sonar.login="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
-            dotnet build "src/RepositoryFramework.Abstractions/RepositoryFramework.Abstractions.csproj" -c Debug
-            dotnet build "src/RepositoryFramework.Api.Client/RepositoryFramework.Api.Client.csproj" -c Debug
-            dotnet build "src/RepositoryFramework.Api.Server/RepositoryFramework.Api.Server.csproj" -c Debug
-            dotnet build "src/RepositoryFramework.Infrastructure.InMemory/RepositoryFramework.Infrastructure.InMemory.csproj" -c Debug
-            dotnet build "src/RepositoryFramework.MigrationTools/RepositoryFramework.MigrationTools.csproj" -c Debug
-            dotnet build "src/RepositoryFramework.Cache/RepositoryFramework.Cache/RepositoryFramework.Cache.csproj" -c Debug
-            dotnet build "src/RepositoryFramework.Cache/RepositoryFramework.Cache.Azure.Storage.Blob/RepositoryFramework.Cache.Azure.Storage.Blob.csproj" -c Debug
-            dotnet build "src/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Cosmos.Sql/RepositoryFramework.Infrastructure.Azure.Cosmos.Sql.csproj" -c Debug
-            dotnet build "src/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Blob/RepositoryFramework.Infrastructure.Azure.Storage.Blob.csproj" -c Debug
-            dotnet build "src/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Table/RepositoryFramework.Infrastructure.Azure.Storage.Table.csproj" -c Debug
-            dotnet test "src\RepositoryFramework.Test\RepositoryFramework.UnitTest/RepositoryFramework.UnitTest.csproj" -c Debug --no-build /p:CollectCoverage=true /p:CoverletOutput=$root\coverage /p:CoverletOutputFormat=opencover
+            dotnet build "src/Repository/RepositoryFramework.Abstractions/RepositoryFramework.Abstractions.csproj" -c Debug
+            dotnet build "src/Repository/RepositoryFramework.Api.Client/RepositoryFramework.Api.Client.csproj" -c Debug
+            dotnet build "src/Repository/RepositoryFramework.Api.Server/RepositoryFramework.Api.Server.csproj" -c Debug
+            dotnet build "src/Repository/RepositoryFramework.Infrastructure.InMemory/RepositoryFramework.Infrastructure.InMemory.csproj" -c Debug
+            dotnet build "src/Repository/RepositoryFramework.MigrationTools/RepositoryFramework.MigrationTools.csproj" -c Debug
+            dotnet build "src/Repository/RepositoryFramework.Cache/RepositoryFramework.Cache/RepositoryFramework.Cache.csproj" -c Debug
+            dotnet build "src/Repository/RepositoryFramework.Cache/RepositoryFramework.Cache.Azure.Storage.Blob/RepositoryFramework.Cache.Azure.Storage.Blob.csproj" -c Debug
+            dotnet build "src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Cosmos.Sql/RepositoryFramework.Infrastructure.Azure.Cosmos.Sql.csproj" -c Debug
+            dotnet build "src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Blob/RepositoryFramework.Infrastructure.Azure.Storage.Blob.csproj" -c Debug
+            dotnet build "src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Table/RepositoryFramework.Infrastructure.Azure.Storage.Table.csproj" -c Debug
+            dotnet test "src/Repository/RepositoryFramework.Test/RepositoryFramework.UnitTest/RepositoryFramework.UnitTest.csproj" -c Debug --no-build /p:CollectCoverage=true /p:CoverletOutput=$root\coverage /p:CoverletOutputFormat=opencover
             .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"

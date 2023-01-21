@@ -9,7 +9,7 @@ jobs:
   publish:
     name: build, pack & publish
     runs-on: ubuntu-latest
-    environment: RepositoryFramework
+    environment: Rystem.Nuget
     
     steps:
       - name: Publish package
