@@ -17,7 +17,7 @@
 		<Copyright>2022</Copyright>
 		<PackageIcon>rystem.repositoryframework.cache.azure.storage.blob.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<RepositoryUrl>https://github.com/KeyserDSoze/RepositoryFramework</RepositoryUrl>
+		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Cache/RepositoryFramework.Cache.Azure.Storage.Blob</RepositoryUrl>
 		<PackageId>Rystem.RepositoryFramework.Cache.Azure.Storage.Blob</PackageId>
 		<Version>4.1.9</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>

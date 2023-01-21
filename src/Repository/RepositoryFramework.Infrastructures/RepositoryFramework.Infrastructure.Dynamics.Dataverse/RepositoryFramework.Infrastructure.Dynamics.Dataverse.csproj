@@ -17,7 +17,7 @@
 		<Copyright>2022</Copyright>
 		<PackageIcon>rystem.repositoryframework.infrastructure.dynamics.dataverse.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<RepositoryUrl>https://github.com/KeyserDSoze/RepositoryFramework</RepositoryUrl>
+		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Dynamics.Dataverse</RepositoryUrl>
 		<PackageId>Rystem.RepositoryFramework.Infrastructure.Dynamics.Dataverse</PackageId>
 		<Version>4.1.9</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>

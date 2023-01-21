@@ -1,24 +1,33 @@
 ﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
 ## Integration with Azure BlobStorage and Repository Framework
+Example from unit test with a business integration too.
 
-    builder.Services
-        .AddRepositoryInBlobStorage<User, string>(builder.Configuration["ConnectionString:Storage"]);
+     services
+        .AddRepository<Car, Guid>(settings =>
+        {
+            settings.WithBlobStorage(x => x.ConnectionString = configuration["ConnectionString:Storage"]);
+        });
+    services
+        .AddBusinessForRepository<Car, Guid>()
+            .AddBusinessBeforeInsert<CarBeforeInsertBusiness>()
+            .AddBusinessBeforeInsert<CarBeforeInsertBusiness2>();
 
-You found the IRepository<User, string> in DI to play with it.
+You found the IRepository<Car, Guid> in DI to play with it.
 
 ### Automated api with Rystem.RepositoryFramework.Api.Server package
 With automated api, you may have the api implemented with your blobstorage integration.
 You need only to add the AddApiFromRepositoryFramework and UseApiForRepositoryFramework
 
-    builder.Services.AddApiFromRepositoryFramework(x =>
-    {
-        x.Name = "Repository Api";
-        x.HasSwagger = true;
-        x.HasDocumentation = true;
-    });
+     builder.Services.AddApiFromRepositoryFramework()
+        .WithDescriptiveName("Repository Api")
+        .WithPath(Path)
+        .WithSwagger()
+        .WithVersion(Version)
+        .WithDocumentation()
+        .WithDefaultCors("http://example.com");  
 
     var app = builder.Build();
 
-    app.UseHttpsRedirection();
-    app.UseApiForRepositoryFramework();
+    app.UseApiForRepositoryFramework()
+        .WithNoAuthorization();

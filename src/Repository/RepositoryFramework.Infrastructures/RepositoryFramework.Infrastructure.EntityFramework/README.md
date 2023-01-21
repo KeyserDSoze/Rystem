@@ -1,24 +1,34 @@
 ﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
 ## Integration with Entity Framework and Repository Framework
+Example from unit test with a business integration too.
 
-     builder.Sservices
-        .AddRepositoryInEntityFramework<MappingUser, int, User, SampleContext>(
-            x =>
+     services.AddDbContext<SampleContext>(options =>
             {
-                x.DbSet = x => x.Users;
-                x.References = x => x.Include(x => x.IdGruppos);
-            })
-        .Translate<User>()
-            .With(x => x.Username, x => x.Nome)
-            .With(x => x.Username, x => x.Cognome)
-            .With(x => x.Email, x => x.IndirizzoElettronico)
-            .With(x => x.Groups, x => x.IdGruppos)
-            .With(x => x.Id, x => x.Identificativo)
-            .WithKey(x => x, x => x.Identificativo)
-        .Builder
-        .AddBusinessBeforeInsert<MappingUserBeforeInsertBusiness>()
-        .AddBusinessBeforeInsert<MappingUserBeforeInsertBusiness2>();
+                options.UseSqlServer(configuration["ConnectionString:Database"]);
+            }, ServiceLifetime.Scoped);
+
+    services
+        .AddRepository<MappingUser, int>(x =>
+        {
+            x.WithEntityFramework<MappingUser, int, User, SampleContext>(
+                t =>
+                {
+                    t.DbSet = x => x.Users;
+                    t.References = x => x.Include(x => x.IdGruppos);
+                });
+            x.Translate<User>()
+                .With(x => x.Username, x => x.Nome)
+                .With(x => x.Username, x => x.Cognome)
+                .With(x => x.Email, x => x.IndirizzoElettronico)
+                .With(x => x.Groups, x => x.IdGruppos)
+                .With(x => x.Id, x => x.Identificativo)
+                .WithKey(x => x, x => x.Identificativo);
+            x
+                .AddBusiness()
+                    .AddBusinessBeforeInsert<MappingUserBeforeInsertBusiness>()
+                    .AddBusinessBeforeInsert<MappingUserBeforeInsertBusiness2>();
+        });
 
 You found the IRepository<MappingUser, int> in DI to play with it.
 
@@ -26,14 +36,15 @@ You found the IRepository<MappingUser, int> in DI to play with it.
 With automated api, you may have the api implemented with your dataverse integration.
 You need only to add the AddApiFromRepositoryFramework and UseApiForRepositoryFramework
 
-    builder.Services.AddApiFromRepositoryFramework(x =>
-    {
-        x.Name = "Repository Api";
-        x.HasSwagger = true;
-        x.HasDocumentation = true;
-    });
+     builder.Services.AddApiFromRepositoryFramework()
+        .WithDescriptiveName("Repository Api")
+        .WithPath(Path)
+        .WithSwagger()
+        .WithVersion(Version)
+        .WithDocumentation()
+        .WithDefaultCors("http://example.com");  
 
     var app = builder.Build();
 
-    app.UseHttpsRedirection();
-    app.UseApiForRepositoryFramework();
+    app.UseApiForRepositoryFramework()
+        .WithNoAuthorization();

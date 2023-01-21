@@ -3,16 +3,19 @@
 ## Cache example
 
     builder.Services
-        .AddRepositoryInBlobStorage<User, string>(builder.Configuration["ConnectionString:Storage"])
-        .WithInMemoryCache(x =>
-        {
-            x.RefreshTime = TimeSpan.FromSeconds(20);
-            x.Methods = RepositoryMethod.All;
-        })
-        .WithBlobStorageCache(builder.Configuration["ConnectionString:Storage"], settings: x =>
-        {
-            x.RefreshTime = TimeSpan.FromSeconds(120);
-            x.Methods = RepositoryMethod.All;
+        .AddRepository<User, string>(settings => {
+            settings
+                .WithInMemory();
+                .WithInMemoryCache(x =>
+                {
+                    x.RefreshTime = TimeSpan.FromSeconds(20);
+                    x.Methods = RepositoryMethod.All;
+                })
+                .WithBlobStorageCache(builder.Configuration["ConnectionString:Storage"], settings: x =>
+                {
+                    x.RefreshTime = TimeSpan.FromSeconds(120);
+                    x.Methods = RepositoryMethod.All;
+                });
         });
 
 ### Usage

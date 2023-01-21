@@ -18,7 +18,7 @@
         <Copyright>2022</Copyright>
         <PackageIcon>rystem.repositoryframework.web.components.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <RepositoryUrl>https://github.com/KeyserDSoze/RepositoryFramework</RepositoryUrl>
+        <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Web/RepositoryFramework.Web.Components</RepositoryUrl>
         <PackageId>Rystem.RepositoryFramework.Web.Components</PackageId>
         <Version>3.1.26</Version>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>

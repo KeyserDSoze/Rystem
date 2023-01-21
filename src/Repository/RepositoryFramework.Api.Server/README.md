@@ -43,11 +43,7 @@ Futhermore, we are adding a configuration for AAD to implement authentication on
     
     var app = builder.Build();
     await app.Services.WarmUpAsync();
-    if (app.Environment.IsDevelopment())
-    {
-        app.UseSwagger();
-        app.UseSwaggerUI();
-    }
+    
     app.UseHttpsRedirection();
     app.UseApiForRepositoryFramework()
         .WithDefaultAuthorization();

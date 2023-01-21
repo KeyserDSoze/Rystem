@@ -34,23 +34,28 @@ In the example below you're setting up the following behavior: setting up a cach
 
 ### Setup in DI
 
-	builder.Services
-    .AddRepositoryInBlobStorage<User, string>(builder.Configuration["ConnectionString:Storage"])
-    .WithInMemoryCache(x =>
-    {
-        x.RefreshTime = TimeSpan.FromSeconds(20);
-        x.Methods = RepositoryMethod.All;
-    })
+	services
+        .AddRepository<Plant, int>(settings =>
+        {
+            settings
+                .WithInMemory();
+            settings
+                .WithInMemoryCache(x =>
+                {
+                    x.ExpiringTime = TimeSpan.FromSeconds(1);
+                    x.Methods = RepositoryMethods.All;
+                });
+        });
 
 ### Usage
 You always will find the same interface. For instance
 
-    IRepository<User, string> repository
+    IRepository<Plant, int> repository
 
 or if you added a query pattern or command pattern
 
-    IQuery<User, string> query 
-    ICommand<User, string> command
+    IQuery<Plant, int> query 
+    ICommand<Plant, int> command
 
 ### Distributed Cache
 Based on this [link](https://docs.microsoft.com/en-us/aspnet/core/performance/caching/distributed) you may use the standard interface IDistributedCache instead of create a custom IDistributedCache<T, TKey, TState>.
@@ -66,11 +71,14 @@ You need to add the cache
 then you add the IDistributedCache implementation to your repository patterns or CQRS.
 
     builder.Services.
-        AddRepository<User, UserRepository>()
-        WithDistributedCache();
+        AddRepository<User, string>(settings => {
+            settings
+                .WithInMemory()
+                .WithDistributedCache();
+        });
 
 and as always you will use the standard interface that is automatically integrated in the repository flow.
     
-    IRepository<User> repository;
+    IRepository<User, string> repository;
 
 The same is valid for ICommand and IQuery.

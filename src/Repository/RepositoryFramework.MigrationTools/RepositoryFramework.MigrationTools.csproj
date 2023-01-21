@@ -17,7 +17,7 @@
 		<Copyright>2022</Copyright>
 		<PackageIcon>rystem.repositoryframework.migration.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<RepositoryUrl>https://github.com/KeyserDSoze/RepositoryFramework</RepositoryUrl>
+		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.MigrationTools</RepositoryUrl>
 		<PackageId>Rystem.RepositoryFramework.MigrationTools</PackageId>
 		<Version>4.1.9</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>

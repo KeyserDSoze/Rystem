@@ -17,7 +17,7 @@
 		<Copyright>2022</Copyright>
 		<PackageIcon>rystem.repositoryframework.api.server.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<RepositoryUrl>https://github.com/KeyserDSoze/RepositoryFramework</RepositoryUrl>
+		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Api.Server</RepositoryUrl>
 		<PackageId>Rystem.RepositoryFramework.Api.Server</PackageId>
 		<Version>4.1.9</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>

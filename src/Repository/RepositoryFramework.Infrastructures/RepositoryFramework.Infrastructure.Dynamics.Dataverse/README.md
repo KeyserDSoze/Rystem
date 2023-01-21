@@ -1,17 +1,25 @@
 ﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
 ## Integration with Dataverse (Dynamics) and Repository Framework
+Example from unit test with a business integration too.
 
-     builder.Services.AddRepositoryDataverse<CalamityUniverseUser, string>(x =>
+     services
+        .AddRepository<CalamityUniverseUser, string>(settings =>
         {
-            x.Prefix = "repo_";
-            x.SolutionName = "TestAlessandro";
-            x.Environment = configuration["ConnectionString:Dataverse:Environment"];
-            x.ApplicationIdentity = new(configuration["ConnectionString:Dataverse:ClientId"],
-                configuration["ConnectionString:Dataverse:ClientSecret"]);
-        })
-        .AddBusinessBeforeInsert<CalamityUniverseUserBeforeInsertBusiness>()
-        .AddBusinessBeforeInsert<CalamityUniverseUserBeforeInsertBusiness2>();
+            settings.WithDataverse(x =>
+            {
+                x.Prefix = "repo_";
+                x.SolutionName = "TestAlessandro";
+                if (configuration != null)
+                    x.SetConnection(configuration["ConnectionString:Dataverse:Environment"],
+                        new(configuration["ConnectionString:Dataverse:ClientId"],
+                        configuration["ConnectionString:Dataverse:ClientSecret"]));
+            });
+            settings
+                .AddBusiness()
+                .AddBusinessBeforeInsert<CalamityUniverseUserBeforeInsertBusiness>()
+                .AddBusinessBeforeInsert<CalamityUniverseUserBeforeInsertBusiness2>();
+        });
 
 You found the IRepository<CalamityUniverseUser, string> in DI to play with it.
 
@@ -25,14 +33,15 @@ You have to run a method after the service collection build during startup. This
 With automated api, you may have the api implemented with your dataverse integration.
 You need only to add the AddApiFromRepositoryFramework and UseApiForRepositoryFramework
 
-    builder.Services.AddApiFromRepositoryFramework(x =>
-    {
-        x.Name = "Repository Api";
-        x.HasSwagger = true;
-        x.HasDocumentation = true;
-    });
+     builder.Services.AddApiFromRepositoryFramework()
+        .WithDescriptiveName("Repository Api")
+        .WithPath(Path)
+        .WithSwagger()
+        .WithVersion(Version)
+        .WithDocumentation()
+        .WithDefaultCors("http://example.com");  
 
     var app = builder.Build();
 
-    app.UseHttpsRedirection();
-    app.UseApiForRepositoryFramework();
+    app.UseApiForRepositoryFramework()
+        .WithNoAuthorization();
