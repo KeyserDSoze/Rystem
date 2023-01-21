@@ -1,0 +1,20 @@
+name: Rystem.Concurrency.Nuget
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - src/Extensions/Concurrency/Rystem.Concurrency/Rystem.Concurrency.csproj
+jobs:
+  publish:
+    name: build, pack & publish
+    runs-on: ubuntu-latest
+    environment: Rystem
+    
+    steps:
+      - name: Publish package
+        uses: KeyserDSoze/DefaultAction/pushing_nuget_with_symbols@v1.0.1
+        with:
+          dotnet-version: ${{ secrets.NET_VERSION }}
+          path: src/Extensions/Concurrency/Rystem.Concurrency/Rystem.Concurrency.csproj
+          api-key: ${{ secrets.NUGET_API_KEY }}

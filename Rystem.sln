@@ -105,6 +105,29 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RepositoryFramework.Web.Tes
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RepositoryFramework.Web.Test.BlazorApp", "src\Repository\RepositoryFramework.Web\RepositoryFramework.Web.Tests\RepositoryFramework.Web.Test.BlazorApp\RepositoryFramework.Web.Test.BlazorApp.csproj", "{BF511C46-63F8-42BC-9746-6A6C2331241B}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Workflows", "Workflows", "{21EA88B3-A513-4C01-8EB2-0E537C31EA07}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.CosmosSql.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.CosmosSql.yml
+		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.Storage.Blob.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.Storage.Blob.yml
+		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.Storage.Table.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.Storage.Table.yml
+		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Dynamics.Dataverse.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Dynamics.Dataverse.yml
+		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.EntityFramework.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.EntityFramework.yml
+		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.InMemory.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.InMemory.yml
+		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.MsSql.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.MsSql.yml
+		.github\workflows\PackageDeploy.Rystem.BackgroundJob.yml = .github\workflows\PackageDeploy.Rystem.BackgroundJob.yml
+		.github\workflows\PackageDeploy.Rystem.Concurrency.yml = .github\workflows\PackageDeploy.Rystem.Concurrency.yml
+		.github\workflows\PackageDeploy.Rystem.Queue.yml = .github\workflows\PackageDeploy.Rystem.Queue.yml
+		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Abstractions.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Abstractions.yml
+		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Client.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Client.yml
+		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Server.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Server.yml
+		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Cache.Azure.Storage.Blob.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Cache.Azure.Storage.Blob.yml
+		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Cache.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Cache.yml
+		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.MigrationTools.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.MigrationTools.yml
+		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Web.Components.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Web.Components.yml
+		.github\workflows\PackageDeploy.Rystem.yml = .github\workflows\PackageDeploy.Rystem.yml
+		.github\workflows\SonarLint.RepositoryFramework.yml = .github\workflows\SonarLint.RepositoryFramework.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
