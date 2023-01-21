@@ -160,7 +160,6 @@ namespace RepositoryFramework
 
             return result;
         }
-
         public async Task<BatchResults<T, TKey>> BatchAsync(ICommandPattern<T, TKey> command, BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default)
         {
             var results = BatchResults<T, TKey>.Empty;
