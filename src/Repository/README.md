@@ -31,16 +31,16 @@ Reach out us on [Discord](https://discord.gg/wUh2fppr)
 
 ### CQRS and Repository are two sides of the same coin.
 
-![Framework abstractions](https://raw.githubusercontent.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Abstractions.png)
+![Framework abstractions](https://raw.githubusercontent.com/KeyserDSoze/Rystem/master/src/Repository/RepositoryFramework.Abstractions.png)
 
 ### Design and nuget map
 
-![Framework design](https://raw.githubusercontent.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.png)
+![Framework design](https://raw.githubusercontent.com/KeyserDSoze/Rystem/master/src/Repository/RepositoryFramework.png)
 
 ### Logic design and flow
 The same flow is valid for ICommand/ICommandPattern and IQuery/IQueryPattern
 
-![Framework logic](https://raw.githubusercontent.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.CacheFlow.png)
+![Framework logic](https://raw.githubusercontent.com/KeyserDSoze/Rystem/master/src/Repository/RepositoryFramework.CacheFlow.png)
 
 ## Important!!!
 Extends and use ``IRepository<T, TKey>`` and not ``IRepositoryPattern<T>``
