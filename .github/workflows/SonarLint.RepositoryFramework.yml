@@ -1,4 +1,4 @@
-name: SonarLint.RepositoryFramework
+name: SonarLint.Rystem
 on:
   push:
     branches:
