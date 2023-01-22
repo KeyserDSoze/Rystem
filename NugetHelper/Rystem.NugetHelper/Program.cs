@@ -24,7 +24,7 @@ namespace Rystem.Nuget
             var path = string.Join('\\', splittedDirectory.Take(splittedDirectory.Length - 5));
             Console.WriteLine("Only repository (1) or only Rystem (2) or everything (something else) with (3) you choose every turn if go ahead or not, With (4) go in debug.");
             var line = Console.ReadLine();
-            Update? currentUpdateTree = line == "1" ? UpdateConfiguration.OnlyRepositoryTree : (line == "2" ? UpdateConfiguration.OnlyRystemTree : UpdateConfiguration.UpdateTree);
+            var currentUpdateTree = line == "1" ? UpdateConfiguration.OnlyRepositoryTree : (line == "2" ? UpdateConfiguration.OnlyRystemTree : UpdateConfiguration.UpdateTree);
             string? specificVersion = null;
             Console.WriteLine("Do you wanna set a specific version? y for true or something else");
             if (Console.ReadLine() == "y")
@@ -58,9 +58,8 @@ namespace Rystem.Nuget
                         break;
                     }
                 }
-                if (currentUpdateTree.Son != null)
-                    if (!isDebug)
-                        await Task.Delay(6 * 60 * 1000);
+                if (currentUpdateTree.Son != null && !isDebug)
+                    await Task.Delay(6 * 60 * 1000);
                 currentUpdateTree = currentUpdateTree.Son;
             }
         }
@@ -91,9 +90,9 @@ namespace Rystem.Nuget
                             foreach (var reference in s_packageReference.Matches(content).Select(x => x.Value))
                             {
                                 var include = s_include.Split(reference).Skip(1).First().Trim('"').Split('"').First();
-                                if (newVersionOfLibraries.ContainsKey(include) && VersionRegex.IsMatch(reference))
+                                if (newVersionOfLibraries.TryGetValue(include, out var value) && VersionRegex.IsMatch(reference))
                                 {
-                                    var newReference = reference.Replace(VersionRegex.Match(reference).Value, $"Version=\"{newVersionOfLibraries[include]}\"");
+                                    var newReference = reference.Replace(VersionRegex.Match(reference).Value, $"Version=\"{value}\"");
                                     content = content.Replace(reference, newReference);
                                 }
                             }
