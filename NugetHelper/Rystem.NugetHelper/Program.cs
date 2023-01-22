@@ -10,13 +10,13 @@ namespace Rystem.Nuget
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1118:Utility classes should not have public constructors", Justification = "Test purpose.")]
     public class Program
     {
-        static readonly Regex regexForVersion = new("<Version>[^<]*</Version>");
-        static readonly Dictionary<string, string> newVersionOfLibraries = new();
-        static VersionType Type = VersionType.Patch;
-        static readonly Regex s_packageReference = new("<PackageReference[^>]*>");
-        static readonly Regex s_include = new("Include=");
-        static readonly Regex VersionRegex = new(@"Version=\""[^\""]*\""");
-        static readonly Regex s_repo = new(@"\\repos\\");
+        private static readonly Regex regexForVersion = new("<Version>[^<]*</Version>");
+        private static readonly Dictionary<string, string> newVersionOfLibraries = new();
+        private static VersionType Type = VersionType.Patch;
+        private static readonly Regex s_packageReference = new("<PackageReference[^>]*>");
+        private static readonly Regex s_include = new("Include=");
+        private static readonly Regex VersionRegex = new(@"Version=\""[^\""]*\""");
+        private static readonly Regex s_repo = new(@"\\repos\\");
         const int AddingValueForVersion = 1;
         public static async Task Main()
         {
@@ -30,12 +30,12 @@ namespace Rystem.Nuget
             if (Console.ReadLine() == "y")
             {
                 specificVersion = Console.ReadLine();
-                if (!specificVersion.ContainsAtLeast(2, '.'))
+                if (specificVersion != null && !specificVersion.ContainsAtLeast(2, '.'))
                     throw new ArgumentException("You set a wrong version");
                 Type = VersionType.Specific;
             }
-            bool checkIfGoAhead = line == "3";
-            bool isDebug = line == "4";
+            var checkIfGoAhead = line == "3";
+            var isDebug = line == "4";
             while (currentUpdateTree != null)
             {
                 var context = new LibraryContext("0.0.0");
