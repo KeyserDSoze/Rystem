@@ -1,6 +1,6 @@
 ## Rystem
 
-Rystem is a open-source framework to improve the System in .Net
+Rystem is a open-source framework to improve .Net
 
 ### Help the project
 
