@@ -26,9 +26,10 @@ namespace RepositoryFramework.Web
             }
             return values;
         }
+        private const string First = ".First()";
         private RepositoryUiPropertyConfiguratorHelper<T, TKey> GetHelper<TProperty>(Expression<Func<T, TProperty>> navigationProperty)
         {
-            var name = navigationProperty.Body.ToString();
+            var name = navigationProperty.Body.ToString().Replace(First, string.Empty);
             name = name.Contains('.') ? $"{Constant.ValueWithSeparator}{name[(name.IndexOf('.') + 1)..]}" : Constant.Value;
             if (!_retrieves.ContainsKey(name))
                 _retrieves.Add(name, new RepositoryUiPropertyConfiguratorHelper<T, TKey>());

@@ -10,6 +10,7 @@ namespace RepositoryFramework.Web.Test.BlazorApp.Models
             .MapDefault(x => x.Email, "Default email")
             .MapDefault(x => x.InternalAppSettings, 23)
             .SetTextEditor(x => x.Name, 700)
+            .SetTextEditor(x => x.Descriptions.First().Value.Description, 700)
             .MapDefault(x => x, new AppUser
             {
                 Email = "default",
@@ -71,12 +72,18 @@ namespace RepositoryFramework.Web.Test.BlazorApp.Models
             }, x => x);
         }
     }
+    public sealed class AppLanguagedDescriptionUser
+    {
+        public string Name { get; set; }
+        public string Description { get; set; }
+    }
     public sealed class AppUser
     {
         public int Id { get; set; }
         public string Name { get; set; } = null!;
         public string Email { get; set; } = null!;
         public string Password { get; set; } = null!;
+        public Dictionary<string, AppLanguagedDescriptionUser> Descriptions { get; set; }
         public List<Group> Groups { get; set; } = null!;
         public AppSettings Settings { get; init; } = null!;
         public InternalAppSettings InternalAppSettings { get; set; } = null!;

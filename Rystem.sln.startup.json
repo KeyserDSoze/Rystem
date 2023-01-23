@@ -1,0 +1,17 @@
+{
+  "Version": 3,
+  "ListAllProjects": false,
+  "MultiProjectConfigurations": {
+    "Nuget": {
+      "Projects": {
+        "Rystem.NugetHelper": {}
+      }
+    },
+    "Web": {
+      "Projects": {
+        "RepositoryFramework.Web.Test.Api": {},
+        "RepositoryFramework.Web.Test.BlazorApp": {}
+      }
+    }
+  }
+}

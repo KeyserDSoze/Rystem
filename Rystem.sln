@@ -142,6 +142,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Miscellaneous", "Miscellane
 		icons\rystem.icons.psd = icons\rystem.icons.psd
 	EndProjectSection
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RepositoryFramework.Web.Test.Api", "src\Repository\RepositoryFramework.Web\RepositoryFramework.Web.Tests\RepositoryFramework.Web.Test.Api\RepositoryFramework.Web.Test.Api.csproj", "{38DA6D08-95F8-4DF4-B4A0-7FADD6CCCCA7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -288,6 +290,10 @@ Global
 		{BF511C46-63F8-42BC-9746-6A6C2331241B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BF511C46-63F8-42BC-9746-6A6C2331241B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BF511C46-63F8-42BC-9746-6A6C2331241B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{38DA6D08-95F8-4DF4-B4A0-7FADD6CCCCA7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{38DA6D08-95F8-4DF4-B4A0-7FADD6CCCCA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{38DA6D08-95F8-4DF4-B4A0-7FADD6CCCCA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{38DA6D08-95F8-4DF4-B4A0-7FADD6CCCCA7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -342,6 +348,7 @@ Global
 		{731922E3-687E-4030-B765-FBD6A79E6EB6} = {768B6007-F437-460C-B8E6-CAC2D2FCD28B}
 		{898F8A32-4487-4CAF-8286-7C57BAAE8292} = {731922E3-687E-4030-B765-FBD6A79E6EB6}
 		{BF511C46-63F8-42BC-9746-6A6C2331241B} = {731922E3-687E-4030-B765-FBD6A79E6EB6}
+		{38DA6D08-95F8-4DF4-B4A0-7FADD6CCCCA7} = {731922E3-687E-4030-B765-FBD6A79E6EB6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {35C6ADE0-7E70-48ED-A810-A71B2BC94F57}

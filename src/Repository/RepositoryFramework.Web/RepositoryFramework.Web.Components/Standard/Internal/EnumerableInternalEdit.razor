@@ -44,10 +44,10 @@
     {
         <InternalPrimitiveEdit BaseProperty="@BaseProperty" />
     }
-    @if (EditParametersBearer.CanEdit(BaseProperty) && !_propertyUiSettings.HasValues())
-    {
-        <RadzenButton Click="x => New()" Icon="add" />
-    }
+}
+@if (EditParametersBearer.CanEdit(BaseProperty) && !_propertyUiSettings.HasValues())
+{
+    <RadzenButton Click="x => New()" Icon="add" />
 }
 <ErrorCatcher Error="@_error" />
 
@@ -79,11 +79,27 @@
     }
     private void New()
     {
+        if (_entities == null)
+        {
+            _entities = (Activator.CreateInstance(BaseProperty.Self.PropertyType) as IEnumerable)!;
+            BaseProperty.Set(EditParametersBearer.BaseEntity, _entities);
+        }
         Type[] types = BaseProperty.Self.PropertyType.IsArray ? new Type[1] { BaseProperty.Self.PropertyType.GetElementType() } :
             BaseProperty.Self.PropertyType.GetGenericArguments();
-        var entity = types.First().CreateWithDefaultConstructorPropertiesAndField()!;
-        if (_entities is IList list)
+        if (_entities is IDictionary dictionary)
+        {
+            var keyType = types.First();
+            var key = keyType.CreateWithDefaultConstructorPropertiesAndField()!;
+            if (key is null && keyType == typeof(string))
+                key = string.Empty;
+            var entity = types.Skip(1).First().CreateWithDefaultConstructorPropertiesAndField()!;
+            dictionary.Add(key, entity);
+        }
+        else if (_entities is IList list)
+        {
+            var entity = types.First().CreateWithDefaultConstructorPropertiesAndField()!;
             list.Add(entity);
+        }
     }
     private int[] CreateNewIndexes(int nextIndex)
     {

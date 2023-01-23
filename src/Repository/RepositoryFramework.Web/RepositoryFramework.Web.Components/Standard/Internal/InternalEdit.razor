@@ -19,12 +19,12 @@
                     @foreach (var baseProperty in BaseProperty.NonPrimitives)
                     {
                         <button class="@(firstPrimitive ? Constant.NavLinkActive : Constant.NavLink)" id="@baseProperty.GetFurtherProperty().Id"
-                    data-bs-toggle="tab"
-                    data-bs-target="@baseProperty.GetFurtherProperty().NavigationSelector"
-                    type="button"
-                    role="tab"
-                    aria-controls="@baseProperty.GetFurtherProperty().NavigationId"
-                    aria-selected="true">
+                            data-bs-toggle="tab"
+                            data-bs-target="@baseProperty.GetFurtherProperty().NavigationSelector"
+                            type="button"
+                            role="tab"
+                            aria-controls="@baseProperty.GetFurtherProperty().NavigationId"
+                            aria-selected="true">
                             @baseProperty.Self.Name
                         </button>
                         firstPrimitive = false;
