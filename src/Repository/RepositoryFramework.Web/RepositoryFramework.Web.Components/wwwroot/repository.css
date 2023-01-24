@@ -1,7 +1,5 @@
-﻿
-
-body {
-    background: var(--bs-body-color) !important;
+﻿body, html {
+    background: opaque(var(--bs-body-color)) !important;
     color: var(--dark) !important;
 }
 
@@ -22,6 +20,7 @@ body {
     --bs-navbar-disabled-color: opaque(var(--bs-navbar-color));
     --bs-navbar-active-color: color-contrast(var(--dark));
     --bs-navbar-brand-hover-color: color-contrast(opaque(var(--bs-navbar-color)));
+    background: var(--light);
 }
 
 .dropdown-menu {

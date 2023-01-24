@@ -1,4 +1,5 @@
 ﻿using System.Reflection.Emit;
+using static System.Collections.Specialized.BitVector32;
 
 namespace System.Reflection
 {
@@ -78,6 +79,45 @@ namespace System.Reflection
                     constructorGenerator.Emit(OpCodes.Ret);
                 }
             }
+            var createdType = typeBuilder!.CreateType();
+            return createdType!;
+        }
+        public Type? CreateFromScratch(string name, List<MockedProperty> properties)
+        {
+            var typeBuilder = Builder.DefineType(name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed);
+            List<ILGenerator> constructorGenerators = new();
+            var constructorBuilder = typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes);
+            var constructorGenerator = constructorBuilder.GetILGenerator();
+            constructorGenerators.Add(constructorGenerator);
+            constructorGenerators.First().Emit(OpCodes.Ret);
+
+            foreach (var property in properties)
+            {
+                string privateFieldName = GetPrivateFieldForPropertyName(property.Name);
+                var privateFieldBuilder = typeBuilder.DefineField(privateFieldName, property.Type, FieldAttributes.Private);
+                var propertyBuilder = typeBuilder.DefineProperty(property.Name, PropertyAttributes.None, property.Type, null);
+                var getMethodName = $"get_{property.Name}";
+                var getMethodBuilder = typeBuilder.DefineMethod(getMethodName,
+                        MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
+                        property.Type, Array.Empty<Type>());
+                var getMethodGenerator = getMethodBuilder.GetILGenerator();
+                getMethodGenerator.Emit(OpCodes.Ldarg_0);
+                getMethodGenerator.Emit(OpCodes.Ldfld, privateFieldBuilder);
+                getMethodGenerator.Emit(OpCodes.Ret);
+                propertyBuilder.SetGetMethod(getMethodBuilder);
+
+                var setMethodName = $"set_{property.Name}";
+                var setMethodBuilder = typeBuilder.DefineMethod(setMethodName,
+                        MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
+                        null, new Type[1] { property.Type });
+                var setMethodGenerator = setMethodBuilder.GetILGenerator();
+                setMethodGenerator.Emit(OpCodes.Ldarg_0);
+                setMethodGenerator.Emit(OpCodes.Ldarg_1);
+                setMethodGenerator.Emit(OpCodes.Stfld, privateFieldBuilder);
+                setMethodGenerator.Emit(OpCodes.Ret);
+                propertyBuilder.SetSetMethod(setMethodBuilder);
+            }
+
             var createdType = typeBuilder!.CreateType();
             return createdType!;
         }
@@ -227,7 +267,7 @@ namespace System.Reflection
                     generator.Emit(OpCodes.Ldfld, privateFieldBuilder);
                     if (isIndexer)
                     {
-                        for (int i = 0; i < getParameters.Length; i++)
+                        for (var i = 0; i < getParameters.Length; i++)
                             generator.Emit(OpCodes.Ldarg_S, i + 1);
                         generator.Emit(OpCodes.Callvirt, typeof(MockedAssembly).GetMethod(nameof(GetFromDictionary), BindingFlags.NonPublic | BindingFlags.Static)!);
                     }
@@ -244,7 +284,7 @@ namespace System.Reflection
                             generator.Emit(OpCodes.Ldarg_1);
                             if (isIndexer)
                             {
-                                for (int i = 0; i < setParameters.Length; i++)
+                                for (var i = 0; i < setParameters.Length; i++)
                                     generator.Emit(OpCodes.Ldarg_S, i + 2);
                                 generator.Emit(OpCodes.Callvirt, privateFieldBuilder.FieldType.GetMethod("Add")!);
                             }

@@ -8,7 +8,7 @@
             => MockedAssembly.Instance.GetMockedType<T>();
         public static Type? Mock<T>()
             => MockedAssembly.Instance.GetMockedType<T>();
-        public static object CreateInstance(this Type type, params object[]? args) 
+        public static object CreateInstance(this Type type, params object[]? args)
             => MockedAssembly.Instance.CreateInstance(type, args);
         public static T CreateInstance<T>(this T entity, params object[]? args)
             => MockedAssembly.Instance.CreateInstance<T>(args);
