@@ -4,24 +4,34 @@
 @using RepositoryFramework.Web.Components.Standard
 
 <div class="row">
-    @if (_paletteKey != null && AppPaletteWrapper.Skins.Count > 1)
+    @if (_paletteKey != null && _hasPalette)
     {
         <div class="col">
-            <SelectDropdown Class="form-select"
-                        OnChange="@(x => ChangeSkin(x))"
-                        SelectedKey="@_paletteKey"
-                        PossibleValues="@GetSkins()">
-            </SelectDropdown>
+            <div class="input-group">
+                <span class="input-group-text">
+                    @LocalizationHandler.Get(LanguageLabel.Skins)
+                </span>
+                <SelectDropdown Class="form-select"
+                            OnChange="@(x => ChangeSkin(x))"
+                            SelectedKey="@_paletteKey"
+                            PossibleValues="@GetSkins()">
+                </SelectDropdown>
+            </div>
         </div>
     }
     @if (RepositoryLocalizationOptions.Instance.HasLocalization)
     {
         <div class="col">
-            <SelectDropdown Class="form-select"
-                        OnChange="@(x => ChangeLanguage(x))"
-                        SelectedKey="@_languageKey"
-                        PossibleValues="@GetLanguages()">
-            </SelectDropdown>
+            <div class="input-group">
+                <span class="input-group-text">
+                    @LocalizationHandler.Get(LanguageLabel.Languages)
+                </span>
+                <SelectDropdown Class="form-select"
+                            OnChange="@(x => ChangeLanguage(x))"
+                            SelectedKey="@_languageKey"
+                            PossibleValues="@GetLanguages()">
+                </SelectDropdown>
+            </div>
         </div>
     }
 </div>

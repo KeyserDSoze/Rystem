@@ -21,9 +21,9 @@ builder.Services
         x.Icon = "savings";
         x.Image = "https://www.pngitem.com/pimgs/m/432-4328680_crime-dashboard-navigation-icon-emblem-hd-png-download.png";
     })
-    .WithAuthenticatedUi();
-    //.AddDefaultSkinForUi()
-    //.AddDefaultLocalization();
+    .WithAuthenticatedUi()
+    .AddDefaultSkinForUi()
+    .AddDefaultLocalization();
 
 builder.Services.AddApplicationInsightsTelemetry(x =>
 {

@@ -17,11 +17,11 @@ namespace RepositoryFramework.Web.Components.Services
         public async ValueTask CopyAsync(string value)
         {
             await _jsInterop.InvokeVoidAsync("navigator.clipboard.writeText", value).NoContext();
-            _notificationService.Notify(new Radzen.NotificationMessage
+            _notificationService.Notify(new NotificationMessage
             {
                 Duration = 1_000,
                 CloseOnClick = true,
-                Severity = Radzen.NotificationSeverity.Success,
+                Severity = NotificationSeverity.Success,
                 Summary = Copied,
                 Detail = WithSuccess
             });

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using RepositoryFramework.Web.Components.Business.Language;
 
 namespace RepositoryFramework.Web.Components
@@ -7,17 +8,20 @@ namespace RepositoryFramework.Web.Components
     public partial class Settings
     {
         [Inject]
-        public AppPaletteWrapper? AppPaletteWrapper { get; set; }
+        public IServiceProvider ServiceProvider { get; set; }
         [Inject]
         public NavigationManager NavigationManager { get; set; } = null!;
         [CascadingParameter(Name = nameof(HttpContext))]
         public HttpContext HttpContext { get; set; }
+        private bool _hasPalette;
         private string? _paletteKey;
         private string? _languageKey;
         protected override async Task OnParametersSetAsync()
         {
-            if (!HttpContext.Request.Cookies.TryGetValue(Constant.PaletteKey, out _paletteKey))
-                _paletteKey = AppPaletteWrapper.Skins.First().Key;
+            AppPaletteWrapper? appPaletteWrapper = ServiceProvider.GetService<AppPaletteWrapper>();
+            _hasPalette = appPaletteWrapper != null;
+            if (appPaletteWrapper != null && !HttpContext.Request.Cookies.TryGetValue(Constant.PaletteKey, out _paletteKey))
+                _paletteKey = appPaletteWrapper.Skins.First().Key;
             if (RepositoryLocalizationOptions.Instance.HasLocalization)
                 _languageKey = Thread.CurrentThread.CurrentCulture.Name;
             LoadService.Hide();
@@ -25,13 +29,15 @@ namespace RepositoryFramework.Web.Components
         }
         private IEnumerable<LabelValueDropdownItem> GetSkins()
         {
-            foreach (var skin in AppPaletteWrapper.Skins)
-                yield return new LabelValueDropdownItem
-                {
-                    Id = skin.Key,
-                    Label = skin.Key,
-                    Value = skin.Value
-                };
+            AppPaletteWrapper? appPaletteWrapper = ServiceProvider.GetService<AppPaletteWrapper>();
+            if (appPaletteWrapper != null)
+                foreach (var skin in appPaletteWrapper.Skins)
+                    yield return new LabelValueDropdownItem
+                    {
+                        Id = skin.Key,
+                        Label = skin.Key,
+                        Value = skin.Value
+                    };
         }
         private ValueTask ChangeSkin(LabelValueDropdownItem skin)
         {

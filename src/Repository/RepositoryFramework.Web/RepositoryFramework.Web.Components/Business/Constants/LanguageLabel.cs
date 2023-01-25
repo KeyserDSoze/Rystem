@@ -7,5 +7,7 @@
         public const string ShowItems = "Show {0} items.";
         public const string PerPage = "{0} per page";
         public const string ItemsSelected = "items selected.";
+        public const string Skins = "Skins";
+        public const string Languages = "Languages";
     }
 }

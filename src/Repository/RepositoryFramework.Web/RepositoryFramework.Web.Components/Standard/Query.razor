@@ -7,9 +7,9 @@
     <div class="row">
         @if (Pagination.TotalItemCount.HasValue)
         {
-            <div class="w-100 row">
-                <div class="col-12 col-xxl-7 col-xl-6 col-lg-5 col-md-4 row">
-                    <div class="col-2 text-nowrap">
+            <div class="w-100 row m-0 p-0">
+                <div class="col-12 col-xxl-8 col-xl-7 col-lg-6 col-md-5 row m-0 p-0" style="margin-top:10px !important;">
+                    <div class="col-3 text-nowrap">
                         <button @onclick="@((x) => _ = DownloadAsCsvAsync())" class="btn btn-outline-primary btn-sm">
                             <span class="material-symbols-outlined material-symbols-outlined-small">
                                 download
@@ -18,24 +18,22 @@
                         <CopyButton GetValue="@(() => CopyAsCsv())" Icon="content_copy" Class="btn btn-outline-secondary btn-sm">
                         </CopyButton>
                     </div>
-                    <div class="col-10 col-xxl-5 col-xl-6 col-lg-7 col-md-8">
+                    <div class="col-9 col-xxl-5 col-xl-6 col-lg-7 col-md-8">
                         <SelectMultipleDropdown Class="w-100"
-                                OnChange="@UpdateColumnsVisibility"
-                                PossibleValues="@GetColumns()"
-                                SelectedKeys="@GetSelectedColumns()">
+                                            OnChange="@UpdateColumnsVisibility"
+                                            PossibleValues="@GetColumns()"
+                                            SelectedKeys="@GetSelectedColumns()">
                         </SelectMultipleDropdown>
                     </div>
                 </div>
-                <div class="col-12 col-xxl-5 col-xl-6 col-lg-7 col-md-8 float-md-end row">
-                    <div class="col-1 text-center">
-                        <button @onclick="@(() => GoToPage(0))" disabled=@(Pagination.CurrentPageIndex <= 0) class="btn btn-outline-dark btn-sm mt-1">
+                <div class="col-12 col-xxl-4 col-xl-5 col-lg-6 col-md-7 float-md-end row m-0 p-0" style="margin-top:10px !important;">
+                    <div class="col-2 text-nowrap">
+                        <button @onclick="@(() => GoToPage(0))" disabled=@(Pagination.CurrentPageIndex <= 0) class="btn btn-outline-primary btn-sm mt-1">
                             <span class="material-symbols-outlined material-symbols-outlined-small">
                                 keyboard_double_arrow_left
                             </span>
                         </button>
-                    </div>
-                    <div class="col-1 text-center">
-                        <button @onclick="@(() => GoToPage(Pagination.CurrentPageIndex - 1))" disabled=@(Pagination.CurrentPageIndex <= 0) class="btn btn-outline-dark btn-sm mt-1">
+                        <button @onclick="@(() => GoToPage(Pagination.CurrentPageIndex - 1))" disabled=@(Pagination.CurrentPageIndex <= 0) class="btn btn-outline-primary btn-sm mt-1">
                             <span class="material-symbols-outlined material-symbols-outlined-small">
                                 chevron_left
                             </span>
@@ -55,15 +53,13 @@
                                     Class="form-select col mx-2 text-center">
                         </SelectDropdown>
                     </div>
-                    <div class="col-1 text-center">
-                        <button @onclick="@(() => GoToPage(Pagination.CurrentPageIndex + 1))" disabled=@(Pagination.CurrentPageIndex >= Pagination.LastPageIndex) class="btn btn-outline-dark btn-sm mt-1">
+                    <div class="col-2 text-nowrap">
+                        <button @onclick="@(() => GoToPage(Pagination.CurrentPageIndex + 1))" disabled=@(Pagination.CurrentPageIndex >= Pagination.LastPageIndex) class="btn btn-outline-primary btn-sm mt-1">
                             <span class="material-symbols-outlined material-symbols-outlined-small">
                                 chevron_right
                             </span>
                         </button>
-                    </div>
-                    <div class="col-1 text-center">
-                        <button @onclick="@(() => GoToPage(Pagination.LastPageIndex.Value))" disabled=@(Pagination.CurrentPageIndex >= Pagination.LastPageIndex) class="btn btn-outline-dark btn-sm mt-1">
+                        <button @onclick="@(() => GoToPage(Pagination.LastPageIndex.Value))" disabled=@(Pagination.CurrentPageIndex >= Pagination.LastPageIndex) class="btn btn-outline-primary btn-sm mt-1">
                             <span class="material-symbols-outlined material-symbols-outlined-small">
                                 keyboard_double_arrow_right
                             </span>

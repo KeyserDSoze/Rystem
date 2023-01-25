@@ -8,7 +8,7 @@
         public string Info { get; set; } = "#0dcaf0";
         public string Warning { get; set; } = "#ffc107";
         public string Danger { get; set; } = "#dc3545";
-        public string Light { get; set; } = "#adb5bd";
+        public string Light { get; set; } = "#eaeaea";
         public string Dark { get; set; } = "#000";
         public string Color { get; set; } = "#000";
         public string BackgroundColor { get; set; } = "#fff";
