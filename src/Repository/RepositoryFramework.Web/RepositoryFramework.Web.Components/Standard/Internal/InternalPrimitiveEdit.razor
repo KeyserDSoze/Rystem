@@ -10,7 +10,7 @@
     var defaultClass = "col my-2";
     if (!_propertyUiSettings.HasValues() && _propertyUiSettings?.HasTextEditor == true)
     {
-        defaultClass = "col-12 my-2";
+        defaultClass = "w-100 my-2";
     }
     <div class="@defaultClass">
         <div class="input-group">
@@ -134,7 +134,15 @@
     }
     public void InternalUpdate(object? value)
     {
-        EditParametersBearer.SetValue(BaseProperty, value);
+        if (BaseProperty.Type == PropertyType.Enumerable && (value is string || value is not IEnumerable))
+        {
+            var theEnumerableValue = EditParametersBearer.GetValue(BaseProperty, Indexes?.Take(Indexes.Length - 1).ToArray());
+            var elements = (theEnumerableValue.Entity! as IEnumerable)!;
+            elements.SetElementAt(Indexes!.Last(), value);
+            EditParametersBearer.SetValue(BaseProperty, elements);
+        }
+        else
+            EditParametersBearer.SetValue(BaseProperty, value);
         _value = value;
     }
     public void InternalProxyUpdate(object selected)

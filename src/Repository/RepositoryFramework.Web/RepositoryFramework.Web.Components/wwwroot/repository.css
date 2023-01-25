@@ -121,3 +121,13 @@ button.bg-transparent {
 .mw-75 {
     max-width: 75% !important;
 }
+
+fieldset {
+    border-color: var(--bs-secondary);
+    border-width: 1px;
+}
+
+legend {
+    padding-left: 10px;
+    padding-right: 10px;
+}

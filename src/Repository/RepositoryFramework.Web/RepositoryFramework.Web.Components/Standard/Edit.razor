@@ -9,7 +9,8 @@
     <div class="row">
         <div class="col">
             <CascadingValue Name="@Constant.EditParametersBearer" Value="@_parametersBearer">
-                <RadzenFieldset Text="@Constant.Key">
+                <fieldset>
+                    <legend>@Constant.Key</legend>
                     @if (!typeof(TKey).IsPrimitive())
                     {
                         <InternalEdit BaseProperty="@_parametersBearer.BaseTypeShowcase.Properties.First()" ForceNotEditable="@(!_isNew)" />
@@ -29,27 +30,29 @@
                             If you active the key editing, and you change it, on save you will create a copy of this element with your new key.
                         </RadzenAlert>
                     }
-                </RadzenFieldset>
+                </fieldset>
                 @foreach (var property in _parametersBearer.BaseTypeShowcase.Properties.Skip(1).Take(1))
                 {
-                    <RadzenFieldset Text="@typeof(T).Name">
+                    <fieldset>
+                        <legend>@typeof(T).Name</legend>
                         <DefaultButton BaseProperty="@property" Class="text-center mb-2 w-100" />
                         <InternalEdit BaseProperty="@property" />
-                    </RadzenFieldset>
+                    </fieldset>
                 }
                 @if (!DisableEdit || AllowDelete)
                 {
-                    <RadzenFieldset Text="@Constant.Edit">
+                    <fieldset>
+                        <legend>@Constant.Edit</legend>
                         @if (!DisableEdit)
                         {
-                            <button type="button" class="btn btn-primary bg-secondary btn-sm"
-                        @onclick="@((x) => SaveAsync(false))">
+                            <button type="button" class="btn btn-primary bg-secondary btn"
+                                @onclick="@((x) => SaveAsync(false))">
                                 <span class="material-symbols-outlined material-symbols-outlined-small">
                                     assignment_turned_in
                                 </span>
                             </button>
-                            <button type="button" class="btn btn-primary bg-primary btn-sm"
-                                 @onclick="@((x) => SaveAsync(true))">
+                            <button type="button" class="btn btn-primary bg-primary btn"
+                                @onclick="@((x) => SaveAsync(true))">
                                 <span class="material-symbols-outlined material-symbols-outlined-small">
                                     note_add
                                 </span>
@@ -57,14 +60,14 @@
                         }
                         @if (AllowDelete)
                         {
-                            <button type="button" class="btn btn-primary bg-danger btn-sm float-end"
+                            <button type="button" class="btn btn-primary bg-danger btn float-end"
                                 @onclick="@((x) => CheckIfYouWantToDeleteAsync())">
                                 <span class="material-symbols-outlined material-symbols-outlined-small">
                                     delete
                                 </span>
                             </button>
                         }
-                    </RadzenFieldset>
+                    </fieldset>
                 }
             </CascadingValue>
         </div>

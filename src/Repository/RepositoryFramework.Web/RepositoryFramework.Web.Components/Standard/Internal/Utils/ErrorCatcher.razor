@@ -1,12 +1,11 @@
 ﻿@namespace RepositoryFramework.Web.Components.Standard
-@using Radzen;
-@using Radzen.Blazor
 
 @if (Error != null)
 {
-    <RadzenAlert Variant="Variant.Filled" AlertStyle="AlertStyle.Danger" Size="AlertSize.ExtraSmall" Shade="Shade.Darker" AllowClose=true>
-        <CopyButton GetValue="@(() => Error)" />
-    </RadzenAlert>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <CopyButton GetValue="@(() => Error)" />
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
 }
 
 @code {
