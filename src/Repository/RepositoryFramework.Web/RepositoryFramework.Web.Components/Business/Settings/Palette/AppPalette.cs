@@ -15,5 +15,6 @@
         public LinkPalette Link { get; set; } = new();
         public ButtonPalette Button { get; set; } = new();
         public TablePalette Table { get; set; } = new();
+        public static AppPalette Default { get; } = new();
     }
 }

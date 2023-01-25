@@ -14,10 +14,10 @@
                 Value="@SelectedKeys"
                 TextProperty="Label"
                 ValueProperty="Id"
-                Change="@((x) => OnChangeAsync(x))"
+                Change="@((x) => _ = OnChangeAsync(x))"
                 AllowSelectAll=false
-                SelectAllText="@Localizer[LanguageLabel.ItemsSelected]"
-                SelectedItemsText="@Localizer[LanguageLabel.ItemsSelected]"
+                SelectAllText="@Localizer.Get(LanguageLabel.ItemsSelected)"
+                SelectedItemsText="@Localizer.Get(LanguageLabel.ItemsSelected)"
                 class="@Class"
                 Disabled="@NotEditable" />
 }
@@ -25,7 +25,7 @@
 
 @code {
     [Inject]
-    internal IStringLocalizer<SharedResource> Localizer { get; set; }
+    internal ILocalizationHandler Localizer { get; set; }
     [Parameter]
     public IEnumerable<LabelValueDropdownItem>? PossibleValues { get; set; }
     [Parameter]

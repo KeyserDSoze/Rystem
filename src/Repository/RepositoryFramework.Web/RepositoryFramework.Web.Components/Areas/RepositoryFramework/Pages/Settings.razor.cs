@@ -7,7 +7,7 @@ namespace RepositoryFramework.Web.Components
     public partial class Settings
     {
         [Inject]
-        public AppPaletteWrapper AppPaletteWrapper { get; set; }
+        public AppPaletteWrapper? AppPaletteWrapper { get; set; }
         [Inject]
         public NavigationManager NavigationManager { get; set; } = null!;
         [CascadingParameter(Name = nameof(HttpContext))]
