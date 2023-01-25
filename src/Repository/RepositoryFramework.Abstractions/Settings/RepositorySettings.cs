@@ -29,49 +29,20 @@ namespace RepositoryFramework
             };
         private IRepositoryBuilder<T, TKey, TStorage> SetRepositoryStorage<TStorage>(ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class
-        {
-            var storageType = typeof(TStorage);
-            var currentType = typeof(IRepository<T, TKey>);
-            if (!storageType.GetInterfaces().Any(x => x == currentType))
-            {
-                throw new ArgumentException($"{storageType.FullName} is not a {currentType.FullName}");
-            }
-            var service = SetService();
-            ServiceLifetime = serviceLifetime;
-            service.ServiceLifetime = ServiceLifetime;
-            service.InterfaceType = currentType;
-            service.ImplementationType = typeof(TStorage);
-            Services
-                .RemoveServiceIfAlreadyInstalled<TStorage>(currentType, typeof(IRepositoryPattern<T, TKey>))
-                .AddService(typeof(IRepositoryPattern<T, TKey>), storageType, serviceLifetime)
-                .AddService<IRepository<T, TKey>, Repository<T, TKey>>(serviceLifetime);
-            return new RepositoryBuilder<T, TKey, TStorage>(Services, PatternType.Repository, serviceLifetime);
-        }
+            => SetStorage<TStorage, IRepository<T, TKey>, IRepositoryPattern<T, TKey>, Repository<T, TKey>>(serviceLifetime);
         private IRepositoryBuilder<T, TKey, TStorage> SetCommandStorage<TStorage>(ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class
-        {
-            var storageType = typeof(TStorage);
-            var currentType = typeof(ICommand<T, TKey>);
-            if (!storageType.GetInterfaces().Any(x => x == currentType))
-            {
-                throw new ArgumentException($"{storageType.FullName} is not a {currentType.FullName}");
-            }
-            var service = SetService();
-            ServiceLifetime = serviceLifetime;
-            service.ServiceLifetime = ServiceLifetime;
-            service.InterfaceType = currentType;
-            service.ImplementationType = typeof(TStorage);
-            Services
-                .RemoveServiceIfAlreadyInstalled<TStorage>(currentType, typeof(ICommandPattern<T, TKey>))
-                .AddService(typeof(ICommandPattern<T, TKey>), storageType, serviceLifetime)
-                .AddService<ICommand<T, TKey>, Command<T, TKey>>(serviceLifetime);
-            return new RepositoryBuilder<T, TKey, TStorage>(Services, PatternType.Command, serviceLifetime);
-        }
+            => SetStorage<TStorage, ICommand<T, TKey>, ICommandPattern<T, TKey>, Command<T, TKey>>(serviceLifetime);
         private IRepositoryBuilder<T, TKey, TStorage> SetQueryStorage<TStorage>(ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class
+            => SetStorage<TStorage, IQuery<T, TKey>, IQueryPattern<T, TKey>, Query<T, TKey>>(serviceLifetime);
+        private IRepositoryBuilder<T, TKey, TStorage> SetStorage<TStorage, TRepository, TRepositoryPattern, TRepositoryConcretization>(ServiceLifetime serviceLifetime)
+            where TStorage : class
+            where TRepository : class
+            where TRepositoryConcretization : class, TRepository
         {
             var storageType = typeof(TStorage);
-            var currentType = typeof(IQuery<T, TKey>);
+            var currentType = typeof(TRepository);
             if (!storageType.GetInterfaces().Any(x => x == currentType))
             {
                 throw new ArgumentException($"{storageType.FullName} is not a {currentType.FullName}");
@@ -82,9 +53,9 @@ namespace RepositoryFramework
             service.InterfaceType = currentType;
             service.ImplementationType = typeof(TStorage);
             Services
-                .RemoveServiceIfAlreadyInstalled<TStorage>(currentType, typeof(IQueryPattern<T, TKey>))
-                .AddService(typeof(IQueryPattern<T, TKey>), storageType, serviceLifetime)
-                .AddService<IQuery<T, TKey>, Query<T, TKey>>(serviceLifetime);
+                .RemoveServiceIfAlreadyInstalled<TStorage>(currentType, typeof(TRepositoryPattern))
+                .AddService(typeof(TRepositoryPattern), storageType, serviceLifetime)
+                .AddService<TRepository, TRepositoryConcretization>(serviceLifetime);
             return new RepositoryBuilder<T, TKey, TStorage>(Services, PatternType.Query, serviceLifetime);
         }
         private RepositoryFrameworkService SetService()
