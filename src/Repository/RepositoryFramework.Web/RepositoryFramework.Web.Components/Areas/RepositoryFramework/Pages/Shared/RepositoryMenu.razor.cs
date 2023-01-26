@@ -39,21 +39,21 @@ namespace RepositoryFramework.Web.Components
                 selectedPath = new Uri(uri).AbsolutePath;
             foreach (var nav in AppMenu.Navigations.Select(x => x.Value))
             {
-                if (nav.Policies.Count == 0 || await PolicyEvaluatorManager.ValidateAsync(HttpContext, nav.Policies))
+                if (nav.Policies.Count == 0 || PolicyEvaluatorManager == null || await PolicyEvaluatorManager.ValidateAsync(HttpContext, nav.Policies))
                 {
                     if (nav is IRepositoryAppMenuComplexItem complexItem)
                     {
                         List<AppMenuItem> subItems = new();
                         foreach (var subComplextItem in complexItem.SubMenu)
                         {
-                            if (subComplextItem.Policies.Count == 0 || await PolicyEvaluatorManager.ValidateAsync(HttpContext, subComplextItem.Policies))
+                            if (subComplextItem.Policies.Count == 0 || PolicyEvaluatorManager == null || await PolicyEvaluatorManager.ValidateAsync(HttpContext, subComplextItem.Policies))
                             {
                                 subItems.Add(new AppMenuItem
                                 {
                                     Icon = subComplextItem.Icon,
                                     Name = subComplextItem.Name,
                                     Uri = subComplextItem.Uri,
-                                    IsSelected = subComplextItem.Uri.ToLower().Equals(selectedPath.ToLower()),
+                                    IsSelected = subComplextItem.Uri.ToLower().EndsWith(selectedPath.ToLower()),
                                 });
                             }
                         }
@@ -72,7 +72,7 @@ namespace RepositoryFramework.Web.Components
                             Icon = singleItem.Icon,
                             Name = singleItem.Name,
                             Uri = singleItem.Uri,
-                            IsSelected = singleItem.Uri.ToLower().Contains(selectedPath.ToLower()),
+                            IsSelected = singleItem.Uri.ToLower().EndsWith(selectedPath.ToLower()),
                         });
                     }
                 }

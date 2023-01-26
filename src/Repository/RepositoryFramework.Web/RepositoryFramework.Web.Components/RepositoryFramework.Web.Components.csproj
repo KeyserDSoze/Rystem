@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
     <PropertyGroup>
         <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -20,7 +20,7 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Web/RepositoryFramework.Web.Components</RepositoryUrl>
         <PackageId>Rystem.RepositoryFramework.Web.Components</PackageId>
-        <Version>3.1.32</Version>
+        <Version>3.1.33</Version>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
         <StaticWebAssetBasePath>_content/$(PackageId)</StaticWebAssetBasePath>
