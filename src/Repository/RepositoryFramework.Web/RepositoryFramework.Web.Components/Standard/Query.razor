@@ -147,8 +147,8 @@
                                     else
                                     {
                                         <RadzenButton class="bg-transparent text-dark p-0"
-                                      Click="@((x) => ShowMoreValuesAsync(item, property))"
-                                      Text="@EnumerableCountAsString(item, property)" />
+                                          Click="@((x) => ShowMoreValuesAsync(item, property))"
+                                            Text="@item.EnumerableCountAsString(property, LocalizationHandler)" />
                                     }
                                 </td>
                             }

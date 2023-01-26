@@ -96,6 +96,12 @@ namespace RepositoryFramework.Web.Test.BlazorApp.Models
     {
         public string Id { get; set; } = null!;
         public string Name { get; set; } = null!;
+        public List<MegaIperGroup> Groups { get; set; } = null!;
+    }
+    public sealed class MegaIperGroup
+    {
+        public string Id { get; set; } = null!;
+        public string Name { get; set; } = null!;
     }
     public sealed class Group
     {
