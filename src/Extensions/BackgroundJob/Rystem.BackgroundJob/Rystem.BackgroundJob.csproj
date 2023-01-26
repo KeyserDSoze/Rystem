@@ -19,13 +19,13 @@
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/BackgroundJob/Rystem.BackgroundJob</RepositoryUrl>
 		<PackageId>Rystem.BackgroundJob</PackageId>
-		<Version>4.1.10</Version>
+		<Version>4.1.11</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Rystem.Concurrency" Version="4.1.10" />
+		<PackageReference Include="Rystem.Concurrency" Version="4.1.11" />
 		<PackageReference Include="Cronos" Version="0.7.1" />
 	</ItemGroup>
 
