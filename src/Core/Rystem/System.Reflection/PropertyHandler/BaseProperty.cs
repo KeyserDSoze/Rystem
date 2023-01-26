@@ -52,7 +52,7 @@ namespace System.Reflection
         {
             if (context == null)
                 return null;
-            int counter = 0;
+            var counter = 0;
             foreach (var item in _valueFromContextStack)
             {
                 context = item.GetValue(context);
@@ -88,13 +88,19 @@ namespace System.Reflection
             basePropertyNameValue.Value = context;
             return basePropertyNameValue;
         }
-        public void Set(object? context, object? value)
+        public void Set(object? context, object? value, int[]? indexes)
         {
             if (context == null)
                 return;
+            var counter = 0;
             foreach (var item in _valueFromContextStack.Take(_valueFromContextStack.Count - 1))
             {
                 context = item.GetValue(context);
+                if (indexes != null && counter < indexes.Length && context is not string && context is IEnumerable enumerable)
+                {
+                    context = enumerable.ElementAt(indexes[counter]);
+                    counter++;
+                }
                 if (context == null)
                     return;
             }

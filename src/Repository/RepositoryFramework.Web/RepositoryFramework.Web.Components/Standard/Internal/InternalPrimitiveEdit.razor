@@ -136,13 +136,14 @@
     {
         if (BaseProperty.Type == PropertyType.Enumerable && (value is string || value is not IEnumerable))
         {
-            var theEnumerableValue = EditParametersBearer.GetValue(BaseProperty, Indexes?.Take(Indexes.Length - 1).ToArray());
+            var indexesToFixThePrimitiveSave = Indexes?.Take(Indexes.Length - 1).ToArray();
+            var theEnumerableValue = EditParametersBearer.GetValue(BaseProperty, indexesToFixThePrimitiveSave);
             var elements = (theEnumerableValue.Entity! as IEnumerable)!;
             elements.SetElementAt(Indexes!.Last(), value);
-            EditParametersBearer.SetValue(BaseProperty, elements);
+            EditParametersBearer.SetValue(BaseProperty, elements, indexesToFixThePrimitiveSave);
         }
         else
-            EditParametersBearer.SetValue(BaseProperty, value);
+            EditParametersBearer.SetValue(BaseProperty, value, Indexes);
         _value = value;
     }
     public void InternalProxyUpdate(object selected)

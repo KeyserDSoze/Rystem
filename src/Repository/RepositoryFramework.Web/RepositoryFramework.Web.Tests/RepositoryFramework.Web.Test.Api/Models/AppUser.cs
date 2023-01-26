@@ -9,6 +9,7 @@ namespace RepositoryFramework.Web.Test.BlazorApp.Models
         public string Email { get; set; } = null!;
         public string Password { get; set; } = null!;
         public List<Group> Groups { get; set; } = null!;
+        public List<MegaGroup> MegaGroups { get; set; } = null!;
         public AppSettings Settings { get; init; } = null!;
         public InternalAppSettings InternalAppSettings { get; set; } = null!;
         public List<string> Claims { get; set; } = null!;
@@ -16,6 +17,11 @@ namespace RepositoryFramework.Web.Test.BlazorApp.Models
         public string? HashedMainGroup => MainGroup?.ToHash();
     }
     public sealed class Group
+    {
+        public string Id { get; set; } = null!;
+        public string Name { get; set; } = null!;
+    }
+    public sealed class MegaGroup
     {
         public string Id { get; set; } = null!;
         public string Name { get; set; } = null!;

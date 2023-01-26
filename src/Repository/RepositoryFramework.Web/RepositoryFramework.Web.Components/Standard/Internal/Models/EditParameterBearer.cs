@@ -7,8 +7,8 @@ namespace RepositoryFramework.Web.Components.Standard
         public required object? BaseEntity { get; set; }
         public TryResponse<object?> GetValue(BaseProperty baseProperty, int[]? indexes)
             => Try.WithDefaultOnCatch(() => baseProperty.Value(BaseEntity, indexes));
-        public void SetValue(BaseProperty baseProperty, object? value)
-            => baseProperty.Set(BaseEntity, value);
+        public void SetValue(BaseProperty baseProperty, object? value, int[]? indexes)
+            => baseProperty.Set(BaseEntity, value, indexes);
         public bool CanEdit(BaseProperty baseProperty)
             => !DisableEdit && baseProperty.Self.SetMethod != null;
         public PropertyUiSettings? GetSettings(BaseProperty baseProperty)

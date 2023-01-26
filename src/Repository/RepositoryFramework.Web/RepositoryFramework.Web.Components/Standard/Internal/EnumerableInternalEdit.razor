@@ -92,7 +92,7 @@
         if (_entities == null)
         {
             _entities = (Activator.CreateInstance(BaseProperty.Self.PropertyType) as IEnumerable)!;
-            BaseProperty.Set(EditParametersBearer.BaseEntity, _entities);
+            BaseProperty.Set(EditParametersBearer.BaseEntity, _entities, Indexes);
         }
         Type[] types = BaseProperty.Self.PropertyType.IsArray ? new Type[1] { BaseProperty.Self.PropertyType.GetElementType() } :
             BaseProperty.Self.PropertyType.GetGenericArguments();

@@ -60,14 +60,14 @@
             entity = _propertyUiSettings.ValueRetriever(entityRetrieved).ToDeepCopy();
         }
         _restorableValue = _value;
-        EditParametersBearer.SetValue(BaseProperty, entity);
+        EditParametersBearer.SetValue(BaseProperty, entity, Indexes);
         _value = entity;
         _ = InvokeAsync(() => EditParametersBearer.StateHasChanged());
     }
     public void Restore()
     {
         _value = _restorableValue;
-        EditParametersBearer.SetValue(BaseProperty, _value);
+        EditParametersBearer.SetValue(BaseProperty, _value, Indexes);
         _restorableValue = null;
         _ = InvokeAsync(() => EditParametersBearer.StateHasChanged());
     }
