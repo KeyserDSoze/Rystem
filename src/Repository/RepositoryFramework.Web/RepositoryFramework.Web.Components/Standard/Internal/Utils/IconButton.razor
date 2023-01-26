@@ -1,0 +1,17 @@
+﻿@namespace RepositoryFramework.Web.Components.Standard
+
+<button type="button" class="@Class" @onclick="@((x) => Clicked())">
+    <span class="material-symbols-outlined material-symbols-outlined-small">
+        @Icon
+    </span>
+</button>
+
+@code {
+    [Parameter]
+    public Action Clicked { get; set; }
+    [Parameter]
+    public string Icon { get; set; }
+    [Parameter]
+    public string? Class { get; set; } = DefaultClass;
+    private const string DefaultClass = "btn btn-primary bg-secondary btn";
+}

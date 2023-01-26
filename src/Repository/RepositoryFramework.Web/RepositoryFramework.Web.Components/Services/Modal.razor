@@ -1,0 +1,33 @@
+﻿@namespace RepositoryFramework.Web.Components.Standard
+
+<div class="modal fade show" tabindex="-1" style="display: block;">
+    <button class="modal-backdrop fade show" style="display: block;z-index:0 !important;" @onclick="@(() => Cancel())"></button>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@Title</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @onclick="@(() => Cancel())"></button>
+            </div>
+            <div class="modal-body">
+                <p>@Message</p>
+            </div>
+            <div class="modal-footer">
+                <TextButton Class="btn btn-success"
+                            Text="Ok" Click="@Ok" />
+                <TextButton Class="btn btn-danger"
+                            Text="Cancel" Click="@Cancel" />
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public required Action Ok { get; set; }
+    [Parameter]
+    public required string Title { get; set; }
+    [Parameter]
+    public required string Message { get; set; }
+    [Parameter]
+    public required Action Cancel { get; set; }
+}

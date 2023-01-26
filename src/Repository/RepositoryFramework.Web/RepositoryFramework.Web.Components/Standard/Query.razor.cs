@@ -188,26 +188,6 @@ namespace RepositoryFramework.Web.Components.Standard
                 Value = Pagination.TotalItemCount.Value,
             };
         }
-        private string EnumerableCountAsString(Entity<T, TKey>? entity, BaseProperty property)
-            => LocalizationHandler.Get(LanguageLabel.ShowItems, EnumerableCount(entity, property));
-        private int EnumerableCount(Entity<T, TKey>? entity, BaseProperty property)
-        {
-            var response = Try.WithDefaultOnCatch(() => property.Value(entity, null));
-            if (response.Exception != null)
-                return -1;
-            var items = response.Entity;
-            if (items == null)
-                return 0;
-            else if (items is IList list)
-                return list.Count;
-            else if (items is IQueryable queryable)
-                return queryable.Count();
-            else if (items.GetType().IsArray)
-                return ((dynamic)items).Length;
-            else if (items is IEnumerable enumerable)
-                return enumerable.AsQueryable().Count();
-            return 0;
-        }
         private PropertyUiSettings? GetPropertySettings(BaseProperty property)
         {
             var propertyUiSettings = _propertiesRetrieved != null && _propertiesRetrieved.ContainsKey(property.NavigationPath) ? _propertiesRetrieved[property.NavigationPath] : null;

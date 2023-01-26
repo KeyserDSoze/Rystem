@@ -120,8 +120,14 @@
   <data name="All {0}" xml:space="preserve">
     <value>Alle {0}</value>
   </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
   <data name="items selected." xml:space="preserve">
     <value>ausgewählten elemente.</value>
+  </data>
+  <data name="Ok" xml:space="preserve">
+    <value>Ok</value>
   </data>
   <data name="Show {0} items." xml:space="preserve">
     <value>Zeigen {0} elemente.</value>

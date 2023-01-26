@@ -14,6 +14,10 @@
         public const string Name = nameof(Name);
         public const string Value = nameof(Value);
         public const string Label = nameof(Label);
+        public const string Title = nameof(Title);
+        public const string Ok = nameof(Ok);
+        public const string Message = nameof(Message);
+        public const string Cancel = nameof(Cancel);
         public const string ValueWithSeparator = $"{nameof(Value)}.";
         public const string Update = nameof(Update);
         public const string EditableKey = nameof(EditableKey);

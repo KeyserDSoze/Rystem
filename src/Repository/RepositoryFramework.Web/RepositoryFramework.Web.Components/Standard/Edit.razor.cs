@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Radzen;
+using RepositoryFramework.Web.Components.Services;
 
 namespace RepositoryFramework.Web.Components.Standard
 {
@@ -18,7 +19,7 @@ namespace RepositoryFramework.Web.Components.Standard
         [Parameter]
         public bool AllowDelete { get; set; }
         [Inject]
-        public DialogService DialogService { get; set; }
+        public ModalService ModalService { get; set; }
         [Inject]
         public NotificationService NotificationService { get; set; }
         private TypeShowcase TypeShowcase { get; set; } = null!;
@@ -101,14 +102,11 @@ namespace RepositoryFramework.Web.Components.Standard
                 });
             }
         }
-        private async Task CheckIfYouWantToDeleteAsync()
+        private void CheckIfYouWantToDelete()
         {
-            _ = await DialogService.OpenAsync<Popup>("Delete confirmation",
-                new Dictionary<string, object>
-                {
-                    { "Ok", () => DeleteAsync() },
-                    { "Message", $"Are you sure to delete the current item with key {Key.FromBase64<TKey>()}" },
-                });
+            ModalService.Show("Delete",
+                () => DeleteAsync(),
+                "Delete confirmation");
         }
         private async ValueTask DeleteAsync()
         {

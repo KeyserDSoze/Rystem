@@ -24,11 +24,12 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddScoped<ILoaderService, LoadService>();
             services.AddSingleton<ILocalizationHandler, EmptyLocalizationHandler>();
             services
-                .AddScoped<DialogService>()
                 .AddScoped<NotificationService>()
+                .AddScoped<DialogService>()
                 .AddScoped<TooltipService>()
                 .AddScoped<ContextMenuService>();
             services.AddScoped<ICopyService, CopyService>();
+            services.AddScoped<ModalService>();
             services.AddRazorPages();
             return new RepositoryUiBuilder(services);
         }

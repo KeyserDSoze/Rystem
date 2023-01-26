@@ -1,0 +1,19 @@
+﻿@namespace RepositoryFramework.Web.Components
+@inject ModalService ModalService
+
+@foreach (var render in ModalService.Fragments)
+{
+    @render
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        ModalService.Subscription += () => StateHasChanged();
+        base.OnInitialized();
+    }
+    private void Dispose()
+    {
+        ModalService.Subscription -= () => StateHasChanged();
+    }
+}

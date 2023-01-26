@@ -47,9 +47,9 @@
                                     }
                                     else
                                     {
-                                        <RadzenButton class="bg-transparent text-dark p-0"
-                                  Click="@((x) => ShowMoreValuesAsync(item, property, index))"
-                                  Text="@item.EnumerableCountAsString(property, LocalizationHandler)" />
+                                        <TextButton Class="bg-transparent text-dark p-0"
+                                            Text="@item.EnumerableCountAsString(property, LocalizationHandler)"
+                                            Click="@(() => _ = ShowMoreValuesAsync(item, property, index))" />
                                     }
                                 </td>
                             }
