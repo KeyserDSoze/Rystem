@@ -19,7 +19,7 @@
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/Concurrency/Rystem.Concurrency</RepositoryUrl>
 		<PackageId>Rystem.Concurrency</PackageId>
-		<Version>4.1.10</Version>
+		<Version>4.1.11</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	</PropertyGroup>
@@ -33,7 +33,7 @@
 	</ItemGroup>
 	
 	<ItemGroup>
-	  <PackageReference Include="Rystem" Version="4.1.10" />
+	  <PackageReference Include="Rystem" Version="4.1.11" />
 	</ItemGroup>
 
 </Project>
