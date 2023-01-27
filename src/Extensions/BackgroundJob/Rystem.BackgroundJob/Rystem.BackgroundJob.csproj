@@ -25,10 +25,20 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Rystem.Concurrency" Version="4.1.11" />
 		<PackageReference Include="Cronos" Version="0.7.1" />
 	</ItemGroup>
-
+    <Choose>
+        <When Condition=" '$(Configuration)'=='Debug' ">
+            <ItemGroup>
+                <ProjectReference Include="..\..\Concurrency\Rystem.Concurrency\Rystem.Concurrency.csproj" />
+            </ItemGroup>
+        </When>
+        <When Condition=" '$(Configuration)'!='Debug' ">
+            <ItemGroup>
+                <PackageReference Include="Rystem.Concurrency" Version="4.1.11" />
+            </ItemGroup>
+        </When>
+    </Choose>
 	<ItemGroup>
 		<None Include="rystem.backgroundjob.png">
 			<Pack>True</Pack>

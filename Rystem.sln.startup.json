@@ -7,10 +7,15 @@
         "Rystem.NugetHelper": {}
       }
     },
-    "Web": {
+    "Repository.Web": {
       "Projects": {
         "RepositoryFramework.Web.Test.Api": {},
         "RepositoryFramework.Web.Test.BlazorApp": {}
+      }
+    },
+    "Web": {
+      "Projects": {
+        "Rystem.Web.Components.Test": {}
       }
     }
   }

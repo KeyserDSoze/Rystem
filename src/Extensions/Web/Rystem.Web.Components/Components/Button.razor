@@ -1,0 +1,56 @@
+﻿@namespace Rystem.Web.Components
+
+<button type="button" class="@Class" @onclick="@(() => {
+    if (!Disabled)
+        _ = Click?.Invoke();
+    })">
+    @if (Body != null)
+    {
+        @Body
+    }
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        @Message
+    }
+    @if (Icon != IconType.None)
+    {
+        <Icon Value="Icon" Style="IconStyle" Size="IconSize" />
+    }
+</button>
+
+@code {
+    [Parameter]
+    public Func<ValueTask>? Click { get; set; }
+    [Parameter]
+    public ColorType Color { get; set; }
+    [Parameter]
+    public SizeType Size { get; set; }
+    [Parameter]
+    public bool Outline { get; set; }
+    [Parameter]
+    public RenderFragment? Body { get; set; }
+    [Parameter]
+    public string? Message { get; set; }
+    [Parameter]
+    public IconType Icon { get; set; }
+    [Parameter]
+    public StyleType IconStyle { get; set; }
+    [Parameter]
+    public SizeType IconSize { get; set; }
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    public string Class => $"btn btn{(Outline ? OutlineCss : string.Empty)}-{Color.ToString().ToLower()} {GetSize()} {(Disabled ? DisabledCss : string.Empty)}";
+    private const string LargeButton = "btn-lg";
+    private const string SmallButton = "btn-sm";
+    private const string DisabledCss = "disabled";
+    private const string OutlineCss = "-outline";
+
+    private string GetSize()
+        => Size switch
+        {
+            SizeType.Large => LargeButton,
+            SizeType.Small => SmallButton,
+            _ => string.Empty,
+        };
+}

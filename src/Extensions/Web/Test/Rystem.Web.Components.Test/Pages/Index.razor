@@ -1,0 +1,25 @@
+﻿@page "/"
+@using Rystem.Web.Components.Customize;
+
+<PageTitle>Index</PageTitle>
+
+<h1>Hello, world!</h1>
+
+Welcome to your new app.
+
+<SurveyPrompt Title="How is Blazor working for you?" />
+<Button Message="ciao" Size="SizeType.Large" Icon="IconType.Search" IconStyle="StyleType.Rounded" IconSize="SizeType.Large"
+        Click="@Clicking">
+    <Body>
+        @Message
+    </Body>
+</Button>
+
+@code {
+    public string? Message { get; set; } = "ciao";
+    public ValueTask Clicking()
+    {
+        Message = "Clicked";
+        return ValueTask.CompletedTask;
+    }
+}

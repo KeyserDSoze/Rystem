@@ -1,0 +1,47 @@
+﻿@namespace Rystem.Web.Components
+
+<span class="@GetClass()">
+    @Value.ToString().Trim('_').ToLower()
+</span>
+
+@code {
+    [Parameter]
+    public IconType Value { get; set; }
+    [Parameter]
+    public StyleType Style { get; set; }
+    [Parameter]
+    public SizeType Size { get; set; }
+
+    private const string Outlined = "material-symbols-outlined";
+    private const string LargeOutlined = "material-symbols-outlined material-symbols-outlined-large";
+    private const string SmallOutlined = "material-symbols-outlinedmaterial-symbols-outlined-small";
+    private const string Sharp = "material-symbols-sharp";
+    private const string LargeSharp = "material-symbols-sharp material-symbols-sharp-large";
+    private const string SmallSharp = "material-symbols-sharp material-symbols-sharp-small";
+    private const string Rounded = "material-symbols-rounded";
+    private const string LargeRounded = "material-symbols-rounded material-symbols-rounded-large";
+    private const string SmallRounded = "material-symbols-rounded material-symbols-rounded-small";
+
+    private string GetClass()
+        => Size switch
+        {
+            SizeType.Large => Style switch
+            {
+                StyleType.Sharp => LargeSharp,
+                StyleType.Rounded => LargeRounded,
+                _ => LargeOutlined
+            },
+            SizeType.Small => Style switch
+            {
+                StyleType.Sharp => SmallSharp,
+                StyleType.Rounded => SmallRounded,
+                _ => SmallOutlined
+            },
+            _ => Style switch
+            {
+                StyleType.Sharp => Sharp,
+                StyleType.Rounded => Rounded,
+                _ => Outlined
+            },
+        };
+}

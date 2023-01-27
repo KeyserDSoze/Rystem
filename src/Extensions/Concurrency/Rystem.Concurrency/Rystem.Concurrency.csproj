@@ -31,9 +31,18 @@
 		</None>
 		<None Include="README.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
-	
-	<ItemGroup>
-	  <PackageReference Include="Rystem" Version="4.1.11" />
-	</ItemGroup>
+
+    <Choose>
+        <When Condition=" '$(Configuration)'=='Debug' ">
+            <ItemGroup>
+                <ProjectReference Include="..\..\..\Core\Rystem\Rystem.csproj" />
+            </ItemGroup>
+        </When>
+        <When Condition=" '$(Configuration)'!='Debug' ">
+            <ItemGroup>
+                <PackageReference Include="Rystem" Version="4.1.11" />
+            </ItemGroup>
+        </When>
+    </Choose>
 
 </Project>

@@ -1,0 +1,10 @@
+[
+  {
+    "inputFile": "Styles/rystem.scss",
+    "outputFile": "wwwroot/rystem.css",
+    "options": {
+      "autoPrefix": "last 2 versions",
+      "sourceMap": true
+    }
+  }
+]

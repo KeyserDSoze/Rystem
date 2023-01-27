@@ -24,9 +24,18 @@
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	</PropertyGroup>
 
-	<ItemGroup>
+    <Choose>
+        <When Condition=" '$(Configuration)'=='Debug' ">
+            <ItemGroup>
+                <ProjectReference Include="..\..\BackgroundJob\Rystem.BackgroundJob\Rystem.BackgroundJob.csproj" />
+            </ItemGroup>
+        </When>
+        <When Condition=" '$(Configuration)'!='Debug' ">
+            <ItemGroup>
 		<PackageReference Include="Rystem.BackgroundJob" Version="4.1.11" />
-	</ItemGroup>
+            </ItemGroup>
+        </When>
+    </Choose>
 
 	<ItemGroup>
 		<None Include="rystem.queue.png">

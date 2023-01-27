@@ -144,6 +144,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Miscellaneous", "Miscellane
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RepositoryFramework.Web.Test.Api", "src\Repository\RepositoryFramework.Web\RepositoryFramework.Web.Tests\RepositoryFramework.Web.Test.Api\RepositoryFramework.Web.Test.Api.csproj", "{38DA6D08-95F8-4DF4-B4A0-7FADD6CCCCA7}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Web", "Web", "{90556A50-331A-4F25-B302-F0F7463B551F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Web.Components", "src\Extensions\Web\Rystem.Web.Components\Rystem.Web.Components.csproj", "{DB310937-85DF-4AB4-BEBD-E7F79231414E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{CE97A717-51CD-40D4-8618-AF683A710114}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rystem.Web.Components.Test", "src\Extensions\Web\Test\Rystem.Web.Components.Test\Rystem.Web.Components.Test.csproj", "{376CE714-5549-4138-A699-AF511B83E20A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -294,6 +302,14 @@ Global
 		{38DA6D08-95F8-4DF4-B4A0-7FADD6CCCCA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{38DA6D08-95F8-4DF4-B4A0-7FADD6CCCCA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{38DA6D08-95F8-4DF4-B4A0-7FADD6CCCCA7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DB310937-85DF-4AB4-BEBD-E7F79231414E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB310937-85DF-4AB4-BEBD-E7F79231414E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB310937-85DF-4AB4-BEBD-E7F79231414E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB310937-85DF-4AB4-BEBD-E7F79231414E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{376CE714-5549-4138-A699-AF511B83E20A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{376CE714-5549-4138-A699-AF511B83E20A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{376CE714-5549-4138-A699-AF511B83E20A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{376CE714-5549-4138-A699-AF511B83E20A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -349,6 +365,10 @@ Global
 		{898F8A32-4487-4CAF-8286-7C57BAAE8292} = {731922E3-687E-4030-B765-FBD6A79E6EB6}
 		{BF511C46-63F8-42BC-9746-6A6C2331241B} = {731922E3-687E-4030-B765-FBD6A79E6EB6}
 		{38DA6D08-95F8-4DF4-B4A0-7FADD6CCCCA7} = {731922E3-687E-4030-B765-FBD6A79E6EB6}
+		{90556A50-331A-4F25-B302-F0F7463B551F} = {D3C3AC4B-1339-4EB3-920B-99CF3D492DF4}
+		{DB310937-85DF-4AB4-BEBD-E7F79231414E} = {90556A50-331A-4F25-B302-F0F7463B551F}
+		{CE97A717-51CD-40D4-8618-AF683A710114} = {90556A50-331A-4F25-B302-F0F7463B551F}
+		{376CE714-5549-4138-A699-AF511B83E20A} = {CE97A717-51CD-40D4-8618-AF683A710114}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {35C6ADE0-7E70-48ED-A810-A71B2BC94F57}

@@ -41,7 +41,7 @@
         <When Condition=" '$(Configuration)'=='Debug' ">
             <ItemGroup>
                 <ProjectReference Include="..\..\RepositoryFramework.Abstractions\RepositoryFramework.Abstractions.csproj" />
-                <ProjectReference Include="..\..\..\Extensions\Localization\Test\Localization.RazorLibrary\Localization.RazorLibrary.csproj" />
+                <ProjectReference Include="..\..\..\Extensions\Localization\Rystem.Localization.Multiple\Rystem.Localization.Multiple.csproj" />
             </ItemGroup>
         </When>
         <When Condition=" '$(Configuration)'!='Debug' ">
