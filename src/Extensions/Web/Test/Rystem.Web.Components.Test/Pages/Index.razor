@@ -8,7 +8,7 @@
 Welcome to your new app.
 
 <SurveyPrompt Title="How is Blazor working for you?" />
-<Button Message="ciao" Size="SizeType.Large" Icon="IconType.Search" IconStyle="StyleType.Rounded" IconSize="SizeType.Large"
+<Button Message="@Message" Size="SizeType.Large" Icon="IconType.Search" IconStyle="StyleType.Rounded" IconSize="SizeType.Large"
         Click="@Clicking">
     <Body>
         @Message
@@ -20,6 +20,7 @@ Welcome to your new app.
     public ValueTask Clicking()
     {
         Message = "Clicked";
+        _ = InvokeAsync(() => StateHasChanged());
         return ValueTask.CompletedTask;
     }
 }
