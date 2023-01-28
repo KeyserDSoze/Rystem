@@ -1,0 +1,11 @@
+﻿@namespace Rystem.Web.Components.Contents
+@typeparam T
+
+<table class="table table-striped table-sticky">
+    @ChildContent
+</table>
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+}

@@ -1,6 +1,8 @@
 ﻿@page "/"
 @using Rystem.Web.Components.Customization;
 @using Rystem.Web.Components.Contents;
+@using Rystem.Web.Components.Test.Data;
+
 
 <PageTitle>Index</PageTitle>
 
@@ -15,14 +17,14 @@ Welcome to your new app.
         @Message
     </Body>
 </Button>
-<DataTable>
+<Table T="WeatherForecast">
     <FixedHeader>
         Ciao
     </FixedHeader>
     <FixedHeader >
         Ciao
     </FixedHeader>
-</DataTable>
+</Table>
 
 @code {
     public string? Message { get; set; } = "ciao";
