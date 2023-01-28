@@ -1,4 +1,4 @@
-﻿namespace Rystem.Web.Components.Customize
+﻿namespace Rystem.Web.Components.Customization
 {
     public enum SizeType
     {
