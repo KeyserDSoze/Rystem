@@ -48,6 +48,7 @@
         <When Condition=" '$(Configuration)'=='Debug' ">
             <ItemGroup>
                 <ProjectReference Include="..\..\..\Core\Rystem\Rystem.csproj" />
+                <ProjectReference Include="..\..\Localization\Rystem.Localization.Multiple\Rystem.Localization.Multiple.csproj" />
             </ItemGroup>
             <ItemGroup>
                 <PackageReference Include="BuildWebCompiler2022" Version="1.14.10" />
@@ -56,10 +57,10 @@
         <When Condition=" '$(Configuration)'!='Debug' ">
             <ItemGroup>
                 <PackageReference Include="Rystem" Version="4.1.11" />
+                <PackageReference Include="Rystem.Extensions.Localization.Multiple" Version="7.0.0" />
             </ItemGroup>
         </When>
     </Choose>
-    
     <ItemGroup>
         <None Include="rystem.web.components.png">
             <Pack>True</Pack>

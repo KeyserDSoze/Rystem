@@ -11,84 +11,72 @@ using Rystem.Web.Components.Services;
 
 namespace Rystem.Web.Components.Contents
 {
-    public partial class Table<T>
+    public sealed class DataTableSettings<T, TKey>
+        where TKey : notnull
+    {
+        public string CssClass { get; set; } = string.Empty;
+        public Dictionary<TKey, T>? Items { get; set; }
+        public Func<PaginationState, FilterWrapper<T>, Task<(Dictionary<TKey, T> Items, int Count)>>? ItemsSelector { get; set; }
+        public ColorType Color { get; set; }
+        public SizeType Size { get; set; }
+        public bool Striped { get; set; }
+        public bool Sticky { get; set; }
+        public BorderType Bordered { get; set; }
+        public BreakpointType Responsive { get; set; }
+        public bool Hover { get; set; }
+    }
+    public partial class DataTable<T, TKey>
+        where TKey : notnull
     {
         [Parameter]
-        public RenderFragment ChildContent { get; set; }
+        public required DataTableSettings<T, TKey> Settings { get; set; }
         [Parameter]
-        public IEnumerable<T> Items { get; set; }
-        [Parameter]
-        public ColorType Color { get; set; }
-        [Parameter]
-        public SizeType Size { get; set; }
-        [Parameter]
-        public bool Striped { get; set; }
-        [Parameter]
-        public bool Sticky { get; set; }
-        [Parameter]
-        public BorderType Bordered { get; set; }
-        [Parameter]
-        public BreakpointType Responsive { get; set; }
-        [Parameter]
-        public bool Hover { get; set; }
+        public PaginationState Pagination { get; set; } = new();
         [Inject]
-        public IJSRuntime JSRuntime { get; set; }
-        private const string DefaultCssStyle = "table{0}{1}{2}{3}{4}{5}{6}";
-        private string _cssStyle = string.Empty;
-        public required TypeShowcase Showcase { get; set; }
-        protected override void OnInitialized()
-        {
-            Showcase = typeof(T).ToShowcase();
-            base.OnInitialized();
-        }
-        protected override void OnParametersSet()
-        {
-            _cssStyle = string.Format(DefaultCssStyle,
-                Striped ? " table-striped" : string.Empty,
-                Sticky ? " table-sticky" : string.Empty,
-                Hover ? " table-hover" : string.Empty,
-                $"table-{Color.ToString().ToLower()}",
-                Bordered == BorderType.Everything ? " table-bordered" : (Bordered == BorderType.None ? " table-borderless" : string.Empty),
-                $"table{Size.ToBootstrapSize()}",
-                Responsive == BreakpointType.None ? string.Empty : $"table-responsive{Responsive.ToBoostrapBreakpoint()}");
-            base.OnParametersSet();
-        }
-        [Parameter]
-        public PaginationState Pagination { get; set; }
+        public required IJSRuntime JSRuntime { get; set; }
         [Inject]
         public ICopyService? Copy { get; set; }
         [Inject]
-        public IDialogService DialogService { get; set; }
+        public IDialogService? DialogService { get; set; }
         [Inject]
-        public NavigationManager NavigationManager { get; set; } = null!;
-        private static readonly string? s_editUri = $"Repository/{typeof(T).Name}/Edit/{{0}}";
+        public ILoaderService? LoaderService { get; set; }
+        [Inject]
+        public required NavigationManager NavigationManager { get; set; }
+        private const string DefaultCssStyle = "table{0}{1}{2}{3}{4}{5}{6} {7}";
+        private string _cssStyle = string.Empty;
+        public required TypeShowcase Showcase { get; set; }
         private readonly Dictionary<string, ColumnOptions> _columns = new();
-        private readonly SearchWrapper<T> _searchWrapper = new();
-        private readonly OrderWrapper<T, TKey> _orderWrapper = new();
+        private readonly FilterWrapper<T> _filterWrapper = new();
         private Dictionary<string, PropertyUiSettings> _propertiesRetrieved;
         private bool _allSelected;
         protected override void OnInitialized()
         {
-            base.OnInitialized();
-            foreach (var property in TypeShowcase.FlatProperties.Where(x => x.NavigationPath != nameof(Entity<T, TKey>.HasKey) && x.NavigationPath != nameof(Entity<T, TKey>.HasValue)))
+            Showcase = typeof(T).ToShowcase();
+            foreach (var property in Showcase.FlatProperties)
             {
                 _columns.Add(property.NavigationPath, new ColumnOptions
                 {
                     Type = property.Self.PropertyType,
                     Order = OrderingType.None,
                     IsActive = true,
-                    Label = property.GetFurtherProperty().Title,
+                    Label = property.NavigationPath,
                     Value = property.NavigationPath
                 });
             }
+            base.OnInitialized();
         }
-        protected override async Task OnInitializedAsync()
+        protected override void OnParametersSet()
         {
-            _propertiesRetrieved =
-                ServiceProvider?.GetService<IRepositoryPropertyUiMapper<T, TKey>>() is IRepositoryPropertyUiMapper<T, TKey> uiMapper ?
-                await uiMapper.ValuesAsync(ServiceProvider!).NoContext()
-                : new();
-            await base.OnInitializedAsync().NoContext();
+            _cssStyle = string.Format(DefaultCssStyle,
+                Settings.Striped ? " table-striped" : string.Empty,
+                Settings.Sticky ? " table-sticky" : string.Empty,
+                Settings.Hover ? " table-hover" : string.Empty,
+                $"table-{Settings.Color.ToString().ToLower()}",
+                Settings.Bordered == BorderType.Everything ? " table-bordered" : (Settings.Bordered == BorderType.None ? " table-borderless" : string.Empty),
+                $"table{Settings.Size.ToBootstrapSize()}",
+                Settings.Responsive == BreakpointType.None ? string.Empty : $"table-responsive{Settings.Responsive.ToBoostrapBreakpoint()}",
+                Settings.CssClass);
+            base.OnParametersSet();
         }
         protected override async Task OnParametersSetAsync()
         {
@@ -98,32 +86,40 @@ namespace Rystem.Web.Components.Contents
         private string GetEditUri(TKey key)
             => s_editUri != null ? string.Format(s_editUri, key.ToBase64()) : string.Empty;
         private string? _lastQueryKey;
-        private IEnumerable<Entity<T, TKey>>? _items;
+        private Dictionary<TKey, T> _items;
         private async ValueTask OnReadDataAsync()
         {
             StringBuilder stringBuilder = new();
             stringBuilder.Append($"{Pagination.CurrentPageIndex}_{Pagination.ItemsPerPage}_");
-            stringBuilder.Append(string.Join('_', _searchWrapper.GetExpressions()));
-            stringBuilder.Append(string.Join('_', _orderWrapper.GetExpressions()));
+            stringBuilder.Append(string.Join('_', _filterWrapper.Search.GetExpressions()));
+            stringBuilder.Append(string.Join('_', _filterWrapper.Order.GetExpressions()));
             var queryKey = stringBuilder.ToString();
             if (_lastQueryKey != queryKey)
             {
-                LoadService.Show();
+                LoaderService?.Show();
                 _lastQueryKey = queryKey;
-                var queryBuilder = Query.AsQueryBuilder();
-
-                foreach (var expression in _searchWrapper.GetLambdaExpressions())
-                    queryBuilder.Where(expression);
-
-                _orderWrapper.Apply(queryBuilder);
-
-                var page = await queryBuilder.PageAsync(Pagination.CurrentPageIndex + 1, Pagination.ItemsPerPage).NoContext();
-                Pagination.TotalItemCount = (int)page.TotalCount;
-                _items = page.Items;
-                _selectedKeys = _items.Select(x => x.Key).ToDictionary(x => x, x => false);
-                _allSelected = false;
+                if (Settings.ItemsSelector != null)
+                {
+                    var response = await Settings.ItemsSelector.Invoke(Pagination, _filterWrapper);
+                    _items = response.Items;
+                    Pagination.SetItemsPerPage(response.Count);
+                }
+                else if (Settings.Items != null)
+                {
+                    var newDictionary = new Dictionary<TKey, T>();
+                    foreach (var item in _filterWrapper
+                        .Apply(Settings.Items.Select(x => x.Value))
+                        .Skip(Pagination.SkipValue)
+                        .Take(Pagination.ItemsPerPage))
+                    {
+                        var entity = Settings.Items.FirstOrDefault(x => x.Value?.Equals(item) == true);
+                        if (!newDictionary.ContainsKey(entity.Key))
+                            newDictionary.Add(entity.Key, entity.Value);
+                    }
+                    _items = newDictionary;
+                }
                 _ = InvokeAsync(() => StateHasChanged());
-                LoadService.Hide();
+                LoaderService?.Hide();
             }
         }
         private string? _selectedPageKey = "0";
@@ -140,7 +136,7 @@ namespace Rystem.Web.Components.Contents
         private string? _selectedItemsForPageKey = "0";
         private void ChangeItemsPerPage(int itemsPerPage)
         {
-            Pagination.ItemsPerPage = itemsPerPage;
+            Pagination.SetItemsPerPage(itemsPerPage);
             _selectedItemsForPageKey = itemsPerPage.ToString();
             GoToPage(0);
         }
@@ -149,11 +145,11 @@ namespace Rystem.Web.Components.Contents
             var order = (OrderingType)(((int)_columns[baseProperty.NavigationPath].Order + 1) % 3);
             _columns[baseProperty.NavigationPath].Order = order;
             if (order == OrderingType.None)
-                _orderWrapper.Remove(baseProperty);
+                _filterWrapper.Order.Remove(baseProperty);
             else if (order == OrderingType.Ascending)
-                _orderWrapper.Add(baseProperty);
+                _filterWrapper.Order.Add(baseProperty);
             else
-                _orderWrapper.Add(baseProperty, true);
+                _filterWrapper.Order.Add(baseProperty, true);
             GoToPage(0);
         }
         private async Task ShowMoreValuesAsync(Entity<T, TKey>? entity, BaseProperty property)
@@ -237,7 +233,7 @@ namespace Rystem.Web.Components.Contents
         }
         private void NavigateTo(string uri)
         {
-            LoadService.Show();
+            LoaderService?.Show();
             NavigationManager.NavigateTo(uri);
         }
         private Dictionary<TKey, bool> _selectedKeys = new();
@@ -253,7 +249,7 @@ namespace Rystem.Web.Components.Contents
             _allSelected = true;
             _ = InvokeAsync(() => StateHasChanged());
         }
-        
+
         private const string CsvContentType = "text/csv";
         private async ValueTask DownloadAsCsvAsync()
         {
