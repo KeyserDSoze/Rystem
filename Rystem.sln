@@ -150,7 +150,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Web.Components", "sr
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{CE97A717-51CD-40D4-8618-AF683A710114}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rystem.Web.Components.Test", "src\Extensions\Web\Test\Rystem.Web.Components.Test\Rystem.Web.Components.Test.csproj", "{376CE714-5549-4138-A699-AF511B83E20A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Web.Components.Test", "src\Extensions\Web\Test\Rystem.Web.Components.Test\Rystem.Web.Components.Test.csproj", "{376CE714-5549-4138-A699-AF511B83E20A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
