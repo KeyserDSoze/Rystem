@@ -164,10 +164,19 @@ namespace RepositoryFramework.Web.Test.BlazorApp.Models
         public List<string> Claims { get; set; } = null!;
         public string MainGroup { get; set; } = null!;
         public SuperFlag Flag { get; set; }
+        public IperEnum IperEnum { get; set; }
         public string? HashedMainGroup => MainGroup?.ToHash();
     }
     [Flags]
     public enum SuperFlag
+    {
+        None = 0,
+        A = 1,
+        B = 2,
+        C = 4,
+        D = 8
+    }
+    public enum IperEnum
     {
         None = 0,
         A = 1,
