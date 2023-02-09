@@ -24,11 +24,11 @@ namespace Rystem.Web.Components.Customization
             NavigationId = $"nav_{selectorName}";
             NavigationSelector = $"#{NavigationId}";
             NavigationTabId = $"id_{selectorName}_nav";
-            NavigationTabContentId = $"id_{selectorName}_nav_content";
-            if (navigationPath.StartsWith(Constant.ValueWithSeparator))
-                Title = navigationPath.Replace(Constant.ValueWithSeparator, string.Empty, 1);
-            else
-                Title = navigationPath;
+            //NavigationTabContentId = $"id_{selectorName}_nav_content";
+            //if (navigationPath.StartsWith(Constant.ValueWithSeparator))
+            //    Title = navigationPath.Replace(Constant.ValueWithSeparator, string.Empty, 1);
+            //else
+            //    Title = navigationPath;
         }
     }
 }

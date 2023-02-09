@@ -16,7 +16,8 @@ var builder = WebApplication.CreateBuilder(args);
 //.WithPattern(x => x.Email, @"[a-z]{5,10}@gmail\.com");
 //builder.Services.AddRepository<IperUser, string, IperRepositoryStorage>()
 var configurationSection = builder.Configuration.GetSection("AzureAd");
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApi(configurationSection);
 
 builder.Services.AddQuery<IperUser, string>(x =>

@@ -43,23 +43,24 @@ namespace Rystem.Web.Components.Contents.DataTable
         public OrderWrapper<T> Order { get; } = new();
         public IEnumerable<T> Apply(IEnumerable<T> items)
         {
-            foreach (var searched in Search.GetLambdaExpressions())
-                items = items.Where(searched);
-            var order = Order.GetOrders().FirstOrDefault();
-            if (order != null)
-            {
-                Add(order);
-                foreach (var furtherOrder in Order.GetOrders().Skip(1))
-                    Add(furtherOrder.Value);
-                void Add(OrderValue<T> orderValue)
-                {
-                    if (orderValue.ByDescending)
-                        queryBuilder.OrderByDescending(orderValue.LambdaExpression);
-                    else
-                        queryBuilder.OrderBy(orderValue.LambdaExpression);
-                }
-            }
-            return items;
+            //foreach (var searched in Search.GetLambdaExpressions())
+            //    items = items.Where(searched);
+            //var order = Order.GetOrders().FirstOrDefault();
+            //if (order != null)
+            //{
+            //    Add(order);
+            //    foreach (var furtherOrder in Order.GetOrders().Skip(1))
+            //        Add(furtherOrder.Value);
+            //    void Add(OrderValue<T> orderValue)
+            //    {
+            //        if (orderValue.ByDescending)
+            //            queryBuilder.OrderByDescending(orderValue.LambdaExpression);
+            //        else
+            //            queryBuilder.OrderBy(orderValue.LambdaExpression);
+            //    }
+            //}
+            //return items;
+            return null;
         }
     }
     public sealed class SearchValue<T>

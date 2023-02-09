@@ -47,7 +47,7 @@ namespace Rystem.Web.Components.Contents
         public required TypeShowcase Showcase { get; set; }
         private readonly Dictionary<string, ColumnOptions> _columns = new();
         private readonly FilterWrapper<T> _filterWrapper = new();
-        private Dictionary<string, PropertyUiSettings> _propertiesRetrieved;
+        //private Dictionary<string, PropertyUiSettings> _propertiesRetrieved;
         private bool _allSelected;
         protected override void OnInitialized()
         {
@@ -83,8 +83,8 @@ namespace Rystem.Web.Components.Contents
             await OnReadDataAsync().NoContext();
             await base.OnParametersSetAsync().NoContext();
         }
-        private string GetEditUri(TKey key)
-            => s_editUri != null ? string.Format(s_editUri, key.ToBase64()) : string.Empty;
+        //private string GetEditUri(TKey key)
+        //    => s_editUri != null ? string.Format(s_editUri, key.ToBase64()) : string.Empty;
         private string? _lastQueryKey;
         private Dictionary<TKey, T> _items;
         private async ValueTask OnReadDataAsync()
@@ -152,81 +152,81 @@ namespace Rystem.Web.Components.Contents
                 _filterWrapper.Order.Add(baseProperty, true);
             GoToPage(0);
         }
-        private async Task ShowMoreValuesAsync(Entity<T, TKey>? entity, BaseProperty property)
+        private async Task ShowMoreValuesAsync(/*Entity<T, TKey>?*/object entity, BaseProperty property)
         {
-            var retrieve = Try.WithDefaultOnCatch(() => property.Value(entity, null));
-            if (retrieve.Exception == null && retrieve.Entity is IEnumerable enumerable && enumerable.GetEnumerator().MoveNext())
-            {
-                _ = await DialogService.OpenAsync<Visualizer>(property.GetFurtherProperty().Title,
-                    new Dictionary<string, object>
-                    {
-                        { Constant.Entity, retrieve.Entity },
-                    }, new DialogOptions
-                    {
-                        Width = Constant.DialogWidth
-                    });
-            }
+            //var retrieve = Try.WithDefaultOnCatch(() => property.Value(entity, null));
+            //if (retrieve.Exception == null && retrieve.Entity is IEnumerable enumerable && enumerable.GetEnumerator().MoveNext())
+            //{
+            //    _ = await DialogService.OpenAsync<Visualizer>(property.GetFurtherProperty().Title,
+            //        new Dictionary<string, object>
+            //        {
+            //            { Constant.Entity, retrieve.Entity },
+            //        }, new DialogOptions
+            //        {
+            //            Width = Constant.DialogWidth
+            //        });
+            //}
         }
-        private IEnumerable<LabelValueDropdownItem> GetColumns()
-        {
-            foreach (var column in _columns)
-                yield return new LabelValueDropdownItem
-                {
-                    Id = column.Key,
-                    Value = column.Value,
-                    Label = column.Value.Label,
-                };
-        }
-        private IEnumerable<string> GetSelectedColumns()
-        {
-            foreach (var column in _columns.Where(x => x.Value.IsActive))
-                yield return column.Key;
-        }
-        private ValueTask UpdateColumnsVisibility(IEnumerable<LabelValueDropdownItem> keys)
-        {
-            foreach (var item in _columns)
-                item.Value.IsActive = false;
-            foreach (var key in keys)
-                _columns[key.Id].IsActive = true;
-            _ = InvokeAsync(() => StateHasChanged());
-            return ValueTask.CompletedTask;
-        }
-        private IEnumerable<LabelValueDropdownItem> GetPages()
-        {
-            for (var i = 0; i <= Pagination.LastPageIndex; i++)
-            {
-                yield return new LabelValueDropdownItem
-                {
-                    Label = LocalizationHandler.Get(LanguageLabel.OfPages, i + 1, Pagination.LastPageIndex + 1),
-                    Id = i.ToString(),
-                    Value = i,
-                };
-            }
-        }
+        //private IEnumerable<LabelValueDropdownItem> GetColumns()
+        //{
+        //    foreach (var column in _columns)
+        //        yield return new LabelValueDropdownItem
+        //        {
+        //            Id = column.Key,
+        //            Value = column.Value,
+        //            Label = column.Value.Label,
+        //        };
+        //}
+        //private IEnumerable<string> GetSelectedColumns()
+        //{
+        //    foreach (var column in _columns.Where(x => x.Value.IsActive))
+        //        yield return column.Key;
+        //}
+        //private ValueTask UpdateColumnsVisibility(IEnumerable<LabelValueDropdownItem> keys)
+        //{
+        //    foreach (var item in _columns)
+        //        item.Value.IsActive = false;
+        //    foreach (var key in keys)
+        //        _columns[key.Id].IsActive = true;
+        //    _ = InvokeAsync(() => StateHasChanged());
+        //    return ValueTask.CompletedTask;
+        //}
+        //private IEnumerable<LabelValueDropdownItem> GetPages()
+        //{
+        //    for (var i = 0; i <= Pagination.LastPageIndex; i++)
+        //    {
+        //        yield return new LabelValueDropdownItem
+        //        {
+        //            Label = LocalizationHandler.Get(LanguageLabel.OfPages, i + 1, Pagination.LastPageIndex + 1),
+        //            Id = i.ToString(),
+        //            Value = i,
+        //        };
+        //    }
+        //}
 
-        private IEnumerable<LabelValueDropdownItem> GetPaging()
-        {
-            for (var i = 10; i < Pagination.TotalItemCount; i *= 2)
-            {
-                yield return new LabelValueDropdownItem
-                {
-                    Label = LocalizationHandler.Get(LanguageLabel.PerPage, i),
-                    Id = i.ToString(),
-                    Value = i,
-                };
-            }
-            yield return new LabelValueDropdownItem
-            {
-                Label = LocalizationHandler.Get(LanguageLabel.All, Pagination.TotalItemCount),
-                Id = Pagination.TotalItemCount.ToString(),
-                Value = Pagination.TotalItemCount.Value,
-            };
-        }
-        private PropertyUiSettings? GetPropertySettings(BaseProperty property)
-        {
-            var propertyUiSettings = _propertiesRetrieved != null && _propertiesRetrieved.ContainsKey(property.NavigationPath) ? _propertiesRetrieved[property.NavigationPath] : null;
-            return propertyUiSettings;
-        }
+        //private IEnumerable<LabelValueDropdownItem> GetPaging()
+        //{
+        //    for (var i = 10; i < Pagination.TotalItemCount; i *= 2)
+        //    {
+        //        yield return new LabelValueDropdownItem
+        //        {
+        //            Label = LocalizationHandler.Get(LanguageLabel.PerPage, i),
+        //            Id = i.ToString(),
+        //            Value = i,
+        //        };
+        //    }
+        //    yield return new LabelValueDropdownItem
+        //    {
+        //        Label = LocalizationHandler.Get(LanguageLabel.All, Pagination.TotalItemCount),
+        //        Id = Pagination.TotalItemCount.ToString(),
+        //        Value = Pagination.TotalItemCount.Value,
+        //    };
+        //}
+        //private PropertyUiSettings? GetPropertySettings(BaseProperty property)
+        //{
+        //    var propertyUiSettings = _propertiesRetrieved != null && _propertiesRetrieved.ContainsKey(property.NavigationPath) ? _propertiesRetrieved[property.NavigationPath] : null;
+        //    return propertyUiSettings;
+        //}
         public void Search()
         {
             GoToPage(0);
@@ -278,7 +278,7 @@ namespace Rystem.Web.Components.Contents
             }
             return string.Empty;
         }
-        private string Translate(string value)
-            => LocalizationHandler.Get<T>(value);
+        //private string Translate(string value)
+        //    => LocalizationHandler.Get<T>(value);
     }
 }
