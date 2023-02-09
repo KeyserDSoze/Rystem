@@ -22,7 +22,8 @@ namespace RepositoryFramework.Web.Components.Standard
         public DialogService DialogService { get; set; }
         [Inject]
         public NavigationManager NavigationManager { get; set; } = null!;
-        private static readonly string? s_editUri = $"Repository/{typeof(T).Name}/Edit/{{0}}";
+        private static readonly string s_editUri = $"Repository/{typeof(T).Name}/Edit/{{0}}";
+        private static readonly string s_createUri = $"Repository/{typeof(T).Name}/Create";
         private readonly Dictionary<string, ColumnOptions> _columns = new();
         private readonly SearchWrapper<T> _searchWrapper = new();
         private readonly OrderWrapper<T, TKey> _orderWrapper = new();
@@ -58,7 +59,7 @@ namespace RepositoryFramework.Web.Components.Standard
             await base.OnParametersSetAsync().NoContext();
         }
         private string GetEditUri(TKey key)
-            => s_editUri != null ? string.Format(s_editUri, key.ToBase64()) : string.Empty;
+            => s_editUri != null ? string.Format(s_editUri, key?.ToBase64() ?? string.Empty) : string.Empty;
         private string? _lastQueryKey;
         private IEnumerable<Entity<T, TKey>>? _items;
         private async ValueTask OnReadDataAsync()
@@ -247,5 +248,21 @@ namespace RepositoryFramework.Web.Components.Standard
         }
         private string Translate(string value)
             => LocalizationHandler.Get<T>(value);
+
+        private string GetTranslatedFlag(Type type, object item)
+        {
+            List<string> values = new();
+            var fields = type.FetchFields();
+            var enumValue = (Enum)item;
+            foreach (var field in fields)
+            {
+                if (field.Name.Equals(Constant.FieldRemoverForFlags))
+                    continue;
+                var value = (int)field.GetRawConstantValue()!;
+                if (value != 0 && enumValue.HasFlag((Enum)Enum.Parse(type, field.Name)))
+                    values.Add(Translate(field.Name));
+            }
+            return string.Join(Constant.FlagsSeparator, values);
+        }
     }
 }

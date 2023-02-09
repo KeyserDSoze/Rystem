@@ -4,6 +4,7 @@
     {
         Primitive,
         Complex,
-        Enumerable
+        Enumerable,
+        Flag
     }
 }

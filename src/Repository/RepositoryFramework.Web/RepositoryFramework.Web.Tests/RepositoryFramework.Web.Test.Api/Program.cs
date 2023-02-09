@@ -44,6 +44,12 @@ builder.Services
             });
     });
 
+builder.Services
+    .AddRepository<AppUser2, int>(settings =>
+    {
+        settings.WithInMemory();
+    });
+
 builder.Services.AddWarmUp(async serviceProvider =>
 {
     var repository = serviceProvider.GetService<IRepository<AppUser, int>>();

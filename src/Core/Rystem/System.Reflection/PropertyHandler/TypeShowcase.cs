@@ -16,12 +16,12 @@
         }
         private IEnumerable<BaseProperty> GetPrimitives()
         {
-            foreach (var property in Properties.Where(x => x.Type == PropertyType.Primitive))
+            foreach (var property in Properties.Where(x => x.Type == PropertyType.Primitive || x.Type == PropertyType.Flag))
                 yield return property;
         }
         private IEnumerable<BaseProperty> GetNonPrimitives()
         {
-            foreach (var property in Properties.Where(x => x.Type != PropertyType.Primitive))
+            foreach (var property in Properties.Where(x => x.Type != PropertyType.Primitive && x.Type != PropertyType.Flag))
                 yield return property;
         }
         private IEnumerable<BaseProperty> GetAllPropertiesAsFlat()

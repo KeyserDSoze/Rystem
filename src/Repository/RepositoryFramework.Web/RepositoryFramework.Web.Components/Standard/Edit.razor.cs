@@ -34,27 +34,29 @@ namespace RepositoryFramework.Web.Components.Standard
         {
             if (Query != null)
             {
+                Entity<T, TKey>? entity = null;
                 if (!string.IsNullOrWhiteSpace(Key))
                 {
                     var key = Key.FromBase64<TKey>();
-                    _entity = new(await Query.GetAsync(key).NoContext(), key);
+                    entity = new(await Query.GetAsync(key).NoContext(), key);
                 }
                 else
-                    _entity = new();
-                if (_entity.Value == null)
+                    entity = new();
+                if (entity.Value == null)
                 {
-                    _entity.Value = typeof(T).CreateWithDefaultConstructorPropertiesAndField<T>();
+                    entity.Value = typeof(T).CreateWithDefaultConstructorPropertiesAndField<T>();
                     _isNew = true;
                     _isRequestedToCreateNew = true;
                 }
-                _parametersBearer.PropertiesRetrieved =
-                    ServiceProvider?.GetService<IRepositoryPropertyUiMapper<T, TKey>>() is IRepositoryPropertyUiMapper<T, TKey> uiMapper ?
-                        await uiMapper.ValuesAsync(ServiceProvider!, _entity).NoContext() : new();
-                _parametersBearer.BaseEntity = _entity;
+                _parametersBearer.BaseEntity = entity;
                 _parametersBearer.EntityRetrieverByKey = ValueRetrieverByKeyAsync;
                 _parametersBearer.BaseTypeShowcase = typeof(Entity<T, TKey>).ToShowcase(IFurtherParameter.Create(Constant.FurtherProperty, x => new FurtherProperty(x)));
                 _parametersBearer.DisableEdit = DisableEdit;
                 _parametersBearer.StateHasChanged = () => StateHasChanged();
+                _parametersBearer.PropertiesRetrieved =
+                    ServiceProvider?.GetService<IRepositoryPropertyUiMapper<T, TKey>>() is IRepositoryPropertyUiMapper<T, TKey> uiMapper ?
+                        await uiMapper.ValuesAsync(ServiceProvider!, entity).NoContext() : new();
+                _entity = entity;
             }
             await base.OnParametersSetAsync().NoContext();
             LoadService.Hide();

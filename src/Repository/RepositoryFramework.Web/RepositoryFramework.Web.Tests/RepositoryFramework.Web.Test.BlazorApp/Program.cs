@@ -63,6 +63,18 @@ builder.Services
             .WithLocalization<AppUser, int, IStringLocalizer<SharedResource>>();
     });
 
+builder.Services
+    .AddRepository<AppUser2, int>(settings =>
+    {
+        settings.WithApiClient().WithHttpClient("localhost:7246");
+        settings
+            .MapPropertiesForUi<AppUser2, int, AppUserDesignMapper2>()
+            .WithIcon("manage_accounts")
+            .WithName("User")
+            .ExposeFor(4)
+            .WithLocalization<AppUser2, int, IStringLocalizer<SharedResource>>();
+    });
+
 //.WithLocalization<AppUser, int, IStringLocalizer<SharedResource2>>();
 
 var app = builder.Build();

@@ -10,6 +10,12 @@
             <div class="w-100 row m-0 p-0">
                 <div class="col-12 col-xxl-8 col-xl-7 col-lg-6 col-md-5 row m-0 p-0" style="margin-top:10px !important;">
                     <div class="col-3 text-nowrap">
+                        <button type="button" class="btn btn-primary btn-sm"
+                            @onclick="@((x) => NavigateTo(s_createUri))">
+                            <span class="material-symbols-outlined material-symbols-outlined-small">
+                                add
+                            </span>
+                        </button>
                         <button @onclick="@((x) => _ = DownloadAsCsvAsync())" class="btn btn-outline-primary btn-sm">
                             <span class="material-symbols-outlined material-symbols-outlined-small">
                                 download
@@ -142,7 +148,14 @@
                                 <td>
                                     @if (property.Type != PropertyType.Enumerable)
                                     {
-                                        <CopyButton GetValue="@(() => Translate(property.Value(item, null)?.ToString() ?? string.Empty))" />
+                                        if(property.Type != PropertyType.Flag)
+                                        {
+                                            <CopyButton GetValue="@(() => Translate(property.Value(item, null)?.ToString() ?? string.Empty))" />
+                                        }
+                                        else
+                                        {
+                                            <CopyButton GetValue="@(() => GetTranslatedFlag(property.Self.PropertyType, property.Value(item, null)))" />
+                                        }
                                     }
                                     else
                                     {

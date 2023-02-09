@@ -17,7 +17,7 @@
             var index = counter;
             <div class="row">
                 <div class="col-11">
-                    @if (BaseProperty.GenericType != PropertyType.Primitive)
+                    @if (BaseProperty.GenericType != PropertyType.Primitive && BaseProperty.GenericType != PropertyType.Flag)
                     {
                         <InternalEdit BaseProperty="@BaseProperty" Indexes="@CreateNewIndexes(index)" ForceNotEditable="@ForceNotEditable" />
                     }
@@ -52,7 +52,7 @@
 }
 @if (EditParametersBearer.CanEdit(BaseProperty) && !_propertyUiSettings.HasValues())
 {
-    <button type="button" class="btn btn-warning bg-warning btn"
+    <button type="button" class="btn btn-warning bg-warning btn mt-2"
         @onclick="@((x) => New())">
         <span class="material-symbols-outlined material-symbols-outlined-small">
             add

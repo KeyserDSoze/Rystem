@@ -53,7 +53,7 @@ namespace System.Text.Csv
                 {
                     foreach (var property in properties)
                     {
-                        if (property.Type == PropertyType.Primitive)
+                        if (property.Type == PropertyType.Primitive || property.Type == PropertyType.Flag)
                         {
                             var entry = property.NamedValue(value, indexes);
                             tableHandler.Add(counter, entry);

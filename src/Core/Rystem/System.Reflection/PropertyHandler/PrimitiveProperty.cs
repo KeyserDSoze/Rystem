@@ -4,7 +4,8 @@
     {
         public PrimitiveProperty(PropertyInfo info, BaseProperty? father, IFurtherParameter[] furtherParameters) : base(info, father, furtherParameters)
         {
-            Type = PropertyType.Primitive;
+            Type = info.PropertyType.IsEnum && info.PropertyType.GetCustomAttribute<FlagsAttribute>() != null ?
+                 PropertyType.Flag : PropertyType.Primitive;
         }
 
         public override IEnumerable<BaseProperty> GetQueryableProperty()

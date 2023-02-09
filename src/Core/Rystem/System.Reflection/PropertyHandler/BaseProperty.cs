@@ -43,8 +43,8 @@ namespace System.Reflection
             Deep = NavigationPath.Split('.').Length;
             foreach (var parameter in furtherParameters)
                 _furtherProperties.Add(parameter.Key, ((dynamic)parameter).Creator.Compile().Invoke(this));
-            Primitives = Sons.Where(x => x.Type == PropertyType.Primitive).ToList();
-            NonPrimitives = Sons.Where(x => x.Type != PropertyType.Primitive).ToList();
+            Primitives = Sons.Where(x => x.Type == PropertyType.Primitive || x.Type == PropertyType.Flag).ToList();
+            NonPrimitives = Sons.Where(x => x.Type != PropertyType.Primitive && x.Type != PropertyType.Flag).ToList();
         }
         protected abstract void ConstructWell();
         public abstract IEnumerable<BaseProperty> GetQueryableProperty();

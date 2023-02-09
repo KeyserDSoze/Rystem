@@ -1,5 +1,4 @@
 ﻿@namespace RepositoryFramework.Web.Components.Standard
-@using System.Reflection;
 @using System.Collections;
 @using System.Text.Json;
 @using System.Linq.Expressions;
@@ -64,6 +63,22 @@
                           Change=@(args => InternalUpdate(args))
                           DateFormat="yyyy/MM/dd"
                           Disabled="@_disableEdit" />
+                }
+                else if (BaseProperty.Self.PropertyType.IsEnum)
+                {
+                    <RadzenDropDown TValue="string"
+                        AllowClear="true"
+                        AllowFiltering="true"
+                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        Multiple="@(BaseProperty.Type == PropertyType.Flag)"
+                        Placeholder="Select..."
+                        Data="@GetEnumValues()"
+                        Value="@EnumComparer()"
+                        TextProperty="Label"
+                        ValueProperty="Id"
+                        Change="@InternalEnumUpdate"
+                        class="form-control"
+                        Disabled="@_disableEdit" />
                 }
                 else
                 {
@@ -166,6 +181,63 @@
         {
             var id = selected?.ToString();
             InternalUpdate(_propertyUiSettings!.Values!.FirstOrDefault(x => x.Id == id)?.Value);
+        }
+    }
+    public IEnumerable<LabelValueDropdownItem> GetEnumValues()
+    {
+        FieldInfo[] fields = BaseProperty.Self.PropertyType.FetchFields();
+
+        foreach (var field in fields)
+        {
+            if (field.Name.Equals(Constant.FieldRemoverForFlags))
+                continue;
+            var value = field.GetRawConstantValue();
+            yield return new LabelValueDropdownItem
+                {
+                    Id = value?.ToString(),
+                    Label = field.Name,
+                    Value = value
+                };
+        }
+    }
+    private object EnumComparer()
+    {
+        if (BaseProperty.Type == PropertyType.Flag)
+        {
+            List<string> values = new();
+            FieldInfo[] fields = BaseProperty.Self.PropertyType.GetFields();
+            Enum enumValue = (Enum)_value!;
+            foreach (var field in fields)
+            {
+                if (field.Name.Equals(Constant.FieldRemoverForFlags))
+                    continue;
+                var value = (int)field.GetRawConstantValue()!;
+                if (enumValue.HasFlag((Enum)Enum.Parse(BaseProperty.Self.PropertyType, field.Name)))
+                    values.Add(value.ToString());
+            }
+            return values;
+        }
+        else
+        {
+            return _value?.ToString();
+        }
+    }
+    public void InternalEnumUpdate(object selected)
+    {
+        var values = GetEnumValues();
+        if (selected is IEnumerable<string> keys)
+        {
+            var enumKeys = keys.Select(key => Enum.Parse(BaseProperty.Self.PropertyType, values.First(x => x.Id == key).Label));
+            var calculatedFlag = (int)enumKeys.FirstOrDefault()!;
+            foreach (var enumKey in enumKeys.Skip(1))
+            {
+                calculatedFlag |= (int)enumKey;
+            }
+            InternalUpdate(Enum.ToObject(BaseProperty.Self.PropertyType, calculatedFlag));
+        }
+        else
+        {
+            InternalUpdate(Enum.Parse(BaseProperty.Self.PropertyType, values.First(x => x.Id == selected?.ToString()).Label));
         }
     }
     private object LabelComparer()
