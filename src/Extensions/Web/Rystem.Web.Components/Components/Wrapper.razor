@@ -1,0 +1,12 @@
+﻿@namespace Rystem.Web.Components
+
+<div class="@(Class.ToString())">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+    [Parameter]
+    public ClassBuilder Class { get; set; }
+}
