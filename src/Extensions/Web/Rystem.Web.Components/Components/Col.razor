@@ -8,7 +8,9 @@
     [Parameter]
     public RenderFragment ChildContent { get; set; }
     [Parameter]
-    public ClassBuilder? Class { get; set; }
-    public string GetCssClass() 
-        => $"col {Class?.ToString()}";
+    public string? Class { get; set; }
+    [Parameter]
+    public ColumnBuilder? ColumnBuilder { get; set; }
+    public string GetCssClass()
+       => $"col {ColumnBuilder?.ToString()} {Class}";
 }
