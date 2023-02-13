@@ -22,6 +22,16 @@ Welcome to your new app.
 <Wrapper Class="ClassBuilder.Style.Container.Large.Col.ExtraLarge.S1">
     <div>ciao</div>
 </Wrapper>
+<Container Breakpoint="@BreakpointType.Small">
+    <Row RowBuilder="RowBuilder.Style.Default.S1.Large.S2.ExtraLarge.S2">
+        <Col>
+            ciao
+        </Col>
+        <Col>
+            ciao 2
+        </Col>
+    </Row>
+</Container>
 
 @code {
     public string? Message { get; set; } = "ciao";

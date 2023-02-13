@@ -1,0 +1,18 @@
+﻿@namespace Rystem.Web.Components
+
+<div class="@GetCssClass()">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+    [Parameter]
+    public ClassBuilder Class { get; set; }
+    [Parameter]
+    public BreakpointType Breakpoint { get; set; }
+    public string GetCssClass()
+    {
+        return $"{Breakpoint.ToBoostrapBreakpoint("container{0}")} {Class?.ToString()}";
+    }
+}

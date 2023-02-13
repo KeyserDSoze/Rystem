@@ -1,0 +1,14 @@
+﻿@namespace Rystem.Web.Components
+
+<div class="@GetCssClass()">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+    [Parameter]
+    public ClassBuilder? Class { get; set; }
+    public string GetCssClass() 
+        => $"col {Class?.ToString()}";
+}

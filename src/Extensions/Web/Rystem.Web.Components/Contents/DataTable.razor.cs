@@ -72,9 +72,9 @@ namespace Rystem.Web.Components.Contents
                 Settings.Sticky ? " table-sticky" : string.Empty,
                 Settings.Hover ? " table-hover" : string.Empty,
                 $"table-{Settings.Color.ToString().ToLower()}",
-                Settings.Bordered == BorderType.Everything ? " table-bordered" : (Settings.Bordered == BorderType.None ? " table-borderless" : string.Empty),
+                Settings.Bordered.ToBootstrapBorder("table{0}"),
                 $"table{Settings.Size.ToBootstrapSize()}",
-                Settings.Responsive == BreakpointType.None ? string.Empty : $"table-responsive{Settings.Responsive.ToBoostrapBreakpoint()}",
+                Settings.Responsive.ToBoostrapBreakpoint("table-responsive{0}"),
                 Settings.CssClass);
             base.OnParametersSet();
         }
