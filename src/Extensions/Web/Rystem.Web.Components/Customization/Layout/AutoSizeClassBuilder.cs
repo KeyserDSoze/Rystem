@@ -5,7 +5,7 @@ namespace Rystem.Web.Components.Customization
     public class AutoSizeClassBuilder<T> : SizeClassBuilder<T>
         where T : ICssClassBuilder
     {
-        internal AutoSizeClassBuilder(StringBuilder stringBuilder, string prefix) : base(stringBuilder, prefix)
+        internal AutoSizeClassBuilder(StringBuilder stringBuilder, string prefix, bool prefixIsTurnedOff) : base(stringBuilder, prefix, prefixIsTurnedOff)
         {
         }
 
@@ -13,7 +13,7 @@ namespace Rystem.Web.Components.Customization
         {
             get
             {
-                StringBuilder.Append("-auto");
+                StringBuilder.Append($"{GetPrefix()}-auto");
                 return CreateNew<T>();
             }
         }

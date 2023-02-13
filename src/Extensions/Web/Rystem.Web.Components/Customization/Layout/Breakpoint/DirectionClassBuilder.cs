@@ -2,58 +2,58 @@
 
 namespace Rystem.Web.Components.Customization
 {
-    public class BreakPointClassBuilder<T> : DefaultClassBuilder
+    public class DirectionClassBuilder<T> : DefaultClassBuilder
         where T : ICssClassBuilder
     {
-        internal BreakPointClassBuilder(StringBuilder stringBuilder, string prefix, bool prefixIsTurnedOff) : base(stringBuilder, prefix, prefixIsTurnedOff)
+        internal DirectionClassBuilder(StringBuilder stringBuilder, string prefix, bool prefixIsTurnedOff) : base(stringBuilder, prefix, prefixIsTurnedOff)
         {
         }
 
-        public T Default
+        public T Start
         {
             get
             {
-                StringBuilder.Append(GetPrefix());
+                StringBuilder.Append($"{GetPrefix()}-start");
                 return CreateNew<T>();
             }
         }
-        public T Small
+        public T End
         {
             get
             {
-                StringBuilder.Append($"{GetPrefix()}-sm");
+                StringBuilder.Append($"{GetPrefix()}-end");
                 return CreateNew<T>();
             }
         }
-        public T Medium
+        public T Center
         {
             get
             {
-                StringBuilder.Append($"{GetPrefix()}-md");
+                StringBuilder.Append($"{GetPrefix()}-center");
                 return CreateNew<T>();
             }
         }
-        public T Large
+        public T Between
         {
             get
             {
-                StringBuilder.Append($"{GetPrefix()}-lg");
+                StringBuilder.Append($"{GetPrefix()}-between");
                 return CreateNew<T>();
             }
         }
-        public T ExtraLarge
+        public T Around
         {
             get
             {
-                StringBuilder.Append($"{GetPrefix()}-xl");
+                StringBuilder.Append($"{GetPrefix()}-around");
                 return CreateNew<T>();
             }
         }
-        public T ExtraExtraLarge
+        public T Evenly
         {
             get
             {
-                StringBuilder.Append($"{GetPrefix()}-xxl");
+                StringBuilder.Append($"{GetPrefix()}-evenly");
                 return CreateNew<T>();
             }
         }

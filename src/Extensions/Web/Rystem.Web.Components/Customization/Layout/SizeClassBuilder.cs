@@ -5,7 +5,7 @@ namespace Rystem.Web.Components.Customization
     public class SizeClassBuilder<T> : DefaultClassBuilder
         where T : ICssClassBuilder
     {
-        internal SizeClassBuilder(StringBuilder stringBuilder, string prefix) : base(stringBuilder, prefix)
+        internal SizeClassBuilder(StringBuilder stringBuilder, string prefix, bool prefixIsTurnedOff) : base(stringBuilder, prefix, prefixIsTurnedOff)
         {
         }
 
@@ -13,7 +13,7 @@ namespace Rystem.Web.Components.Customization
         {
             get
             {
-                StringBuilder.Append("-1");
+                StringBuilder.Append($"{GetPrefix()}-1");
                 return CreateNew<T>();
             }
         }
@@ -21,7 +21,7 @@ namespace Rystem.Web.Components.Customization
         {
             get
             {
-                StringBuilder.Append("-2");
+                StringBuilder.Append($"{GetPrefix()}-2");
                 return CreateNew<T>();
             }
         }
@@ -29,7 +29,7 @@ namespace Rystem.Web.Components.Customization
         {
             get
             {
-                StringBuilder.Append("-3");
+                StringBuilder.Append($"{GetPrefix()}-3");
                 return CreateNew<T>();
             }
         }
@@ -37,7 +37,7 @@ namespace Rystem.Web.Components.Customization
         {
             get
             {
-                StringBuilder.Append("-4");
+                StringBuilder.Append($"{GetPrefix()}-4");
                 return CreateNew<T>();
             }
         }
@@ -45,7 +45,7 @@ namespace Rystem.Web.Components.Customization
         {
             get
             {
-                StringBuilder.Append("-5");
+                StringBuilder.Append($"{GetPrefix()}-5");
                 return CreateNew<T>();
             }
         }
@@ -53,7 +53,7 @@ namespace Rystem.Web.Components.Customization
         {
             get
             {
-                StringBuilder.Append("-6");
+                StringBuilder.Append($"{GetPrefix()}-6");
                 return CreateNew<T>();
             }
         }
@@ -61,7 +61,7 @@ namespace Rystem.Web.Components.Customization
         {
             get
             {
-                StringBuilder.Append("-7");
+                StringBuilder.Append($"{GetPrefix()}-7");
                 return CreateNew<T>();
             }
         }
@@ -69,7 +69,7 @@ namespace Rystem.Web.Components.Customization
         {
             get
             {
-                StringBuilder.Append("-8");
+                StringBuilder.Append($"{GetPrefix()}-8");
                 return CreateNew<T>();
             }
         }
@@ -77,7 +77,7 @@ namespace Rystem.Web.Components.Customization
         {
             get
             {
-                StringBuilder.Append("-9");
+                StringBuilder.Append($"{GetPrefix()}-9");
                 return CreateNew<T>();
             }
         }
@@ -85,7 +85,7 @@ namespace Rystem.Web.Components.Customization
         {
             get
             {
-                StringBuilder.Append("-10");
+                StringBuilder.Append($"{GetPrefix()}-10");
                 return CreateNew<T>();
             }
         }
@@ -93,7 +93,7 @@ namespace Rystem.Web.Components.Customization
         {
             get
             {
-                StringBuilder.Append("-11");
+                StringBuilder.Append($"{GetPrefix()}-11");
                 return CreateNew<T>();
             }
         }
@@ -101,7 +101,7 @@ namespace Rystem.Web.Components.Customization
         {
             get
             {
-                StringBuilder.Append("-12");
+                StringBuilder.Append($"{GetPrefix()}-12");
                 return CreateNew<T>();
             }
         }

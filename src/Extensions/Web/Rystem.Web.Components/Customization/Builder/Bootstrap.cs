@@ -39,5 +39,14 @@ namespace Rystem.Web.Components.Customization
                 return style;
             }
         }
+        public CssJustifiedContentBuilder JustifyContent
+        {
+            get
+            {
+                _stringBuilder.Append(" d-flex justify-content");
+                var style = CssJustifiedContentBuilder.Style(_stringBuilder);
+                return style;
+            }
+        }
     }
 }

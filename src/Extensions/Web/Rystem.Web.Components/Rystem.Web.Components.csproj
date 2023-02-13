@@ -79,6 +79,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Folder Include="Customization\Utilities\Background\" />
       <Folder Include="Styles\" />
     </ItemGroup>
 

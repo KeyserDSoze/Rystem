@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Reflection;
 
 namespace Rystem.Web.Components.Customization
 {
@@ -18,7 +12,7 @@ namespace Rystem.Web.Components.Customization
         public string Title { get; }
         public TableRowProperties(BaseProperty baseProperty)
         {
-            string navigationPath = baseProperty.NavigationPath;
+            var navigationPath = baseProperty.NavigationPath;
             var selectorName = navigationPath.ToLower().Replace('.', '_');
             Id = $"id_{selectorName}";
             NavigationId = $"nav_{selectorName}";
