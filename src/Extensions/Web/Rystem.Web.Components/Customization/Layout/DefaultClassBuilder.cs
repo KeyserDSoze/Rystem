@@ -4,7 +4,7 @@ namespace Rystem.Web.Components.Customization
 {
     public class DefaultClassBuilder : ICssClassBuilder
     {
-        internal StringBuilder StringBuilder { get; }
+        internal StringBuilder StringBuilder { get; set; }
         internal string Prefix { get; }
         private protected T CreateNew<T>()
             where T : ICssClassBuilder
@@ -20,6 +20,7 @@ namespace Rystem.Web.Components.Customization
             StringBuilder = stringBuilder;
             Prefix = prefix;
         }
-        public override string ToString() => StringBuilder.ToString();
+        public override string ToString()
+            => StringBuilder.ToString();
     }
 }

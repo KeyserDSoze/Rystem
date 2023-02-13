@@ -1,6 +1,6 @@
 ﻿@namespace Rystem.Web.Components
 
-<div class="@(Class.ToString())">
+<div class="@GetCssClass()">
     @ChildContent
 </div>
 
@@ -8,5 +8,9 @@
     [Parameter]
     public RenderFragment ChildContent { get; set; }
     [Parameter]
-    public ClassBuilder Class { get; set; }
+    public string? Class { get; set; }
+    [Parameter]
+    public Bootstrap Bootstrap { get; set; }
+    public string GetCssClass()
+       => $"row {Bootstrap?.ToString()} {Class}";
 }
