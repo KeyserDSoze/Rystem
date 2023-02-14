@@ -84,7 +84,7 @@ namespace RepositoryFramework.Web.Components.Standard
                 Pagination.TotalItemCount = (int)page.TotalCount;
                 _items = page.Items;
                 var keyDictionary = new Dictionary<TKey, bool>();
-                foreach (var item in _items.Where(x => x?.Key != null))
+                foreach (var item in _items.Where(x => x.Key != null))
                     if (!keyDictionary.ContainsKey(item.Key))
                         keyDictionary.Add(item.Key, false);
                 _selectedKeys = keyDictionary;
