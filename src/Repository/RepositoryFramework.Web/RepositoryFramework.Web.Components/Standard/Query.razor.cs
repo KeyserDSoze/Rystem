@@ -83,7 +83,11 @@ namespace RepositoryFramework.Web.Components.Standard
                 var page = await queryBuilder.PageAsync(Pagination.CurrentPageIndex + 1, Pagination.ItemsPerPage).NoContext();
                 Pagination.TotalItemCount = (int)page.TotalCount;
                 _items = page.Items;
-                _selectedKeys = _items.Select(x => x.Key).ToDictionary(x => x, x => false);
+                var keyDictionary = new Dictionary<TKey, bool>();
+                foreach (var item in _items.Where(x => x?.Key != null))
+                    if (!keyDictionary.ContainsKey(item.Key))
+                        keyDictionary.Add(item.Key, false);
+                _selectedKeys = keyDictionary;
                 _allSelected = false;
                 _ = InvokeAsync(() => StateHasChanged());
                 LoadService.Hide();
