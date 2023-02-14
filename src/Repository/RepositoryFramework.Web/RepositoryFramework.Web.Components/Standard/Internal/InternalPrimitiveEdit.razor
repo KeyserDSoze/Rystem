@@ -202,6 +202,8 @@
     }
     private object EnumComparer()
     {
+        if (_value == null)
+            _value = Enum.ToObject(BaseProperty.Self.PropertyType, 0); ;
         if (BaseProperty.Type == PropertyType.Flag)
         {
             List<string> values = new();

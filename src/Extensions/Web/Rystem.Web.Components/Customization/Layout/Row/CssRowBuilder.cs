@@ -4,11 +4,12 @@ namespace Rystem.Web.Components.Customization
 {
     public sealed class CssRowBuilder : BreakPointClassBuilder<AutoSizeClassBuilder<CssRowBuilder>>
     {
-        internal CssRowBuilder(StringBuilder stringBuilder, string prefix, bool prefixIsTurnedOff) : base(stringBuilder, prefix, prefixIsTurnedOff)
+        internal CssRowBuilder(StringBuilder stringBuilder) : base(stringBuilder)
         {
+            Prefix = RowBuilder.RowPrefix;
         }
         public static CssRowBuilder Style(StringBuilder stringBuilder)
-            => new(stringBuilder, RowBuilder.RowPrefix, false);
+            => new(stringBuilder);
         public Bootstrap Build()
             => new(StringBuilder);
         public Bootstrap And()

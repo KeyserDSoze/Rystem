@@ -5,7 +5,7 @@ namespace Rystem.Web.Components.Customization
     public class SizeClassBuilder<T> : DefaultClassBuilder
         where T : ICssClassBuilder
     {
-        internal SizeClassBuilder(StringBuilder stringBuilder, string prefix, bool prefixIsTurnedOff) : base(stringBuilder, prefix, prefixIsTurnedOff)
+        internal SizeClassBuilder(StringBuilder stringBuilder) : base(stringBuilder)
         {
         }
 

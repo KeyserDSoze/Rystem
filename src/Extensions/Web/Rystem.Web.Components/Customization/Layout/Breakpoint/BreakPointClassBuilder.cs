@@ -5,7 +5,7 @@ namespace Rystem.Web.Components.Customization
     public class BreakPointClassBuilder<T> : DefaultClassBuilder
         where T : ICssClassBuilder
     {
-        internal BreakPointClassBuilder(StringBuilder stringBuilder, string prefix, bool prefixIsTurnedOff) : base(stringBuilder, prefix, prefixIsTurnedOff)
+        internal BreakPointClassBuilder(StringBuilder stringBuilder) : base(stringBuilder)
         {
         }
 

@@ -5,7 +5,7 @@ namespace Rystem.Web.Components.Customization
     public class DirectionClassBuilder<T> : DefaultClassBuilder
         where T : ICssClassBuilder
     {
-        internal DirectionClassBuilder(StringBuilder stringBuilder, string prefix, bool prefixIsTurnedOff) : base(stringBuilder, prefix, prefixIsTurnedOff)
+        internal DirectionClassBuilder(StringBuilder stringBuilder) : base(stringBuilder)
         {
         }
 

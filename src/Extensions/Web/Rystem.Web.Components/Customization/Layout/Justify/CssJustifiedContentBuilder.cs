@@ -4,7 +4,7 @@ namespace Rystem.Web.Components.Customization
 {
     public sealed class CssJustifiedContentBuilder : BreakPointClassBuilder<DirectionClassBuilder<CssContainerBuilder>>
     {
-        internal CssJustifiedContentBuilder(StringBuilder stringBuilder, string prefix, bool prefixIsTurnedOff) : base(stringBuilder, prefix, prefixIsTurnedOff)
+        internal CssJustifiedContentBuilder(StringBuilder stringBuilder) : base(stringBuilder)
         {
         }
         public static CssJustifiedContentBuilder Style(StringBuilder stringBuilder)

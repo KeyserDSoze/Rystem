@@ -4,11 +4,12 @@ namespace Rystem.Web.Components.Customization
 {
     public class CssColumnBuilder : BreakPointClassBuilder<SizeClassBuilder<CssColumnBuilder>>
     {
-        internal CssColumnBuilder(StringBuilder stringBuilder, string prefix, bool prefixIsTurnedOff) : base(stringBuilder, prefix, prefixIsTurnedOff)
+        internal CssColumnBuilder(StringBuilder stringBuilder) : base(stringBuilder)
         {
+            Prefix = ColumnBuilder.ColPrefix;
         }
         public static CssColumnBuilder Style(StringBuilder stringBuilder)
-            => new(stringBuilder, ColumnBuilder.ColPrefix, false);
+            => new(stringBuilder);
         public Bootstrap Build()
             => new(StringBuilder);
         public Bootstrap And()
