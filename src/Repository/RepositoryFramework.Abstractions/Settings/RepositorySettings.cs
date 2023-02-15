@@ -54,6 +54,8 @@ namespace RepositoryFramework
             service.ImplementationType = typeof(TStorage);
             Services
                 .RemoveServiceIfAlreadyInstalled<TStorage>(currentType, typeof(TRepositoryPattern))
+                .RemoveServiceIfAlreadyInstalled<TStorage>(typeof(KeySettings<TKey>))
+                .AddSingleton<KeySettings<TKey>>()
                 .AddService(typeof(TRepositoryPattern), storageType, serviceLifetime)
                 .AddService<TRepository, TRepositoryConcretization>(serviceLifetime);
             return new RepositoryBuilder<T, TKey, TStorage>(Services, PatternType.Query, serviceLifetime);
