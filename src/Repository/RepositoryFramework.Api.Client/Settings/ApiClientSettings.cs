@@ -18,8 +18,8 @@
         public string BatchPath { get; private set; } = null!;
         private ApiClientSettings(KeySettings<TKey> keySettings)
         {
-            RefreshPath();
             _keySettings = keySettings;
+            RefreshPath();
         }
 
         internal void RefreshPath(string? startingPath = null, string? version = null, string? name = null)

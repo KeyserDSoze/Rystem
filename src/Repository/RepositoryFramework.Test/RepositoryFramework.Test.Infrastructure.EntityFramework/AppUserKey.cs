@@ -10,5 +10,7 @@
             => Id.ToString();
         public string AsString()
             => Id.ToString();
+        public static IKey Parse(string keyAsString)
+            => new AppUserKey(int.Parse(keyAsString));
     }
 }

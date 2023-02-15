@@ -4,7 +4,6 @@
     {
         public string ContainerName { get; }
         public string ExistQuery { get; }
-        public bool IsJsonableKey { get; } = IKey.IsJsonable(typeof(TKey));
         public CosmosSettings(string containerName)
         {
             ContainerName = containerName;

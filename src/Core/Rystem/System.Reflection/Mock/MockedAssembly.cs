@@ -82,9 +82,10 @@ namespace System.Reflection
             var createdType = typeBuilder!.CreateType();
             return createdType!;
         }
-        public Type? CreateFromScratch(string name, List<MockedProperty> properties)
+        public Type? CreateFromScratch(string name, Type? parentType, List<MockedProperty> properties)
         {
-            var typeBuilder = Builder.DefineType(name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed);
+            var typeBuilder = parentType == null ? Builder.DefineType(name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed)
+                : Builder.DefineType(name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed, parentType);
             List<ILGenerator> constructorGenerators = new();
             var constructorBuilder = typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes);
             var constructorGenerator = constructorBuilder.GetILGenerator();

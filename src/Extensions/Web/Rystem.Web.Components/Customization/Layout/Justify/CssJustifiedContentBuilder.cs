@@ -8,7 +8,7 @@ namespace Rystem.Web.Components.Customization
         {
         }
         public static CssJustifiedContentBuilder Style(StringBuilder stringBuilder)
-            => new(stringBuilder, string.Empty, true);
+            => new(stringBuilder);
         public Bootstrap Build()
             => new(StringBuilder);
         public Bootstrap And()

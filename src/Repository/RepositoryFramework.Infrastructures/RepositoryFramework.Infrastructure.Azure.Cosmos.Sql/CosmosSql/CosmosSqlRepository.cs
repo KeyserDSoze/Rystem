@@ -14,22 +14,21 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
         private readonly Container _client;
         private readonly PropertyInfo[] _properties;
         private readonly CosmosSettings<T, TKey> _settings;
+        private readonly KeySettings<TKey> _keySettings;
+        private readonly ICosmosSqlKeyManager<T, TKey> _keyManager;
 
         public CosmosSqlRepository(CosmosSqlServiceClientFactory clientFactory,
-            CosmosSettings<T, TKey> settings)
+            CosmosSettings<T, TKey> settings,
+            KeySettings<TKey> keySettings,
+            ICosmosSqlKeyManager<T, TKey> keyManager)
         {
             (_client, _properties) = clientFactory.Get(typeof(T).Name);
             _settings = settings;
+            _keySettings = keySettings;
+            _keyManager = keyManager;
         }
         private string GetKeyAsString(TKey key)
-        {
-            if (_settings.IsJsonableKey)
-                return key.ToJson();
-            if (key is IKey keyAsIKey)
-                return keyAsIKey.AsString();
-            else
-                return key.ToString()!;
-        }
+            => _keySettings.AsString(key);
         public async Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default)
         {
             var keyAsString = GetKeyAsString(key);

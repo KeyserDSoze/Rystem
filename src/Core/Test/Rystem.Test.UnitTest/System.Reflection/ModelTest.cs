@@ -11,27 +11,40 @@ namespace Rystem.Test.UnitTest.Reflection
         {
             public string A { get; set; }
         }
-        [Fact]
-        public void Test1()
+        public class SomethingNew
+        {
+            public string B { get; set; }
+        }
+        [Theory]
+        [InlineData(true, 6)]
+        [InlineData(false, 5)]
+        public void Test1(bool withParent, int numberOfParameters)
         {
             var modelName = "MyBestModel";
-            var modelType = Model
+            var modelBuilder = Model
                 .Create(modelName)
                 .AddProperty("Primary", typeof(int))
                 .AddProperty("Secondary", typeof(bool))
                 .AddProperty("Name", typeof(string))
                 .AddProperty("Id", typeof(Guid))
-                .AddProperty("InModel", typeof(InModel))
-                .Build();
+                .AddProperty("InModel", typeof(InModel));
+            if (withParent)
+                modelBuilder
+                    .AddParent<SomethingNew>();
+            var modelType = modelBuilder.Build();
             Assert.NotNull(modelType);
             var instance = Model.Construct(modelName);
             var properties = modelType.GetProperties();
-            Assert.Equal(5, properties.Length);
+            Assert.Equal(numberOfParameters, properties.Length);
             instance.Primary = 45;
             instance.InModel = new InModel { A = "Salve" };
             instance.Id = Guid.NewGuid();
+            if (withParent)
+                instance.B = "Aloa";
             Assert.Equal(45, instance.Primary);
             Assert.Equal("Salve", instance.InModel.A);
+            if (withParent)
+                Assert.Equal("Aloa", instance.B);
         }
     }
 }
