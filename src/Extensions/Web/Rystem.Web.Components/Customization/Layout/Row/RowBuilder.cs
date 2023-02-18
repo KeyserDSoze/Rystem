@@ -7,6 +7,7 @@ namespace Rystem.Web.Components.Customization
         internal const string RowPrefix = " row-cols";
         internal RowBuilder(StringBuilder stringBuilder) : base(stringBuilder)
         {
+            stringBuilder.Append(RowPrefix);
         }
         public JustifiedContentBuilder<RowBuilder> JustifyContent
         {
