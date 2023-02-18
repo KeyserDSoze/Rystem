@@ -7,6 +7,7 @@ namespace Rystem.Web.Components.Customization
     {
         internal JustifiedContentBuilder(StringBuilder stringBuilder) : base(stringBuilder)
         {
+            stringBuilder.Append(" justify-content");
         }
     }
 }

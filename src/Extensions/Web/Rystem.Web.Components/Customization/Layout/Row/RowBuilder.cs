@@ -13,7 +13,6 @@ namespace Rystem.Web.Components.Customization
         {
             get
             {
-                StringBuilder.Append(" justify-content");
                 var style = new JustifiedContentBuilder<RowBuilder>(StringBuilder);
                 return style;
             }
