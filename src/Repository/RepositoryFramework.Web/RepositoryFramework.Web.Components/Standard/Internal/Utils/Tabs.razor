@@ -54,6 +54,8 @@
         object? entity;
         if (_propertyUiSettings!.Default != null)
             entity = _propertyUiSettings!.Default.ToDeepCopy();
+        else if (_propertyUiSettings!.DefaultProvider != null)
+            entity = _propertyUiSettings!.DefaultProvider.Invoke().ToDeepCopy();
         else
         {
             var entityRetrieved = await EditParametersBearer.EntityRetrieverByKey.Invoke(_propertyUiSettings.DefaultKey).NoContext();

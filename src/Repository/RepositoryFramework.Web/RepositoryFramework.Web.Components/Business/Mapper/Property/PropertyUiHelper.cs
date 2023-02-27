@@ -16,6 +16,7 @@ namespace RepositoryFramework.Web
                 {
                     Default = helper.Value.Default,
                     DefaultKey = helper.Value.DefaultKey,
+                    DefaultProvider = helper.Value.DefaultProvider,
                     ValueRetriever = helper.Value.ValueRetriever,
                     IsMultiple = helper.Value.IsMultiple,
                     HasTextEditor = helper.Value.HasTextEditor,
@@ -40,6 +41,12 @@ namespace RepositoryFramework.Web
         {
             var retrieve = GetHelper(navigationProperty);
             retrieve.Default = defaultValue;
+            return this;
+        }
+        public IRepositoryPropertyUiHelper<T, TKey> MapDefault<TProperty>(Expression<Func<T, TProperty>> navigationProperty, Func<TProperty> defaultValueProvider)
+        {
+            var retrieve = GetHelper(navigationProperty);
+            retrieve.DefaultProvider = () => defaultValueProvider.Invoke();
             return this;
         }
         public IRepositoryPropertyUiHelper<T, TKey> MapDefault<TProperty>(Expression<Func<T, TProperty>> navigationProperty, TKey defaultKey)

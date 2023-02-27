@@ -39,18 +39,18 @@
 }
 
 @code {
-    [CascadingParameter(Name = Constant.EditParametersBearer)]
-    public EditParametersBearer EditParametersBearer { get; set; }
-    [Parameter]
-    public BaseProperty BaseProperty { get; set; }
-    [Parameter]
-    public int[]? Indexes { get; set; }
-    [Parameter]
-    public string Class { get; set; }
-    [Parameter]
-    public bool WithIcon { get; set; }
-    [Parameter]
-    public bool ForceNotEditable { get; set; }
+        [CascadingParameter(Name = Constant.EditParametersBearer)]
+        public EditParametersBearer EditParametersBearer { get; set; }
+        [Parameter]
+        public BaseProperty BaseProperty { get; set; }
+        [Parameter]
+        public int[]? Indexes { get; set; }
+        [Parameter]
+        public string Class { get; set; }
+        [Parameter]
+        public bool WithIcon { get; set; }
+        [Parameter]
+        public bool ForceNotEditable { get; set; }
     private PropertyUiSettings? _propertyUiSettings;
     public bool _disableEdit { get; set; }
     private object? _value;
@@ -75,6 +75,8 @@
         object? entity;
         if (_propertyUiSettings!.Default != null)
             entity = _propertyUiSettings!.Default.ToDeepCopy();
+        else if(_propertyUiSettings!.DefaultProvider != null)
+            entity = _propertyUiSettings!.DefaultProvider.Invoke().ToDeepCopy();
         else
         {
             var entityRetrieved = await EditParametersBearer.EntityRetrieverByKey.Invoke(_propertyUiSettings.DefaultKey).NoContext();

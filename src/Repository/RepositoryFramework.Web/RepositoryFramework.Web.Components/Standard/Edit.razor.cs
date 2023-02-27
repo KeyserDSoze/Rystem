@@ -22,6 +22,8 @@ namespace RepositoryFramework.Web.Components.Standard
         public ModalService ModalService { get; set; }
         [Inject]
         public NotificationService NotificationService { get; set; }
+        [Inject]
+        public IEnumerable<IRepositoryEditAction<T, TKey>>? Actions { get; set; }
         private TypeShowcase TypeShowcase { get; set; } = null!;
         private readonly EditParametersBearer _parametersBearer = new()
         {

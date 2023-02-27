@@ -46,13 +46,27 @@
                         @if (!DisableEdit)
                         {
                             <IconButton Icon="assignment_turned_in" Clicked="@(() => _ = SaveAsync(false))" />
-                            <IconButton Class="btn btn-primary bg-primary btn" Icon="note_add"
-                                Clicked="@(() => _ = SaveAsync(true))" />
-                            @if (AllowDelete)
+                            <IconButton Class="btn btn-primary bg-primary btn" Icon="note_add" Clicked="@(() => _ = SaveAsync(true))" />
+                        }
+                        @if (Actions != null)
+                        {
+                            foreach (var action in Actions)
                             {
-                                <IconButton Class="btn btn-primary bg-danger btn float-end" Icon="delete"
-                                    Clicked="@(() => CheckIfYouWantToDelete())" />
+                                if (action.IconName != null)
+                                {
+                                    <IconButton Class="btn btn-primary bg-primary btn" Icon="@action.IconName" Clicked="@(() => _ = action.InvokeAsync(_entity))" />
+                                }
+                                else
+                                {
+                                    <RadzenButton class="btn btn-primary bg-primary btn" Click="@(() => _ = action.InvokeAsync(_entity))">
+                                        @action.Name
+                                    </RadzenButton>
+                                }
                             }
+                        }
+                        @if (!DisableEdit && AllowDelete)
+                        {
+                            <IconButton Class="btn btn-primary bg-danger btn float-end" Icon="delete" Clicked="@(() => CheckIfYouWantToDelete())" />
                         }
                     </fieldset>
                 }

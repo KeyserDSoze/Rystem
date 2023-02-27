@@ -158,7 +158,10 @@
             EditParametersBearer.SetValue(BaseProperty, elements, indexesToFixThePrimitiveSave);
         }
         else
+        {
+            value = value?.Cast(BaseProperty.Self.PropertyType);
             EditParametersBearer.SetValue(BaseProperty, value, Indexes);
+        }
         _value = value;
     }
     public void InternalProxyUpdate(object selected)

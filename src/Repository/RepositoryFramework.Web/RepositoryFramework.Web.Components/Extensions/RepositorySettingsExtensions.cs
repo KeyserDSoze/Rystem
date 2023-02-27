@@ -6,8 +6,17 @@ using RepositoryFramework.Web.Components.Business.Language;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
-    public static class RepositoryBuilderExtensions
+    public static class RepositorySettingsExtensions
     {
+        public static RepositorySettings<T, TKey> AddAction<T, TKey, TAction>(
+            this RepositorySettings<T, TKey> builder)
+            where TKey : notnull
+            where TAction : class, IRepositoryEditAction<T, TKey>
+        {
+            builder.Services.AddTransient<IRepositoryEditAction<T, TKey>, TAction>();
+            return builder;
+        }
+
         public static RepositorySettings<T, TKey> SetDefaultUiRoot<T, TKey>(
             this RepositorySettings<T, TKey> builder)
             where TKey : notnull

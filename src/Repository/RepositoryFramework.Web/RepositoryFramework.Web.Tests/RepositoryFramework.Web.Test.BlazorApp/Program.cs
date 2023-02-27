@@ -69,6 +69,7 @@ builder.Services
         settings.WithApiClient().WithHttpClient("localhost:7246");
         settings
             .MapPropertiesForUi<AppUser2, int, AppUserDesignMapper2>()
+            .AddAction<AppUser2, int, AppUserEditAction>()
             .WithIcon("manage_accounts")
             .WithName("User")
             .ExposeFor(4)

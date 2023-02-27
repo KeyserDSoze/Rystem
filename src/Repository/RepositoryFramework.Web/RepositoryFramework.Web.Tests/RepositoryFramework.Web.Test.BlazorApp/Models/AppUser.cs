@@ -1,4 +1,6 @@
 ﻿using System.Security.Cryptography;
+using Microsoft.AspNetCore.Components;
+using RepositoryFramework.Web.Components;
 
 namespace RepositoryFramework.Web.Test.BlazorApp.Models
 {
@@ -72,12 +74,39 @@ namespace RepositoryFramework.Web.Test.BlazorApp.Models
             }, x => x);
         }
     }
+    internal sealed class AppUserEditAction : IRepositoryEditAction<AppUser2, int>
+    {
+        private readonly IServiceProvider _services;
+        private readonly NavigationManager _navigationManager;
+
+        public AppUserEditAction(IServiceProvider services, NavigationManager navigationManager)
+        {
+            _services = services;
+            _navigationManager = navigationManager;
+        }
+        public string Name => "Create new";
+
+        public string? IconName => "assignment_turned_in";
+
+        public async ValueTask<bool> InvokeAsync(Entity<AppUser2, int> entity)
+        {
+            var repository = _services.GetService<IRepository<AppUser2, int>>();
+            if (repository != null)
+            {
+                if (!await repository.ExistAsync(entity.Key))
+                    _navigationManager.NavigateTo("../../../");
+            }
+            return false;
+        }
+    }
+
     internal sealed class AppUserDesignMapper2 : IRepositoryUiMapper<AppUser2, int>
     {
         public void Map(IRepositoryPropertyUiHelper<AppUser2, int> mapper)
         {
             mapper
             .MapDefault(x => x.Email, "Default email")
+            .MapDefault(x => x.Claims, () => new List<string> { "cacade" })
             .MapDefault(x => x.InternalAppSettings, 23)
             .SetTextEditor(x => x.Name, 700)
             .SetTextEditor(x => x.Descriptions.First().Value.Description, 700)

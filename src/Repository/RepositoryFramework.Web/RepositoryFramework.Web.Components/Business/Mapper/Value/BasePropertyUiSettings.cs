@@ -4,6 +4,7 @@
     {
         public object? Default { get; set; }
         public object? DefaultKey { get; set; }
+        public Func<object?>? DefaultProvider { get; set; }
         public Func<object, object?> ValueRetriever { get; set; }
         public bool IsMultiple { get; set; }
         public bool HasTextEditor { get; set; }
