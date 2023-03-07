@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>net7.0</TargetFramework>
@@ -13,19 +13,19 @@
 		<Company>Alessandro Rapiti</Company>
 		<Product>Rystem</Product>
 		<Description>Rystem is a open-source framework to improve the System namespace in .Net</Description>
-		<Copyright>2022</Copyright>
+		<Copyright>2023</Copyright>
 		<PackageIcon>rystem.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Core/Rystem</RepositoryUrl>
 		<PackageId>Rystem</PackageId>
-		<Version>4.1.12</Version>
+		<Version>4.1.13</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Fare" Version="2.2.1" />
-		<PackageReference Include="System.Linq.Dynamic.Core" Version="1.2.25" />
+		<PackageReference Include="System.Linq.Dynamic.Core" Version="1.3.1" />
 		<PackageReference Include="System.Interactive" Version="6.0.1" />
 		<PackageReference Include="System.Interactive.Async" Version="6.0.1" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />

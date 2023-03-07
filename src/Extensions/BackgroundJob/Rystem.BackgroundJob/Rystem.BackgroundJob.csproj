@@ -14,7 +14,7 @@
 		<Company>Alessandro Rapiti</Company>
 		<Product>Rystem</Product>
 		<Description>Rystem.</Description>
-		<Copyright>2022</Copyright>
+		<Copyright>2023</Copyright>
 		<PackageIcon>rystem.backgroundjob.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/BackgroundJob/Rystem.BackgroundJob</RepositoryUrl>

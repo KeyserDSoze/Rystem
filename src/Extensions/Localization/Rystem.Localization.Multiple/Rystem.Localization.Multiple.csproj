@@ -15,7 +15,7 @@
 		<Company>Alessandro Rapiti</Company>
 		<Product>Rystem</Product>
 		<Description>A library that extends the behavior for localization to a more complex environment with multiple libraries as sources for your resx.</Description>
-		<Copyright>2022</Copyright>
+		<Copyright>2023</Copyright>
 		<PackageIcon>icon.jpeg</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/Localization/Rystem.Localization.Multiple</RepositoryUrl>

@@ -25,17 +25,33 @@ namespace RepositoryFramework.Api.Client.Authorization
         }
         public async Task EnrichWithAuthorizationAsync(HttpClient client)
         {
-            var token = await GetTokenAsync().NoContext();
-            if (token != null)
-                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            var tokenResponse = await Try.WithDefaultOnCatchAsync(() => GetTokenAsync()).NoContext();
+            if (tokenResponse != null)
+                tokenResponse = await Try.WithDefaultOnCatchAsync(() => RefreshTokenAsync()).NoContext();
+            if (tokenResponse?.Exception == null && tokenResponse?.Entity != null)
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResponse.Entity);
         }
-
         public async Task<string?> GetTokenAsync()
         {
             ClaimsPrincipal? authUser = null;
             if (_httpContextAccessor?.HttpContext?.User?.Identity?.IsAuthenticated == true)
                 authUser = _httpContextAccessor.HttpContext.User;
             else if (_authenticationStateProvider != null)
+            {
+                var authState = await _authenticationStateProvider.GetAuthenticationStateAsync().NoContext();
+                authUser = authState.User;
+            }
+            if (authUser != null)
+            {
+                var token = await _tokenProvider.GetAccessTokenForUserAsync(_settings.Scopes!, user: authUser).NoContext();
+                return token;
+            }
+            return null;
+        }
+        public async Task<string?> RefreshTokenAsync()
+        {
+            ClaimsPrincipal? authUser = null;
+            if (_authenticationStateProvider != null)
             {
                 var authState = await _authenticationStateProvider.GetAuthenticationStateAsync().NoContext();
                 authUser = authState.User;

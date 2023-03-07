@@ -15,7 +15,7 @@
         <Company>Alessandro Rapiti</Company>
         <Product>Rystem</Product>
         <Description>Rystem is a open-source framework to improve the System namespace in .Net</Description>
-        <Copyright>2022</Copyright>
+        <Copyright>2023</Copyright>
         <PackageIcon>rystem.web.components.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/Web/Rystem.Web.Components</RepositoryUrl>

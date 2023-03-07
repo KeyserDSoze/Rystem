@@ -22,8 +22,7 @@ namespace RepositoryFramework.Api.Client.DefaultInterceptor
         {
             try
             {
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
-                    await _tokenManager.GetTokenAsync());
+                await _tokenManager.EnrichWithAuthorizationAsync(client).NoContext();
             }
             catch (Exception exception)
             {
