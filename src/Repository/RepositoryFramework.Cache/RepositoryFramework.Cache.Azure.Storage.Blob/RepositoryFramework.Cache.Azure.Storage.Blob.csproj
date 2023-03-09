@@ -19,7 +19,7 @@
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Cache/RepositoryFramework.Cache.Azure.Storage.Blob</RepositoryUrl>
 		<PackageId>Rystem.RepositoryFramework.Cache.Azure.Storage.Blob</PackageId>
-		<Version>4.1.13</Version>
+		<Version>4.1.14</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	</PropertyGroup>
@@ -33,8 +33,8 @@
 		</When>
 		<When Condition=" '$(Configuration)'!='Debug' ">
 			<ItemGroup>
-				<PackageReference Include="Rystem.RepositoryFramework.Cache" Version="4.1.13" />
-				<PackageReference Include="Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob" Version="4.1.13" />
+				<PackageReference Include="Rystem.RepositoryFramework.Cache" Version="4.1.14" />
+				<PackageReference Include="Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob" Version="4.1.14" />
 			</ItemGroup>
 		</When>
 	</Choose>
