@@ -18,7 +18,7 @@ namespace System.Timers
             Func<IBackgroundJob>? factory = null,
             CancellationToken cancellationToken = default)
         {
-            string key = $"BackgroundWork_{options.Key}_{job.GetType().FullName}";
+            var key = $"BackgroundWork_{options.Key}_{job.GetType().FullName}";
             return _lockService
                 .ExecuteAsync(async () =>
                 {

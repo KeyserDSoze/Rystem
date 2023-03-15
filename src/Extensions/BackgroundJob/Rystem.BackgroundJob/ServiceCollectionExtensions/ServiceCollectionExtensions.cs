@@ -33,9 +33,8 @@ namespace Microsoft.Extensions.DependencyInjection
             var backgroundJobManager = services.GetService<IBackgroundJobManager>();
             if (backgroundJobManager != null)
             {
-                string key = $"BackgroundWork_{options.Key}_{typeof(TJob).FullName}";
                 backgroundJobManager.RunAsync(
-                    serviceProvider.GetService<TJob>()!,
+                    services.GetService<TJob>()!,
                     options,
                     () => services.CreateScope().ServiceProvider.GetService<TJob>() ?? throw new ArgumentException($"Background job {typeof(TJob).Name} not found."));
             }
