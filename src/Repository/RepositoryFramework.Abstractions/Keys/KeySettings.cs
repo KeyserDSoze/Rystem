@@ -19,16 +19,18 @@ namespace RepositoryFramework
             Jsonable,
             IKey
         }
+        public static KeySettings<TKey> Instance { get; } = new();
+        private KeySettings() { }
         public bool IsJsonable => _type == CurrentType.Jsonable;
         private readonly CurrentType _type = Calculate();
-        private static Func<string, TKey>? _iKeyParser;
+        private static Func<string, TKey>? s_iKeyParser;
         private static CurrentType Calculate()
         {
             var type = typeof(TKey);
             if (type.GetInterface(nameof(IKey)) != null)
             {
                 var method = type.GetMethod(nameof(IKey.Parse), BindingFlags.Static | BindingFlags.Public);
-                _iKeyParser = (x) => (TKey)method.Invoke(null, new object[1] { x });
+                s_iKeyParser = (x) => (TKey)method!.Invoke(null, new object[1] { x })!;
                 return CurrentType.IKey;
             }
             else if (type == typeof(string))
@@ -56,17 +58,17 @@ namespace RepositoryFramework
         }
         public string AsString(TKey key)
         {
-            if (IsJsonable)
-                return key.ToJson();
-            else if (key is IKey iKey)
+            if (key is IKey iKey)
                 return iKey.AsString();
+            else if (IsJsonable)
+                return key.ToJson();
             else
                 return key.ToString()!;
         }
         public TKey Parse(string key)
         {
-            if (_type == CurrentType.IKey && _iKeyParser != null)
-                return _iKeyParser.Invoke(key);
+            if (_type == CurrentType.IKey && s_iKeyParser != null)
+                return s_iKeyParser.Invoke(key);
             else if (_type == CurrentType.String)
                 return (dynamic)key;
             else if (_type == CurrentType.Guid)

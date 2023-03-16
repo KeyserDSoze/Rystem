@@ -4,10 +4,8 @@
         where T1 : notnull
         where T2 : notnull
     {
-        private static readonly KeySettings<T1> _settings1 = new();
-        private static readonly KeySettings<T2> _settings2 = new();
         public static IKey Parse(string keyAsString)
-            => new Key<T1, T2>(_settings1.Parse(keyAsString), _settings2.Parse(keyAsString))!;
+            => new Key<T1, T2>(KeySettings<T1>.Instance.Parse(keyAsString), KeySettings<T2>.Instance.Parse(keyAsString))!;
         public string AsString()
             => IKey.GetStringedValues(Primary, Secondary);
     }

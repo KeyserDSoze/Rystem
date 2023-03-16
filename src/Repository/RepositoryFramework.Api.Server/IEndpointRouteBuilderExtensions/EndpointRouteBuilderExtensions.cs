@@ -304,31 +304,30 @@ namespace Microsoft.Extensions.DependencyInjection
             Func<TKey, TService, Task<IResult>>? actionWithNoEntity)
             where TKey : notnull
         {
-            var keySettings = new KeySettings<TKey>();
             RouteHandlerBuilder? apiMapped = null;
-            if (keySettings.IsJsonable && actionWithNoEntity != null)
+            if (KeySettings<TKey>.Instance.IsJsonable && actionWithNoEntity != null)
             {
                 apiMapped = app.MapPost($"{startingPath}/{name}/{method}",
                 ([FromBody] TKey key, [FromServices] TService service)
                     => actionWithNoEntity.Invoke(key, service));
             }
-            else if (keySettings.IsJsonable && action != null)
+            else if (KeySettings<TKey>.Instance.IsJsonable && action != null)
             {
                 apiMapped = app.MapPost($"{startingPath}/{name}/{method}",
                 ([FromBody] Entity<T, TKey> entity, [FromServices] TService service)
                     => action.Invoke(entity.Value!, entity.Key!, service));
             }
-            else if (!keySettings.IsJsonable && action != null)
+            else if (!KeySettings<TKey>.Instance.IsJsonable && action != null)
             {
                 apiMapped = app.MapPost($"{startingPath}/{name}/{method}",
                 ([FromQuery] string key, [FromBody] T entity, [FromServices] TService service)
-                    => action.Invoke(entity, keySettings.Parse(key), service));
+                    => action.Invoke(entity, KeySettings<TKey>.Instance.Parse(key), service));
             }
             else
             {
                 apiMapped = app.MapGet($"{startingPath}/{name}/{method}",
                     ([FromQuery] string key, [FromServices] TService service)
-                        => actionWithNoEntity!.Invoke(keySettings.Parse(key), service));
+                        => actionWithNoEntity!.Invoke(KeySettings<TKey>.Instance.Parse(key), service));
             }
             _ = apiMapped!
                     .WithName($"{method}{name}")

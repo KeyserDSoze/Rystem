@@ -9,18 +9,18 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
         where TKey : notnull
     {
         private readonly BlobContainerClient _client;
+        private readonly KeySettings<TKey> _keySettings;
         private readonly BlobStorageSettings<T, TKey>? _settings;
-        public BlobStorageRepository(BlobServiceClientFactory clientFactory, BlobStorageSettings<T, TKey>? settings = null)
+        public BlobStorageRepository(BlobServiceClientFactory clientFactory,
+            KeySettings<TKey> keySettings,
+            BlobStorageSettings<T, TKey>? settings = null)
         {
             _client = clientFactory.Get(typeof(T).Name);
+            _keySettings = keySettings;
             _settings = settings;
         }
         private string GetFileName(TKey key)
-        {
-            if (key is IKey keyAsString)
-                return $"{_settings?.Prefix}{keyAsString.AsString()}";
-            return $"{_settings?.Prefix}{key}";
-        }
+            => $"{_settings?.Prefix}{_keySettings.AsString(key)}";
         public async Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default)
         {
             var response = await _client.DeleteBlobAsync(GetFileName(key), cancellationToken: cancellationToken).NoContext();
