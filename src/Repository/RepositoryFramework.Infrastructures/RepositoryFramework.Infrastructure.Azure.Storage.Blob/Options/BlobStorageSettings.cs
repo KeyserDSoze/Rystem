@@ -5,6 +5,7 @@
     {
         internal static BlobStorageSettings<T, TKey> Instance { get; } = new BlobStorageSettings<T, TKey>();
         public List<BlobStoragePathComposer<T>> Paths { get; } = new();
+        public string? Prefix { get; set; }
         public string GetCurrentPath(T? entity) => Paths.Count > 0 && entity != null ? $"{string.Join('/', Paths.Select(x => x.Retriever(entity)))}/" : string.Empty;
     }
 }

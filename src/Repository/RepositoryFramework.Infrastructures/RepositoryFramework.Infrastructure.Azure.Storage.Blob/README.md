@@ -6,7 +6,11 @@ Example from unit test with a business integration too.
      services
         .AddRepository<Car, Guid>(settings =>
         {
-            settings.WithBlobStorage(x => x.ConnectionString = configuration["ConnectionString:Storage"]);
+             settings.WithBlobStorage(x =>
+                        {
+                            x.ConnectionString = configuration["ConnectionString:Storage"];
+                            x.Prefix = "MyFolder/";  //If you want to add a prefix for all blobs in your container
+                        });
         });
     services
         .AddBusinessForRepository<Car, Guid>()

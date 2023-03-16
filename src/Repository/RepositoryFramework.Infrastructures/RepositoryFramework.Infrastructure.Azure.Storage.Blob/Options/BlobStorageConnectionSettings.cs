@@ -8,6 +8,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
         public string? ManagedIdentityClientId { get; set; }
         public string? ConnectionString { get; set; }
         public string? ContainerName { get; set; }
+        public string? Prefix { get; set; }
         public BlobClientOptions? ClientOptions { get; set; }
     }
 }

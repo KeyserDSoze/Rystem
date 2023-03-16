@@ -1,6 +1,7 @@
 ﻿using System.Linq.Expressions;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
 {
@@ -16,7 +17,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
             var name = property.Body.ToString().Split('.').Last();
             var compiledProperty = property.Compile();
             BlobStorageSettings<T, TKey>.Instance.Paths.Add(new BlobStoragePathComposer<T>(x => compiledProperty.Invoke(x)?.ToString(), name));
-            Services.AddSingleton(BlobStorageSettings<T, TKey>.Instance);
+            Services.TryAddSingleton(BlobStorageSettings<T, TKey>.Instance);
             return this;
         }
     }

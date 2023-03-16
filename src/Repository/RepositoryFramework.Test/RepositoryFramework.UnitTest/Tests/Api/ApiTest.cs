@@ -106,7 +106,11 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                                 services
                                     .AddRepository<Car, Guid>(settings =>
                                     {
-                                        settings.WithBlobStorage(x => x.ConnectionString = configuration["ConnectionString:Storage"]);
+                                        settings.WithBlobStorage(x =>
+                                        {
+                                            x.ConnectionString = configuration["ConnectionString:Storage"];
+                                            x.Prefix = "MyFolder/";
+                                        });
                                     });
                                 services
                                     .AddBusinessForRepository<Car, Guid>()

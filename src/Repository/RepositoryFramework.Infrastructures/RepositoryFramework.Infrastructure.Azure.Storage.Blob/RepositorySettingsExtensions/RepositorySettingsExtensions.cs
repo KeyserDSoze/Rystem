@@ -1,4 +1,5 @@
-﻿using RepositoryFramework;
+﻿using Microsoft.Extensions.DependencyInjection.Extensions;
+using RepositoryFramework;
 using RepositoryFramework.Infrastructure.Azure.Storage.Blob;
 
 namespace Microsoft.Extensions.DependencyInjection
@@ -23,6 +24,8 @@ namespace Microsoft.Extensions.DependencyInjection
             BlobServiceClientFactory.Instance.Add<T>(options);
             settings.Services.AddSingleton(BlobServiceClientFactory.Instance);
             settings.SetStorage<BlobStorageRepository<T, TKey>>(ServiceLifetime.Singleton);
+            BlobStorageSettings<T, TKey>.Instance.Prefix = options.Prefix;
+            settings.Services.TryAddSingleton(BlobStorageSettings<T, TKey>.Instance);
             return new RepositoryBlobStorageBuilder<T, TKey>(settings.Services);
         }
     }

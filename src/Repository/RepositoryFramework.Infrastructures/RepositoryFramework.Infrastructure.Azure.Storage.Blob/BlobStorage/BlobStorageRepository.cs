@@ -15,11 +15,11 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
             _client = clientFactory.Get(typeof(T).Name);
             _settings = settings;
         }
-        private static string GetFileName(TKey key)
+        private string GetFileName(TKey key)
         {
             if (key is IKey keyAsString)
-                return keyAsString.AsString();
-            return key.ToString()!;
+                return $"{_settings?.Prefix}{keyAsString.AsString()}";
+            return $"{_settings?.Prefix}{key}";
         }
         public async Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default)
         {
@@ -59,8 +59,8 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
             var where = (filter.Operations.FirstOrDefault(x => x.Operation == FilterOperations.Where) as LambdaFilterOperation)?.Expression;
             if (where != null)
                 predicate = where.AsExpression<T, bool>().Compile();
-            Dictionary<T, Entity<T, TKey>> entities = new();
-            await foreach (var blob in _client.GetBlobsAsync(cancellationToken: cancellationToken))
+            var entities = new Dictionary<T, Entity<T, TKey>>();
+            await foreach (var blob in _client.GetBlobsAsync(prefix: _settings?.Prefix, cancellationToken: cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var blobClient = _client.GetBlobClient(blob.Name);
