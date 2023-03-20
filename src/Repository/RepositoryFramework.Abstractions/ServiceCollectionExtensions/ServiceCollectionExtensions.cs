@@ -115,11 +115,9 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="T">Model used for your repository.</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository.</typeparam>
         /// <param name="services">IServiceCollection.</param>
-        /// <param name="serviceLifetime">Service Lifetime</param>
         /// <returns>RepositoryBusinessSettings<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static RepositoryBusinessSettings<T, TKey> AddBusinessForRepository<T, TKey>(this IServiceCollection services,
-            ServiceLifetime? serviceLifetime = null)
+        public static RepositoryBusinessSettings<T, TKey> AddBusinessForRepository<T, TKey>(this IServiceCollection services)
             where TKey : notnull
-            => new(services, serviceLifetime);
+            => new(services, null);
     }
 }
