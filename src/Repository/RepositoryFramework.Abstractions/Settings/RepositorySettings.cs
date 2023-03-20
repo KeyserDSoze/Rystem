@@ -14,10 +14,17 @@ namespace RepositoryFramework
             var service = SetService();
             service.IsNotExposable = true;
         }
-        public RepositorySettings(IServiceCollection services, PatternType type)
+        public RepositorySettings(IServiceCollection services, PatternType? type = null)
         {
             Services = services;
-            Type = type;
+            if (type != null)
+                Type = type.Value;
+            else
+            {
+                var entityType = typeof(T);
+                var servicesByModel = RepositoryFrameworkRegistry.Instance.GetByModel(entityType);
+                Type = servicesByModel.FirstOrDefault()?.Type ?? PatternType.Repository;
+            }
         }
         public IRepositoryBuilder<T, TKey, TStorage> SetStorage<TStorage>(ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class

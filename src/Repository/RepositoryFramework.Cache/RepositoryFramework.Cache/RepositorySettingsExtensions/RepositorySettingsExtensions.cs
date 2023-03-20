@@ -83,7 +83,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="TKey">Key to manage your data from repository.</typeparam>
         /// <param name="services">IServiceCollection.</param>
         /// <returns>RepositoryBusinessSettings<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static RepositoryBusinessSettings<T, TKey> AddCacheForRepository<T, TKey>(this IServiceCollection services)
+        public static RepositorySettings<T, TKey> AddCacheForRepository<T, TKey>(this IServiceCollection services)
             where TKey : notnull
             => new(services, null);
     }
