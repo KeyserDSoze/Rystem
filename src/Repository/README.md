@@ -8,7 +8,7 @@ Reach out us on [Discord](https://discord.gg/wUh2fppr)
 
 ### Contribute: https://www.buymeacoffee.com/keyserdsoze
 
-## [Showcase (youtube)](https://www.youtube.com/watch?v=xxZO5anN5xg)
+## [Showcase (youtube)](https://www.youtube.com/watch?v=quqHoSXNFek&ab_channel=alessandrorapiti)
 
 ## [Showcase (code)](https://github.com/KeyserDSoze/RepositoryFramework.Showcase)
 
