@@ -1,6 +1,10 @@
 ﻿using System.Linq.Dynamic.Core;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
+using System.Threading;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
@@ -138,12 +142,12 @@ namespace Microsoft.Extensions.DependencyInjection
            where TKey : notnull
             => app.AddApi<T, TKey, TService>(name, startingPath, authorization,
                 RepositoryMethods.Get, null,
-                async (TKey key, TService service) =>
+                async (TKey key, TService service, CancellationToken cancellationToken) =>
                 {
                     var response = await Try.WithDefaultOnCatchAsync(() =>
                     {
                         var queryService = service as IQueryPattern<T, TKey>;
-                        return queryService!.GetAsync(key);
+                        return queryService!.GetAsync(key, cancellationToken);
                     });
                     if (response.Exception != null)
                         return Results.Problem(response.Exception.Message, string.Empty, StatusCodes.Status500InternalServerError);
@@ -153,12 +157,12 @@ namespace Microsoft.Extensions.DependencyInjection
            where TKey : notnull
            => app.AddApi<T, TKey, TService>(name, startingPath, authorization,
                RepositoryMethods.Exist, null,
-               async (TKey key, TService service) =>
+               async (TKey key, TService service, CancellationToken cancellationToken) =>
                {
                    var response = await Try.WithDefaultOnCatchAsync(() =>
                    {
                        var queryService = service as IQueryPattern<T, TKey>;
-                       return queryService!.ExistAsync(key);
+                       return queryService!.ExistAsync(key, cancellationToken);
                    });
                    if (response.Exception != null)
                        return Results.Problem(response.Exception.Message, string.Empty, StatusCodes.Status500InternalServerError);
@@ -170,42 +174,77 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             _ = app.MapPost($"{startingPath}/{name}/{nameof(RepositoryMethods.Query)}",
                 async (HttpRequest request,
-                    [FromBody] SerializableFilter? serializableFilter, [FromServices] TService service) =>
+                    [FromBody] SerializableFilter? serializableFilter, [FromServices] TService service, CancellationToken cancellationToken) =>
                 {
-                    var response = await Try.WithDefaultOnCatchAsync(async () =>
+                    try
                     {
-                        var filter = (serializableFilter ?? SerializableFilter.Empty).Deserialize<T>();
-                        var queryService = service as IQueryPattern<T, TKey>;
-                        return await queryService!.QueryAsync(filter).ToListAsync().NoContext();
-                    });
-                    if (response.Exception != null)
-                        return Results.Problem(response.Exception.Message, string.Empty, StatusCodes.Status500InternalServerError);
-                    return Results.Json(response.Entity, RepositoryOptions.JsonSerializerOptions);
+                        var response = await Try.WithDefaultOnCatchAsync(async () =>
+                        {
+                            var filter = (serializableFilter ?? SerializableFilter.Empty).Deserialize<T>();
+                            var queryService = service as IQueryPattern<T, TKey>;
+                            return await queryService!.QueryAsync(filter, cancellationToken).ToListAsync().NoContext();
+                        });
+                        if (response.Exception != null)
+                            return Results.Problem(response.Exception.Message, string.Empty, StatusCodes.Status500InternalServerError);
+                        return Results.Json(response.Entity, RepositoryOptions.JsonSerializerOptions);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return Results.StatusCode(409);
+                    }
                 }).WithName($"{nameof(RepositoryMethods.Query)}{name}")
               .AddAuthorization(authorization, RepositoryMethods.Query);
+
+            _ = app.MapPost($"{startingPath}/{name}/{nameof(RepositoryMethods.Query)}/Stream", (HttpRequest request,
+                    [FromBody] SerializableFilter? serializableFilter, [FromServices] TService service, CancellationToken cancellationToken)
+                =>
+                    {
+                        return QueryAsStreamAsync(serializableFilter, service, cancellationToken);
+
+                        static async IAsyncEnumerable<Entity<T, TKey>> QueryAsStreamAsync(
+                            SerializableFilter? serializableFilter, TService service, [EnumeratorCancellation] CancellationToken cancellationToken)
+                        {
+                            var filter = (serializableFilter ?? SerializableFilter.Empty).Deserialize<T>();
+                            var queryService = service as IQueryPattern<T, TKey>;
+                            await foreach (var entity in queryService!.QueryAsync(filter, cancellationToken))
+                            {
+                                yield return entity;
+                            }
+                        }
+                    }
+                ).WithName($"{nameof(RepositoryMethods.Query)}{name}Stream")
+              .AddAuthorization(authorization, RepositoryMethods.Query);
         }
+
         private static void AddOperation<T, TKey, TService>(IEndpointRouteBuilder app, string name, string startingPath, ApiAuthorization? authorization)
-            where TKey : notnull
+                where TKey : notnull
         {
             _ = app.MapPost($"{startingPath}/{name}/{nameof(RepositoryMethods.Operation)}",
                 async ([FromQuery] string op, [FromQuery] string? returnType,
-                    [FromBody] SerializableFilter? serializableFilter, [FromServices] TService service) =>
+                    [FromBody] SerializableFilter? serializableFilter, [FromServices] TService service, CancellationToken cancellationToken) =>
                 {
-                    var response = await Try.WithDefaultOnCatchAsync(async () =>
+                    try
                     {
-                        var filter = (serializableFilter ?? SerializableFilter.Empty).Deserialize<T>();
-                        var type = CalculateTypeFromQuery();
-                        var queryService = service as IQueryPattern<T, TKey>;
-                        var result = await Generics.WithStatic(
-                                      typeof(EndpointRouteBuilderExtensions),
-                                      nameof(GetResultFromOperation),
-                                      typeof(T), typeof(TKey), type)
-                                    .InvokeAsync(queryService!, op, filter)!;
-                        return result;
-                    });
-                    if (response.Exception != null)
-                        return Results.Problem(response.Exception.Message, string.Empty, StatusCodes.Status500InternalServerError);
-                    return Results.Json(response.Entity, RepositoryOptions.JsonSerializerOptions);
+                        var response = await Try.WithDefaultOnCatchAsync(async () =>
+                        {
+                            var filter = (serializableFilter ?? SerializableFilter.Empty).Deserialize<T>();
+                            var type = CalculateTypeFromQuery();
+                            var queryService = service as IQueryPattern<T, TKey>;
+                            var result = await Generics.WithStatic(
+                                          typeof(EndpointRouteBuilderExtensions),
+                                          nameof(GetResultFromOperation),
+                                          typeof(T), typeof(TKey), type)
+                                        .InvokeAsync(queryService!, op, filter, cancellationToken)!;
+                            return result;
+                        });
+                        if (response.Exception != null)
+                            return Results.Problem(response.Exception.Message, string.Empty, StatusCodes.Status500InternalServerError);
+                        return Results.Json(response.Entity, RepositoryOptions.JsonSerializerOptions);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return Results.StatusCode(409);
+                    }
                     Type CalculateTypeFromQuery()
                     {
                         var calculatedType = typeof(object);
@@ -223,21 +262,22 @@ namespace Microsoft.Extensions.DependencyInjection
         private static ValueTask<TProperty> GetResultFromOperation<T, TKey, TProperty>(
             IQueryPattern<T, TKey> queryService,
             string operationName,
-            IFilterExpression filter)
+            IFilterExpression filter,
+            CancellationToken cancellationToken)
             where TKey : notnull
             => queryService.OperationAsync(
                 new OperationType<TProperty>(operationName),
-                filter);
+                filter, cancellationToken);
         private static void AddInsert<T, TKey, TService>(IEndpointRouteBuilder app, string name, string startingPath, ApiAuthorization? authorization)
             where TKey : notnull
             => app.AddApi(name, startingPath, authorization,
                 RepositoryMethods.Insert,
-                async (T entity, TKey key, TService service) =>
+                async (T entity, TKey key, TService service, CancellationToken cancellationToken) =>
                 {
                     var response = await Try.WithDefaultOnCatchAsync(() =>
                     {
                         var commandService = service as ICommandPattern<T, TKey>;
-                        return commandService!.InsertAsync(key, entity);
+                        return commandService!.InsertAsync(key, entity, cancellationToken);
                     });
                     if (response.Exception != null)
                         return Results.Problem(response.Exception.Message, string.Empty, StatusCodes.Status500InternalServerError);
@@ -249,12 +289,12 @@ namespace Microsoft.Extensions.DependencyInjection
             where TKey : notnull
             => app.AddApi(name, startingPath, authorization,
                 RepositoryMethods.Update,
-                async (T entity, TKey key, TService service) =>
+                async (T entity, TKey key, TService service, CancellationToken cancellationToken) =>
                 {
                     var response = await Try.WithDefaultOnCatchAsync(() =>
                     {
                         var commandService = service as ICommandPattern<T, TKey>;
-                        return commandService!.UpdateAsync(key, entity);
+                        return commandService!.UpdateAsync(key, entity, cancellationToken);
                     });
                     if (response.Exception != null)
                         return Results.Problem(response.Exception.Message, string.Empty, StatusCodes.Status500InternalServerError);
@@ -266,12 +306,12 @@ namespace Microsoft.Extensions.DependencyInjection
             where TKey : notnull
             => app.AddApi<T, TKey, TService>(name, startingPath, authorization,
                 RepositoryMethods.Delete, null,
-                async (TKey key, TService service) =>
+                async (TKey key, TService service, CancellationToken cancellationToken) =>
                 {
                     var response = await Try.WithDefaultOnCatchAsync(() =>
                     {
                         var commandService = service as ICommandPattern<T, TKey>;
-                        return commandService!.DeleteAsync(key);
+                        return commandService!.DeleteAsync(key, cancellationToken);
                     });
                     if (response.Exception != null)
                         return Results.Problem(response.Exception.Message, string.Empty, StatusCodes.Status500InternalServerError);
@@ -282,16 +322,23 @@ namespace Microsoft.Extensions.DependencyInjection
             where TKey : notnull
         {
             _ = app.MapPost($"{startingPath}/{name}/{nameof(RepositoryMethods.Batch)}",
-                async ([FromBody] BatchOperations<T, TKey> operations, [FromServices] TService service) =>
+                async ([FromBody] BatchOperations<T, TKey> operations, [FromServices] TService service, CancellationToken cancellationToken) =>
             {
-                var response = await Try.WithDefaultOnCatchAsync(() =>
+                try
                 {
-                    var commandService = service as ICommandPattern<T, TKey>;
-                    return commandService!.BatchAsync(operations);
-                });
-                if (response.Exception != null)
-                    return Results.Problem(response.Exception.Message, string.Empty, StatusCodes.Status500InternalServerError);
-                return Results.Json(response.Entity, RepositoryOptions.JsonSerializerOptions);
+                    var response = await Try.WithDefaultOnCatchAsync(() =>
+                    {
+                        var commandService = service as ICommandPattern<T, TKey>;
+                        return commandService!.BatchAsync(operations, cancellationToken);
+                    });
+                    if (response.Exception != null)
+                        return Results.Problem(response.Exception.Message, string.Empty, StatusCodes.Status500InternalServerError);
+                    return Results.Json(response.Entity, RepositoryOptions.JsonSerializerOptions);
+                }
+                catch (OperationCanceledException)
+                {
+                    return Results.StatusCode(409);
+                }
             }).WithName($"{nameof(RepositoryMethods.Batch)}{name}")
             .AddAuthorization(authorization, RepositoryMethods.Batch);
         }
@@ -300,34 +347,34 @@ namespace Microsoft.Extensions.DependencyInjection
             string startingPath,
             ApiAuthorization? authorization,
             RepositoryMethods method,
-            Func<T, TKey, TService, Task<IResult>>? action,
-            Func<TKey, TService, Task<IResult>>? actionWithNoEntity)
+            Func<T, TKey, TService, CancellationToken, Task<IResult>>? action,
+            Func<TKey, TService, CancellationToken, Task<IResult>>? actionWithNoEntity)
             where TKey : notnull
         {
             RouteHandlerBuilder? apiMapped = null;
             if (KeySettings<TKey>.Instance.IsJsonable && actionWithNoEntity != null)
             {
                 apiMapped = app.MapPost($"{startingPath}/{name}/{method}",
-                ([FromBody] TKey key, [FromServices] TService service)
-                    => actionWithNoEntity.Invoke(key, service));
+                ([FromBody] TKey key, [FromServices] TService service, CancellationToken cancellationToken)
+                    => actionWithNoEntity.Invoke(key, service, cancellationToken));
             }
             else if (KeySettings<TKey>.Instance.IsJsonable && action != null)
             {
                 apiMapped = app.MapPost($"{startingPath}/{name}/{method}",
-                ([FromBody] Entity<T, TKey> entity, [FromServices] TService service)
-                    => action.Invoke(entity.Value!, entity.Key!, service));
+                ([FromBody] Entity<T, TKey> entity, [FromServices] TService service, CancellationToken cancellationToken)
+                    => action.Invoke(entity.Value!, entity.Key!, service, cancellationToken));
             }
             else if (!KeySettings<TKey>.Instance.IsJsonable && action != null)
             {
                 apiMapped = app.MapPost($"{startingPath}/{name}/{method}",
-                ([FromQuery] string key, [FromBody] T entity, [FromServices] TService service)
-                    => action.Invoke(entity, KeySettings<TKey>.Instance.Parse(key), service));
+                ([FromQuery] string key, [FromBody] T entity, [FromServices] TService service, CancellationToken cancellationToken)
+                    => action.Invoke(entity, KeySettings<TKey>.Instance.Parse(key), service, cancellationToken));
             }
             else
             {
                 apiMapped = app.MapGet($"{startingPath}/{name}/{method}",
-                    ([FromQuery] string key, [FromServices] TService service)
-                        => actionWithNoEntity!.Invoke(KeySettings<TKey>.Instance.Parse(key), service));
+                    ([FromQuery] string key, [FromServices] TService service, CancellationToken cancellationToken)
+                        => actionWithNoEntity!.Invoke(KeySettings<TKey>.Instance.Parse(key), service, cancellationToken));
             }
             _ = apiMapped!
                     .WithName($"{method}{name}")

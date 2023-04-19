@@ -6,6 +6,8 @@ namespace RepositoryFramework
     {
         public static JsonSerializerOptions JsonSerializerOptions { get; } = new()
         {
+            DefaultBufferSize = 128,
+            PropertyNameCaseInsensitive = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
     }

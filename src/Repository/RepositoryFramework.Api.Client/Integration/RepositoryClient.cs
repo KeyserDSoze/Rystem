@@ -1,6 +1,8 @@
-﻿using System.Net;
+﻿using System;
+using System.Net;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 
 namespace RepositoryFramework.Api.Client
@@ -93,25 +95,32 @@ namespace RepositoryFramework.Api.Client
             else
                 return (await PostAsJson<T, State<T, TKey>>(client, GetCorrectUriWithKey(_settings.InsertPath, key), value, cancellationToken).NoContext())!;
         }
+        private const string ApplicationJson = "application/json";
         public async IAsyncEnumerable<Entity<T, TKey>> QueryAsync(IFilterExpression filter,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             var client = await EnrichedClientAsync(RepositoryMethods.Query).NoContext();
             var value = filter.Serialize();
-            var response = await client.PostAsJsonAsync(_settings.QueryPath, value, cancellationToken).NoContext();
-            await EnsureSuccessStatusCodeAsync(response).NoContext();
-            var result = await response.Content.ReadFromJsonAsync<List<Entity<T, TKey>>>(cancellationToken: cancellationToken).NoContext();
-            if (result != null)
-                foreach (var item in result)
+            var jsonContent = new StringContent(value.ToJson(), Encoding.UTF8, ApplicationJson);
+            var request = new HttpRequestMessage(HttpMethod.Post, _settings.QueryPath)
+            {
+                Content = jsonContent
+            };
+            var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).NoContext();
+            await EnsureSuccessStatusCodeAsync(response, cancellationToken).NoContext();
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var items = JsonSerializer.DeserializeAsyncEnumerable<Entity<T, TKey>>(stream, RepositoryOptions.JsonSerializerOptions, cancellationToken);
+            if (items != null)
+                await foreach (var item in items)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    yield return item;
+                    if (item != null)
+                        yield return item;
                 }
         }
-        private async Task EnsureSuccessStatusCodeAsync(HttpResponseMessage message)
+        private async Task EnsureSuccessStatusCodeAsync(HttpResponseMessage message, CancellationToken cancellationToken)
         {
             if (message.StatusCode != HttpStatusCode.OK)
-                throw new HttpRequestException(await message.Content.ReadAsStringAsync().NoContext());
+                throw new HttpRequestException(await message.Content.ReadAsStringAsync(cancellationToken).NoContext());
         }
         public async ValueTask<TProperty> OperationAsync<TProperty>(OperationType<TProperty> operation,
             IFilterExpression filter, CancellationToken cancellationToken = default)

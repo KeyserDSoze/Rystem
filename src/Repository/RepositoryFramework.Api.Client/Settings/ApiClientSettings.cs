@@ -42,7 +42,7 @@
                 DeletePath = $"{basePath}{nameof(RepositoryMethods.Delete)}";
             else
                 DeletePath = $"{basePath}{nameof(RepositoryMethods.Delete)}?key={{0}}";
-            QueryPath = $"{basePath}{nameof(RepositoryMethods.Query)}";
+            QueryPath = $"{basePath}{nameof(RepositoryMethods.Query)}/Stream";
             OperationPath = $"{basePath}{nameof(RepositoryMethods.Operation)}?op={{0}}&returnType={{1}}";
             if (KeySettings<TKey>.Instance.IsJsonable)
                 InsertPath = $"{basePath}{nameof(RepositoryMethods.Insert)}";
