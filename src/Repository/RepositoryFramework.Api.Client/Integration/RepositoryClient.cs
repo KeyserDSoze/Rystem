@@ -117,7 +117,7 @@ namespace RepositoryFramework.Api.Client
                         yield return item;
                 }
         }
-        private async Task EnsureSuccessStatusCodeAsync(HttpResponseMessage message, CancellationToken cancellationToken)
+        private static async Task EnsureSuccessStatusCodeAsync(HttpResponseMessage message, CancellationToken cancellationToken)
         {
             if (message.StatusCode != HttpStatusCode.OK)
                 throw new HttpRequestException(await message.Content.ReadAsStringAsync(cancellationToken).NoContext());
@@ -139,8 +139,8 @@ namespace RepositoryFramework.Api.Client
                 var name = operation.Type.AssemblyQualifiedName;
                 if (name == null)
                     return null;
-                if (PrimitiveMapper.Instance.FromAssemblyQualifiedNameToName.ContainsKey(name))
-                    return PrimitiveMapper.Instance.FromAssemblyQualifiedNameToName[name];
+                if (PrimitiveMapper.Instance.FromAssemblyQualifiedNameToName.TryGetValue(name, out var value))
+                    return value;
                 return name;
             }
         }

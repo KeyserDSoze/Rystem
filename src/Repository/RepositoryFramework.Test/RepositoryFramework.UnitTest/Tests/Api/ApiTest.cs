@@ -678,7 +678,7 @@ namespace RepositoryFramework.UnitTest.Tests.Api
             var totalOkItems = users.Count;
             var page = await repository.Where(ok).OrderByDescending(predicate).PageAsync(1, 2);
             Assert.True(orderCheck(page.Items.First().Value!, page.Items.Last().Value!));
-            Assert.Equal(2, page.Items.Count());
+            Assert.Equal(2, page.Items.Count);
             Assert.Equal(totalOkItems, page.TotalCount);
             batchOperation = repository.CreateBatchOperation();
             foreach (var element in elements)
