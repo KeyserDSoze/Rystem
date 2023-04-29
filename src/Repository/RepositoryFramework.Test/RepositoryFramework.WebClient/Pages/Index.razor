@@ -67,9 +67,9 @@ Welcome to your new app.
     }
 }
 @code {
-    private IEnumerable<User>? Users1;
-    private IEnumerable<User>? Users2;
-    private IEnumerable<User>? Users3;
+    private IEnumerable<CreativeUser>? Users1;
+    private IEnumerable<CreativeUser>? Users2;
+    private IEnumerable<CreativeUser>? Users3;
     private IEnumerable<Animal>? Animals;
     private IEnumerable<Car>? Cars;
     private IEnumerable<Car2>? Cars2;
@@ -79,30 +79,32 @@ Welcome to your new app.
 
     protected override async Task OnParametersSetAsync()
     {
-        var user = new User("@gmail.com");
-        var users4 = await UserClient1.GetAsync("dddd");
-        Users1 = (await UserClient1.Where(x => x.Email != "").OrderByDescending(x => x.Name!).ToListAsync().NoContext()).Select(x => x.Value);
-        Users2 = (await UserClient2.Where(x => x.Email!.Contains(user.Email!) && x.IsAdmin && x.GroupId.Equals(Alfa)).ToListAsync().NoContext()).Select(x => x.Value);
-        Users3 = (await UserClient3.Where(x => x.Port > X && x.IsAdmin).ToListAsync().NoContext()).Select(x => x.Value);
+        var cancellationToken = new CancellationToken();
+        var user = new CreativeUser("@gmail.com");
+        var users4 = await UserClient1.GetAsync(1, cancellationToken);
+        Users1 = (await UserClient1.Where(x => x.Email != "").OrderByDescending(x => x.Name!).ToListAsync(cancellationToken).NoContext()).Select(x => x.Value);
+        Users2 = (await UserClient2.Where(x => x.Email!.Contains(user.Email!) && x.IsAdmin && x.GroupId.Equals(Alfa)).ToListAsync(cancellationToken).NoContext()).Select(x => x.Value);
+        Users3 = (await UserClient3.Where(x => x.Port > X && x.IsAdmin).ToListAsync(cancellationToken).NoContext()).Select(x => x.Value);
         var order = $"x => x.Id".Deserialize<IperUser, object>();
-        Users4 = await UserClient3.OrderByDescending(order).PageAsync(7, 20).NoContext();
+        Users4 = await UserClient3.OrderByDescending(order).PageAsync(7, 20, cancellationToken).NoContext();
         var key = new AnimalKey("a", 2, Guid.NewGuid());
         await AnimalClient.InsertAsync(key, new Animal { Id = 1, Name = "Rosario" });
         await AnimalClient.UpdateAsync(key, new Animal { Id = 1, Name = "RosarioUpdated" });
-        var exist = await AnimalClient.ExistAsync(key);
+        var exist = await AnimalClient.ExistAsync(key, cancellationToken);
         await AnimalClient.DeleteAsync(key);
         exist = await AnimalClient.ExistAsync(key);
         await AnimalClient.InsertAsync(new AnimalKey("b", 2, Guid.NewGuid()), new Animal { Id = 2, Name = "Rosario" });
-        Animals = (await AnimalClient.QueryAsync().ToListAsync()).Select(x => x.Value);
+        Animals = (await AnimalClient.QueryAsync().ToListAsync(cancellationToken)).Select(x => x.Value);
         await CarClient.InsertAsync(Guid.NewGuid(), new Car { Id = Guid.NewGuid(), Name = "a" });
         await CarClient.InsertAsync(Guid.NewGuid(), new Car { Id = Guid.NewGuid(), Name = "a2" });
         await CarClient.InsertAsync(Guid.NewGuid(), new Car { Id = Guid.NewGuid(), Name = "a3" });
-        Cars = (await CarClient.QueryAsync().ToListAsync()).Select(x => x.Value);
+        Cars = (await CarClient.QueryAsync(cancellationToken).ToListAsync(cancellationToken)).Select(x => x.Value);
         await CarClient2.InsertAsync(new Range(1, 3), new Car2 { Id = Guid.NewGuid(), Name = "a" });
         await CarClient2.InsertAsync(new Range(1, 4), new Car2 { Id = Guid.NewGuid(), Name = "a2" });
         await CarClient2.InsertAsync(new Range(1, 5), new Car2 { Id = Guid.NewGuid(), Name = "a3" });
-        Cars2 = (await CarClient2.QueryAsync().ToListAsync()).Select(x => x.Value);
-        var sum = await UserClient3.SumAsync(x => x.Port);
+        Cars2 = (await CarClient2.QueryAsync(cancellationToken).ToListAsync(cancellationToken)).Select(x => x.Value);
+        var sum = await UserClient3.SumAsync(x => x.Port, cancellationToken);
+        var paged = await CarClient.PageAsync(1, 2, cancellationToken);
         await base.OnParametersSetAsync().NoContext();
     }
     private async Task AddInBatchSomething()

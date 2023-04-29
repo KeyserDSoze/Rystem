@@ -17,6 +17,12 @@
       "Projects": {
         "Rystem.Web.Components.Test": {}
       }
+    },
+    "Repository.Blazor": {
+      "Projects": {
+        "RepositoryFramework.WebApi": {},
+        "RepositoryFramework.WebClient": {}
+      }
     }
   }
 }

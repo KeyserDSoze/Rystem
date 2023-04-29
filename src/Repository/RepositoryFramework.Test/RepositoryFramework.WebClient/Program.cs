@@ -23,7 +23,7 @@ var retryPolicy = HttpPolicyExtensions
   .RetryAsync(3);
 
 builder.Services
-    .AddRepository<User, string>(settings =>
+    .AddRepository<CreativeUser, int>(settings =>
     {
         settings
             .WithApiClient()

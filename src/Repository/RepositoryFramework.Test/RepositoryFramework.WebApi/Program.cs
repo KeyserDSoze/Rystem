@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
+using RepositoryFramework;
 using RepositoryFramework.InMemory;
 using RepositoryFramework.Test.Domain;
 using RepositoryFramework.Test.Infrastructure.EntityFramework;
@@ -38,7 +39,7 @@ builder.Services
     .AddRepository<SuperUser, string>(settins =>
     {
         settins.WithInMemory()
-            .PopulateWithRandomData( 120, 5)
+            .PopulateWithRandomData(120, 5)
             .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
     });
 
@@ -50,7 +51,6 @@ builder.Services.AddRepository<SuperiorUser, string>(settings =>
         .WithPattern(x => x.Value!.Port, @"[1-9]{3,4}");
     settings.SetNotExposable();
 });
-
 
 builder.Services.AddRepository<Animal, AnimalKey>(settings => settings.WithInMemory());
 builder.Services.AddRepository<Car, Guid>(settings => settings.WithInMemory());
@@ -86,22 +86,36 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.InstanceName = "SampleInstance";
 });
 //builder.Services
-//    .AddRepositoryInBlobStorage<User, string>(builder.Configuration["ConnectionString:Storage"])
-//    .WithInMemoryCache(x =>
+//    .AddRepository<User, string>(x =>
 //    {
-//        x.RefreshTime = TimeSpan.FromSeconds(60);
-//        x.Methods = RepositoryMethod.Get | RepositoryMethod.Insert | RepositoryMethod.Update | RepositoryMethod.Delete;
-//    })
-//    .WithDistributedCache(x =>
-//    {
-//        x.RefreshTime = TimeSpan.FromSeconds(120);
-//        x.Methods = RepositoryMethod.All;
+//        x
+//        .WithBlobStorage(settings =>
+//        {
+//            settings.ConnectionString = builder.Configuration["ConnectionString:Storage"];
+//        });
+//        x
+//        .WithInMemoryCache(x =>
+//        {
+//            x.ExpiringTime = TimeSpan.FromSeconds(60);
+//            x.Methods = RepositoryMethods.Get | RepositoryMethods.Insert | RepositoryMethods.Update | RepositoryMethods.Delete;
+//        })
+//        .WithDistributedCache(x =>
+//        {
+//            x.ExpiringTime = TimeSpan.FromSeconds(120);
+//            x.Methods = RepositoryMethods.All;
+//        });
+//        //.WithBlobStorageCache(
+//        //    x =>
+//        //    {
+//        //        x.ConnectionString = builder.Configuration["ConnectionString:Storage"];
+//        //    }
+//        //    , x =>
+//        //    {
+//        //        x.ExpiringTime = TimeSpan.FromSeconds(120);
+//        //        x.Methods = RepositoryMethods.All;
+//        //    });
 //    });
-//.WithBlobStorageCache(builder.Configuration["ConnectionString:Storage"], settings: x =>
-//{
-//    x.RefreshTime = TimeSpan.FromSeconds(120);
-//    x.Methods = RepositoryMethod.All;
-//});
+
 builder.Services
     .AddRepository<CreativeUser, string>(settings =>
     {

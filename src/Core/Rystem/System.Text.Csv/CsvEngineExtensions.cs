@@ -2,7 +2,7 @@
 {
     public static class CsvEngineExtensions
     {
-        public static string ToCsv<T>(this IEnumerable<T> values) 
+        public static string ToCsv<T>(this IEnumerable<T> values)
             => CsvEngine.Convert(values);
     }
 }
