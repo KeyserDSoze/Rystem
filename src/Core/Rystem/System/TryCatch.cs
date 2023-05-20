@@ -29,7 +29,7 @@
         {
             try
             {
-                return new(await function.Invoke());
+                return new(await function.Invoke().NoContext());
             }
             catch (Exception ex)
             {
@@ -40,7 +40,30 @@
         {
             try
             {
-                await function.Invoke();
+                await function.Invoke().NoContext();
+                return default;
+            }
+            catch (Exception ex)
+            {
+                return ex;
+            }
+        }
+        public static async Task<TryResponse<T>> WithDefaultOnCatchValueTaskAsync<T>(Func<ValueTask<T>> function)
+        {
+            try
+            {
+                return new(await function.Invoke().NoContext());
+            }
+            catch (Exception ex)
+            {
+                return new(default, ex);
+            }
+        }
+        public static async Task<Exception?> WithDefaultOnCatchValueTaskAsync(Func<ValueTask> function)
+        {
+            try
+            {
+                await function.Invoke().NoContext();
                 return default;
             }
             catch (Exception ex)

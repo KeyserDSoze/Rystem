@@ -43,7 +43,7 @@ namespace System.Text.Csv
         {
             var showcase = typeof(T).ToShowcase();
             var tableHandler = new MapHandler() { Map = new() };
-            int counter = 0;
+            var counter = 0;
             foreach (var value in values)
             {
                 ConvertOne(showcase.Properties, Array.Empty<int>());
@@ -103,7 +103,7 @@ namespace System.Text.Csv
             var rows = new StringBuilder[counter];
             foreach (var map in tableHandler.Map.Select(x => x.Value))
             {
-                int internalCounter = 0;
+                var internalCounter = 0;
                 foreach (var row in map.Rows.Select(x => x.Columns))
                 {
                     if (rows[internalCounter] == null)
@@ -114,7 +114,7 @@ namespace System.Text.Csv
                         if (stringBuilder.Length > 0)
                             stringBuilder.Append(',');
                         stringBuilder.Append(string.Join(',', columnValues.Select(x => CheckIfContainsEscapeCharacters(x))));
-                        for (int i = columnValues.Count; i < map.Max; i++)
+                        for (var i = columnValues.Count; i < map.Max; i++)
                             stringBuilder.Append(',');
                     }
                     internalCounter++;
