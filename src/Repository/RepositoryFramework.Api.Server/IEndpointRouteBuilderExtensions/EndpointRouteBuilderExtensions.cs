@@ -189,7 +189,9 @@ namespace Microsoft.Extensions.DependencyInjection
                     {
                         return Results.StatusCode(409);
                     }
-                }).WithName($"{nameof(RepositoryMethods.Query)}{name}")
+                })
+                .WithName($"{nameof(RepositoryMethods.Query)}{name}")
+                .WithTags(name)
               .AddAuthorization(authorization, RepositoryMethods.Query);
 
             _ = app.MapPost($"{startingPath}/{name}/{nameof(RepositoryMethods.Query)}/Stream", (HttpRequest request,
@@ -209,7 +211,9 @@ namespace Microsoft.Extensions.DependencyInjection
                             }
                         }
                     }
-                ).WithName($"{nameof(RepositoryMethods.Query)}{name}Stream")
+                )
+                .WithName($"{nameof(RepositoryMethods.Query)}{name}Stream")
+                .WithTags(name)
               .AddAuthorization(authorization, RepositoryMethods.Query);
         }
 
@@ -253,7 +257,9 @@ namespace Microsoft.Extensions.DependencyInjection
                             calculatedType = Type.GetType(returnType);
                         return calculatedType ?? typeof(object);
                     }
-                }).WithName($"{nameof(RepositoryMethods.Operation)}{name}")
+                })
+                .WithName($"{nameof(RepositoryMethods.Operation)}{name}")
+                .WithTags(name)
               .AddAuthorization(authorization, RepositoryMethods.Operation);
         }
         private static ValueTask<TProperty> GetResultFromOperation<T, TKey, TProperty>(
@@ -336,7 +342,9 @@ namespace Microsoft.Extensions.DependencyInjection
                 {
                     return Results.StatusCode(409);
                 }
-            }).WithName($"{nameof(RepositoryMethods.Batch)}{name}")
+            })
+            .WithName($"{nameof(RepositoryMethods.Batch)}{name}")
+            .WithTags(name)
             .AddAuthorization(authorization, RepositoryMethods.Batch);
         }
         private static void AddApi<T, TKey, TService>(this IEndpointRouteBuilder app,
@@ -375,6 +383,7 @@ namespace Microsoft.Extensions.DependencyInjection
             }
             _ = apiMapped!
                     .WithName($"{method}{name}")
+                    .WithTags(name)
                     .AddAuthorization(authorization, method);
         }
         private static RouteHandlerBuilder AddAuthorization(this RouteHandlerBuilder router, ApiAuthorization? authorization, RepositoryMethods path)
