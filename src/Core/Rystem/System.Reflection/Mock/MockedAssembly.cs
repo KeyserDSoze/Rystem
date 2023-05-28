@@ -34,7 +34,7 @@ namespace System.Reflection
             => $"<{propertyName}>k__BackingField";
         private Type DefineNewImplementation(Type type)
         {
-            string name = $"{type.Name}{string.Join('_', type.GetGenericArguments().Select(x => x.Name))}Concretization";
+            var name = $"{type.Name}{string.Join('_', type.GetGenericArguments().Select(x => x.Name))}Concretization";
             var createdNames = new Dictionary<string, bool>();
             var typeBuilder = Builder.DefineType(name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed);
             if (!type.IsInterface)

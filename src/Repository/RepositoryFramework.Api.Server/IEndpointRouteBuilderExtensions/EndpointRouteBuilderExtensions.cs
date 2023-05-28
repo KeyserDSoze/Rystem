@@ -42,37 +42,123 @@ namespace Microsoft.Extensions.DependencyInjection
             });
 
         private const string NotImplementedExceptionIlOperation = "newobj instance void System.NotImplementedException";
-        private static readonly Dictionary<PatternType, List<string>> s_possibleMethods = new()
+        private sealed class RepositoryMethodValue
+        {
+            public string Name { get; init; }
+            public RepositoryMethods Method { get; init; }
+            public string DefaultHttpMethod { get; init; }
+        }
+        private static readonly Dictionary<PatternType, List<RepositoryMethodValue>> s_possibleMethods = new()
         {
             {
                 PatternType.Repository,
                 new() {
-                    nameof(AddGet),
-                    nameof(AddQuery),
-                    nameof(AddExist),
-                    nameof(AddOperation),
-                    nameof(AddInsert),
-                    nameof(AddUpdate),
-                    nameof(AddDelete),
-                    nameof(AddBatch)
+                    new()
+                    {
+                       Name = nameof(AddGet),
+                       DefaultHttpMethod = "Get",
+                       Method = RepositoryMethods.Get
+                    },
+                    new()
+                    {
+                       Name = nameof(AddQuery),
+                       DefaultHttpMethod = "Post",
+                       Method = RepositoryMethods.Query
+                    },
+                    new()
+                    {
+                       Name = nameof(AddExist),
+                       DefaultHttpMethod = "Get",
+                       Method = RepositoryMethods.Exist
+                    },
+                    new()
+                    {
+                       Name = nameof(AddOperation),
+                       DefaultHttpMethod = "Get",
+                       Method = RepositoryMethods.Operation
+                    },
+                    new()
+                    {
+                       Name = nameof(AddInsert),
+                       DefaultHttpMethod = "Post",
+                       Method = RepositoryMethods.Insert
+                    },
+                    new()
+                    {
+                       Name = nameof(AddUpdate),
+                       DefaultHttpMethod = "Post",
+                       Method = RepositoryMethods.Update
+                    },
+                    new()
+                    {
+                       Name = nameof(AddDelete),
+                       DefaultHttpMethod = "Get",
+                       Method = RepositoryMethods.Delete
+                    },
+                    new()
+                    {
+                       Name = nameof(AddBatch),
+                       DefaultHttpMethod = "Post",
+                       Method = RepositoryMethods.Batch
+                    },
                 }
             },
             {
                 PatternType.Query,
                 new() {
-                    nameof(AddGet),
-                    nameof(AddQuery),
-                    nameof(AddExist),
-                    nameof(AddOperation),
+                    new()
+                    {
+                       Name = nameof(AddGet),
+                       DefaultHttpMethod = "Get",
+                       Method = RepositoryMethods.Get
+                    },
+                    new()
+                    {
+                       Name = nameof(AddQuery),
+                       DefaultHttpMethod = "Post",
+                       Method = RepositoryMethods.Query
+                    },
+                    new()
+                    {
+                       Name = nameof(AddExist),
+                       DefaultHttpMethod = "Get",
+                       Method = RepositoryMethods.Exist
+                    },
+                    new()
+                    {
+                       Name = nameof(AddOperation),
+                       DefaultHttpMethod = "Get",
+                       Method = RepositoryMethods.Operation
+                    },
                 }
             },
             {
                 PatternType.Command,
                 new() {
-                    nameof(AddInsert),
-                    nameof(AddUpdate),
-                    nameof(AddDelete),
-                    nameof(AddBatch)
+                     new()
+                    {
+                       Name = nameof(AddInsert),
+                       DefaultHttpMethod = "Post",
+                       Method = RepositoryMethods.Insert
+                    },
+                    new()
+                    {
+                       Name = nameof(AddUpdate),
+                       DefaultHttpMethod = "Post",
+                       Method = RepositoryMethods.Update
+                    },
+                    new()
+                    {
+                       Name = nameof(AddDelete),
+                       DefaultHttpMethod = "Get",
+                       Method = RepositoryMethods.Delete
+                    },
+                    new()
+                    {
+                       Name = nameof(AddBatch),
+                       DefaultHttpMethod = "Post",
+                       Method = RepositoryMethods.Batch
+                    },
                 }
             }
         };
@@ -97,8 +183,6 @@ namespace Microsoft.Extensions.DependencyInjection
             var currentName = modelType.Name;
             if (settings.Names.ContainsKey(modelType.FullName!))
                 currentName = settings.Names[modelType.FullName!];
-            if (!s_map.Apis.ContainsKey(currentName))
-                s_map.Apis.Add(currentName, new());
             if (app is IApplicationBuilder applicationBuilder)
             {
                 if (ApiSettings.Instance.HasSwagger && !ApiSettings.Instance.SwaggerInstalled)
@@ -117,10 +201,18 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 if (!service.IsNotExposable)
                 {
+                    var apiServiceName = $"{currentName}-{service.KeyType.Name}";
+                    if (!s_map.Apis.ContainsKey(apiServiceName))
+                        s_map.Apis.Add(apiServiceName, new()
+                        {
+                            Key = service.KeyType.CreateWithDefault(),
+                            Model = modelType.CreateWithDefault(),
+                            PatternType = service.Type.ToString(),
+                        });
                     foreach (var method in service.ImplementationType.GetMethods(BindingFlags.Public | BindingFlags.Instance))
                     {
-                        var currentMethodName = s_possibleMethods[service.Type].FirstOrDefault(x => x == $"Add{method.Name.Replace("Async", string.Empty)}");
-                        if (!string.IsNullOrWhiteSpace(currentMethodName) && !configuredMethods.ContainsKey(currentMethodName))
+                        var currentMethod = s_possibleMethods[service.Type].FirstOrDefault(x => x.Name == $"Add{method.Name.Replace("Async", string.Empty)}");
+                        if (currentMethod != null && !configuredMethods.ContainsKey(currentMethod.Name))
                         {
                             var isNotImplemented = false;
                             Try.WithDefaultOnCatch(() =>
@@ -131,32 +223,52 @@ namespace Microsoft.Extensions.DependencyInjection
                             if (isNotImplemented)
                                 continue;
 
-                            _ = typeof(EndpointRouteBuilderExtensions).GetMethod(currentMethodName, BindingFlags.NonPublic | BindingFlags.Static)!
+                            var singleApi = new RequestApiMap()
+                            {
+                                IsAuthenticated = authorization != null,
+                                IsAuthorized = authorization != null,
+                                Uri = $"{settings.StartingPath}/{currentName}/{currentMethod.Method}",
+                                KeyIsJsonable = false,
+                                HttpMethod = currentMethod.DefaultHttpMethod,
+                                RepositoryMethod = currentMethod.Method.ToString()
+                            };
+
+                            _ = typeof(EndpointRouteBuilderExtensions).GetMethod(currentMethod.Name, BindingFlags.NonPublic | BindingFlags.Static)!
                                .MakeGenericMethod(modelType, service.KeyType, service.InterfaceType)
-                               .Invoke(null, new object[] { app, currentName, settings.StartingPath, authorization! });
-                            configuredMethods.Add(currentMethodName, true);
+                               .Invoke(null, new object[] { app, singleApi, currentName, authorization! });
+                            configuredMethods.Add(currentMethod.Name, true);
+
+                            s_map.Apis[apiServiceName].Requests.Add(singleApi);
                         }
                     }
                 }
             }
             return app;
         }
-        private static string s_mapAsJson;
+        private static string? s_mapAsJson;
         private static bool s_mapAlreadyAdded = false;
         private static void AddApiMap(this IEndpointRouteBuilder app)
         {
             if (!s_mapAlreadyAdded)
             {
                 s_mapAlreadyAdded = true;
-                app.MapGet("Repository/Map/All", () =>
+                Try.WithDefaultOnCatch(() =>
                 {
-                    return s_mapAsJson ??= s_map.ToJson();
+                    app
+                        .MapGet("Repository/Map/All", () => s_mapAsJson ??= s_map.ToJson())
+                        .WithTags("RepositoryMap");
                 });
             }
         }
-        private static void AddGet<T, TKey, TService>(IEndpointRouteBuilder app, string name, string startingPath, ApiAuthorization? authorization)
+        private static void AddGet<T, TKey, TService>(IEndpointRouteBuilder app,
+            RequestApiMap apiMap,
+            string name,
+            ApiAuthorization? authorization)
            where TKey : notnull
-            => app.AddApi<T, TKey, TService>(name, startingPath, authorization,
+        {
+            apiMap.ResponseWith = "Entity";
+            apiMap.Response = typeof(T).CreateWithDefault();
+            app.AddApi<T, TKey, TService>(apiMap, name, authorization,
                 RepositoryMethods.Get, null,
                 async (TKey key, TService service, CancellationToken cancellationToken) =>
                 {
@@ -168,27 +280,52 @@ namespace Microsoft.Extensions.DependencyInjection
                     if (response.Exception != null)
                         return Results.Problem(response.Exception.Message, string.Empty, StatusCodes.Status500InternalServerError);
                     return Results.Json(response.Entity, RepositoryOptions.JsonSerializerOptions);
-                });
-        private static void AddExist<T, TKey, TService>(IEndpointRouteBuilder app, string name, string startingPath, ApiAuthorization? authorization)
+                }
+            );
+        }
+
+        private static void AddExist<T, TKey, TService>(IEndpointRouteBuilder app,
+            RequestApiMap apiMap,
+            string name,
+            ApiAuthorization? authorization)
            where TKey : notnull
-           => app.AddApi<T, TKey, TService>(name, startingPath, authorization,
-               RepositoryMethods.Exist, null,
-               async (TKey key, TService service, CancellationToken cancellationToken) =>
-               {
-                   var response = await Try.WithDefaultOnCatchAsync(() =>
-                   {
-                       var queryService = service as IQueryPattern<T, TKey>;
-                       return queryService!.ExistAsync(key, cancellationToken);
-                   });
-                   if (response.Exception != null)
-                       return Results.Problem(response.Exception.Message, string.Empty, StatusCodes.Status500InternalServerError);
-                   return Results.Json(response.Entity, RepositoryOptions.JsonSerializerOptions);
-               }
-           );
-        private static void AddQuery<T, TKey, TService>(IEndpointRouteBuilder app, string name, string startingPath, ApiAuthorization? authorization)
+        {
+            apiMap.ResponseWith = "State";
+            apiMap.Response = new State<T, TKey>(
+                        true,
+                        new Entity<T, TKey>(typeof(T).CreateWithDefault<T>(), typeof(TKey).CreateWithDefault<TKey>())
+                    );
+            app.AddApi<T, TKey, TService>(apiMap, name, authorization,
+                RepositoryMethods.Exist, null,
+                async (TKey key, TService service, CancellationToken cancellationToken) =>
+                {
+                    var response = await Try.WithDefaultOnCatchAsync(() =>
+                    {
+                        var queryService = service as IQueryPattern<T, TKey>;
+                        return queryService!.ExistAsync(key, cancellationToken);
+                    });
+                    if (response.Exception != null)
+                        return Results.Problem(response.Exception.Message, string.Empty, StatusCodes.Status500InternalServerError);
+                    return Results.Json(response.Entity, RepositoryOptions.JsonSerializerOptions);
+                }
+            );
+        }
+
+        private static void AddQuery<T, TKey, TService>(IEndpointRouteBuilder app,
+            RequestApiMap apiMap,
+            string name,
+            ApiAuthorization? authorization)
             where TKey : notnull
         {
-            _ = app.MapPost($"{startingPath}/{name}/{nameof(RepositoryMethods.Query)}",
+            apiMap.ResponseWith = "List";
+            var response = new List<Entity<T, TKey>>()
+            {
+                new Entity<T, TKey>(typeof(T).CreateWithDefault<T>(), typeof(TKey).CreateWithDefault<TKey>())
+            };
+            apiMap.Response = response;
+            apiMap.HasStream = true;
+
+            _ = app.MapPost(apiMap.Uri,
                 async (HttpRequest request,
                     [FromBody] SerializableFilter? serializableFilter, [FromServices] TService service, CancellationToken cancellationToken) =>
                 {
@@ -211,9 +348,9 @@ namespace Microsoft.Extensions.DependencyInjection
                 })
                 .WithName($"{nameof(RepositoryMethods.Query)}{name}")
                 .WithTags(name)
-              .AddAuthorization(authorization, RepositoryMethods.Query);
+              .AddAuthorization(authorization, RepositoryMethods.Query, apiMap);
 
-            _ = app.MapPost($"{startingPath}/{name}/{nameof(RepositoryMethods.Query)}/Stream", (HttpRequest request,
+            _ = app.MapPost($"{apiMap.Uri}/Stream", (HttpRequest request,
                     [FromBody] SerializableFilter? serializableFilter, [FromServices] TService service, CancellationToken cancellationToken)
                 =>
                     {
@@ -233,13 +370,16 @@ namespace Microsoft.Extensions.DependencyInjection
                 )
                 .WithName($"{nameof(RepositoryMethods.Query)}{name}Stream")
                 .WithTags(name)
-              .AddAuthorization(authorization, RepositoryMethods.Query);
+              .AddAuthorization(authorization, RepositoryMethods.Query, apiMap);
         }
-
-        private static void AddOperation<T, TKey, TService>(IEndpointRouteBuilder app, string name, string startingPath, ApiAuthorization? authorization)
+        private static void AddOperation<T, TKey, TService>(IEndpointRouteBuilder app,
+            RequestApiMap apiMap,
+            string name,
+            ApiAuthorization? authorization)
                 where TKey : notnull
         {
-            _ = app.MapPost($"{startingPath}/{name}/{nameof(RepositoryMethods.Operation)}",
+            apiMap.ResponseWith = "Dynamic";
+            _ = app.MapPost(apiMap.Uri,
                 async ([FromQuery] string op, [FromQuery] string? returnType,
                     [FromBody] SerializableFilter? serializableFilter, [FromServices] TService service, CancellationToken cancellationToken) =>
                 {
@@ -279,7 +419,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 })
                 .WithName($"{nameof(RepositoryMethods.Operation)}{name}")
                 .WithTags(name)
-              .AddAuthorization(authorization, RepositoryMethods.Operation);
+              .AddAuthorization(authorization, RepositoryMethods.Operation, apiMap);
         }
         private static ValueTask<TProperty> GetResultFromOperation<T, TKey, TProperty>(
             IQueryPattern<T, TKey> queryService,
@@ -290,9 +430,18 @@ namespace Microsoft.Extensions.DependencyInjection
             => queryService.OperationAsync(
                 new OperationType<TProperty>(operationName),
                 filter, cancellationToken);
-        private static void AddInsert<T, TKey, TService>(IEndpointRouteBuilder app, string name, string startingPath, ApiAuthorization? authorization)
+        private static void AddInsert<T, TKey, TService>(IEndpointRouteBuilder app,
+            RequestApiMap apiMap,
+            string name,
+            ApiAuthorization? authorization)
             where TKey : notnull
-            => app.AddApi(name, startingPath, authorization,
+        {
+            apiMap.ResponseWith = "State";
+            apiMap.Response = new State<T, TKey>(
+                        true,
+                        new Entity<T, TKey>(typeof(T).CreateWithDefault<T>(), typeof(TKey).CreateWithDefault<TKey>())
+                    );
+            app.AddApi(apiMap, name, authorization,
                 RepositoryMethods.Insert,
                 async (T entity, TKey key, TService service, CancellationToken cancellationToken) =>
                 {
@@ -307,9 +456,20 @@ namespace Microsoft.Extensions.DependencyInjection
                 },
                 null
             );
-        private static void AddUpdate<T, TKey, TService>(IEndpointRouteBuilder app, string name, string startingPath, ApiAuthorization? authorization)
+        }
+
+        private static void AddUpdate<T, TKey, TService>(IEndpointRouteBuilder app,
+            RequestApiMap apiMap,
+            string name,
+            ApiAuthorization? authorization)
             where TKey : notnull
-            => app.AddApi(name, startingPath, authorization,
+        {
+            apiMap.ResponseWith = "State";
+            apiMap.Response = new State<T, TKey>(
+                        true,
+                        new Entity<T, TKey>(typeof(T).CreateWithDefault<T>(), typeof(TKey).CreateWithDefault<TKey>())
+                    );
+            app.AddApi(apiMap, name, authorization,
                 RepositoryMethods.Update,
                 async (T entity, TKey key, TService service, CancellationToken cancellationToken) =>
                 {
@@ -324,9 +484,20 @@ namespace Microsoft.Extensions.DependencyInjection
                 },
                 null
             );
-        private static void AddDelete<T, TKey, TService>(IEndpointRouteBuilder app, string name, string startingPath, ApiAuthorization? authorization)
+        }
+
+        private static void AddDelete<T, TKey, TService>(IEndpointRouteBuilder app,
+            RequestApiMap apiMap,
+            string name,
+            ApiAuthorization? authorization)
             where TKey : notnull
-            => app.AddApi<T, TKey, TService>(name, startingPath, authorization,
+        {
+            apiMap.ResponseWith = "State";
+            apiMap.Response = new State<T, TKey>(
+                        true,
+                        new Entity<T, TKey>(typeof(T).CreateWithDefault<T>(), typeof(TKey).CreateWithDefault<TKey>())
+                    );
+            app.AddApi<T, TKey, TService>(apiMap, name, authorization,
                 RepositoryMethods.Delete, null,
                 async (TKey key, TService service, CancellationToken cancellationToken) =>
                 {
@@ -340,10 +511,28 @@ namespace Microsoft.Extensions.DependencyInjection
                     return Results.Json(response.Entity, RepositoryOptions.JsonSerializerOptions);
                 }
             );
-        private static void AddBatch<T, TKey, TService>(IEndpointRouteBuilder app, string name, string startingPath, ApiAuthorization? authorization)
+        }
+
+        private static void AddBatch<T, TKey, TService>(IEndpointRouteBuilder app,
+            RequestApiMap apiMap,
+            string name,
+            ApiAuthorization? authorization)
             where TKey : notnull
         {
-            _ = app.MapPost($"{startingPath}/{name}/{nameof(RepositoryMethods.Batch)}",
+            apiMap.ResponseWith = "Batch";
+            var response = new BatchResults<T, TKey>();
+            response.Results.Add(
+                new BatchResult<T, TKey>(
+                    CommandType.Insert,
+                    typeof(TKey).CreateWithDefault<TKey>(),
+                    new State<T, TKey>(
+                        true,
+                        new Entity<T, TKey>(typeof(T).CreateWithDefault<T>(), typeof(TKey).CreateWithDefault<TKey>())
+                    )
+                )
+            );
+            apiMap.Response = response;
+            _ = app.MapPost(apiMap.Uri,
                 async ([FromBody] BatchOperations<T, TKey> operations, [FromServices] TService service, CancellationToken cancellationToken) =>
             {
                 try
@@ -364,75 +553,65 @@ namespace Microsoft.Extensions.DependencyInjection
             })
             .WithName($"{nameof(RepositoryMethods.Batch)}{name}")
             .WithTags(name)
-            .AddAuthorization(authorization, RepositoryMethods.Batch);
+            .AddAuthorization(authorization, RepositoryMethods.Batch, apiMap);
         }
         private static void AddApi<T, TKey, TService>(this IEndpointRouteBuilder app,
+            RequestApiMap singleApi,
             string name,
-            string startingPath,
             ApiAuthorization? authorization,
             RepositoryMethods method,
             Func<T, TKey, TService, CancellationToken, Task<IResult>>? action,
             Func<TKey, TService, CancellationToken, Task<IResult>>? actionWithNoEntity)
             where TKey : notnull
         {
-            var singleApi = new ApiMap()
-            {
-                Method = method,
-                Model = typeof(T).CreateWithDefault(),
-                Request = new RequestApiMap
-                {
-                    IsAuthenticated = authorization != null,
-                    IsAuthorized = authorization != null,
-                    Policies = authorization?.GetPolicy(method)?.ToList() ?? new List<string>(),
-                    Key = typeof(TKey).CreateWithDefault(),
-                    Uri = $"{startingPath}/{name}/{method}"
-                }
-            };
-            s_map.Apis[name].Add(singleApi);
             RouteHandlerBuilder? apiMapped = null;
             if (KeySettings<TKey>.Instance.IsJsonable && actionWithNoEntity != null)
             {
-                singleApi.Request.KeyIsJsonable = true;
-                singleApi.Request.Method = "Post";
-                apiMapped = app.MapPost($"{startingPath}/{name}/{method}",
+                singleApi.KeyIsJsonable = true;
+                singleApi.HttpMethod = "Post";
+                apiMapped = app.MapPost(singleApi.Uri,
                 ([FromBody] TKey key, [FromServices] TService service, CancellationToken cancellationToken)
                     => actionWithNoEntity.Invoke(key, service, cancellationToken));
             }
             else if (KeySettings<TKey>.Instance.IsJsonable && action != null)
             {
-                singleApi.Request.KeyIsJsonable = true;
-                singleApi.Request.Method = "Post";
-                apiMapped = app.MapPost($"{startingPath}/{name}/{method}",
+                singleApi.KeyIsJsonable = true;
+                singleApi.HttpMethod = "Post";
+                apiMapped = app.MapPost(singleApi.Uri,
                 ([FromBody] Entity<T, TKey> entity, [FromServices] TService service, CancellationToken cancellationToken)
                     => action.Invoke(entity.Value!, entity.Key!, service, cancellationToken));
             }
             else if (!KeySettings<TKey>.Instance.IsJsonable && action != null)
             {
-                singleApi.Request.KeyIsJsonable = true;
-                singleApi.Request.Method = "Post";
-                apiMapped = app.MapPost($"{startingPath}/{name}/{method}",
+                singleApi.HttpMethod = "Post";
+                apiMapped = app.MapPost(singleApi.Uri,
                 ([FromQuery] string key, [FromBody] T entity, [FromServices] TService service, CancellationToken cancellationToken)
                     => action.Invoke(entity, KeySettings<TKey>.Instance.Parse(key), service, cancellationToken));
             }
             else
             {
-                singleApi.Request.KeyIsJsonable = false;
-                singleApi.Request.Method = "Get";
-                apiMapped = app.MapGet($"{startingPath}/{name}/{method}",
+                singleApi.HttpMethod = "Get";
+                apiMapped = app.MapGet(singleApi.Uri,
                     ([FromQuery] string key, [FromServices] TService service, CancellationToken cancellationToken)
                         => actionWithNoEntity!.Invoke(KeySettings<TKey>.Instance.Parse(key), service, cancellationToken));
             }
             _ = apiMapped!
                     .WithName($"{method}{name}")
                     .WithTags(name)
-                    .AddAuthorization(authorization, method);
+                    .AddAuthorization(authorization, method, singleApi);
 
         }
-        private static RouteHandlerBuilder AddAuthorization(this RouteHandlerBuilder router, ApiAuthorization? authorization, RepositoryMethods path)
+        private static RouteHandlerBuilder AddAuthorization(this RouteHandlerBuilder router,
+            ApiAuthorization? authorization,
+            RepositoryMethods path,
+            RequestApiMap map)
         {
             var policies = authorization?.GetPolicy(path);
             if (policies != null)
+            {
+                map.Policies.AddRange(policies);
                 router.RequireAuthorization(policies);
+            }
             return router;
         }
     }
