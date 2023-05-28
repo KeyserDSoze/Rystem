@@ -1,6 +1,7 @@
 ﻿using System.Linq.Dynamic.Core;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,7 @@ namespace Microsoft.Extensions.DependencyInjection
     public static partial class EndpointRouteBuilderExtensions
     {
         private static readonly Dictionary<string, bool> s_setupRepositories = new();
+        private static readonly ApisMap s_map = new();
         /// <summary>
         /// Add repository or CQRS service injected as api for your <typeparamref name="T"/> model.
         /// </summary>
@@ -83,6 +85,8 @@ namespace Microsoft.Extensions.DependencyInjection
             ApiAuthorization? authorization)
             where TEndpointRouteBuilder : IEndpointRouteBuilder
         {
+            app
+                .AddApiMap();
             if (s_setupRepositories.ContainsKey(modelType.FullName!))
                 return app;
             s_setupRepositories.Add(modelType.FullName!, true);
@@ -93,6 +97,8 @@ namespace Microsoft.Extensions.DependencyInjection
             var currentName = modelType.Name;
             if (settings.Names.ContainsKey(modelType.FullName!))
                 currentName = settings.Names[modelType.FullName!];
+            if (!s_map.Apis.ContainsKey(currentName))
+                s_map.Apis.Add(currentName, new());
             if (app is IApplicationBuilder applicationBuilder)
             {
                 if (ApiSettings.Instance.HasSwagger && !ApiSettings.Instance.SwaggerInstalled)
@@ -134,6 +140,19 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
             }
             return app;
+        }
+        private static string s_mapAsJson;
+        private static bool s_mapAlreadyAdded = false;
+        private static void AddApiMap(this IEndpointRouteBuilder app)
+        {
+            if (!s_mapAlreadyAdded)
+            {
+                s_mapAlreadyAdded = true;
+                app.MapGet("Repository/Map/All", () =>
+                {
+                    return s_mapAsJson ??= s_map.ToJson();
+                });
+            }
         }
         private static void AddGet<T, TKey, TService>(IEndpointRouteBuilder app, string name, string startingPath, ApiAuthorization? authorization)
            where TKey : notnull
@@ -356,27 +375,49 @@ namespace Microsoft.Extensions.DependencyInjection
             Func<TKey, TService, CancellationToken, Task<IResult>>? actionWithNoEntity)
             where TKey : notnull
         {
+            var singleApi = new ApiMap()
+            {
+                Method = method,
+                Model = typeof(T).CreateWithDefault(),
+                Request = new RequestApiMap
+                {
+                    IsAuthenticated = authorization != null,
+                    IsAuthorized = authorization != null,
+                    Policies = authorization?.GetPolicy(method)?.ToList() ?? new List<string>(),
+                    Key = typeof(TKey).CreateWithDefault(),
+                    Uri = $"{startingPath}/{name}/{method}"
+                }
+            };
+            s_map.Apis[name].Add(singleApi);
             RouteHandlerBuilder? apiMapped = null;
             if (KeySettings<TKey>.Instance.IsJsonable && actionWithNoEntity != null)
             {
+                singleApi.Request.KeyIsJsonable = true;
+                singleApi.Request.Method = "Post";
                 apiMapped = app.MapPost($"{startingPath}/{name}/{method}",
                 ([FromBody] TKey key, [FromServices] TService service, CancellationToken cancellationToken)
                     => actionWithNoEntity.Invoke(key, service, cancellationToken));
             }
             else if (KeySettings<TKey>.Instance.IsJsonable && action != null)
             {
+                singleApi.Request.KeyIsJsonable = true;
+                singleApi.Request.Method = "Post";
                 apiMapped = app.MapPost($"{startingPath}/{name}/{method}",
                 ([FromBody] Entity<T, TKey> entity, [FromServices] TService service, CancellationToken cancellationToken)
                     => action.Invoke(entity.Value!, entity.Key!, service, cancellationToken));
             }
             else if (!KeySettings<TKey>.Instance.IsJsonable && action != null)
             {
+                singleApi.Request.KeyIsJsonable = true;
+                singleApi.Request.Method = "Post";
                 apiMapped = app.MapPost($"{startingPath}/{name}/{method}",
                 ([FromQuery] string key, [FromBody] T entity, [FromServices] TService service, CancellationToken cancellationToken)
                     => action.Invoke(entity, KeySettings<TKey>.Instance.Parse(key), service, cancellationToken));
             }
             else
             {
+                singleApi.Request.KeyIsJsonable = false;
+                singleApi.Request.Method = "Get";
                 apiMapped = app.MapGet($"{startingPath}/{name}/{method}",
                     ([FromQuery] string key, [FromServices] TService service, CancellationToken cancellationToken)
                         => actionWithNoEntity!.Invoke(KeySettings<TKey>.Instance.Parse(key), service, cancellationToken));
@@ -385,6 +426,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     .WithName($"{method}{name}")
                     .WithTags(name)
                     .AddAuthorization(authorization, method);
+
         }
         private static RouteHandlerBuilder AddAuthorization(this RouteHandlerBuilder router, ApiAuthorization? authorization, RepositoryMethods path)
         {

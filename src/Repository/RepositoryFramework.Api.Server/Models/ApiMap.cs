@@ -8,13 +8,21 @@
     {
         public PatternType PatternType { get; set; }
         public RepositoryMethods Method { get; set; }
-        public ApiRequestMap Request { get; set; } = new();
-        public object SampleKey { get; set; }
-        public object SampleResponse { get; set; }
+        public RequestApiMap Request { get; set; } = new();
+        public object Model { get; set; }
     }
-    internal sealed class ApiRequestMap
+    internal sealed class RequestApiMap
     {
         public bool IsAuthenticated { get; set; }
         public bool IsAuthorized { get; set; }
+        public List<string> Policies { get; set; }
+        public object? Key { get; set; }
+        public string Method { get; set; }
+        public bool KeyIsJsonable { get; set; }
+        public string Uri { get; set; }
+    }
+    internal sealed class RequestQuerystringApiMap
+    {
+
     }
 }

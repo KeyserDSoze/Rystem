@@ -687,6 +687,10 @@ namespace RepositoryFramework.UnitTest.Tests.Api
             users = await repository.ToListAsync();
             Assert.Equal(elements.Count, users.Count);
 
+            var paged = await repository.PageAsync(1, 5);
+            Assert.Equal(users.Count, paged.TotalCount);
+            Assert.Equal(5, paged.Items.Count);
+
             var max = await repository.MaxAsync(predicate);
             Assert.Equal(maxValue, max);
             var min = await repository.MinAsync(predicate);
