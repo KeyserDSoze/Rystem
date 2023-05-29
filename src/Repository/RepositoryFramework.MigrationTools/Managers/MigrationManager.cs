@@ -16,9 +16,20 @@ namespace RepositoryFramework.Migration
             _options = options;
         }
 
-        public async Task<bool> MigrateAsync(Expression<Func<T, TKey>> navigationKey, bool checkIfExists = false, CancellationToken cancellationToken = default)
+        public async Task<bool> MigrateAsync(Expression<Func<T, TKey>> navigationKey,
+            bool checkIfExists = false,
+            bool deleteEverythingBeforeStart = false,
+            CancellationToken cancellationToken = default)
         {
             List<Task> setAll = new();
+            if (deleteEverythingBeforeStart)
+            {
+                var items = await _to.ToListAsync(cancellationToken).NoContext();
+                foreach (var item in items.Where(x => x.Key != null))
+                {
+                    await _to.DeleteAsync(item.Key!, cancellationToken).NoContext();
+                }
+            }
             var entities = await _from.QueryAsync(IFilterExpression.Empty, cancellationToken: cancellationToken).ToListAsync().NoContext();
             foreach (var entity in entities)
             {
