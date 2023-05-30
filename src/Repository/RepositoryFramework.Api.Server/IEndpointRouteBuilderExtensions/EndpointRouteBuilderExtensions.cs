@@ -205,12 +205,16 @@ namespace Microsoft.Extensions.DependencyInjection
                 if (!service.IsNotExposable)
                 {
                     var apiServiceName = $"{currentName}-{service.KeyType.Name}";
+                    object? defaultKey = null;
+                    object? defaultValue = null;
                     if (settings.HasMapApi && !s_map.Apis.ContainsKey(apiServiceName))
                     {
+                        defaultKey = app.ServiceProvider.PopulateRandomObject(service.KeyType);
+                        defaultValue = app.ServiceProvider.PopulateRandomObject(modelType);
                         s_map.Apis.Add(apiServiceName, new()
                         {
-                            Key = app.ServiceProvider.PopulateRandomObject(service.KeyType),
-                            Model = app.ServiceProvider.PopulateRandomObject(modelType),
+                            Key = defaultKey,
+                            Model = defaultValue,
                             PatternType = service.Type.ToString(),
                         });
                     }
@@ -240,10 +244,11 @@ namespace Microsoft.Extensions.DependencyInjection
 
                             _ = typeof(EndpointRouteBuilderExtensions).GetMethod(currentMethod.Name, BindingFlags.NonPublic | BindingFlags.Static)!
                                .MakeGenericMethod(modelType, service.KeyType, service.InterfaceType)
-                               .Invoke(null, new object[] { app, singleApi, currentName, authorization! });
+                               .Invoke(null, new object[] { app, singleApi, currentName, defaultKey, defaultValue, authorization! });
                             configuredMethods.Add(currentMethod.Name, true);
 
-                            s_map.Apis[apiServiceName].Requests.Add(singleApi);
+                            if (settings.HasMapApi)
+                                s_map.Apis[apiServiceName].Requests.Add(singleApi);
                         }
                     }
                 }
@@ -273,18 +278,23 @@ namespace Microsoft.Extensions.DependencyInjection
                 {
                     app
                         .MapGet("Repository/Map/All", () => s_mapAsJson ??= s_map.ToJson())
-                        .WithTags("RepositoryMap");
+                        .WithTags("_RepositoryMap");
                 });
             }
         }
         private static void AddGet<T, TKey, TService>(IEndpointRouteBuilder app,
             RequestApiMap apiMap,
             string name,
+            TKey? defaultKey,
+            T? defaultEntity,
             ApiAuthorization? authorization)
            where TKey : notnull
         {
-            apiMap.ResponseWith = "Entity";
-            apiMap.Response = typeof(T).CreateWithDefault();
+            if (defaultKey != null && defaultEntity != null)
+            {
+                apiMap.ResponseWith = "Entity";
+                apiMap.Response = defaultEntity;
+            }
             app.AddApi<T, TKey, TService>(apiMap, name, authorization,
                 RepositoryMethods.Get, null,
                 async (TKey key, TService service, CancellationToken cancellationToken) =>
@@ -304,14 +314,19 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void AddExist<T, TKey, TService>(IEndpointRouteBuilder app,
             RequestApiMap apiMap,
             string name,
+            TKey? defaultKey,
+            T? defaultEntity,
             ApiAuthorization? authorization)
            where TKey : notnull
         {
-            apiMap.ResponseWith = "State";
-            apiMap.Response = new State<T, TKey>(
-                        true,
-                        new Entity<T, TKey>(typeof(T).CreateWithDefault<T>(), typeof(TKey).CreateWithDefault<TKey>())
-                    );
+            if (defaultKey != null && defaultEntity != null)
+            {
+                apiMap.ResponseWith = "State";
+                apiMap.Response = new State<T, TKey>(
+                            true,
+                            new Entity<T, TKey>(defaultEntity, defaultKey)
+                        );
+            }
             app.AddApi<T, TKey, TService>(apiMap, name, authorization,
                 RepositoryMethods.Exist, null,
                 async (TKey key, TService service, CancellationToken cancellationToken) =>
@@ -331,16 +346,21 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void AddQuery<T, TKey, TService>(IEndpointRouteBuilder app,
             RequestApiMap apiMap,
             string name,
+            TKey? defaultKey,
+            T? defaultEntity,
             ApiAuthorization? authorization)
             where TKey : notnull
         {
-            apiMap.ResponseWith = "List";
-            var response = new List<Entity<T, TKey>>()
+            if (defaultKey != null && defaultEntity != null)
             {
-                new Entity<T, TKey>(typeof(T).CreateWithDefault<T>(), typeof(TKey).CreateWithDefault<TKey>())
-            };
-            apiMap.Response = response;
-            apiMap.HasStream = true;
+                apiMap.ResponseWith = "List";
+                var response = new List<Entity<T, TKey>>()
+                {
+                    new Entity<T, TKey>(defaultEntity, defaultKey)
+                };
+                apiMap.Response = response;
+                apiMap.HasStream = true;
+            }
 
             _ = app.MapPost(apiMap.Uri,
                 async (HttpRequest request,
@@ -392,10 +412,15 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void AddOperation<T, TKey, TService>(IEndpointRouteBuilder app,
             RequestApiMap apiMap,
             string name,
+            TKey? defaultKey,
+            T? defaultEntity,
             ApiAuthorization? authorization)
                 where TKey : notnull
         {
-            apiMap.ResponseWith = "Dynamic";
+            if (defaultKey != null && defaultEntity != null)
+            {
+                apiMap.ResponseWith = "Dynamic";
+            }
             _ = app.MapPost(apiMap.Uri,
                 async ([FromQuery] string op, [FromQuery] string? returnType,
                     [FromBody] SerializableFilter? serializableFilter, [FromServices] TService service, CancellationToken cancellationToken) =>
@@ -450,14 +475,19 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void AddInsert<T, TKey, TService>(IEndpointRouteBuilder app,
             RequestApiMap apiMap,
             string name,
+            TKey? defaultKey,
+            T? defaultEntity,
             ApiAuthorization? authorization)
             where TKey : notnull
         {
-            apiMap.ResponseWith = "State";
-            apiMap.Response = new State<T, TKey>(
-                        true,
-                        new Entity<T, TKey>(typeof(T).CreateWithDefault<T>(), typeof(TKey).CreateWithDefault<TKey>())
-                    );
+            if (defaultKey != null && defaultEntity != null)
+            {
+                apiMap.ResponseWith = "State";
+                apiMap.Response = new State<T, TKey>(
+                            true,
+                            new Entity<T, TKey>(defaultEntity, defaultKey)
+                        );
+            }
             app.AddApi(apiMap, name, authorization,
                 RepositoryMethods.Insert,
                 async (T entity, TKey key, TService service, CancellationToken cancellationToken) =>
@@ -478,14 +508,19 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void AddUpdate<T, TKey, TService>(IEndpointRouteBuilder app,
             RequestApiMap apiMap,
             string name,
+            TKey? defaultKey,
+            T? defaultEntity,
             ApiAuthorization? authorization)
             where TKey : notnull
         {
-            apiMap.ResponseWith = "State";
-            apiMap.Response = new State<T, TKey>(
-                        true,
-                        new Entity<T, TKey>(typeof(T).CreateWithDefault<T>(), typeof(TKey).CreateWithDefault<TKey>())
-                    );
+            if (defaultKey != null && defaultEntity != null)
+            {
+                apiMap.ResponseWith = "State";
+                apiMap.Response = new State<T, TKey>(
+                            true,
+                            new Entity<T, TKey>(defaultEntity, defaultKey)
+                        );
+            }
             app.AddApi(apiMap, name, authorization,
                 RepositoryMethods.Update,
                 async (T entity, TKey key, TService service, CancellationToken cancellationToken) =>
@@ -506,14 +541,19 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void AddDelete<T, TKey, TService>(IEndpointRouteBuilder app,
             RequestApiMap apiMap,
             string name,
+            TKey? defaultKey,
+            T? defaultEntity,
             ApiAuthorization? authorization)
             where TKey : notnull
         {
-            apiMap.ResponseWith = "State";
-            apiMap.Response = new State<T, TKey>(
-                        true,
-                        new Entity<T, TKey>(typeof(T).CreateWithDefault<T>(), typeof(TKey).CreateWithDefault<TKey>())
-                    );
+            if (defaultKey != null && defaultEntity != null)
+            {
+                apiMap.ResponseWith = "State";
+                apiMap.Response = new State<T, TKey>(
+                            true,
+                            new Entity<T, TKey>(defaultEntity, defaultKey)
+                        );
+            }
             app.AddApi<T, TKey, TService>(apiMap, name, authorization,
                 RepositoryMethods.Delete, null,
                 async (TKey key, TService service, CancellationToken cancellationToken) =>
@@ -533,22 +573,47 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void AddBatch<T, TKey, TService>(IEndpointRouteBuilder app,
             RequestApiMap apiMap,
             string name,
+            TKey? defaultKey,
+            T? defaultEntity,
             ApiAuthorization? authorization)
             where TKey : notnull
         {
-            apiMap.ResponseWith = "Batch";
-            var response = new BatchResults<T, TKey>();
-            response.Results.Add(
-                new BatchResult<T, TKey>(
-                    CommandType.Insert,
-                    typeof(TKey).CreateWithDefault<TKey>(),
-                    new State<T, TKey>(
-                        true,
-                        new Entity<T, TKey>(typeof(T).CreateWithDefault<T>(), typeof(TKey).CreateWithDefault<TKey>())
+            if (defaultKey != null && defaultEntity != null)
+            {
+                apiMap.ResponseWith = "Batch";
+                var response = new BatchResults<T, TKey>();
+                response.Results.Add(
+                    new BatchResult<T, TKey>(
+                        CommandType.Insert,
+                        defaultKey,
+                        new State<T, TKey>(
+                            true,
+                            new Entity<T, TKey>(defaultEntity, defaultKey)
+                        )
                     )
-                )
-            );
-            apiMap.Response = response;
+                );
+                response.Results.Add(
+                    new BatchResult<T, TKey>(
+                        CommandType.Update,
+                        defaultKey,
+                        new State<T, TKey>(
+                            true,
+                            new Entity<T, TKey>(defaultEntity, defaultKey)
+                        )
+                    )
+                );
+                response.Results.Add(
+                    new BatchResult<T, TKey>(
+                        CommandType.Delete,
+                        defaultKey,
+                        new State<T, TKey>(
+                            true,
+                            new Entity<T, TKey>(defaultEntity, defaultKey)
+                        )
+                    )
+                );
+                apiMap.Response = response;
+            }
             _ = app.MapPost(apiMap.Uri,
                 async ([FromBody] BatchOperations<T, TKey> operations, [FromServices] TService service, CancellationToken cancellationToken) =>
             {

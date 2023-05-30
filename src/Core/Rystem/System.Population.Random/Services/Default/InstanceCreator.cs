@@ -1,12 +1,21 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace System.Population.Random
 {
     public class InstanceCreator : IInstanceCreator
     {
+        private static readonly List<Type> s_defaultPrimitive = new()
+        {
+            typeof(Range)
+        };
         public object? CreateInstance(PopulationSettings settings, RandomPopulationOptions options, object?[]? args = null)
         {
+            if (options.Type.IsPrimitive() || s_defaultPrimitive.Contains(options.Type))
+                return options.PopulationService.Construct(settings, options.Type,
+                        options.NumberOfEntities, options.TreeName, string.Empty);
+
             var constructor = options.Type.GetConstructors()
                 .OrderBy(x => x.GetParameters().Length)
                 .FirstOrDefault();
