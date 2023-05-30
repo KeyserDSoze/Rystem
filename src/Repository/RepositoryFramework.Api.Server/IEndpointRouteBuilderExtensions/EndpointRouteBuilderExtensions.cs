@@ -1,4 +1,6 @@
 ﻿using System.Linq.Dynamic.Core;
+using System.Net;
+using System.Population.Random;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -171,8 +173,9 @@ namespace Microsoft.Extensions.DependencyInjection
             ApiAuthorization? authorization)
             where TEndpointRouteBuilder : IEndpointRouteBuilder
         {
-            app
-                .AddApiMap();
+            if (settings.HasMapApi)
+                app
+                    .AddApiMap();
             if (s_setupRepositories.ContainsKey(modelType.FullName!))
                 return app;
             s_setupRepositories.Add(modelType.FullName!, true);
@@ -202,13 +205,15 @@ namespace Microsoft.Extensions.DependencyInjection
                 if (!service.IsNotExposable)
                 {
                     var apiServiceName = $"{currentName}-{service.KeyType.Name}";
-                    if (!s_map.Apis.ContainsKey(apiServiceName))
+                    if (settings.HasMapApi && !s_map.Apis.ContainsKey(apiServiceName))
+                    {
                         s_map.Apis.Add(apiServiceName, new()
                         {
-                            Key = service.KeyType.CreateWithDefault(),
-                            Model = modelType.CreateWithDefault(),
+                            Key = app.ServiceProvider.PopulateRandomObject(service.KeyType),
+                            Model = app.ServiceProvider.PopulateRandomObject(modelType),
                             PatternType = service.Type.ToString(),
                         });
+                    }
                     foreach (var method in service.ImplementationType.GetMethods(BindingFlags.Public | BindingFlags.Instance))
                     {
                         var currentMethod = s_possibleMethods[service.Type].FirstOrDefault(x => x.Name == $"Add{method.Name.Replace("Async", string.Empty)}");
@@ -244,6 +249,18 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
             }
             return app;
+        }
+        private static object? PopulateRandomObject(this IServiceProvider serviceProvider, Type type)
+        {
+            return typeof(EndpointRouteBuilderExtensions)
+                        .GetMethod(nameof(PopulateRandom), BindingFlags.NonPublic | BindingFlags.Static)!
+                        .MakeGenericMethod(type)
+                        .Invoke(null, new object[] { serviceProvider });
+        }
+        private static T PopulateRandom<T>(this IServiceProvider serviceProvider)
+        {
+            var populationService = serviceProvider.GetService<IPopulation<T>>()!;
+            return populationService.Populate(1, 1).First();
         }
         private static string? s_mapAsJson;
         private static bool s_mapAlreadyAdded = false;

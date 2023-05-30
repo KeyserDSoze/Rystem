@@ -16,6 +16,7 @@ namespace RepositoryFramework
         public bool HasDocumentation { get; set; }
         public bool HasSwagger { get; set; }
         public bool SwaggerInstalled { get; set; }
+        public bool HasMapApi { get; set; }
         public ApiIdentitySettings OpenIdIdentity { get; set; } = new();
         public bool HasOpenIdAuthentication => OpenIdIdentity.HasOpenIdAuthentication;
         internal const string AllowSpecificOrigins = nameof(AllowSpecificOrigins);

@@ -46,7 +46,13 @@ namespace RepositoryFramework
             ApiSettings.Instance.Path = path;
             return this;
         }
-
+        public IApiBuilder WithMapApi()
+        {
+            ApiSettings.Instance.HasMapApi = true;
+            Services
+                .AddPopulationService();
+            return this;
+        }
         public IApiBuilder WithSwagger()
         {
             ApiSettings.Instance.HasSwagger = true;
