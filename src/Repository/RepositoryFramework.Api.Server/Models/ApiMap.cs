@@ -2,10 +2,11 @@
 {
     internal sealed class ApisMap
     {
-        public Dictionary<string, ApiMap> Apis { get; set; } = new();
+        public List<ApiMap> Apis { get; set; } = new();
     }
     internal sealed class ApiMap
     {
+        public string? Name { get; set; }
         public object? Key { get; set; }
         public object? Model { get; set; }
         public string? PatternType { get; set; }

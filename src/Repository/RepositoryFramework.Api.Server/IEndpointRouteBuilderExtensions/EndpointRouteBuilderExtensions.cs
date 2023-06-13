@@ -207,12 +207,13 @@ namespace Microsoft.Extensions.DependencyInjection
                     var apiServiceName = $"{currentName}-{service.KeyType.Name}";
                     object? defaultKey = null;
                     object? defaultValue = null;
-                    if (settings.HasMapApi && !s_map.Apis.ContainsKey(apiServiceName))
+                    if (settings.HasMapApi && !s_map.Apis.Any(x => x.Name == apiServiceName))
                     {
                         defaultKey = app.ServiceProvider.PopulateRandomObject(service.KeyType);
                         defaultValue = app.ServiceProvider.PopulateRandomObject(modelType);
-                        s_map.Apis.Add(apiServiceName, new()
+                        s_map.Apis.Add(new()
                         {
+                            Name = apiServiceName,
                             Key = defaultKey,
                             Model = defaultValue,
                             PatternType = service.Type.ToString(),
@@ -248,7 +249,7 @@ namespace Microsoft.Extensions.DependencyInjection
                             configuredMethods.Add(currentMethod.Name, true);
 
                             if (settings.HasMapApi)
-                                s_map.Apis[apiServiceName].Requests.Add(singleApi);
+                                s_map.Apis.First(x => x.Name == apiServiceName).Requests.Add(singleApi);
                         }
                     }
                 }
