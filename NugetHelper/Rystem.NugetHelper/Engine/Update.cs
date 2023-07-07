@@ -20,7 +20,7 @@
             .AddProject("Rystem");
             UpdateTree
             .CreateSon()
-            .AddProject("Rystem.Concurrency", "Rystem.RepositoryFramework.Abstractions")
+            .AddProject("Rystem.Concurrency", "Rystem.RepositoryFramework.Abstractions", "Rystem.Content.Abstractions")
             .CreateSon()
             .AddProject("Rystem.BackgroundJob",
                         "Rystem.RepositoryFramework.Api.Client", "Rystem.RepositoryFramework.Api.Server",
@@ -28,7 +28,7 @@
                         "Rystem.RepositoryFramework.Cache", "Rystem.RepositoryFramework.Infrastructure.Azure.Cosmos.Sql",
                         "Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob", "Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Table",
                         "Rystem.RepositoryFramework.Infrastructure.Dynamics.Dataverse", "Rystem.RepositoryFramework.Infrastructure.EntityFramework",
-                        "Rystem.RepositoryFramework.Infrastructure.MsSql", "RepositoryFramework.Web.Components")
+                        "Rystem.RepositoryFramework.Infrastructure.MsSql", "RepositoryFramework.Web.Components", "Rystem.Content.Infrastructure.Azure.Storage.Blob")
             .CreateSon()
             .AddProject("Rystem.Queue", "Rystem.RepositoryFramework.Cache.Azure.Storage.Blob");
 

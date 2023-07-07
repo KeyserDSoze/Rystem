@@ -10,7 +10,7 @@ namespace RepositoryFramework.UnitTest
     }
     internal static class DiUtility
     {
-        public class ForUserSecrets { }
+        public sealed class ForUserSecrets { }
         public static IServiceCollection CreateDependencyInjectionWithConfiguration(out IConfiguration configuration)
         {
             var services = new ServiceCollection();
