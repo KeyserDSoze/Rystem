@@ -3,7 +3,7 @@
 ## Integration with Azure BlobStorage and Content Repository
 
     services
-    .AddFileRepository()
+    .AddContentRepository()
     .WithBlobStorageIntegration(x =>
     {
         x.ContainerName = "supertest";

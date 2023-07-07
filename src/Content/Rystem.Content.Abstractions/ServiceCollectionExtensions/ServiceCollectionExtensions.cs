@@ -10,7 +10,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// </summary>
         /// <param name="services">IServiceCollection.</param>
         /// <returns></returns>
-        public static IContentRepositoryBuilder AddFileRepository(this IServiceCollection services)
+        public static IContentRepositoryBuilder AddContentRepository(this IServiceCollection services)
         {
             services.TryAddTransient<IContentRepositoryFactory, ContentRepositoryFactory>();
             return new ContentRepositoryBuilder(services);

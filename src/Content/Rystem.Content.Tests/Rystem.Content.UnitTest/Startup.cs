@@ -16,7 +16,7 @@ namespace File.UnitTest
                .Build();
             services
                 .AddSingleton<Utility>()
-                .AddFileRepository()
+                .AddContentRepository()
                 .WithBlobStorageIntegration(x =>
                 {
                     x.ContainerName = "supertest";

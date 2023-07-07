@@ -6,7 +6,7 @@ You may use this library to help the integration with your business and your sev
 ## Dependency injection
 
     services
-        .AddFileRepository()
+        .AddContentRepository()
         .WithIntegration<SimpleIntegration>("example", ServiceLifetime.Singleton);
 
 with integration class
@@ -72,7 +72,7 @@ If you have only one integration installed at once, you may inject directly
 DI
 
     services
-        .AddFileRepository()
+        .AddContentRepository()
         .WithIntegration<SimpleIntegration>("example", ServiceLifetime.Singleton);
         .WithIntegration<SimpleIntegration2>("example2", ServiceLifetime.Singleton);
 
