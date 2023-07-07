@@ -16,13 +16,18 @@
 
     public class BlobStorageTest
     {
+        private readonly IContentRepository _fileRepository;
+        private readonly IContentRepositoryFactory _fileRepositoryFactory;
+        private readonly Utility _utility;
         private readonly IContentRepository _blobRepository;
-
-        public BlobStorageTest(IIContentRepositoryFactory fileRepositoryFactory)
+        public BlobStorageTest(IContentRepository fileRepository, IContentRepositoryFactory fileRepositoryFactory, Utility utility)
         {
+            _fileRepository = fileRepository;
+            _fileRepositoryFactory = fileRepositoryFactory;
+            _utility = utility;
             _blobRepository = fileRepositoryFactory.Create("blobstorage");
         }
-
+        [Fact]
         public async Task ExecuteAsync()
         {
             var file = await _utility.GetFileAsync();
