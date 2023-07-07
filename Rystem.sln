@@ -154,7 +154,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Web.Components.Test"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Content", "Content", "{F957E359-1CCC-4F33-8DDB-599DD297F21A}"
 	ProjectSection(SolutionItems) = preProject
-		src\File\README.md = src\File\README.md
+		src\Content\README.md = src\Content\README.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Infrastructures", "Infrastructures", "{C2D49427-A12A-4608-A1DD-41340456EC82}"
