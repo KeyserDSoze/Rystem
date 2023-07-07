@@ -170,6 +170,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{6994C288-D086-4ED7-82CB-4D3551DA9914}"
 	ProjectSection(SolutionItems) = preProject
 		.github\workflows\PackageDeploy.Rystem.Content.Abstractions.yml = .github\workflows\PackageDeploy.Rystem.Content.Abstractions.yml
+		.github\workflows\PackageDeploy.Rystem.Content.Infrastructure.Azure.Storage.Blob.yml = .github\workflows\PackageDeploy.Rystem.Content.Infrastructure.Azure.Storage.Blob.yml
 	EndProjectSection
 EndProject
 Global
