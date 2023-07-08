@@ -2,22 +2,21 @@
 
 namespace File.UnitTest
 {
-    public class BlobStorageTest
+    public class AllStorageTest
     {
-        private readonly IContentRepository _fileRepository;
-        private readonly IContentRepositoryFactory _fileRepositoryFactory;
+        private readonly IContentRepositoryFactory _contentRepositoryFactory;
         private readonly Utility _utility;
-        private readonly IContentRepository _blobRepository;
-        public BlobStorageTest(IContentRepository fileRepository, IContentRepositoryFactory fileRepositoryFactory, Utility utility)
+        public AllStorageTest(IContentRepositoryFactory contentRepositoryFactory, Utility utility)
         {
-            _fileRepository = fileRepository;
-            _fileRepositoryFactory = fileRepositoryFactory;
+            _contentRepositoryFactory = contentRepositoryFactory;
             _utility = utility;
-            _blobRepository = fileRepositoryFactory.Create("blobstorage");
         }
-        [Fact]
-        public async Task ExecuteAsync()
+        [Theory]
+        [InlineData("blobstorage")]
+        [InlineData("inmemory")]
+        public async Task ExecuteAsync(string integrationName)
         {
+            var _contentRepository = _contentRepositoryFactory.Create(integrationName);
             var file = await _utility.GetFileAsync();
             var name = "file.png";
             var contentType = "images/png";
@@ -29,14 +28,14 @@ namespace File.UnitTest
             {
                 { "version", "1" }
             };
-            var response = await _blobRepository.ExistAsync(name).NoContext();
+            var response = await _contentRepository.ExistAsync(name).NoContext();
             if (response)
             {
-                await _blobRepository.DeleteAsync(name).NoContext();
-                response = await _blobRepository.ExistAsync(name).NoContext();
+                await _contentRepository.DeleteAsync(name).NoContext();
+                response = await _contentRepository.ExistAsync(name).NoContext();
             }
             Assert.False(response);
-            response = await _blobRepository.UploadAsync(name, file.ToArray(), new ContentRepositoryOptions
+            response = await _contentRepository.UploadAsync(name, file.ToArray(), new ContentRepositoryOptions
             {
                 HttpHeaders = new ContentRepositoryHttpHeaders
                 {
@@ -46,9 +45,9 @@ namespace File.UnitTest
                 Tags = tags
             }, true).NoContext();
             Assert.True(response);
-            response = await _blobRepository.ExistAsync(name).NoContext();
+            response = await _contentRepository.ExistAsync(name).NoContext();
             Assert.True(response);
-            var options = await _blobRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
+            var options = await _contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
             Assert.NotNull(options.Uri);
             foreach (var x in metadata)
             {
@@ -60,7 +59,7 @@ namespace File.UnitTest
             }
             Assert.Equal(contentType, options.Options.HttpHeaders.ContentType);
             metadata.Add("ale2", "single");
-            response = await _blobRepository.SetPropertiesAsync(name, new ContentRepositoryOptions
+            response = await _contentRepository.SetPropertiesAsync(name, new ContentRepositoryOptions
             {
                 HttpHeaders = new ContentRepositoryHttpHeaders
                 {
@@ -70,11 +69,11 @@ namespace File.UnitTest
                 Tags = tags
             }).NoContext();
             Assert.True(response);
-            options = await _blobRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
+            options = await _contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
             Assert.Equal("single", options.Options.Metadata["ale2"]);
-            response = await _blobRepository.DeleteAsync(name).NoContext();
+            response = await _contentRepository.DeleteAsync(name).NoContext();
             Assert.True(response);
-            response = await _blobRepository.ExistAsync(name).NoContext();
+            response = await _contentRepository.ExistAsync(name).NoContext();
             Assert.False(response);
         }
     }

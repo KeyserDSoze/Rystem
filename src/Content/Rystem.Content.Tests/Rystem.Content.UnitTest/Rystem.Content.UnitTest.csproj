@@ -26,6 +26,7 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\Rystem.Content.Infrastructures\Rystem.Content.Infrastructure.Azure.Storage.Blob\Rystem.Content.Infrastructure.Azure.Storage.Blob.csproj" />
+        <ProjectReference Include="..\..\Rystem.Content.Infrastructures\Rystem.Content.Infrastructure.InMemory\Rystem.Content.Infrastructure.InMemory.csproj" />
     </ItemGroup>
     <ItemGroup>
         <None Update="appsettings.test.json">

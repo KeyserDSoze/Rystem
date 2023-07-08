@@ -1,0 +1,48 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+		<TargetFramework>net7.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<DebugSymbols>true</DebugSymbols>
+		<EmbedAllSources>true</EmbedAllSources>
+		<DebugType>portable</DebugType>
+		<Authors>Alessandro Rapiti</Authors>
+		<Company>Alessandro Rapiti</Company>
+		<Product>Rystem.Content</Product>
+		<Description>Rystem.Content helps you to integrate with azure services or to create an abstraction layer among your infrastructure and your business.</Description>
+		<Copyright>2023</Copyright>
+		<PackageIcon>rystem.content.inmemory.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/File/File.Infrastructures/Rystem.Content.Infrastructure.Storage</RepositoryUrl>
+		<PackageId>Rystem.Content.Infrastructure.InMemory</PackageId>
+		<Version>4.0.1</Version>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	</PropertyGroup>
+
+	<Choose>
+		<When Condition=" '$(Configuration)'=='Debug' ">
+			<ItemGroup>
+                <ProjectReference Include="..\..\Rystem.Content.Abstractions\Rystem.Content.Abstractions.csproj" />
+			</ItemGroup>
+		</When>
+		<When Condition=" '$(Configuration)'!='Debug' ">
+			<ItemGroup>
+				<PackageReference Include="Rystem.Content.Abstractions" Version="4.0.1" />
+			</ItemGroup>
+		</When>
+	</Choose>
+
+	<ItemGroup>
+        <None Update="rystem.content.inmemory.png">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+		<None Include="README.md" Pack="true" PackagePath="\" />
+	</ItemGroup>
+
+</Project>

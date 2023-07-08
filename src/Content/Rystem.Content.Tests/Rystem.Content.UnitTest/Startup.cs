@@ -23,7 +23,8 @@ namespace File.UnitTest
                     x.Prefix = "site/";
                     x.ConnectionString = configuration["ConnectionString:Storage"];
                 },
-                "blobstorage");
+                "blobstorage")
+                .WithInMemoryIntegration("inmemory");
         }
     }
 }

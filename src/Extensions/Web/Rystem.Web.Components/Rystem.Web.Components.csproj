@@ -41,7 +41,6 @@
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="BuildWebCompiler2022" Version="1.14.10" />
         <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="7.0.8" />
     </ItemGroup>
     <Choose>

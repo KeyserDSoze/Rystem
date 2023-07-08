@@ -173,6 +173,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.github\workflows\PackageDeploy.Rystem.Content.Infrastructure.Azure.Storage.Blob.yml = .github\workflows\PackageDeploy.Rystem.Content.Infrastructure.Azure.Storage.Blob.yml
 	EndProjectSection
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Content.Infrastructure.InMemory", "src\Content\Rystem.Content.Infrastructures\Rystem.Content.Infrastructure.InMemory\Rystem.Content.Infrastructure.InMemory.csproj", "{D8BFF289-55F5-45A9-B75A-E96088BFE7EC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -343,6 +345,10 @@ Global
 		{6B27FF4C-F10F-4210-938B-8B2425DABB8F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6B27FF4C-F10F-4210-938B-8B2425DABB8F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6B27FF4C-F10F-4210-938B-8B2425DABB8F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D8BFF289-55F5-45A9-B75A-E96088BFE7EC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D8BFF289-55F5-45A9-B75A-E96088BFE7EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D8BFF289-55F5-45A9-B75A-E96088BFE7EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D8BFF289-55F5-45A9-B75A-E96088BFE7EC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -408,6 +414,7 @@ Global
 		{7230A28D-FDD6-465C-9689-DD4C487F7591} = {C2D49427-A12A-4608-A1DD-41340456EC82}
 		{FA72FB86-14CD-4C50-AC2D-7F7A20D465A9} = {56DD5A0F-5717-4F2C-8B4D-304DE6594A23}
 		{6B27FF4C-F10F-4210-938B-8B2425DABB8F} = {F957E359-1CCC-4F33-8DDB-599DD297F21A}
+		{D8BFF289-55F5-45A9-B75A-E96088BFE7EC} = {C2D49427-A12A-4608-A1DD-41340456EC82}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {35C6ADE0-7E70-48ED-A810-A71B2BC94F57}

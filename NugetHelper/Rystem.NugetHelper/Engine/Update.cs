@@ -28,7 +28,8 @@
                         "Rystem.RepositoryFramework.Cache", "Rystem.RepositoryFramework.Infrastructure.Azure.Cosmos.Sql",
                         "Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob", "Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Table",
                         "Rystem.RepositoryFramework.Infrastructure.Dynamics.Dataverse", "Rystem.RepositoryFramework.Infrastructure.EntityFramework",
-                        "Rystem.RepositoryFramework.Infrastructure.MsSql", "RepositoryFramework.Web.Components", "Rystem.Content.Infrastructure.Azure.Storage.Blob")
+                        "Rystem.RepositoryFramework.Infrastructure.MsSql", "RepositoryFramework.Web.Components", "Rystem.Content.Infrastructure.Azure.Storage.Blob",
+                        "Rystem.Content.Infrastructure.InMemory")
             .CreateSon()
             .AddProject("Rystem.Queue", "Rystem.RepositoryFramework.Cache.Azure.Storage.Blob");
 
