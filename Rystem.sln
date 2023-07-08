@@ -171,6 +171,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		.github\workflows\PackageDeploy.Rystem.Content.Abstractions.yml = .github\workflows\PackageDeploy.Rystem.Content.Abstractions.yml
 		.github\workflows\PackageDeploy.Rystem.Content.Infrastructure.Azure.Storage.Blob.yml = .github\workflows\PackageDeploy.Rystem.Content.Infrastructure.Azure.Storage.Blob.yml
+		.github\workflows\PackageDeploy.Rystem.Content.Infrastructure.InMemory.yml = .github\workflows\PackageDeploy.Rystem.Content.Infrastructure.InMemory.yml
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Content.Infrastructure.InMemory", "src\Content\Rystem.Content.Infrastructures\Rystem.Content.Infrastructure.InMemory\Rystem.Content.Infrastructure.InMemory.csproj", "{D8BFF289-55F5-45A9-B75A-E96088BFE7EC}"
