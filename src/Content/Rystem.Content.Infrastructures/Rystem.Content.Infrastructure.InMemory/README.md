@@ -17,12 +17,10 @@
             _contentRepositoryFactory = contentRepositoryFactory;
             _utility = utility;
         }
-        [Theory]
-        [InlineData("blobstorage")]
-        [InlineData("inmemory")]
-        public async Task ExecuteAsync(string integrationName)
+        
+        public async Task ExecuteAsync()
         {
-            var _contentRepository = _contentRepositoryFactory.Create(integrationName);
+            var _contentRepository = _contentRepositoryFactory.Create("inmemory");
             var file = await _utility.GetFileAsync();
             var name = "file.png";
             var contentType = "images/png";

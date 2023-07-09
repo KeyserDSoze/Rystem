@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Rystem.Content;
 
 namespace File.UnitTest
 {
@@ -24,7 +23,16 @@ namespace File.UnitTest
                     x.ConnectionString = configuration["ConnectionString:Storage"];
                 },
                 "blobstorage")
-                .WithInMemoryIntegration("inmemory");
+                .WithInMemoryIntegration("inmemory")
+                .WithSharepointIntegration(x =>
+                {
+                    x.TenantId = configuration["Sharepoint:TenantId"];
+                    x.ClientId = configuration["Sharepoint:ClientId"];
+                    x.ClientSecret = configuration["Sharepoint:ClientSecret"];
+                    //x.WithoutPreconfiguredSite("SuperSito", "SuperDocumentLibrary");
+                    x.WithPreconfiguredSite(configuration["Sharepoint:SiteId"],
+                        configuration["Sharepoint:DocumentLibraryId"]);
+                }, "sharepoint");
         }
     }
 }

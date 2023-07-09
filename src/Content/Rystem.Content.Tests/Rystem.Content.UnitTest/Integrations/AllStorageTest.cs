@@ -14,11 +14,12 @@ namespace File.UnitTest
         [Theory]
         [InlineData("blobstorage")]
         [InlineData("inmemory")]
+        [InlineData("sharepoint")]
         public async Task ExecuteAsync(string integrationName)
         {
             var _contentRepository = _contentRepositoryFactory.Create(integrationName);
             var file = await _utility.GetFileAsync();
-            var name = "file.png";
+            var name = "folder/file.png";
             var contentType = "images/png";
             var metadata = new Dictionary<string, string>()
             {
@@ -75,6 +76,18 @@ namespace File.UnitTest
             Assert.True(response);
             response = await _contentRepository.ExistAsync(name).NoContext();
             Assert.False(response);
+        }
+        [Theory]
+        [InlineData("blobstorage")]
+        [InlineData("inmemory")]
+        [InlineData("sharepoint")]
+        public async Task ExecuteListAsync(string integrationName)
+        {
+            var contentRepository = _contentRepositoryFactory.Create(integrationName);
+            await foreach (var file in contentRepository.ListAsync(null, true, ContentInformationType.All))
+            {
+                Assert.NotNull(file.Data);
+            }
         }
     }
 }

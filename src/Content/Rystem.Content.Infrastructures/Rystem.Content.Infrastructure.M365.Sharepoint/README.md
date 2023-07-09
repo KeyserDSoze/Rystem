@@ -9,11 +9,13 @@ https://<tenant>.sharepoint.com/sites/<site-url>/_api/site/id
     .AddContentRepository()
     .WithSharepointIntegration(x =>
     {
-        x.ContainerName = "supertest";
-        x.Prefix = "site/";
-        x.ConnectionString = configuration["ConnectionString:Storage"];
-    },
-    "blobstorage");
+        x.TenantId = configuration["Sharepoint:TenantId"];
+        x.ClientId = configuration["Sharepoint:ClientId"];
+        x.ClientSecret = configuration["Sharepoint:ClientSecret"];
+        //x.WithoutPreconfiguredSite("SuperSito", "SuperDocumentLibrary");
+        x.WithPreconfiguredSite(configuration["Sharepoint:SiteId"],
+            configuration["Sharepoint:DocumentLibraryId"]);
+    }, "sharepoint");
 
 ### How to use in a business class
 
@@ -26,14 +28,12 @@ https://<tenant>.sharepoint.com/sites/<site-url>/_api/site/id
             _contentRepositoryFactory = contentRepositoryFactory;
             _utility = utility;
         }
-        [Theory]
-        [InlineData("blobstorage")]
-        [InlineData("inmemory")]
-        public async Task ExecuteAsync(string integrationName)
+        
+        public async Task ExecuteAsync()
         {
-            var _contentRepository = _contentRepositoryFactory.Create(integrationName);
+            var _contentRepository = _contentRepositoryFactory.Create("sharepoint");
             var file = await _utility.GetFileAsync();
-            var name = "file.png";
+            var name = "folder/file.png";
             var contentType = "images/png";
             var metadata = new Dictionary<string, string>()
             {

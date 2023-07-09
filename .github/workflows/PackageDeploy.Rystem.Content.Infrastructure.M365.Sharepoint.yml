@@ -1,0 +1,20 @@
+name: Content.Infrastructure.M365.Sharepoint.Nuget
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - src/Content/Rystem.Content.Infrastructures/Rystem.Content.Infrastructure.M365.Sharepoint/Rystem.Content.Infrastructure.M365.Sharepoint.csproj
+jobs:
+  publish:
+    name: build, pack & publish
+    runs-on: ubuntu-latest
+    environment: Rystem.Nuget
+    
+    steps:
+      - name: Publish package
+        uses: KeyserDSoze/DefaultAction/pushing_nuget_with_symbols@v1.0.1
+        with:
+          dotnet-version: "7.x"
+          path: src/Content/Rystem.Content.Infrastructures/Rystem.Content.Infrastructure.M365.Sharepoint/Rystem.Content.Infrastructure.M365.Sharepoint.csproj
+          api-key: ${{ secrets.NUGET_API_KEY }}
