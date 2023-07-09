@@ -176,6 +176,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Content.Infrastructure.InMemory", "src\Content\Rystem.Content.Infrastructures\Rystem.Content.Infrastructure.InMemory\Rystem.Content.Infrastructure.InMemory.csproj", "{D8BFF289-55F5-45A9-B75A-E96088BFE7EC}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Content.Infrastructure.M365.Sharepoint", "src\Content\Rystem.Content.Infrastructures\Rystem.Content.Infrastructure.M365.Sharepoint\Rystem.Content.Infrastructure.M365.Sharepoint.csproj", "{19B3E513-80E6-4DB1-8D32-A6ACCE8BBEA6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -350,6 +352,10 @@ Global
 		{D8BFF289-55F5-45A9-B75A-E96088BFE7EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D8BFF289-55F5-45A9-B75A-E96088BFE7EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D8BFF289-55F5-45A9-B75A-E96088BFE7EC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{19B3E513-80E6-4DB1-8D32-A6ACCE8BBEA6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{19B3E513-80E6-4DB1-8D32-A6ACCE8BBEA6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{19B3E513-80E6-4DB1-8D32-A6ACCE8BBEA6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{19B3E513-80E6-4DB1-8D32-A6ACCE8BBEA6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -416,6 +422,7 @@ Global
 		{FA72FB86-14CD-4C50-AC2D-7F7A20D465A9} = {56DD5A0F-5717-4F2C-8B4D-304DE6594A23}
 		{6B27FF4C-F10F-4210-938B-8B2425DABB8F} = {F957E359-1CCC-4F33-8DDB-599DD297F21A}
 		{D8BFF289-55F5-45A9-B75A-E96088BFE7EC} = {C2D49427-A12A-4608-A1DD-41340456EC82}
+		{19B3E513-80E6-4DB1-8D32-A6ACCE8BBEA6} = {C2D49427-A12A-4608-A1DD-41340456EC82}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {35C6ADE0-7E70-48ED-A810-A71B2BC94F57}

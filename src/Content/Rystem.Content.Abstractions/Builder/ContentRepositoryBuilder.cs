@@ -17,16 +17,13 @@ namespace Rystem.Content
             name ??= string.Empty;
             Services.AddService<TFileRepository>(serviceLifetime);
             Services.AddService<IContentRepository, TFileRepository>(serviceLifetime);
-            Services.AddSingleton<Func<IServiceProvider, string?, IContentRepository?>>((serviceProvider, currentName) =>
-            {
-                if (currentName == name)
+            ContentRepositoryFactoryWrapper.Instance.Creators.Add(name,
+                (serviceProvider) =>
                 {
                     var repository = serviceProvider.GetService<TFileRepository>() ?? throw new ArgumentException($"File repository {name} is not installed.");
                     repository.SetName(name);
                     return repository;
-                }
-                return default;
-            });
+                });
             Services.TryAddTransient<IContentRepositoryFactory, ContentRepositoryFactory>();
             return this;
         }
