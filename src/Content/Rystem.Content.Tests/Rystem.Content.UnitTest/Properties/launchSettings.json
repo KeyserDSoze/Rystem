@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Rystem.Content.UnitTest": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:61602;http://localhost:61603"
+    }
+  }
+}

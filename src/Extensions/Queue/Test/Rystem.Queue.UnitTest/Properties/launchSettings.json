@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Rystem.Queue.UnitTest": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:61592;http://localhost:61593"
+    }
+  }
+}

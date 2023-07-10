@@ -9,18 +9,25 @@
         internal string? DocumentLibraryId { get; set; }
         internal string? SiteName { get; set; }
         internal string? DocumentLibraryName { get; set; }
-        public void WithPreconfiguredSite(string siteId, string documentLibraryId)
+        public void MapWithSiteIdAndDocumentLibraryId(string siteId, string documentLibraryId)
         {
             SiteName = null;
             DocumentLibraryName = null;
             SiteId = siteId;
             DocumentLibraryId = documentLibraryId;
         }
-        public void WithoutPreconfiguredSite(string siteName, string documentLibraryName)
+        public void MapWithSiteNameAndDocumentLibraryName(string siteName, string documentLibraryName)
         {
             SiteId = null;
             DocumentLibraryId = null;
             SiteName = siteName;
+            DocumentLibraryName = documentLibraryName;
+        }
+        public void MapWithRootSiteAndDocumentLibraryName(string documentLibraryName)
+        {
+            SiteId = null;
+            DocumentLibraryId = null;
+            SiteName = null;
             DocumentLibraryName = documentLibraryName;
         }
     }

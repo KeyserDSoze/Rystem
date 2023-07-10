@@ -89,5 +89,17 @@ namespace File.UnitTest
                 Assert.NotNull(file.Data);
             }
         }
+        [Theory]
+        [InlineData("blobstorage")]
+        [InlineData("inmemory")]
+        [InlineData("sharepoint")]
+        public async Task ExecuteOnlyListAsync(string integrationName)
+        {
+            var contentRepository = _contentRepositoryFactory.Create(integrationName);
+            await foreach (var file in contentRepository.ListAsync())
+            {
+                Assert.NotNull(file.Path);
+            }
+        }
     }
 }
