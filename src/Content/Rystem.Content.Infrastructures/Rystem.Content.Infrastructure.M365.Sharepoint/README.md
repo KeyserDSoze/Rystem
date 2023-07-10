@@ -12,9 +12,10 @@ https://<tenant>.sharepoint.com/sites/<site-url>/_api/site/id
         x.TenantId = configuration["Sharepoint:TenantId"];
         x.ClientId = configuration["Sharepoint:ClientId"];
         x.ClientSecret = configuration["Sharepoint:ClientSecret"];
-        //x.WithoutPreconfiguredSite("SuperSito", "SuperDocumentLibrary");
-        x.WithPreconfiguredSite(configuration["Sharepoint:SiteId"],
-            configuration["Sharepoint:DocumentLibraryId"]);
+        x.MapWithSiteNameAndDocumentLibraryName("TestNumberOne", "Foglione");
+        //x.MapWithRootSiteAndDocumentLibraryName("Foglione");
+        //x.MapWithSiteIdAndDocumentLibraryId(configuration["Sharepoint:SiteId"],
+        //    configuration["Sharepoint:DocumentLibraryId"]);
     }, "sharepoint");
 
 ### How to use in a business class

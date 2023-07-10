@@ -69,6 +69,8 @@ namespace Rystem.Content.Infrastructure
                     var id = GetId();
                     if (id == null)
                         return Create();
+                    else
+                        return id;
                 }
                 catch (ODataError)
                 {
