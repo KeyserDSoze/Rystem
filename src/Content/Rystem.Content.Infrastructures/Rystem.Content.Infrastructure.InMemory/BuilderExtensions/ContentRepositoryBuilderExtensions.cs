@@ -6,7 +6,7 @@ namespace Microsoft.Extensions.DependencyInjection
     public static partial class ContentRepositoryBuilderExtensions
     {
         /// <summary>
-        /// Add a blob storage integration to file repository.
+        /// Add an in memory integration to content repository.
         /// </summary>
         /// <param name="builder"></param>
         /// <param name="name"></param>

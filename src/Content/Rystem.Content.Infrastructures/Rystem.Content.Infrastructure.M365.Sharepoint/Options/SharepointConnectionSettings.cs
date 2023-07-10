@@ -1,5 +1,8 @@
 ﻿namespace Rystem.Content.Infrastructure
 {
+    /// <summary>
+    /// Please use an App Registration with Permission Type: Application and Permissions: Files.ReadWrite.All or Sites.ReadWrite.All
+    /// </summary>
     public class SharepointConnectionSettings
     {
         public string? ClientId { get; set; }

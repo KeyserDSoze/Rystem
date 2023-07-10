@@ -74,7 +74,7 @@ namespace Rystem.Nuget
                     if (!newVersionOfLibraries.ContainsKey(library.LibraryName!))
                     {
                         var streamReader = new StreamReader(file.OpenRead());
-                        string content = await streamReader.ReadToEndAsync();
+                        var content = await streamReader.ReadToEndAsync();
                         streamReader.Dispose();
                         if (regexForVersion.IsMatch(content))
                         {
