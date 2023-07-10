@@ -6,7 +6,7 @@ namespace Microsoft.Extensions.DependencyInjection
     public static partial class ServiceCollectionExtensions
     {
         /// <summary>
-        /// Add file repository
+        /// Add content repository
         /// </summary>
         /// <param name="services">IServiceCollection.</param>
         /// <returns></returns>
