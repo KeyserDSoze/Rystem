@@ -22,9 +22,9 @@ namespace Rystem.Nuget
         {
             var splittedDirectory = Directory.GetCurrentDirectory().Split('\\');
             var path = string.Join('\\', splittedDirectory.Take(splittedDirectory.Length - 5));
-            Console.WriteLine("Only repository (1) or only Rystem (2) or everything (something else) with (3) you choose every turn if go ahead or not, With (4) go in debug.");
+            Console.WriteLine("Only Repository (1) or only Rystem (2) or only Content (3) or everything (something else) with (4) you choose every turn if go ahead or not, With (5) go in debug.");
             var line = Console.ReadLine();
-            var currentUpdateTree = line == "1" ? UpdateConfiguration.OnlyRepositoryTree : (line == "2" ? UpdateConfiguration.OnlyRystemTree : UpdateConfiguration.UpdateTree);
+            var currentUpdateTree = line == "1" ? UpdateConfiguration.OnlyRepositoryTree : (line == "2" ? UpdateConfiguration.OnlyRystemTree : (line == "3" ? UpdateConfiguration.OnlyContentTree : UpdateConfiguration.UpdateTree));
             string? specificVersion = null;
             Console.WriteLine("Do you wanna set a specific version? y for true or something else");
             if (Console.ReadLine() == "y")
@@ -34,8 +34,8 @@ namespace Rystem.Nuget
                     throw new ArgumentException("You set a wrong version");
                 Type = VersionType.Specific;
             }
-            var checkIfGoAhead = line == "3";
-            var isDebug = line == "4";
+            var checkIfGoAhead = line == "4";
+            var isDebug = line == "5";
             while (currentUpdateTree != null)
             {
                 var context = new LibraryContext("0.0.0");

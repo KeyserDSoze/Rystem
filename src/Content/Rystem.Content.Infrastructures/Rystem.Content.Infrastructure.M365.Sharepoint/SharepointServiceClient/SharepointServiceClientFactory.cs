@@ -16,11 +16,22 @@ namespace Rystem.Content.Infrastructure
         private static readonly string[] s_scopes = new string[1] { "https://graph.microsoft.com/.default" };
         internal SharepointServiceClientFactory Add(SharepointConnectionSettings settings, string name)
         {
+            if (settings.TenantId == null)
+                throw new ArgumentException(nameof(settings.TenantId));
+            if (settings.ClientId == null)
+                throw new ArgumentException(nameof(settings.ClientId));
+            if (settings.ClientSecret == null)
+                throw new ArgumentException(nameof(settings.ClientSecret));
             var clientSecretCredential = new ClientSecretCredential(settings.TenantId, settings.ClientId, settings.ClientSecret);
             var graphClient = new GraphServiceClient(clientSecretCredential, s_scopes);
-            settings.SiteId = GetSiteId(graphClient, settings);
-            settings.DocumentLibraryId = GetDocumentLibraryId(graphClient, settings);
-            if (settings.SiteId == null)
+            if (!settings.OnlyDocumentLibrary)
+            {
+                settings.SiteId = GetSiteId(graphClient, settings);
+                settings.DocumentLibraryId = GetDocumentLibraryId(graphClient, settings);
+            }
+            else
+                settings.DocumentLibraryId = GetDocumentLibraryIdWithoutSiteId(graphClient, settings);
+            if (settings.SiteId == null && !settings.OnlyDocumentLibrary)
                 throw new ArgumentException(nameof(settings.SiteId));
             if (settings.DocumentLibraryId == null)
                 throw new ArgumentException(nameof(settings.DocumentLibraryId));
@@ -59,6 +70,19 @@ namespace Rystem.Content.Infrastructure
                 }
             }
             return settings.SiteId;
+        }
+        private string? GetDocumentLibraryIdWithoutSiteId(GraphServiceClient graphClient, SharepointConnectionSettings settings)
+        {
+            if (settings.DocumentLibraryId == null && settings.DocumentLibraryName != null)
+            {
+                var drives = graphClient.Drives.GetAsync(x =>
+                {
+                    x.QueryParameters.Filter = $"name eq '{settings.DocumentLibraryName}'";
+                }).ToResult();
+                if (drives?.Value?.Count > 0)
+                    return drives.Value.FirstOrDefault(x => x.Name == settings.DocumentLibraryName)?.Id;
+            }
+            return settings.DocumentLibraryId;
         }
         private string? GetDocumentLibraryId(GraphServiceClient graphClient, SharepointConnectionSettings settings)
         {
@@ -101,7 +125,6 @@ namespace Rystem.Content.Infrastructure
                     return drives.Value.FirstOrDefault(x => x.Name == settings.DocumentLibraryName)?.Id;
                 return null;
             }
-
         }
     }
 }

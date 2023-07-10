@@ -47,6 +47,13 @@
             .CreateSon()
             .AddProject("Rystem.RepositoryFramework.Cache.Azure.Storage.Blob");
 
+            OnlyContentTree = new Update()
+            .AddProject("Rystem.Content.Abstractions");
+            OnlyContentTree.CreateSon()
+                .AddProject("Rystem.Content.Infrastructure.Azure.Storage.Blob",
+                        "Rystem.Content.Infrastructure.InMemory",
+                        "Rystem.Content.Infrastructure.M365.Sharepoint");
+
             OnlyRystemTree = new Update()
                 .AddProject("Rystem.Concurrency");
             OnlyRystemTree
@@ -58,5 +65,6 @@
         public static Update UpdateTree { get; }
         public static Update OnlyRepositoryTree { get; }
         public static Update OnlyRystemTree { get; }
+        public static Update OnlyContentTree { get; }
     }
 }

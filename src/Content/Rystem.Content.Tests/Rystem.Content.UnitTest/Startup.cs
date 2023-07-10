@@ -29,7 +29,8 @@ namespace File.UnitTest
                     x.TenantId = configuration["Sharepoint:TenantId"];
                     x.ClientId = configuration["Sharepoint:ClientId"];
                     x.ClientSecret = configuration["Sharepoint:ClientSecret"];
-                    x.MapWithSiteNameAndDocumentLibraryName("TestNumberOne", "Foglione");
+                    //x.MapWithSiteNameAndDocumentLibraryName("TestNumberOne", "Foglione");
+                    x.MapOnlyDocumentLibraryName("Foglione");
                     //x.MapWithRootSiteAndDocumentLibraryName("Foglione");
                     //x.MapWithSiteIdAndDocumentLibraryId(configuration["Sharepoint:SiteId"],
                     //    configuration["Sharepoint:DocumentLibraryId"]);
