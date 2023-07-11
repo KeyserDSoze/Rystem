@@ -17,7 +17,7 @@ namespace File.UnitTest
         [InlineData("sharepoint")]
         public async Task ExecuteAsync(string integrationName)
         {
-            var _contentRepository = _contentRepositoryFactory.Create(integrationName);
+            var contentRepository = _contentRepositoryFactory.Create(integrationName);
             var file = await _utility.GetFileAsync();
             var name = "folder/file.png";
             var contentType = "images/png";
@@ -29,14 +29,14 @@ namespace File.UnitTest
             {
                 { "version", "1" }
             };
-            var response = await _contentRepository.ExistAsync(name).NoContext();
+            var response = await contentRepository.ExistAsync(name).NoContext();
             if (response)
             {
-                await _contentRepository.DeleteAsync(name).NoContext();
-                response = await _contentRepository.ExistAsync(name).NoContext();
+                await contentRepository.DeleteAsync(name).NoContext();
+                response = await contentRepository.ExistAsync(name).NoContext();
             }
             Assert.False(response);
-            response = await _contentRepository.UploadAsync(name, file.ToArray(), new ContentRepositoryOptions
+            response = await contentRepository.UploadAsync(name, file.ToArray(), new ContentRepositoryOptions
             {
                 HttpHeaders = new ContentRepositoryHttpHeaders
                 {
@@ -46,9 +46,9 @@ namespace File.UnitTest
                 Tags = tags
             }, true).NoContext();
             Assert.True(response);
-            response = await _contentRepository.ExistAsync(name).NoContext();
+            response = await contentRepository.ExistAsync(name).NoContext();
             Assert.True(response);
-            var options = await _contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
+            var options = await contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
             Assert.NotNull(options.Uri);
             foreach (var x in metadata)
             {
@@ -60,7 +60,7 @@ namespace File.UnitTest
             }
             Assert.Equal(contentType, options.Options.HttpHeaders.ContentType);
             metadata.Add("ale2", "single");
-            response = await _contentRepository.SetPropertiesAsync(name, new ContentRepositoryOptions
+            response = await contentRepository.SetPropertiesAsync(name, new ContentRepositoryOptions
             {
                 HttpHeaders = new ContentRepositoryHttpHeaders
                 {
@@ -70,11 +70,11 @@ namespace File.UnitTest
                 Tags = tags
             }).NoContext();
             Assert.True(response);
-            options = await _contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
+            options = await contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
             Assert.Equal("single", options.Options.Metadata["ale2"]);
-            response = await _contentRepository.DeleteAsync(name).NoContext();
+            response = await contentRepository.DeleteAsync(name).NoContext();
             Assert.True(response);
-            response = await _contentRepository.ExistAsync(name).NoContext();
+            response = await contentRepository.ExistAsync(name).NoContext();
             Assert.False(response);
         }
         [Theory]

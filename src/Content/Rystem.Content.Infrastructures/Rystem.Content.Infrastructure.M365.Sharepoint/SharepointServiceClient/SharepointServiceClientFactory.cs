@@ -58,7 +58,7 @@ namespace Rystem.Content.Infrastructure
                     //https://learn.microsoft.com/en-us/sharepoint/dev/apis/site-creation-rest#create-a-modern-site
                     var sites = graphClient.Sites.GetAsync((requestConfiguration) =>
                     {
-                        requestConfiguration.QueryParameters.Search = settings.SiteName;
+                        requestConfiguration.QueryParameters.Search = $"\"{settings.SiteName}\"";
                     }).ToResult();
                     if (sites?.Value?.Count > 0)
                         return sites.Value.First().Id;

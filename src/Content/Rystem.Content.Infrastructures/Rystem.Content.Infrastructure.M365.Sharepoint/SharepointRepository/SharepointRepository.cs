@@ -161,7 +161,7 @@ namespace Rystem.Content.Infrastructure
         {
             var items = new List<DriveItem>();
             DriveItemCollectionResponse? driveItemCollectionResponse = null;
-            if (prefix == null)
+            if (string.IsNullOrWhiteSpace(prefix))
             {
                 var root = await _graphClient
                     .Drives[_documentLibraryId]
