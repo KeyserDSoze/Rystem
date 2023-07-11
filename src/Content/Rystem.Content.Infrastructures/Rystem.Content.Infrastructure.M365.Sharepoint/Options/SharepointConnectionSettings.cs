@@ -21,6 +21,14 @@
             DocumentLibraryId = documentLibraryId;
             OnlyDocumentLibrary = false;
         }
+        public void MapWithSiteIdAndDocumentLibraryName(string siteId, string documentLibraryName)
+        {
+            SiteName = null;
+            DocumentLibraryId = null;
+            SiteId = siteId;
+            DocumentLibraryName = documentLibraryName;
+            OnlyDocumentLibrary = false;
+        }
         public void MapWithSiteNameAndDocumentLibraryName(string siteName, string documentLibraryName)
         {
             SiteId = null;
