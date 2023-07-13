@@ -241,3 +241,158 @@ An example from unit test explains how to use the service.
             .WithPattern(x => x.II!.A!, "[a-z]{4,5}")
             .WithImplementation<IInnerInterface, MyInnerInterfaceImplementation>(x => x.I!);
     var all = allPrepopulation.Populate();
+
+## Abstract factory
+You can use this abstract factory solution when you need to setup more than one service of the same kind
+and you need to distinguish them by a name.
+
+I have an interface 
+
+    public interface IMyService
+    {
+        string GetName();
+    }
+
+Some options for every service
+
+    public class SingletonOption
+    {
+        public string ServiceName { get; set; }
+    }
+
+    public class TransientOption
+    {
+        public string ServiceName { get; set; }
+    }
+
+    public class ScopedOption
+    {
+        public string ServiceName { get; set; }
+    }
+
+And four different services
+
+    public class SingletonService : IMyService, IFactorized<SingletonOption>
+    {
+        public SingletonOption Options { get; set; }
+        public string Id { get; } = Guid.NewGuid().ToString();
+        public string GetName()
+        {
+            return $"{Options.ServiceName} with id {Id}";
+        }
+    }
+
+    public class TransientService : IMyService, IFactorized<TransientOption>
+    {
+        public TransientOption Options { get; set; }
+        public string Id { get; } = Guid.NewGuid().ToString();
+        public string GetName()
+        {
+            return $"{Options.ServiceName} with id {Id}";
+        }
+    }
+
+    public class ScopedService : IMyService, IFactorized<ScopedOption>
+    {
+        public ScopedOption Options { get; set; }
+        public string Id { get; } = Guid.NewGuid().ToString();
+        public string GetName()
+        {
+            return $"{Options.ServiceName} with id {Id}";
+        }
+    }
+
+    public class ScopedService2 : IMyService, IFactorized<ScopedOption>
+    {
+        public ScopedOption Options { get; set; }
+        public string Id { get; } = Guid.NewGuid().ToString();
+
+        public string GetName()
+        {
+            return $"{Options.ServiceName} with id {Id}";
+        }
+    }
+
+I can setup them in this way
+
+    builder.Services.AddFactory<IMyService, SingletonService, SingletonOption>(x =>
+    {
+        x.ServiceName = "singleton";
+    }, 
+    "singleton",
+    ServiceLifetime.Singleton);
+
+    builder.Services.AddFactory<IMyService, TransientService, TransientOption>(x =>
+    {
+        x.ServiceName = "transient";
+    },
+    "transient",
+    ServiceLifetime.Transient);
+
+    builder.Services.AddFactory<IMyService, ScopedService, ScopedOption>(x =>
+    {
+        x.ServiceName = "scoped";
+    },
+    "scoped",
+    ServiceLifetime.Scoped);
+
+    builder.Services.AddFactory<IMyService, ScopedService2, ScopedOption>(x =>
+    {
+        x.ServiceName = "scoped2";
+    },
+    "scoped2",
+    ServiceLifetime.Scoped);
+
+and use them in this way
+
+    public ApiController(IFactory<IMyService> factory, IFactory<IMyService> factory2)
+    {
+        Factory = factory;
+        Factory2 = factory2;
+    }
+
+    public IFactory<IMyService> Factory { get; }
+    public IFactory<IMyService> Factory2 { get; }
+
+    [HttpGet(Name = "Get")]
+    public IEnumerable<string> Get()
+    {
+        List<string> values = new();
+        values.Add(Factory.Create("singleton").GetName());
+        values.Add(Factory2.Create("singleton").GetName());
+        values.Add(Factory.Create("transient").GetName());
+        values.Add(Factory2.Create("transient").GetName());
+        values.Add(Factory.Create("scoped").GetName());
+        values.Add(Factory2.Create("scoped").GetName());
+        values.Add(Factory.Create("scoped2").GetName());
+        values.Add(Factory2.Create("scoped2").GetName());
+        return values;
+    }
+
+The output will be:
+
+First run:
+
+    [
+      "singleton with id 1a499eec-6401-42dc-abdd-31d7d3eca9bb",
+      "singleton with id 1a499eec-6401-42dc-abdd-31d7d3eca9bb",
+      "transient with id 25fc076c-7b74-4bc7-be7f-5d021f53cca5",
+      "transient with id 1442fabc-d261-4d1d-8763-fc87811ff81f",
+      "scoped with id 148fbc25-aae9-4e57-a0f5-a7b3647f548f",
+      "scoped with id 148fbc25-aae9-4e57-a0f5-a7b3647f548f",
+      "scoped2 with id b1de37b8-a086-4978-8cb9-cba61d58cc8a",
+      "scoped2 with id b1de37b8-a086-4978-8cb9-cba61d58cc8a"
+    ]
+
+Second run:
+
+    [
+      "singleton with id 1a499eec-6401-42dc-abdd-31d7d3eca9bb",
+      "singleton with id 1a499eec-6401-42dc-abdd-31d7d3eca9bb",
+      "transient with id 285d5150-8fff-4156-a8d9-8a7a36157582",
+      "transient with id 7e99ed5b-0027-49e0-a422-619cc5b292bc",
+      "scoped with id cf43b2e3-a0ea-4c41-a14b-10882309b403",
+      "scoped with id cf43b2e3-a0ea-4c41-a14b-10882309b403",
+      "scoped2 with id 363b5fca-f282-4083-9325-ca988312440d",
+      "scoped2 with id 363b5fca-f282-4083-9325-ca988312440d"
+    ]

@@ -11,7 +11,8 @@ namespace Rystem.Content
             Services = services;
         }
 
-        public IContentRepositoryBuilder WithIntegration<TFileRepository>(string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
+        public IContentRepositoryBuilder WithIntegration<TFileRepository>(string? name = null,
+            ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
             where TFileRepository : class, IContentRepository
         {
             name ??= string.Empty;
