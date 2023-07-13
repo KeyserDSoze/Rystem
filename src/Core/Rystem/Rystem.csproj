@@ -40,8 +40,4 @@
 		<None Update="README.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <Folder Include="Microsoft.Extensions.DependencyInjection\AbstractFactory\" />
-	</ItemGroup>
-
 </Project>
