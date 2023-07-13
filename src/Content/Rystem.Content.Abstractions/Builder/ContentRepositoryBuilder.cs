@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Rystem.Content
 {
@@ -15,17 +14,16 @@ namespace Rystem.Content
             ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
             where TFileRepository : class, IContentRepository
         {
-            name ??= string.Empty;
-            Services.AddService<TFileRepository>(serviceLifetime);
-            Services.AddService<IContentRepository, TFileRepository>(serviceLifetime);
-            ContentRepositoryFactoryWrapper.Instance.Creators.Add(name,
-                (serviceProvider) =>
-                {
-                    var repository = serviceProvider.GetService<TFileRepository>() ?? throw new ArgumentException($"File repository {name} is not installed.");
-                    repository.SetName(name);
-                    return repository;
-                });
-            Services.TryAddTransient<IContentRepositoryFactory, ContentRepositoryFactory>();
+            Services.AddFactory<IContentRepository, TFileRepository>(name, serviceLifetime);
+            return this;
+        }
+        public IContentRepositoryBuilder WithIntegration<TFileRepository, TOptions>(Action<TOptions> options,
+            string? name = null,
+            ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
+            where TFileRepository : class, IContentRepository, IServiceWithOptions<TOptions>
+            where TOptions : class, new()
+        {
+            Services.AddFactory<IContentRepository, TFileRepository, TOptions>(options, name, serviceLifetime);
             return this;
         }
     }

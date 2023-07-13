@@ -12,7 +12,6 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns></returns>
         public static IContentRepositoryBuilder AddContentRepository(this IServiceCollection services)
         {
-            services.TryAddTransient<IContentRepositoryFactory, ContentRepositoryFactory>();
             return new ContentRepositoryBuilder(services);
         }
     }

@@ -272,7 +272,7 @@ Some options for every service
 
 And four different services
 
-    public class SingletonService : IMyService, IFactorized<SingletonOption>
+    public class SingletonService : IMyService, IServiceWithOptions<SingletonOption>
     {
         public SingletonOption Options { get; set; }
         public string Id { get; } = Guid.NewGuid().ToString();
@@ -281,8 +281,7 @@ And four different services
             return $"{Options.ServiceName} with id {Id}";
         }
     }
-
-    public class TransientService : IMyService, IFactorized<TransientOption>
+    public class TransientService : IMyService, IServiceWithOptions<TransientOption>
     {
         public TransientOption Options { get; set; }
         public string Id { get; } = Guid.NewGuid().ToString();
@@ -291,8 +290,7 @@ And four different services
             return $"{Options.ServiceName} with id {Id}";
         }
     }
-
-    public class ScopedService : IMyService, IFactorized<ScopedOption>
+    public class ScopedService : IMyService, IServiceWithOptions<ScopedOption>
     {
         public ScopedOption Options { get; set; }
         public string Id { get; } = Guid.NewGuid().ToString();
@@ -301,8 +299,7 @@ And four different services
             return $"{Options.ServiceName} with id {Id}";
         }
     }
-
-    public class ScopedService2 : IMyService, IFactorized<ScopedOption>
+    public class ScopedService2 : IMyService, IServiceWithOptions<ScopedOption>
     {
         public ScopedOption Options { get; set; }
         public string Id { get; } = Guid.NewGuid().ToString();

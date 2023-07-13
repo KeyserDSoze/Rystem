@@ -1,7 +1,6 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    public interface IFactoryWithOptions
+    public interface IServiceWithOptions
     {
-
     }
 }
