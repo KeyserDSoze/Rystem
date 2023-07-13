@@ -4,7 +4,7 @@
 
 ### Help the project
 
-Reach out us on [Discord](https://discord.gg/wUh2fppr)
+Reach out us on [Discord](https://discord.gg/tkWvy4WPjt)
 
 ### Contribute: https://www.buymeacoffee.com/keyserdsoze
 
