@@ -13,17 +13,16 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="name"></param>
         /// <param name="serviceLifetime"></param>
         /// <returns></returns>
-        public static IContentRepositoryBuilder WithBlobStorageIntegration(
+        public static async Task<IContentRepositoryBuilder> WithBlobStorageIntegrationAsync(
           this IContentRepositoryBuilder builder,
           Action<BlobStorageConnectionSettings> connectionSettings,
           string? name = null,
           ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
         {
-            name ??= string.Empty;
-            var options = new BlobStorageConnectionSettings();
-            connectionSettings.Invoke(options);
-            BlobServiceClientFactory.Instance.Add(options, name);
-            return builder.WithIntegration<BlobStorageRepository>(name, serviceLifetime);
+            await builder
+               .WithIntegrationAsync<BlobStorageRepository, BlobStorageConnectionSettings, BlobServiceClientWrapper>(connectionSettings, name, serviceLifetime)
+               .NoContext();
+            return builder;
         }
     }
 }

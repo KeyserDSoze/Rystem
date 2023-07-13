@@ -1,9 +1,11 @@
-﻿namespace Rystem.Content.Infrastructure
+﻿using Microsoft.Extensions.DependencyInjection;
+
+namespace Rystem.Content.Infrastructure
 {
     /// <summary>
     /// Please use an App Registration with Permission Type: Application and Permissions: Files.ReadWrite.All or Sites.ReadWrite.All
     /// </summary>
-    public class SharepointConnectionSettings
+    public class SharepointConnectionSettings : IServiceOptions<SharepointClientWrapper>
     {
         public string? ClientId { get; set; }
         public string? ClientSecret { get; set; }
@@ -61,5 +63,8 @@
             DocumentLibraryName = documentLibraryName;
             OnlyDocumentLibrary = true;
         }
+
+        public Task<Func<SharepointClientWrapper>> BuildAsync()
+            => SharepointServiceClientFactory.GetFunctionAsync(this);
     }
 }

@@ -1,21 +1,27 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Web;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
 
 namespace Rystem.Content.Infrastructure
 {
-    internal sealed class SharepointRepository : IContentRepository
+    internal sealed class SharepointRepository : IContentRepository, IServiceWithOptions<SharepointClientWrapper>
     {
         private GraphServiceClient _graphClient;
         private string _documentLibraryId;
-        public void SetName(string name)
+        private SharepointClientWrapper _clientWrapper;
+        public SharepointClientWrapper Options
         {
-            var clientFactory = SharepointServiceClientFactory.Instance.Get(name ?? string.Empty);
-            _graphClient = clientFactory.Creator.Invoke();
-            _documentLibraryId = clientFactory.DocumentLibraryId;
+            get => _clientWrapper;
+            set
+            {
+                _clientWrapper = value;
+                _graphClient = _clientWrapper.Creator.Invoke();
+                _documentLibraryId = _clientWrapper.DocumentLibraryId;
+            }
         }
         public async ValueTask<bool> DeleteAsync(string path, CancellationToken cancellationToken = default)
         {
@@ -100,6 +106,7 @@ namespace Rystem.Content.Infrastructure
             }
         }
         private const string DownloadUriKey = "@microsoft.graph.downloadUrl";
+
         public async Task<ContentRepositoryResult?> GetPropertiesAsync(string path, ContentInformationType informationRetrieve = ContentInformationType.All, CancellationToken cancellationToken = default)
         {
             try

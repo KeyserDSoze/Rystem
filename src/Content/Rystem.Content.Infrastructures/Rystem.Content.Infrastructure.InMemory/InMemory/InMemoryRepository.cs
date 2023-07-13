@@ -5,9 +5,7 @@ namespace Rystem.Content.Infrastructure.Storage
 {
     internal sealed class InMemoryRepository : IContentRepository
     {
-        private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, ContentRepositoryDownloadResult>> _all = new();
-        private ConcurrentDictionary<string, ContentRepositoryDownloadResult> Files => _all[_name];
-        private string _name = string.Empty;
+        private readonly ConcurrentDictionary<string, ContentRepositoryDownloadResult> Files = new();
         public ValueTask<bool> DeleteAsync(string path, CancellationToken cancellationToken = default)
         {
             if (Files.ContainsKey(path))
@@ -58,16 +56,6 @@ namespace Rystem.Content.Infrastructure.Storage
                 }
             }
         }
-
-        public void SetName(string name)
-        {
-            _name = name;
-            if (!_all.ContainsKey(name))
-            {
-                _all.TryAdd(name, new());
-            }
-        }
-
         public ValueTask<bool> SetPropertiesAsync(string path, ContentRepositoryOptions? options = null, CancellationToken cancellationToken = default)
         {
             if (Files.TryGetValue(path, out var value))

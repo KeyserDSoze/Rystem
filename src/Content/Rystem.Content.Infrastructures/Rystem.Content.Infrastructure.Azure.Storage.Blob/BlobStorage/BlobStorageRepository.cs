@@ -1,22 +1,23 @@
 ﻿using System.Runtime.CompilerServices;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Rystem.Content;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Rystem.Content.Infrastructure.Storage
 {
-    internal sealed class BlobStorageRepository : IContentRepository
+    internal sealed class BlobStorageRepository : IContentRepository, IServiceWithOptions<BlobServiceClientWrapper>
     {
-        private BlobServiceClientWrapper _blobServiceClientWrapper;
         private BlobContainerClient Client => _blobServiceClientWrapper?.ContainerClient ?? throw new ArgumentException("Client for F not installed correctly");
-        public BlobStorageRepository()
+        private BlobServiceClientWrapper _blobServiceClientWrapper;
+        public BlobServiceClientWrapper Options
         {
-            _blobServiceClientWrapper = BlobServiceClientFactory.Instance.First();
+            get => _blobServiceClientWrapper;
+            set
+            {
+                _blobServiceClientWrapper = value;
+            }
         }
-        public void SetName(string name)
-        {
-            _blobServiceClientWrapper = BlobServiceClientFactory.Instance.Get(name);
-        }
+
         private string GetFileName(string path)
             => $"{_blobServiceClientWrapper?.Prefix}{path}";
         public async ValueTask<bool> DeleteAsync(string path, CancellationToken cancellationToken = default)

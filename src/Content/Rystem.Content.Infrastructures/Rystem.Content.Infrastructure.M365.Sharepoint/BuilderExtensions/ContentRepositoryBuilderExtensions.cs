@@ -14,17 +14,16 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="name"></param>
         /// <param name="serviceLifetime"></param>
         /// <returns></returns>
-        public static IContentRepositoryBuilder WithSharepointIntegration(
+        public static async Task<IContentRepositoryBuilder> WithSharepointIntegrationAsync(
           this IContentRepositoryBuilder builder,
           Action<SharepointConnectionSettings> connectionSettings,
           string? name = null,
           ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
         {
-            name ??= string.Empty;
-            var options = new SharepointConnectionSettings();
-            connectionSettings.Invoke(options);
-            SharepointServiceClientFactory.Instance.Add(options, name);
-            return builder.WithIntegration<SharepointRepository>(name, serviceLifetime);
+            await builder
+                .WithIntegrationAsync<SharepointRepository, SharepointConnectionSettings, SharepointClientWrapper>(connectionSettings, name, serviceLifetime)
+                .NoContext();
+            return builder;
         }
     }
 }

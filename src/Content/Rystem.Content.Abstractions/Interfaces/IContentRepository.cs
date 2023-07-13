@@ -9,6 +9,5 @@
         ValueTask<bool> SetPropertiesAsync(string path, ContentRepositoryOptions? options = default, CancellationToken cancellationToken = default);
         ValueTask<bool> DeleteAsync(string path, CancellationToken cancellationToken = default);
         ValueTask<bool> ExistAsync(string path, CancellationToken cancellationToken = default);
-        public void SetName(string name);
     }
 }
