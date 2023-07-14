@@ -16,15 +16,16 @@ namespace File.UnitTest
             services
                 .AddSingleton<Utility>()
                 .AddContentRepository()
-                .WithBlobStorageIntegration(x =>
+                .WithBlobStorageIntegrationAsync(x =>
                 {
                     x.ContainerName = "supertest";
                     x.Prefix = "site/";
                     x.ConnectionString = configuration["ConnectionString:Storage"];
                 },
                 "blobstorage")
+                .ToResult()
                 .WithInMemoryIntegration("inmemory")
-                .WithSharepointIntegration(x =>
+                .WithSharepointIntegrationAsync(x =>
                 {
                     x.TenantId = configuration["Sharepoint:TenantId"];
                     x.ClientId = configuration["Sharepoint:ClientId"];
@@ -34,7 +35,7 @@ namespace File.UnitTest
                     //x.MapWithRootSiteAndDocumentLibraryName("Foglione");
                     //x.MapWithSiteIdAndDocumentLibraryId(configuration["Sharepoint:SiteId"],
                     //    configuration["Sharepoint:DocumentLibraryId"]);
-                }, "sharepoint");
+                }, "sharepoint").ToResult();
         }
     }
 }

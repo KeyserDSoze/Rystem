@@ -13,15 +13,23 @@ namespace Rystem.Content.Infrastructure
         private GraphServiceClient _graphClient;
         private string _documentLibraryId;
         private SharepointClientWrapper _clientWrapper;
-        public SharepointClientWrapper Options
+        public SharepointClientWrapper? Options
         {
             get => _clientWrapper;
             set
             {
-                _clientWrapper = value;
-                _graphClient = _clientWrapper.Creator.Invoke();
-                _documentLibraryId = _clientWrapper.DocumentLibraryId;
+                if (value != null)
+                {
+                    _clientWrapper = value;
+                    _graphClient = _clientWrapper.Creator.Invoke();
+                    _documentLibraryId = _clientWrapper.DocumentLibraryId;
+                }
             }
+        }
+        public SharepointRepository(SharepointClientWrapper? sharepointClientWrapper = null)
+        {
+            if (sharepointClientWrapper != null)
+                Options = sharepointClientWrapper;
         }
         public async ValueTask<bool> DeleteAsync(string path, CancellationToken cancellationToken = default)
         {

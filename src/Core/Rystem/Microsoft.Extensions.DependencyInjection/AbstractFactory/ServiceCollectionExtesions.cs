@@ -62,14 +62,21 @@ namespace Microsoft.Extensions.DependencyInjection
                 where TOptions : class, IServiceOptions<TBuiltOptions>, new()
                 where TBuiltOptions : class
         {
-
+            var countOptions = services.Count(x => x.ServiceType == typeof(TBuiltOptions));
             services.AddFactory<TInterface, TClass>(name, serviceLifetime);
             TOptions options = new();
             createOptions.Invoke(options);
             var builtOptions = await options.BuildAsync();
-            if (!Factory<TInterface>.MapBuiltOptions.TryAdd(name ?? string.Empty, new()
+            if (serviceLifetime == ServiceLifetime.Transient)
+                services.AddTransient(serviceProvider => builtOptions.Invoke());
+            else if (serviceLifetime == ServiceLifetime.Singleton)
+                services.AddSingleton(serviceProvider => builtOptions.Invoke());
+            else
+                services.AddScoped(serviceProvider => builtOptions.Invoke());
+            if (!Factory<TInterface>.MapOptions.TryAdd(name ?? string.Empty, new()
             {
-                Getter = builtOptions,
+                Index = countOptions,
+                Type = typeof(TBuiltOptions),
                 Setter = (service, options) =>
                 {
                     if (service is IServiceWithOptions<TBuiltOptions> factoryWithOptions && options is TBuiltOptions tOptions)

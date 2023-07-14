@@ -7,19 +7,15 @@ namespace Rystem.Content.Infrastructure.Storage
 {
     internal sealed class BlobStorageRepository : IContentRepository, IServiceWithOptions<BlobServiceClientWrapper>
     {
-        private BlobContainerClient Client => _blobServiceClientWrapper?.ContainerClient ?? throw new ArgumentException("Client for F not installed correctly");
-        private BlobServiceClientWrapper _blobServiceClientWrapper;
-        public BlobServiceClientWrapper Options
+        private BlobContainerClient Client => Options?.ContainerClient ?? throw new ArgumentException("Client for F not installed correctly");
+        public BlobServiceClientWrapper? Options { get; set; }
+        public BlobStorageRepository(BlobServiceClientWrapper? options = null)
         {
-            get => _blobServiceClientWrapper;
-            set
-            {
-                _blobServiceClientWrapper = value;
-            }
+            if (options != null)
+                Options = options;
         }
-
         private string GetFileName(string path)
-            => $"{_blobServiceClientWrapper?.Prefix}{path}";
+            => $"{Options?.Prefix}{path}";
         public async ValueTask<bool> DeleteAsync(string path, CancellationToken cancellationToken = default)
         {
             var response = await Client.DeleteBlobAsync(GetFileName(path), cancellationToken: cancellationToken).NoContext();
@@ -64,7 +60,7 @@ namespace Rystem.Content.Infrastructure.Storage
             ContentInformationType informationRetrieve = ContentInformationType.None,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            prefix = $"{_blobServiceClientWrapper?.Prefix}{prefix}";
+            prefix = $"{Options?.Prefix}{prefix}";
             await foreach (var blob in Client.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();

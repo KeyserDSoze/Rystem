@@ -1,12 +1,13 @@
-﻿using Rystem.Content;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Rystem.Content;
 
 namespace File.UnitTest
 {
     public class AllStorageTest
     {
-        private readonly IContentRepositoryFactory _contentRepositoryFactory;
+        private readonly IFactory<IContentRepository> _contentRepositoryFactory;
         private readonly Utility _utility;
-        public AllStorageTest(IContentRepositoryFactory contentRepositoryFactory, Utility utility)
+        public AllStorageTest(IFactory<IContentRepository> contentRepositoryFactory, Utility utility)
         {
             _contentRepositoryFactory = contentRepositoryFactory;
             _utility = utility;
