@@ -259,18 +259,31 @@ Some options for every service
     {
         public string ServiceName { get; set; }
     }
-
     public class TransientOption
     {
         public string ServiceName { get; set; }
     }
-
     public class ScopedOption
     {
         public string ServiceName { get; set; }
     }
 
-And four different services
+with built options which is a IServiceOptions, a options class that ends up with another class. Used for example when you have to add a settings like a connection string but you want to use a service like a client that uses that connection string. 
+
+    public class BuiltScopedOptions : IServiceOptions<ScopedOption>
+    {
+        public string ServiceName { get; set; }
+
+        public Task<Func<ScopedOption>> BuildAsync()
+        {
+            return Task.FromResult(() => new ScopedOption
+            {
+                ServiceName = ServiceName
+            });
+        }
+    }
+
+And six different services
 
     public class SingletonService : IMyService, IServiceWithOptions<SingletonOption>
     {
@@ -309,87 +322,107 @@ And four different services
             return $"{Options.ServiceName} with id {Id}";
         }
     }
+    public class ScopedService3 : IMyService, IServiceWithOptions<ScopedOption>
+    {
+        public ScopedOption Options { get; set; }
+        public string Id { get; } = Guid.NewGuid().ToString();
+
+        public string GetName()
+        {
+            return $"{Options.ServiceName} with id {Id}";
+        }
+    }
+    public class ScopedService4 : IMyService, IServiceWithOptions<ScopedOption>
+    {
+        public ScopedOption Options { get; set; }
+        public string Id { get; } = Guid.NewGuid().ToString();
+
+        public string GetName()
+        {
+            return $"{Options.ServiceName} with id {Id}";
+        }
+    }
 
 I can setup them in this way
 
-    builder.Services.AddFactory<IMyService, SingletonService, SingletonOption>(x =>
+    var services = new ServiceCollection();
+    services.AddFactory<IMyService, SingletonService, SingletonOption>(x =>
     {
         x.ServiceName = "singleton";
-    }, 
+    },
     "singleton",
     ServiceLifetime.Singleton);
 
-    builder.Services.AddFactory<IMyService, TransientService, TransientOption>(x =>
+    services.AddFactory<IMyService, TransientService, TransientOption>(x =>
     {
         x.ServiceName = "transient";
     },
     "transient",
     ServiceLifetime.Transient);
 
-    builder.Services.AddFactory<IMyService, ScopedService, ScopedOption>(x =>
+    services.AddFactory<IMyService, ScopedService, ScopedOption>(x =>
     {
         x.ServiceName = "scoped";
     },
     "scoped",
     ServiceLifetime.Scoped);
 
-    builder.Services.AddFactory<IMyService, ScopedService2, ScopedOption>(x =>
+    services.AddFactory<IMyService, ScopedService2, ScopedOption>(x =>
     {
         x.ServiceName = "scoped2";
     },
     "scoped2",
     ServiceLifetime.Scoped);
 
+    await services.AddFactoryAsync<IMyService, ScopedService3, BuiltScopedOptions, ScopedOption>(
+        x =>
+        {
+            x.ServiceName = "scoped3";
+        },
+        "scoped3"
+    );
+
+    await services.AddFactoryAsync<IMyService, ScopedService3, BuiltScopedOptions, ScopedOption>(
+        x =>
+        {
+            x.ServiceName = "scoped3_2";
+        },
+        "scoped3_2"
+    );
+
+    await services.AddFactoryAsync<IMyService, ScopedService4, BuiltScopedOptions, ScopedOption>(
+        x =>
+        {
+            x.ServiceName = "scoped4";
+        },
+        "scoped4"
+    );
+
 and use them in this way
 
-    public ApiController(IFactory<IMyService> factory, IFactory<IMyService> factory2)
-    {
-        Factory = factory;
-        Factory2 = factory2;
-    }
+    var serviceProvider = services.BuildServiceProvider().CreateScope().ServiceProvider;
+    var factory = serviceProvider.GetService<IFactory<IMyService>>()!;
+    var factory2 = serviceProvider.GetService<IFactory<IMyService>>()!;
 
-    public IFactory<IMyService> Factory { get; }
-    public IFactory<IMyService> Factory2 { get; }
+    var singletonFromFactory = factory.Create("singleton").Id;
+    var singletonFromFactory2 = factory2.Create("singleton").Id;
+    var transientFromFactory = factory.Create("transient").Id;
+    var transientFromFactory2 = factory2.Create("transient").Id;
+    var scopedFromFactory = factory.Create("scoped").Id;
+    var scopedFromFactory2 = factory2.Create("scoped").Id;
+    var scoped2FromFactory = factory.Create("scoped2").Id;
+    var scoped2FromFactory2 = factory2.Create("scoped2").Id;
+    var scoped3FromFactory = factory.Create("scoped3").Id;
+    var scoped3FromFactory2 = factory2.Create("scoped3").Id;
+    var scoped3_2FromFactory = factory.Create("scoped3_2").Id;
+    var scoped3_2FromFactory2 = factory2.Create("scoped3_2").Id;
+    var scoped4FromFactory = factory.Create("scoped4").Id;
+    var scoped4FromFactory2 = factory2.Create("scoped4").Id;
 
-    [HttpGet(Name = "Get")]
-    public IEnumerable<string> Get()
-    {
-        List<string> values = new();
-        values.Add(Factory.Create("singleton").GetName());
-        values.Add(Factory2.Create("singleton").GetName());
-        values.Add(Factory.Create("transient").GetName());
-        values.Add(Factory2.Create("transient").GetName());
-        values.Add(Factory.Create("scoped").GetName());
-        values.Add(Factory2.Create("scoped").GetName());
-        values.Add(Factory.Create("scoped2").GetName());
-        values.Add(Factory2.Create("scoped2").GetName());
-        return values;
-    }
-
-The output will be:
-
-First run:
-
-    [
-      "singleton with id 1a499eec-6401-42dc-abdd-31d7d3eca9bb",
-      "singleton with id 1a499eec-6401-42dc-abdd-31d7d3eca9bb",
-      "transient with id 25fc076c-7b74-4bc7-be7f-5d021f53cca5",
-      "transient with id 1442fabc-d261-4d1d-8763-fc87811ff81f",
-      "scoped with id 148fbc25-aae9-4e57-a0f5-a7b3647f548f",
-      "scoped with id 148fbc25-aae9-4e57-a0f5-a7b3647f548f",
-      "scoped2 with id b1de37b8-a086-4978-8cb9-cba61d58cc8a",
-      "scoped2 with id b1de37b8-a086-4978-8cb9-cba61d58cc8a"
-    ]
-
-Second run:
-
-    [
-      "singleton with id 1a499eec-6401-42dc-abdd-31d7d3eca9bb",
-      "singleton with id 1a499eec-6401-42dc-abdd-31d7d3eca9bb",
-      "transient with id 285d5150-8fff-4156-a8d9-8a7a36157582",
-      "transient with id 7e99ed5b-0027-49e0-a422-619cc5b292bc",
-      "scoped with id cf43b2e3-a0ea-4c41-a14b-10882309b403",
-      "scoped with id cf43b2e3-a0ea-4c41-a14b-10882309b403",
-      "scoped2 with id 363b5fca-f282-4083-9325-ca988312440d",
-      "scoped2 with id 363b5fca-f282-4083-9325-ca988312440d"
-    ]
+    Assert.Equal(singletonFromFactory, singletonFromFactory2);
+    Assert.NotEqual(transientFromFactory, transientFromFactory2);
+    Assert.Equal(scopedFromFactory, scopedFromFactory2);
+    Assert.Equal(scoped2FromFactory, scoped2FromFactory2);
+    Assert.NotEqual(scoped3FromFactory, scoped3FromFactory2);
+    Assert.NotEqual(scoped3_2FromFactory, scoped3_2FromFactory2);
+    Assert.NotEqual(scoped4FromFactory, scoped4FromFactory2);
