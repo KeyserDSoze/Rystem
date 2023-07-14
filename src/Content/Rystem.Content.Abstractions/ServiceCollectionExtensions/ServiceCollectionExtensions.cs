@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection.Extensions;
 using Rystem.Content;
+using Rystem.Content.Abstractions.Migrations;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -12,6 +13,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns></returns>
         public static IContentRepositoryBuilder AddContentRepository(this IServiceCollection services)
         {
+            services.TryAddTransient<IContentMigration, ContentMigration>();
             return new ContentRepositoryBuilder(services);
         }
     }

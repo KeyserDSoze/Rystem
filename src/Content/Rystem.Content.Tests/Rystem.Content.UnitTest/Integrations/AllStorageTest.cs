@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Rystem.Content;
+using Rystem.Content.Abstractions.Migrations;
 
 namespace File.UnitTest
 {
@@ -7,10 +8,15 @@ namespace File.UnitTest
     {
         private readonly IFactory<IContentRepository> _contentRepositoryFactory;
         private readonly Utility _utility;
-        public AllStorageTest(IFactory<IContentRepository> contentRepositoryFactory, Utility utility)
+        private readonly IContentMigration _contentMigration;
+
+        public AllStorageTest(IFactory<IContentRepository> contentRepositoryFactory,
+            Utility utility,
+            IContentMigration contentMigration)
         {
             _contentRepositoryFactory = contentRepositoryFactory;
             _utility = utility;
+            _contentMigration = contentMigration;
         }
         [Theory]
         [InlineData("blobstorage")]
@@ -37,6 +43,7 @@ namespace File.UnitTest
                 response = await contentRepository.ExistAsync(name).NoContext();
             }
             Assert.False(response);
+
             response = await contentRepository.UploadAsync(name, file.ToArray(), new ContentRepositoryOptions
             {
                 HttpHeaders = new ContentRepositoryHttpHeaders
@@ -46,6 +53,7 @@ namespace File.UnitTest
                 Metadata = metadata,
                 Tags = tags
             }, true).NoContext();
+
             Assert.True(response);
             response = await contentRepository.ExistAsync(name).NoContext();
             Assert.True(response);
@@ -100,6 +108,70 @@ namespace File.UnitTest
             await foreach (var file in contentRepository.ListAsync())
             {
                 Assert.NotNull(file.Path);
+            }
+        }
+        [Theory]
+        [InlineData("blobstorage", "inmemory", "path34")]
+        [InlineData("inmemory", "sharepoint", "path67")]
+        [InlineData("sharepoint", "blobstorage", "path89")]
+        public async Task MigrateAsync(string integrationNameFrom, string integrationNameTo, string dispath)
+        {
+            var contentRepository = _contentRepositoryFactory.Create(integrationNameFrom);
+            var contentRepositoryTo = _contentRepositoryFactory.Create(integrationNameTo);
+            var prefix = $"Test/Folder1/{dispath}/Folder2/";
+            for (var i = 0; i < 10; i++)
+            {
+                var name = $"{prefix}fileName{i}.txt";
+                var file = await _utility.GetFileAsync();
+                var contentType = "images/png";
+                var metadata = new Dictionary<string, string>()
+                {
+                    { "name", "ale" }
+                };
+                var tags = new Dictionary<string, string>()
+                {
+                    { "version", "1" }
+                };
+                var response = await contentRepository.ExistAsync(name).NoContext();
+                if (!response)
+                {
+                    response = await contentRepository.UploadAsync(name, file.ToArray(), new ContentRepositoryOptions
+                    {
+                        HttpHeaders = new ContentRepositoryHttpHeaders
+                        {
+                            ContentType = contentType
+                        },
+                        Metadata = metadata,
+                        Tags = tags
+                    }, true).NoContext();
+
+                    Assert.True(response);
+                }
+            }
+            var result = await _contentMigration.MigrateAsync(integrationNameFrom, integrationNameTo,
+                settings =>
+                {
+                    settings.OverwriteIfExists = true;
+                    settings.Prefix = prefix;
+                    settings.Predicate = (x) =>
+                    {
+                        return x.Path?.Contains("fileName6") != true;
+                    };
+                    settings.ModifyDestinationPath = x =>
+                    {
+                        return x.Replace("Folder2", "Folder3");
+                    };
+                }).NoContext();
+            Assert.Equal(9, result.MigratedPaths.Count);
+            Assert.Equal(9, result.MigratedPaths.Count(x => x.To.Contains("Folder3")));
+            Assert.Single(result.BlockedByPredicatePaths);
+            await foreach (var item in contentRepository.ListAsync(prefix))
+            {
+                if (result.MigratedPaths.Any(x => x.From == item.Path!))
+                {
+                    var path = result.MigratedPaths.First(x => x.From == item.Path!).To;
+                    Assert.True(await contentRepositoryTo.ExistAsync(path).NoContext());
+                }
             }
         }
     }

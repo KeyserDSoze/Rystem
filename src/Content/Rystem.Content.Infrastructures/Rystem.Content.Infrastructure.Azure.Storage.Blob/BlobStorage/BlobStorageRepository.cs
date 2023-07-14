@@ -14,6 +14,8 @@ namespace Rystem.Content.Infrastructure.Storage
             if (options != null)
                 Options = options;
         }
+        private int? _lenghtOfPrefix;
+        public int LengthOfPrefix => _lenghtOfPrefix ??= Options?.Prefix?.Length ?? 0;
         private string GetFileName(string path)
             => $"{Options?.Prefix}{path}";
         public async ValueTask<bool> DeleteAsync(string path, CancellationToken cancellationToken = default)
@@ -55,7 +57,8 @@ namespace Rystem.Content.Infrastructure.Storage
             return result;
         }
 
-        public async IAsyncEnumerable<ContentRepositoryDownloadResult> ListAsync(string? prefix = null,
+        public async IAsyncEnumerable<ContentRepositoryDownloadResult> ListAsync(
+            string? prefix = null,
             bool downloadContent = false,
             ContentInformationType informationRetrieve = ContentInformationType.None,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -69,10 +72,13 @@ namespace Rystem.Content.Infrastructure.Storage
                 if (downloadContent)
                     blobData = (await blobClient.DownloadContentAsync(cancellationToken).NoContext()).Value.Content.ToArray();
                 var options = await ReadOptionsAsync(blobClient, informationRetrieve);
+                var path = blob.Name;
+                if (Options?.Prefix != null)
+                    path = path[LengthOfPrefix..];
                 yield return new ContentRepositoryDownloadResult
                 {
                     Uri = blobClient.Uri.ToString(),
-                    Path = blob.Name,
+                    Path = path,
                     Data = blobData,
                     Options = options
                 };

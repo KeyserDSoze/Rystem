@@ -263,8 +263,10 @@ namespace Rystem.Content.Infrastructure
                 var response = await _graphClient
                     .Drives[_documentLibraryId]
                     .Items[path]
-                    .Content
-                    .PutAsync(new MemoryStream(data), cancellationToken: cancellationToken)
+                    .PatchAsync(new DriveItem
+                    {
+                        Content = data
+                    }, cancellationToken: cancellationToken)
                     .NoContext();
                 if (options != null)
                     await SetPropertiesAsync(path, options, cancellationToken).NoContext();
