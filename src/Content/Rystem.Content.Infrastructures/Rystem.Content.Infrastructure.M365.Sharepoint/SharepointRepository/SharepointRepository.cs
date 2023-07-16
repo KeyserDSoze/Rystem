@@ -194,8 +194,7 @@ namespace Rystem.Content.Infrastructure
             }
             else
             {
-                if (!prefix.StartsWith("/"))
-                    prefix = "/" + prefix;
+                prefix = "/" + prefix.Trim('/');
                 driveItemCollectionResponse = await _graphClient
                    .Drives[_documentLibraryId]
                    .Root
@@ -258,29 +257,15 @@ namespace Rystem.Content.Infrastructure
         public async ValueTask<bool> UploadAsync(string path, byte[] data, ContentRepositoryOptions? options = null, bool overwrite = true, CancellationToken cancellationToken = default)
         {
             var exists = await ExistAsync(path, cancellationToken).NoContext();
-            if (exists && overwrite)
+            if (!exists || overwrite)
             {
                 var response = await _graphClient
                     .Drives[_documentLibraryId]
-                    .Items[path]
-                    .PatchAsync(new DriveItem
-                    {
-                        Content = data
-                    }, cancellationToken: cancellationToken)
+                    .Root
+                    .ItemWithPath(path)
+                    .Content
+                    .PutAsync(new MemoryStream(data), cancellationToken: cancellationToken)
                     .NoContext();
-                if (options != null)
-                    await SetPropertiesAsync(path, options, cancellationToken).NoContext();
-                return response?.Size > 0;
-            }
-            else if (!exists)
-            {
-                var response = await _graphClient
-                   .Drives[_documentLibraryId]
-                   .Root
-                   .ItemWithPath(path)
-                   .Content
-                   .PutAsync(new MemoryStream(data), cancellationToken: cancellationToken)
-                   .NoContext();
                 if (options != null)
                     await SetPropertiesAsync(path, options, cancellationToken).NoContext();
                 return response?.Size > 0;

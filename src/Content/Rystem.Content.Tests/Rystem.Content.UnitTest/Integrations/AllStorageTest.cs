@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Graph.Models.ODataErrors;
 using Rystem.Content;
 using Rystem.Content.Abstractions.Migrations;
 
@@ -148,30 +149,37 @@ namespace File.UnitTest
                     Assert.True(response);
                 }
             }
-            var result = await _contentMigration.MigrateAsync(integrationNameFrom, integrationNameTo,
-                settings =>
-                {
-                    settings.OverwriteIfExists = true;
-                    settings.Prefix = prefix;
-                    settings.Predicate = (x) =>
-                    {
-                        return x.Path?.Contains("fileName6") != true;
-                    };
-                    settings.ModifyDestinationPath = x =>
-                    {
-                        return x.Replace("Folder2", "Folder3");
-                    };
-                }).NoContext();
-            Assert.Equal(9, result.MigratedPaths.Count);
-            Assert.Equal(9, result.MigratedPaths.Count(x => x.To.Contains("Folder3")));
-            Assert.Single(result.BlockedByPredicatePaths);
-            await foreach (var item in contentRepository.ListAsync(prefix))
+            try
             {
-                if (result.MigratedPaths.Any(x => x.From == item.Path!))
+                var result = await _contentMigration.MigrateAsync(integrationNameFrom, integrationNameTo,
+                    settings =>
+                    {
+                        settings.OverwriteIfExists = true;
+                        settings.Prefix = prefix;
+                        settings.Predicate = (x) =>
+                        {
+                            return x.Path?.Contains("fileName6") != true;
+                        };
+                        settings.ModifyDestinationPath = x =>
+                        {
+                            return x.Replace("Folder2", "Folder3");
+                        };
+                    }).NoContext();
+                Assert.Equal(9, result.MigratedPaths.Count);
+                Assert.Equal(9, result.MigratedPaths.Count(x => x.To.Contains("Folder3")));
+                Assert.Single(result.BlockedByPredicatePaths);
+                await foreach (var item in contentRepository.ListAsync(prefix))
                 {
-                    var path = result.MigratedPaths.First(x => x.From == item.Path!).To;
-                    Assert.True(await contentRepositoryTo.ExistAsync(path).NoContext());
+                    if (result.MigratedPaths.Any(x => x.From == item.Path!))
+                    {
+                        var path = result.MigratedPaths.First(x => x.From == item.Path!).To;
+                        Assert.True(await contentRepositoryTo.ExistAsync(path).NoContext());
+                    }
                 }
+            }
+            catch (ODataError error)
+            {
+                Assert.Fail(error.Error?.Code ?? error.Message);
             }
         }
     }
