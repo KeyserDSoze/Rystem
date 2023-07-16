@@ -5,9 +5,9 @@ https://<tenant>.sharepoint.com/sites/<site-url>/_api/site/id
 
 ## Integration with Sharepoint online and Content Repository
 
-    services
+    await services
     .AddContentRepository()
-    .WithSharepointIntegration(x =>
+    .WithSharepointIntegrationAsync(x =>
     {
         x.TenantId = configuration["Sharepoint:TenantId"];
         x.ClientId = configuration["Sharepoint:ClientId"];
@@ -16,7 +16,8 @@ https://<tenant>.sharepoint.com/sites/<site-url>/_api/site/id
         //x.MapWithRootSiteAndDocumentLibraryName("Foglione");
         //x.MapWithSiteIdAndDocumentLibraryId(configuration["Sharepoint:SiteId"],
         //    configuration["Sharepoint:DocumentLibraryId"]);
-    }, "sharepoint");
+    }, "sharepoint")
+    .NoContext();
 
 ### How to use in a business class
 

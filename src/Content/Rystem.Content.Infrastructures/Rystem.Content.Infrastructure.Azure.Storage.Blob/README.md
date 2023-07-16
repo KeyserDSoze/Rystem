@@ -2,15 +2,16 @@
 
 ## Integration with Azure BlobStorage and Content Repository
 
-    services
+    await services
     .AddContentRepository()
-    .WithBlobStorageIntegration(x =>
+    .WithBlobStorageIntegrationAsync(x =>
     {
         x.ContainerName = "supertest";
         x.Prefix = "site/";
         x.ConnectionString = configuration["ConnectionString:Storage"];
     },
-    "blobstorage");
+    "blobstorage")
+    .NoContext();
 
 ### How to use in a business class
 

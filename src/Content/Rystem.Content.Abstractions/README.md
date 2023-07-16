@@ -99,3 +99,46 @@ in Business class to use the second integration
             _contentRepository = contentRepositoryFactory.Create("example2");
         }
     }
+
+## Migration tool
+You can migrate from two different sources. For instance from a blob storage to a sharepoint site document library.
+
+Setup in DI
+
+     services
+        .AddSingleton<Utility>()
+        .AddContentRepository()
+        .WithBlobStorageIntegrationAsync(x =>
+        {
+            x.ContainerName = "supertest";
+            x.Prefix = "site/";
+            x.ConnectionString = configuration["ConnectionString:Storage"];
+        },
+        "blobstorage")
+        .ToResult()
+        .WithInMemoryIntegration("inmemory")
+        .WithSharepointIntegrationAsync(x =>
+        {
+            x.TenantId = configuration["Sharepoint:TenantId"];
+            x.ClientId = configuration["Sharepoint:ClientId"];
+            x.ClientSecret = configuration["Sharepoint:ClientSecret"];
+            x.MapWithSiteNameAndDocumentLibraryName("TestNumberOne", "Foglione");
+        }, "sharepoint")
+        .ToResult();
+
+Usage
+
+    var result = await _contentMigration.MigrateAsync("blobstorage", "sharepoint",
+        settings =>
+        {
+            settings.OverwriteIfExists = true;
+            settings.Prefix = prefix;
+            settings.Predicate = (x) =>
+            {
+                return x.Path?.Contains("fileName6") != true;
+            };
+            settings.ModifyDestinationPath = x =>
+            {
+                return x.Replace("Folder2", "Folder3");
+            };
+        }).NoContext();    
