@@ -17,10 +17,10 @@
         static UpdateConfiguration()
         {
             UpdateTree = new Update()
-            .AddProject("Rystem.Concurrency");
+            .AddProject("Rystem");
             UpdateTree
             .CreateSon()
-            .AddProject("Rystem.RepositoryFramework.Abstractions", "Rystem.Content.Abstractions")
+            .AddProject("Rystem.Concurrency", "Rystem.RepositoryFramework.Abstractions", "Rystem.Content.Abstractions")
             .CreateSon()
             .AddProject("Rystem.BackgroundJob",
                         "Rystem.RepositoryFramework.Api.Client", "Rystem.RepositoryFramework.Api.Server",

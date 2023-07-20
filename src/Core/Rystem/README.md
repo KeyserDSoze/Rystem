@@ -211,6 +211,45 @@ You may change the behavior of your NoContext() or ToResult(), setting (in the b
 
 When do I need a true? In windows application for example you have to return after a button clicked to the same thread that started the request.
 
+#### TaskManager
+When you need to run a list of tasks concurrently you may use this static method.
+
+In the next example with TaskManager.WhenAll you may run a method ExecuteAsync {times} times with {concurrentTasks} times in concurrency, and running them when a time slot is free.
+For example if you run this function with 8 times and 3 concurrentsTasks and true in runEverytimeASlotIsFree
+You will have this behavior: first 3 tasks starts and since the fourth the implementation waits the end of one of the 3 started before. As soon as one of the 3 started is finished the implementation starts to run the fourth.
+
+    var bag = new ConcurrentBag<int>();
+    await TaskManager.WhenAll(ExecuteAsync, times, concurrentTasks, runEverytimeASlotIsFree).NoContext();
+
+    Assert.Equal(times, bag.Count);
+
+    async Task ExecuteAsync(int i, CancellationToken cancellationToken)
+    {
+        await Task.Delay(i * 20, cancellationToken).NoContext();
+        bag.Add(i);
+    }
+
+You may run a {atLeast} times of tasks and stopping to wait the remaining tasks with TaskManager.WhenAtLeast
+
+    var bag = new ConcurrentBag<int>();
+    await TaskManager.WhenAtLeast(ExecuteAsync, times, atLeast, concurrentTasks).NoContext();
+
+    Assert.True(bag.Count < times);
+    Assert.True(bag.Count >= atLeast);
+
+    async Task ExecuteAsync(int i, CancellationToken cancellationToken)
+    {
+        await Task.Delay(i * 20, cancellationToken).NoContext();
+        bag.Add(i);
+    }
+
+## Concurrency
+
+### ConcurrentList
+You can use the ConcurrentList implementation to have the List behavior with lock operations.
+
+    var items = new ConcurrentList<ItemClass>();
+
 ## Dependency injection extensions
 
 ### Warm up
