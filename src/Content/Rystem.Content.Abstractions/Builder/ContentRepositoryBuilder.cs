@@ -36,7 +36,7 @@ namespace Rystem.Content
             where TOptions : class, IServiceOptions<TConnection>, new()
             where TConnection : class
         {
-            await Services.AddFactoryAsync<IContentRepository, TFileRepository, TOptions, TConnection>(options, name, serviceLifetime);
+            await Services.AddFactoryAsync<IContentRepository, TFileRepository, TOptions, TConnection>(options, name, serviceLifetime).NoContext();
             return this;
         }
     }
