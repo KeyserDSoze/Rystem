@@ -26,17 +26,10 @@
         <StaticWebAssetBasePath>_content/$(PackageId)</StaticWebAssetBasePath>
     </PropertyGroup>
 
-    <ItemGroup>
-      <None Remove="compilerconfig.json.defaults" />
-    </ItemGroup>
+    <Target Condition="'$(Configuration)'=='Debug'" Name="PreBuild" BeforeTargets="PreBuildEvent">
+        <Exec Command="npm run build-css" />
+    </Target>
 
-    <ItemGroup>
-      <Content Include="compilerconfig.json.defaults" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <SupportedPlatform Include="browser" />
-    </ItemGroup>
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
     </ItemGroup>
@@ -48,9 +41,6 @@
             <ItemGroup>
                 <ProjectReference Include="..\..\..\Core\Rystem\Rystem.csproj" />
                 <ProjectReference Include="..\..\Localization\Rystem.Localization.Multiple\Rystem.Localization.Multiple.csproj" />
-            </ItemGroup>
-            <ItemGroup>
-                <PackageReference Include="BuildWebCompiler2022" Version="1.14.10" />
             </ItemGroup>
         </When>
         <When Condition=" '$(Configuration)'!='Debug' ">

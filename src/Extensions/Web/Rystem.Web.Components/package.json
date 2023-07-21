@@ -1,0 +1,14 @@
+{
+  "name": "rystem.web.components",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build-css": "node-sass --include-path Styles --output-style compressed Styles/rystem.scss --output wwwroot/css"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "node-sass": "^9.0.0"
+  }
+}
