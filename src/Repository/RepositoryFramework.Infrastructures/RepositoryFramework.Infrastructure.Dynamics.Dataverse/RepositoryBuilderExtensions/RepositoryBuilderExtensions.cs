@@ -52,7 +52,7 @@ namespace Microsoft.Extensions.DependencyInjection
             builder
                 .Services
                 .AddWarmUp(serviceProvider => DataverseCreateTableOrMergeNewColumnsInExistingTableAsync(
-                    serviceProvider.GetService<IFactory<IRepository<T, TKey>>>()!.Create(name ?? string.Empty) as DataverseRepository<T, TKey>));
+                    serviceProvider.GetService<IFactory<ICommand<T, TKey>>>()!.Create(name ?? string.Empty) as DataverseRepository<T, TKey>));
             builder.SetStorageAndBuildOptions<DataverseRepository<T, TKey>,
                 DataverseOptions<T, TKey>,
                 DataverseClientWrapper>(
@@ -81,7 +81,7 @@ namespace Microsoft.Extensions.DependencyInjection
             builder
                 .Services
                 .AddWarmUp(serviceProvider => DataverseCreateTableOrMergeNewColumnsInExistingTableAsync(
-                    serviceProvider.GetService<IFactory<IRepository<T, TKey>>>()!.Create(name ?? string.Empty) as DataverseRepository<T, TKey>));
+                    serviceProvider.GetService<IFactory<IQuery<T, TKey>>>()!.Create(name ?? string.Empty) as DataverseRepository<T, TKey>));
             builder.SetStorageAndBuildOptions<DataverseRepository<T, TKey>,
                 DataverseOptions<T, TKey>,
                 DataverseClientWrapper>(

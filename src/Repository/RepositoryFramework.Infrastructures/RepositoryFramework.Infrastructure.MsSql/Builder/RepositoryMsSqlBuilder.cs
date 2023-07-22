@@ -1,5 +1,4 @@
-﻿using System.Data;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.MsSql

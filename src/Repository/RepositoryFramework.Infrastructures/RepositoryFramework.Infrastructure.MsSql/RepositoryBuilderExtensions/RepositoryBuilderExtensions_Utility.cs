@@ -3,10 +3,12 @@ using RepositoryFramework.Infrastructure.MsSql;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
-    public static partial class RepositorySettingsExtensions
+    public static partial class RepositoryBuilderExtensions
     {
-        private static async Task MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync<T, TKey>(MsSqlOptions<T, TKey> options)
+        private static async Task MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync<T, TKey>(SqlRepository<T, TKey>? repository)
+            where TKey : notnull
         {
+            var options = repository!.Options!;
             if (options.PrimaryKey == null)
                 throw new ArgumentException($"Please install a key in your repository sql for table {options.TableName}");
             using SqlConnection sqlConnection = new(options.ConnectionString);

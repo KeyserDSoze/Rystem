@@ -21,8 +21,11 @@ namespace RepositoryFramework.Infrastructure.EntityFramework
             set
             {
                 _options = value;
-                _dbSet = _options!.DbSet(_context);
-                _includingDbSet = _options?.References != null ? _options!.References(_dbSet) : _dbSet;
+                if (_options != null)
+                {
+                    _dbSet = _options.DbSet(_context);
+                    _includingDbSet = _options.References != null ? _options.References(_dbSet) : _dbSet;
+                }
             }
         }
         public EntityFrameworkRepository(

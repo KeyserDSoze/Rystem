@@ -2,19 +2,30 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.MsSql
 {
-    internal sealed class SqlRepository<T, TKey> : IRepository<T, TKey>, IAsyncDisposable
+    internal sealed class SqlRepository<T, TKey> : IRepository<T, TKey>, IAsyncDisposable, IServiceWithOptions<MsSqlOptions<T, TKey>>
         where TKey : notnull
     {
-        private readonly MsSqlOptions<T, TKey> _settings;
-        private readonly SqlConnection _connection;
-
-        public SqlRepository(MsSqlOptions<T, TKey> settings)
+        private MsSqlOptions<T, TKey>? _options;
+        public MsSqlOptions<T, TKey>? Options
         {
-            _settings = settings;
-            _connection = new SqlConnection(settings.ConnectionString);
+            get => _options;
+            set
+            {
+                _options = value;
+                if (_options != null)
+                {
+                    _connection = new SqlConnection(_options.ConnectionString);
+                }
+            }
+        }
+        private SqlConnection _connection = null!;
+        public SqlRepository(MsSqlOptions<T, TKey>? options = null)
+        {
+            Options = options;
         }
         private async Task<SqlCommand> GetCommandAsync(string text, List<SqlParameter>? collection = null)
         {
@@ -28,8 +39,8 @@ namespace RepositoryFramework.Infrastructure.MsSql
         }
         public async Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default)
         {
-            var keyAsString = _settings.KeyIsPrimitive ? key.ToString() : key.ToJson();
-            var command = await GetCommandAsync(_settings.Delete);
+            var keyAsString = Options!.KeyIsPrimitive ? key.ToString() : key.ToJson();
+            var command = await GetCommandAsync(Options.Delete);
             command.Parameters.Add(new SqlParameter("Key", keyAsString));
             var response = (await command.ExecuteScalarAsync(cancellationToken)).Cast<int>();
             return response >= 0;
@@ -37,8 +48,8 @@ namespace RepositoryFramework.Infrastructure.MsSql
 
         public async Task<State<T, TKey>> ExistAsync(TKey key, CancellationToken cancellationToken = default)
         {
-            var keyAsString = _settings.KeyIsPrimitive ? key.ToString() : key.ToJson();
-            var command = await GetCommandAsync(_settings.Exist);
+            var keyAsString = Options!.KeyIsPrimitive ? key.ToString() : key.ToJson();
+            var command = await GetCommandAsync(Options.Exist);
             command.Parameters.Add(new SqlParameter("Key", keyAsString));
             var response = (await command.ExecuteScalarAsync(cancellationToken)).Cast<int>();
             return response > 0;
@@ -46,14 +57,14 @@ namespace RepositoryFramework.Infrastructure.MsSql
 
         public async Task<T?> GetAsync(TKey key, CancellationToken cancellationToken = default)
         {
-            var keyAsString = _settings.KeyIsPrimitive ? key.ToString() : key.ToJson();
-            var command = await GetCommandAsync(_settings.Top1);
+            var keyAsString = Options!.KeyIsPrimitive ? key.ToString() : key.ToJson();
+            var command = await GetCommandAsync(Options.Top1);
             command.Parameters.Add(new SqlParameter("Key", keyAsString));
             var response = await command.ExecuteReaderAsync(cancellationToken);
             while (response != null && await response.ReadAsync(cancellationToken))
             {
                 var entity = Activator.CreateInstance<T>();
-                _settings.SetEntity(response, entity);
+                Options.SetEntity(response, entity);
                 if (entity != null)
                     return entity;
             }
@@ -61,8 +72,8 @@ namespace RepositoryFramework.Infrastructure.MsSql
         }
         public async Task<State<T, TKey>> InsertAsync(TKey key, T value, CancellationToken cancellationToken = default)
         {
-            var parameters = _settings.SetEntityForDatabase(value, key);
-            var command = await GetCommandAsync(string.Format(_settings.Insert,
+            var parameters = Options!.SetEntityForDatabase(value, key);
+            var command = await GetCommandAsync(string.Format(Options.Insert,
                 string.Join(',', parameters.Select(x => $"[{x.ParameterName}]")),
                 string.Join(',', parameters.Select(x => $"@{x.ParameterName}"))),
                 parameters);
@@ -71,8 +82,8 @@ namespace RepositoryFramework.Infrastructure.MsSql
         }
         public async Task<State<T, TKey>> UpdateAsync(TKey key, T value, CancellationToken cancellationToken = default)
         {
-            var parameters = _settings.SetEntityForDatabase(value, key);
-            var command = await GetCommandAsync(string.Format(_settings.Update,
+            var parameters = Options!.SetEntityForDatabase(value, key);
+            var command = await GetCommandAsync(string.Format(Options.Update,
                 string.Join(',', parameters.Select(x => $"[{x.ParameterName}]=@{x.ParameterName}"))),
                 parameters);
             var response = (await command.ExecuteScalarAsync(cancellationToken)).Cast<int>();
@@ -81,13 +92,13 @@ namespace RepositoryFramework.Infrastructure.MsSql
         public async IAsyncEnumerable<Entity<T, TKey>> QueryAsync(IFilterExpression filter,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var command = await GetCommandAsync(_settings.BaseQuery);
+            var command = await GetCommandAsync(Options!.BaseQuery);
             var response = await command.ExecuteReaderAsync(cancellationToken);
             Dictionary<T, Entity<T, TKey>> entities = new();
             while (response != null && await response.ReadAsync(cancellationToken))
             {
                 var entity = Activator.CreateInstance<T>();
-                var key = _settings.SetEntity(response, entity);
+                var key = Options.SetEntity(response, entity);
                 entities.Add(entity, new(entity, key));
             }
             foreach (var entity in filter.Apply(entities.Keys))

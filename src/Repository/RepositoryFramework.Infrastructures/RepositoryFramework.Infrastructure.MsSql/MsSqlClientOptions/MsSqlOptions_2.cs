@@ -7,6 +7,7 @@ using Microsoft.Data.SqlClient;
 namespace RepositoryFramework.Infrastructure.MsSql
 {
     public sealed class MsSqlOptions<T, TKey>
+        where TKey : notnull
     {
         public string Schema { get; set; } = "dbo";
         public string TableName { get; set; } = typeof(T).Name;
@@ -16,12 +17,13 @@ namespace RepositoryFramework.Infrastructure.MsSql
         public bool KeyIsPrimitive { get; } = typeof(TKey).IsPrimitive();
         public string? PrimaryKey { get; internal set; }
         internal List<PropertyHelper<T>> Properties { get; } = new();
-        internal static MsSqlOptions<T, TKey> Instance { get; } = new();
-        private MsSqlOptions()
+        internal static MsSqlOptions<T, TKey> Instance { get; private set; } = null!;
+        public MsSqlOptions()
         {
             foreach (var property in typeof(T).GetProperties())
                 Properties.Add(new PropertyHelper<T>(property));
             RefreshColumnNames();
+            Instance = this;
         }
         internal string Top1 { get; private set; } = null!;
         internal string Exist { get; private set; } = null!;
