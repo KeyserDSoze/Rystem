@@ -11,7 +11,6 @@
         where TKey : notnull
     {
         private readonly Dictionary<RepositoryMethods, MethodBehaviorSetting> _settings = new();
-        internal RepositoryBehaviorSettings() { }
         private void Add(RepositoryMethods method, MethodBehaviorSetting methodSettings)
         {
             if (!_settings.ContainsKey(method))
@@ -53,10 +52,10 @@
             => Add(RepositoryMethods.Operation, setting);
         public MethodBehaviorSetting Get(RepositoryMethods method)
         {
-            if (_settings.ContainsKey(method))
-                return _settings[method];
-            else if (_settings.ContainsKey(RepositoryMethods.All))
-                return _settings[RepositoryMethods.All];
+            if (_settings.TryGetValue(method, out var value))
+                return value;
+            else if (_settings.TryGetValue(RepositoryMethods.All, out var allValue))
+                return allValue;
             else
                 return MethodBehaviorSetting.Default;
         }

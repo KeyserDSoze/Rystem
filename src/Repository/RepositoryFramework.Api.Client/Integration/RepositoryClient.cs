@@ -20,7 +20,8 @@ namespace RepositoryFramework.Api.Client
             KeySettings<TKey> keySettings,
             IEnumerable<IRepositoryClientInterceptor>? clientInterceptors = null,
             IEnumerable<IRepositoryClientInterceptor<T>>? specificClientInterceptors = null,
-            IEnumerable<IRepositoryClientInterceptor<T, TKey>>? specificClientInterceptorsWithKeys = null)
+            IEnumerable<IRepositoryClientInterceptor<T, TKey>>? specificClientInterceptorsWithKeys = null,
+            ApiClientSettings<T, TKey>? options = null)
         {
             var name = typeof(T).Name;
             _httpClient = httpClientFactory.CreateClient($"{name}{Const.HttpClientName}");
@@ -28,6 +29,7 @@ namespace RepositoryFramework.Api.Client
             _clientInterceptors = clientInterceptors;
             _specificClientInterceptors = specificClientInterceptors;
             _specificClientInterceptorsWithKeys = specificClientInterceptorsWithKeys;
+            Options = options;
         }
         private bool _clientAlreadyEnriched = false;
         private Task<HttpClient> EnrichedClientAsync(RepositoryMethods api)

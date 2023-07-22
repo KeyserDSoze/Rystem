@@ -8,13 +8,12 @@ namespace RepositoryFramework.InMemory
     internal sealed class RepositoryInMemoryBuilder<T, TKey> : IRepositoryInMemoryBuilder<T, TKey>
         where TKey : notnull
     {
-        public IServiceCollection Services => Builder.Services;
-        public IRepositoryBuilder<T, TKey, IRepository<T, TKey>> Builder { get; }
-        public RepositoryInMemoryBuilder(IRepositoryBuilder<T, TKey, IRepository<T, TKey>> builder)
+        public IServiceCollection Services { get; }
+        public RepositoryInMemoryBuilder(IServiceCollection services)
         {
-            Builder = builder;
+            Services = services;
         }
-        private void AddElementBasedOnGenericElements(TKey key, T value)
+        private static void AddElementBasedOnGenericElements(TKey key, T value)
             => InMemoryStorage<T, TKey>.AddValue(key, value);
         public IRepositoryInMemoryBuilder<T, TKey> PopulateWithJsonData(
             Expression<Func<T, TKey>> navigationKey,

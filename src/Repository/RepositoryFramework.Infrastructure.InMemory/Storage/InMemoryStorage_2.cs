@@ -1,16 +1,17 @@
 ﻿using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.InMemory
 {
-    internal class InMemoryStorage<T, TKey> : IRepository<T, TKey>
+    internal class InMemoryStorage<T, TKey> : IRepository<T, TKey>, IServiceWithOptions<RepositoryBehaviorSettings<T, TKey>>
         where TKey : notnull
     {
-        private readonly RepositoryBehaviorSettings<T, TKey> _settings;
-        public InMemoryStorage(RepositoryBehaviorSettings<T, TKey> settings)
+        public RepositoryBehaviorSettings<T, TKey>? Options { get; set; }
+        public InMemoryStorage(RepositoryBehaviorSettings<T, TKey>? options = null)
         {
-            _settings = settings;
+            Options = options;
         }
         private static string GetKeyAsString(TKey key)
         {
@@ -54,7 +55,7 @@ namespace RepositoryFramework.InMemory
         }
         private async Task<State<T, TKey>> ExecuteAsync(RepositoryMethods method, Func<State<T, TKey>> action, CancellationToken cancellationToken = default)
         {
-            var settings = _settings.Get(method);
+            var settings = Options!.Get(method);
             await Task.Delay(GetRandomNumber(settings.MillisecondsOfWait), cancellationToken).NoContext();
             if (!cancellationToken.IsCancellationRequested)
             {
@@ -83,7 +84,7 @@ namespace RepositoryFramework.InMemory
 
         public async Task<T?> GetAsync(TKey key, CancellationToken cancellationToken = default)
         {
-            var settings = _settings.Get(RepositoryMethods.Get);
+            var settings = Options!.Get(RepositoryMethods.Get);
             await Task.Delay(GetRandomNumber(settings.MillisecondsOfWait), cancellationToken).NoContext();
             if (!cancellationToken.IsCancellationRequested)
             {
@@ -135,7 +136,7 @@ namespace RepositoryFramework.InMemory
         public async IAsyncEnumerable<Entity<T, TKey>> QueryAsync(IFilterExpression filter,
              [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var settings = _settings.Get(RepositoryMethods.Query);
+            var settings = Options!.Get(RepositoryMethods.Query);
             await Task.Delay(GetRandomNumber(settings.MillisecondsOfWait), cancellationToken).NoContext();
             if (!cancellationToken.IsCancellationRequested)
             {
@@ -159,7 +160,7 @@ namespace RepositoryFramework.InMemory
            IFilterExpression filter,
            CancellationToken cancellationToken = default)
         {
-            var settings = _settings.Get(RepositoryMethods.Operation);
+            var settings = Options!.Get(RepositoryMethods.Operation);
             await Task.Delay(GetRandomNumber(settings.MillisecondsOfWait), cancellationToken).NoContext();
             if (!cancellationToken.IsCancellationRequested)
             {

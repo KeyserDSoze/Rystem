@@ -8,7 +8,6 @@ namespace RepositoryFramework.InMemory
         where TKey : notnull
     {
         IServiceCollection Services { get; }
-        IRepositoryBuilder<T, TKey, IRepository<T, TKey>> Builder { get; }
         IRepositoryInMemoryBuilder<T, TKey> PopulateWithJsonData(
             Expression<Func<T, TKey>> navigationKey,
             string json);
