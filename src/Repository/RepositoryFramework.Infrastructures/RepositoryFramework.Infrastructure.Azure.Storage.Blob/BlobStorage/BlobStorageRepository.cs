@@ -1,35 +1,26 @@
-﻿using Azure.Storage.Blobs;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using Azure.Storage.Blobs;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
 {
-    internal sealed class BlobStorageRepository<T, TKey> : IRepository<T, TKey>
+    internal sealed class BlobStorageRepository<T, TKey> : IRepository<T, TKey>, IServiceWithOptions<BlobContainerClientWrapper>
         where TKey : notnull
     {
-        private readonly BlobContainerClient _client;
-        private readonly KeySettings<TKey> _keySettings;
-        private readonly BlobStorageSettings<T, TKey>? _settings;
-        public BlobStorageRepository(BlobServiceClientFactory clientFactory,
-            KeySettings<TKey> keySettings,
-            BlobStorageSettings<T, TKey>? settings = null)
-        {
-            _client = clientFactory.Get(typeof(T).Name);
-            _keySettings = keySettings;
-            _settings = settings;
-        }
+        public BlobContainerClientWrapper? Options { get; set; }
         private string GetFileName(TKey key)
-            => $"{_settings?.Prefix}{_keySettings.AsString(key)}";
+            => $"{Options?.Prefix}{KeySettings<TKey>.Instance.AsString(key)}";
         public async Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default)
         {
-            var response = await _client.DeleteBlobAsync(GetFileName(key), cancellationToken: cancellationToken).NoContext();
+            var response = await Options!.Client.DeleteBlobAsync(GetFileName(key), cancellationToken: cancellationToken).NoContext();
             return !response.IsError;
         }
 
         public async Task<T?> GetAsync(TKey key, CancellationToken cancellationToken = default)
         {
-            var blobClient = _client.GetBlobClient(GetFileName(key));
+            var blobClient = Options!.Client.GetBlobClient(GetFileName(key));
             if (await blobClient.ExistsAsync(cancellationToken).NoContext())
             {
                 var blobData = await blobClient.DownloadContentAsync(cancellationToken).NoContext();
@@ -39,13 +30,13 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
         }
         public async Task<State<T, TKey>> ExistAsync(TKey key, CancellationToken cancellationToken = default)
         {
-            var blobClient = _client.GetBlobClient(GetFileName(key));
+            var blobClient = Options!.Client.GetBlobClient(GetFileName(key));
             return (await blobClient.ExistsAsync(cancellationToken).NoContext()).Value;
         }
 
         public async Task<State<T, TKey>> InsertAsync(TKey key, T value, CancellationToken cancellationToken = default)
         {
-            var blobClient = _client.GetBlobClient(GetFileName(key));
+            var blobClient = Options!.Client.GetBlobClient(GetFileName(key));
             var entityWithKey = Entity.Default(value, key);
             var response = await blobClient.UploadAsync(new BinaryData(entityWithKey.ToJson()), cancellationToken).NoContext();
             return State.Default<T, TKey>(response.Value != null, value);
@@ -60,10 +51,10 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
             if (where != null)
                 predicate = where.AsExpression<T, bool>().Compile();
             var entities = new Dictionary<T, Entity<T, TKey>>();
-            await foreach (var blob in _client.GetBlobsAsync(prefix: _settings?.Prefix, cancellationToken: cancellationToken))
+            await foreach (var blob in Options!.Client.GetBlobsAsync(prefix: Options?.Prefix, cancellationToken: cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var blobClient = _client.GetBlobClient(blob.Name);
+                var blobClient = Options!.Client.GetBlobClient(blob.Name);
                 var blobData = await blobClient.DownloadContentAsync(cancellationToken).NoContext();
                 var item = JsonSerializer.Deserialize<Entity<T, TKey>>(blobData.Value.Content);
                 if (item != null && !item.HasValue)
@@ -77,7 +68,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
         }
         public async Task<State<T, TKey>> UpdateAsync(TKey key, T value, CancellationToken cancellationToken = default)
         {
-            var blobClient = _client.GetBlobClient(GetFileName(key));
+            var blobClient = Options!.Client.GetBlobClient(GetFileName(key));
             var entityWithKey = Entity.Default(value, key);
             var response = await blobClient.UploadAsync(new BinaryData(entityWithKey.ToJson()), true, cancellationToken).NoContext();
             return State.Default<T, TKey>(response.Value != null, value);

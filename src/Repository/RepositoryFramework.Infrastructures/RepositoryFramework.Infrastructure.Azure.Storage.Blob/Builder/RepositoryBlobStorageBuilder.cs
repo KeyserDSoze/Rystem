@@ -11,14 +11,5 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
         public RepositoryBlobStorageBuilder(IServiceCollection services)
             => Services = services;
         public IServiceCollection Services { get; }
-        public IRepositoryBlobStorageBuilder<T, TKey> WithIndexing<TProperty>(
-            Expression<Func<T, TProperty>> property)
-        {
-            var name = property.Body.ToString().Split('.').Last();
-            var compiledProperty = property.Compile();
-            BlobStorageSettings<T, TKey>.Instance.Paths.Add(new BlobStoragePathComposer<T>(x => compiledProperty.Invoke(x)?.ToString(), name));
-            Services.TryAddSingleton(BlobStorageSettings<T, TKey>.Instance);
-            return this;
-        }
     }
 }
