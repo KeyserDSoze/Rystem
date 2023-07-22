@@ -16,7 +16,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="settings">IRepositorySettings<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
         /// <param name="serviceLifetime">Service Lifetime</param>
         /// <returns>IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static RepositorySettings<T, TKey> WithApiClient<T, TKey>(this RepositorySettings<T, TKey> settings,
+        public static IRepositoryBuilder<T, TKey> WithApiClient<T, TKey>(this IRepositoryBuilder<T, TKey> settings,
            Action<RepositoryApiBuilder<T, TKey>> apiBuilder,
            string? name = null,
            ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
