@@ -13,7 +13,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="builder">IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
         /// <param name="connectionSettings">Settings for your table storage.</param>
         /// <returns>IRepositoryTableStorageBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static async Task<IRepositoryTableStorageBuilder<T, TKey>> WithTableStorage<T, TKey>(
+        public static async Task<IRepositoryTableStorageBuilder<T, TKey>> WithTableStorageAsync<T, TKey>(
             this IRepositoryBuilder<T, TKey> builder,
             Action<TableStorageConnectionSettings> connectionSettings,
             string? name = null)
@@ -41,7 +41,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="builder">ICommandBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
         /// <param name="connectionSettings">Settings for your table storage.</param>
         /// <returns>IRepositoryTableStorageBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static async Task<IRepositoryTableStorageBuilder<T, TKey>> WithTableStorage<T, TKey>(
+        public static async Task<IRepositoryTableStorageBuilder<T, TKey>> WithTableStorageAsync<T, TKey>(
             this ICommandBuilder<T, TKey> builder,
             Action<TableStorageConnectionSettings> connectionSettings,
             string? name = null)
@@ -69,7 +69,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="builder">IQueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
         /// <param name="connectionSettings">Settings for your table storage.</param>
         /// <returns>IRepositoryTableStorageBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static async Task<IRepositoryTableStorageBuilder<T, TKey>> WithTableStorage<T, TKey>(
+        public static async Task<IRepositoryTableStorageBuilder<T, TKey>> WithTableStorageAsync<T, TKey>(
             this IQueryBuilder<T, TKey> builder,
             Action<TableStorageConnectionSettings> connectionSettings,
             string? name = null)
