@@ -5,7 +5,8 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
 {
     public sealed class CosmosSqlClient
     {
-        public Container Container { get; set; }
-        public PropertyInfo[] Properties { get; set; }
+        public Container Container { get; set; } = null!;
+        public PropertyInfo[] Properties { get; set; } = null!;
+        public string ExistsQuery { get; set; } = null!;
     }
 }

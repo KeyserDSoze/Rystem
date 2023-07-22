@@ -60,6 +60,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
                     {
                         Container = containerResponse.Container,
                         Properties = ModelType.GetProperties(),
+                        ExistsQuery = $"SELECT * FROM {name} x WHERE x.id = @id"
                     };
                     return () => client;
                 }

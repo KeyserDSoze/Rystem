@@ -32,7 +32,7 @@ namespace Microsoft.Extensions.DependencyInjection
         => services
             .AddService<IRepositoryClientInterceptor<T>, TInterceptor>(serviceLifetime);
         /// <summary>
-        /// Add specific interceptor for your <typeparamref name="T"/> client. Interceptor runs before every request.
+        /// Add specific interceptor for your <typeparamref name="T"/> <typeparamref name="TKey"/> client. Interceptor runs before every request.
         /// For example you can add here your JWT retrieve for authorized requests.
         /// </summary>
         /// <typeparam name="TInterceptor">Interceptor service.</typeparam>

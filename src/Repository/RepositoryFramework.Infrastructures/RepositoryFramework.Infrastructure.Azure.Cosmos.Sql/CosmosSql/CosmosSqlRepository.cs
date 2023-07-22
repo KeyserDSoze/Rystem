@@ -11,24 +11,17 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
     internal sealed class CosmosSqlRepository<T, TKey> : IRepository<T, TKey>, IServiceWithOptions<CosmosSqlClient>
         where TKey : notnull
     {
-        private Container Client => _settings!.Container;
-        private PropertyInfo[] Properties => _settings!.Properties;
-        private readonly CosmosSettings<T, TKey> _settings;
-        private readonly KeySettings<TKey> _keySettings;
+        private Container Client => Options!.Container;
+        private PropertyInfo[] Properties => Options!.Properties;
         private readonly ICosmosSqlKeyManager<T, TKey> _keyManager;
         public CosmosSqlClient? Options { get; set; }
 
-        public CosmosSqlRepository(
-            CosmosSettings<T, TKey> settings,
-            KeySettings<TKey> keySettings,
-            ICosmosSqlKeyManager<T, TKey> keyManager)
+        public CosmosSqlRepository(ICosmosSqlKeyManager<T, TKey> keyManager)
         {
-            _settings = settings;
-            _keySettings = keySettings;
             _keyManager = keyManager;
         }
         private string GetKeyAsString(TKey key)
-            => _keySettings.AsString(key);
+            => KeySettings<TKey>.Instance.AsString(key);
         public async Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default)
         {
             var keyAsString = GetKeyAsString(key);
@@ -38,7 +31,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
         public async Task<State<T, TKey>> ExistAsync(TKey key, CancellationToken cancellationToken = default)
         {
             var keyAsString = GetKeyAsString(key);
-            var parameterizedQuery = new QueryDefinition(query: _settings.ExistQuery)
+            var parameterizedQuery = new QueryDefinition(query: Options!.ExistsQuery)
             .WithParameter("@id", keyAsString);
             using var filteredFeed = Client.GetItemQueryIterator<T>(queryDefinition: parameterizedQuery);
             var response = await filteredFeed.ReadNextAsync(cancellationToken);
