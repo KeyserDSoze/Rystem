@@ -4,6 +4,47 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace RepositoryFramework
 {
+    public interface IRepositoryBaseBuilder<T, TKey, TRepositoryPattern>
+        where TKey : notnull
+    {
+        IRepositoryBuilder<T, TKey, TStorage> SetStorageAndBuildOptions<TStorage, TStorageOptions, TConnection>(
+            Action<TStorageOptions> options,
+            string? name = null,
+            ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
+            where TStorage : class, TRepositoryPattern, IServiceWithOptions<TConnection>
+            where TStorageOptions : class, IServiceOptions<TConnection>, new()
+            where TConnection : class;
+        Task<IRepositoryBuilder<T, TKey, TStorage>> SetStorageAndBuildOptionsAsync<TStorage, TStorageOptions, TConnection>(
+            Action<TStorageOptions> options,
+            string? name = null,
+            ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
+            where TStorage : class, TRepositoryPattern, IServiceWithOptions<TConnection>
+            where TStorageOptions : class, IServiceOptionsAsync<TConnection>, new()
+            where TConnection : class;
+        IRepositoryBuilder<T, TKey, TStorage> SetStorage<TStorage>(string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
+            where TStorage : class, TRepositoryPattern;
+        IRepositoryBuilder<T, TKey, TStorage> SetStorageWithOptions<TStorage, TOptions>(Action<TOptions> options, string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
+           where TStorage : class, TRepositoryPattern, IServiceWithOptions<TOptions>
+           where TOptions : class, new();
+    }
+    public interface IRepositoryBuilder<T, TKey> : IRepositoryBaseBuilder<T, TKey, IRepositoryPattern<T, TKey>>
+        where TKey : notnull
+    {
+    }
+    public interface ICommandBuilder<T, TKey> : IRepositoryBaseBuilder<T, TKey, ICommandPattern<T, TKey>>
+        where TKey : notnull
+    {
+
+    }
+    public interface IQueryBuilder<T, TKey> : IRepositoryBaseBuilder<T, TKey, IQueryPattern<T, TKey>>
+        where TKey : notnull
+    {
+
+    }
+    internal sealed class RepositoryBuilder<T, TKey> : IRepositoryBuilder<T, TKey>
+    {
+
+    }
     //todo it needs to accept if command only command storage, we need to do a common interface
     public partial class RepositorySettings<T, TKey>
        where TKey : notnull
