@@ -10,6 +10,10 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
         where TKey : notnull
     {
         public BlobContainerClientWrapper? Options { get; set; }
+        public BlobStorageRepository(BlobContainerClientWrapper? options = null)
+        {
+            Options = options;
+        }
         private string GetFileName(TKey key)
             => $"{Options?.Prefix}{KeySettings<TKey>.Instance.AsString(key)}";
         public async Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default)

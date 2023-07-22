@@ -16,9 +16,11 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
         private readonly ICosmosSqlKeyManager<T, TKey> _keyManager;
         public CosmosSqlClient? Options { get; set; }
 
-        public CosmosSqlRepository(ICosmosSqlKeyManager<T, TKey> keyManager)
+        public CosmosSqlRepository(ICosmosSqlKeyManager<T, TKey> keyManager,
+            CosmosSqlClient? options = null)
         {
             _keyManager = keyManager;
+            Options = options;
         }
         private string GetKeyAsString(TKey key)
             => KeySettings<TKey>.Instance.AsString(key);

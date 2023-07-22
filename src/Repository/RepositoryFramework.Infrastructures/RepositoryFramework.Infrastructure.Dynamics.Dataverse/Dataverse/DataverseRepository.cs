@@ -11,12 +11,14 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
     internal sealed class DataverseRepository<T, TKey> : IRepository<T, TKey>, IServiceWithOptions<DataverseClientWrapper>
         where TKey : notnull
     {
-        private ServiceClient _client => Options!.Client;
+        private ServiceClient Client => Options!.Client;
         public DataverseOptions<T, TKey> Settings { get; }
         public DataverseClientWrapper? Options { get; set; }
-        public DataverseRepository(DataverseOptions<T, TKey> settings)
+        public DataverseRepository(DataverseOptions<T, TKey> settings,
+            DataverseClientWrapper? options = null)
         {
             Settings = settings;
+            Options = options;
         }
         public async Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default)
         {
@@ -26,11 +28,11 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
                 Criteria = new Microsoft.Xrm.Sdk.Query.FilterExpression(LogicalOperator.And)
             };
             query.Criteria.AddCondition(Settings.LogicalPrimaryKey, ConditionOperator.Equal, Settings.KeyIsPrimitive ? key.ToString() : key.ToJson());
-            var queryResult = await _client.RetrieveMultipleAsync(query, cancellationToken);
+            var queryResult = await Client.RetrieveMultipleAsync(query, cancellationToken);
             var entityRetrieved = queryResult.Entities.FirstOrDefault();
             if (entityRetrieved != null)
             {
-                await _client.DeleteAsync(Settings.LogicalTableName, entityRetrieved.Id, cancellationToken);
+                await Client.DeleteAsync(Settings.LogicalTableName, entityRetrieved.Id, cancellationToken);
                 return true;
             }
             return false;
@@ -44,7 +46,7 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
                 Criteria = new Microsoft.Xrm.Sdk.Query.FilterExpression(LogicalOperator.And)
             };
             query.Criteria.AddCondition(Settings.LogicalPrimaryKey, ConditionOperator.Equal, Settings.KeyIsPrimitive ? key.ToString() : key.ToJson());
-            var queryResult = await _client.RetrieveMultipleAsync(query, cancellationToken);
+            var queryResult = await Client.RetrieveMultipleAsync(query, cancellationToken);
             var entityRetrieved = queryResult.Entities.FirstOrDefault();
             return entityRetrieved != null;
         }
@@ -58,7 +60,7 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
                 Criteria = new Microsoft.Xrm.Sdk.Query.FilterExpression(LogicalOperator.And)
             };
             query.Criteria.AddCondition(Settings.LogicalPrimaryKey, ConditionOperator.Equal, Settings.KeyIsPrimitive ? key.ToString() : key.ToJson());
-            var queryResult = await _client.RetrieveMultipleAsync(query, cancellationToken);
+            var queryResult = await Client.RetrieveMultipleAsync(query, cancellationToken);
             var entityRetrieved = queryResult.Entities.FirstOrDefault();
             if (entityRetrieved != null)
             {
@@ -72,7 +74,7 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
         {
             var dataverseEntity = new Microsoft.Xrm.Sdk.Entity(Settings.LogicalTableName);
             Settings.SetDataverseEntity(dataverseEntity, value, key);
-            await _client.CreateAsync(dataverseEntity, cancellationToken);
+            await Client.CreateAsync(dataverseEntity, cancellationToken);
             return new State<T, TKey>(true, value, key);
         }
         public async IAsyncEnumerable<Entity<T, TKey>> QueryAsync(IFilterExpression filter,
@@ -84,7 +86,7 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
                 ColumnSet = Settings.ColumnSet,
                 Criteria = new Microsoft.Xrm.Sdk.Query.FilterExpression(LogicalOperator.And)
             };
-            var queryResult = await _client.RetrieveMultipleAsync(query, cancellationToken);
+            var queryResult = await Client.RetrieveMultipleAsync(query, cancellationToken);
             var entities = queryResult.Entities.Select(x =>
             {
                 var entity = Activator.CreateInstance<T>();
@@ -118,7 +120,7 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
                 Criteria = new Microsoft.Xrm.Sdk.Query.FilterExpression(LogicalOperator.And)
             };
             query.Criteria.AddCondition(Settings.LogicalPrimaryKey, ConditionOperator.Equal, Settings.KeyIsPrimitive ? key.ToString() : key.ToJson());
-            var queryResult = await _client.RetrieveMultipleAsync(query, cancellationToken);
+            var queryResult = await Client.RetrieveMultipleAsync(query, cancellationToken);
             var entityRetrieved = queryResult.Entities.FirstOrDefault();
             if (entityRetrieved != null)
             {
@@ -127,7 +129,7 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
                     Id = entityRetrieved.Id
                 };
                 Settings.SetDataverseEntity(dataverseEntity, value, key);
-                await _client.UpdateAsync(dataverseEntity, cancellationToken);
+                await Client.UpdateAsync(dataverseEntity, cancellationToken);
                 return new State<T, TKey>(true, value, key);
             }
             return false;

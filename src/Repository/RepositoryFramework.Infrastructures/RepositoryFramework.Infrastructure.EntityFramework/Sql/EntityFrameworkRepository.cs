@@ -5,24 +5,34 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.EntityFramework
 {
-    internal sealed class EntityFrameworkRepository<T, TKey, TEntityModel, TContext> : IRepository<T, TKey>
+    internal sealed class EntityFrameworkRepository<T, TKey, TEntityModel, TContext> : IRepository<T, TKey>, IServiceWithOptions<EntityFrameworkOptions<T, TKey, TEntityModel, TContext>>
         where TEntityModel : class
         where TKey : notnull
         where TContext : DbContext
     {
         private readonly TContext _context;
         private readonly IRepositoryMapper<T, TKey, TEntityModel> _mapper;
-        private readonly DbSet<TEntityModel> _dbSet;
-        private readonly IQueryable<TEntityModel> _includingDbSet;
+        private DbSet<TEntityModel> _dbSet = null!;
+        private IQueryable<TEntityModel> _includingDbSet = null!;
+        private EntityFrameworkOptions<T, TKey, TEntityModel, TContext>? _options;
+        public EntityFrameworkOptions<T, TKey, TEntityModel, TContext>? Options
+        {
+            get => _options;
+            set
+            {
+                _options = value;
+                _dbSet = _options!.DbSet(_context);
+                _includingDbSet = _options?.References != null ? _options!.References(_dbSet) : _dbSet;
+            }
+        }
         public EntityFrameworkRepository(
-            IServiceProvider serviceProvider,
-            EntityFrameworkOptions<T, TKey, TEntityModel, TContext> settings,
-            IRepositoryMapper<T, TKey, TEntityModel> mapper)
+            TContext context,
+            IRepositoryMapper<T, TKey, TEntityModel> mapper,
+            EntityFrameworkOptions<T, TKey, TEntityModel, TContext>? options = null)
         {
             _mapper = mapper;
-            _context = serviceProvider.GetService<TContext>()!;
-            _dbSet = settings.DbSet(_context);
-            _includingDbSet = settings.References != null ? settings.References(_dbSet) : _dbSet;
+            _context = context;
+            Options = options;
         }
         public async Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default)
         {
