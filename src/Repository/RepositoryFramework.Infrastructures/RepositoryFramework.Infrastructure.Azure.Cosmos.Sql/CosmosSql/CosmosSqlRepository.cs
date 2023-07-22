@@ -22,7 +22,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
             _keyManager = keyManager;
             Options = options;
         }
-        private string GetKeyAsString(TKey key)
+        private static string GetKeyAsString(TKey key)
             => KeySettings<TKey>.Instance.AsString(key);
         public async Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default)
         {
