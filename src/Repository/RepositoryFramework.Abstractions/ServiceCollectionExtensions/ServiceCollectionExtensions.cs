@@ -62,5 +62,6 @@ namespace Microsoft.Extensions.DependencyInjection
         public static RepositoryBusinessSettings<T, TKey> AddBusinessForRepository<T, TKey>(this IServiceCollection services)
             where TKey : notnull
             => new(services, null);
+        //todo to think about the passage of service life time
     }
 }

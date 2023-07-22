@@ -11,6 +11,8 @@ namespace RepositoryFramework
     {
         [JsonPropertyName("fullName")]
         public string? FullName { get; set; }
+        [JsonPropertyName("factoryName")]
+        public string? FactoryName { get; set; }
         [JsonPropertyName("name")]
         public string? Name { get; set; }
         [JsonPropertyName("key")]

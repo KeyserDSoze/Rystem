@@ -33,7 +33,7 @@ namespace Rystem.Content
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
             where TFileRepository : class, IContentRepository, IServiceWithOptions<TConnection>
-            where TOptions : class, IServiceOptions<TConnection>, new()
+            where TOptions : class, IServiceOptionsAsync<TConnection>, new()
             where TConnection : class
         {
             await Services.AddFactoryAsync<IContentRepository, TFileRepository, TOptions, TConnection>(options, name, serviceLifetime).NoContext();

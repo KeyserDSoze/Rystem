@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Rystem.Content.Infrastructure.Storage
 {
-    public class BlobStorageConnectionSettings : IServiceOptions<BlobServiceClientWrapper>
+    public class BlobStorageConnectionSettings : IServiceOptionsAsync<BlobServiceClientWrapper>
     {
         public Uri? EndpointUri { get; set; }
         public string? ManagedIdentityClientId { get; set; }

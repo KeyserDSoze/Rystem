@@ -16,14 +16,19 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="settings">IRepositorySettings<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
         /// <param name="serviceLifetime">Service Lifetime</param>
         /// <returns>IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static IRepositoryApiBuilder<T, TKey> WithApiClient<T, TKey>(this RepositorySettings<T, TKey> settings,
+        public static RepositorySettings<T, TKey> WithApiClient<T, TKey>(this RepositorySettings<T, TKey> settings,
+           Action<RepositoryApiBuilder<T, TKey>> apiBuilder,
+           string? name = null,
            ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
            where TKey : notnull
         {
-            settings.Services.AddSingleton(ApiClientSettings<T, TKey>.Instance);
-            settings.SetNotExposable();
-            settings.SetStorage<RepositoryClient<T, TKey>>(serviceLifetime);
-            return new ApiBuilder<T, TKey>(settings.Services);
+            settings.SetNotExposable(name);
+            settings.SetStorage<RepositoryClient<T, TKey>, RepositoryApiBuilder<T, TKey>, ApiClientSettings<T, TKey>>(options =>
+            {
+                options.Services = settings.Services;
+                apiBuilder.Invoke(options);
+            }, name, serviceLifetime);
+            return settings;
         }
         /// <summary>
         /// Add specific interceptor for your <typeparamref name="T"/> client. Interceptor runs before every request.

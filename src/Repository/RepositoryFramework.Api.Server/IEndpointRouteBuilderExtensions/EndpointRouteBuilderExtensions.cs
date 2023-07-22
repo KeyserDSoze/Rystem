@@ -46,9 +46,9 @@ namespace Microsoft.Extensions.DependencyInjection
         private const string NotImplementedExceptionIlOperation = "newobj instance void System.NotImplementedException";
         private sealed class RepositoryMethodValue
         {
-            public string Name { get; init; }
+            public string Name { get; init; } = null!;
             public RepositoryMethods Method { get; init; }
-            public string DefaultHttpMethod { get; init; }
+            public string DefaultHttpMethod { get; init; } = null!;
         }
         private static readonly Dictionary<PatternType, List<RepositoryMethodValue>> s_possibleMethods = new()
         {
@@ -176,13 +176,8 @@ namespace Microsoft.Extensions.DependencyInjection
             if (settings.HasMapApi)
                 app
                     .AddApiMap();
-            if (s_setupRepositories.ContainsKey(modelType.FullName!))
-                return app;
-            s_setupRepositories.Add(modelType.FullName!, true);
             var registry = app.ServiceProvider.GetService<RepositoryFrameworkRegistry>();
             var services = registry!.GetByModel(modelType);
-            if (!services.Any())
-                throw new ArgumentException($"Please check if your {modelType.Name} model has a service injected for IRepository, IQuery, ICommand.");
             var currentName = modelType.Name;
             if (settings.Names.ContainsKey(modelType.FullName!))
                 currentName = settings.Names[modelType.FullName!];
@@ -204,16 +199,19 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 if (!service.IsNotExposable)
                 {
-                    var apiServiceName = $"{currentName}-{service.KeyType.Name}";
+                    if (s_setupRepositories.ContainsKey(service.Key))
+                        continue;
+                    s_setupRepositories.Add(service.Key, true);
                     object? defaultKey = null;
                     object? defaultValue = null;
-                    if (settings.HasMapApi && !s_map.Apis.Any(x => x.FullName == apiServiceName))
+                    if (settings.HasMapApi && !s_map.Apis.Any(x => x.FullName == service.Key))
                     {
                         defaultKey = app.ServiceProvider.PopulateRandomObject(service.KeyType);
                         defaultValue = app.ServiceProvider.PopulateRandomObject(modelType);
                         s_map.Apis.Add(new()
                         {
-                            FullName = apiServiceName,
+                            FullName = service.Key,
+                            FactoryName = service.FactoryName,
                             Name = currentName,
                             Key = defaultKey,
                             Model = defaultValue,
@@ -238,7 +236,7 @@ namespace Microsoft.Extensions.DependencyInjection
                             {
                                 IsAuthenticated = authorization != null,
                                 IsAuthorized = authorization != null,
-                                Uri = $"{settings.StartingPath}/{currentName}/{currentMethod.Method}",
+                                Uri = $"{settings.StartingPath}/{currentName}/{(string.IsNullOrWhiteSpace(service.FactoryName) ? string.Empty : $"{service.FactoryName}/")}{currentMethod.Method}",
                                 KeyIsJsonable = false,
                                 HttpMethod = currentMethod.DefaultHttpMethod,
                                 RepositoryMethod = currentMethod.Method.ToString()
@@ -246,11 +244,11 @@ namespace Microsoft.Extensions.DependencyInjection
 
                             _ = typeof(EndpointRouteBuilderExtensions).GetMethod(currentMethod.Name, BindingFlags.NonPublic | BindingFlags.Static)!
                                .MakeGenericMethod(modelType, service.KeyType, service.InterfaceType)
-                               .Invoke(null, new object[] { app, singleApi, currentName, defaultKey, defaultValue, authorization! });
+                               .Invoke(null, new object[] { app, singleApi, currentName, service.FactoryName, defaultKey!, defaultValue!, authorization! });
                             configuredMethods.Add(currentMethod.Name, true);
 
                             if (settings.HasMapApi)
-                                s_map.Apis.First(x => x.FullName == apiServiceName).Requests.Add(singleApi);
+                                s_map.Apis.First(x => x.FullName == service.Key).Requests.Add(singleApi);
                         }
                     }
                 }
@@ -287,6 +285,7 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void AddGet<T, TKey, TService>(IEndpointRouteBuilder app,
             RequestApiMap apiMap,
             string name,
+            string factoryName,
             TKey? defaultKey,
             T? defaultEntity,
             ApiAuthorization? authorization)
@@ -297,7 +296,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 apiMap.ResponseWith = "Entity";
                 apiMap.Response = defaultEntity;
             }
-            app.AddApi<T, TKey, TService>(apiMap, name, authorization,
+            app.AddApi<T, TKey, TService>(apiMap, name, factoryName, authorization,
                 RepositoryMethods.Get, null,
                 async (TKey key, TService service, CancellationToken cancellationToken) =>
                 {
@@ -316,6 +315,7 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void AddExist<T, TKey, TService>(IEndpointRouteBuilder app,
             RequestApiMap apiMap,
             string name,
+            string factoryName,
             TKey? defaultKey,
             T? defaultEntity,
             ApiAuthorization? authorization)
@@ -329,7 +329,7 @@ namespace Microsoft.Extensions.DependencyInjection
                             new Entity<T, TKey>(defaultEntity, defaultKey)
                         );
             }
-            app.AddApi<T, TKey, TService>(apiMap, name, authorization,
+            app.AddApi<T, TKey, TService>(apiMap, name, factoryName, authorization,
                 RepositoryMethods.Exist, null,
                 async (TKey key, TService service, CancellationToken cancellationToken) =>
                 {
@@ -348,6 +348,7 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void AddQuery<T, TKey, TService>(IEndpointRouteBuilder app,
             RequestApiMap apiMap,
             string name,
+            string factoryName,
             TKey? defaultKey,
             T? defaultEntity,
             ApiAuthorization? authorization)
@@ -366,14 +367,14 @@ namespace Microsoft.Extensions.DependencyInjection
 
             _ = app.MapPost(apiMap.Uri,
                 async (HttpRequest request,
-                    [FromBody] SerializableFilter? serializableFilter, [FromServices] TService service, CancellationToken cancellationToken) =>
+                    [FromBody] SerializableFilter? serializableFilter, [FromServices] IFactory<TService> factoryService, CancellationToken cancellationToken) =>
                 {
                     try
                     {
                         var response = await Try.WithDefaultOnCatchAsync(async () =>
                         {
                             var filter = (serializableFilter ?? SerializableFilter.Empty).Deserialize<T>();
-                            var queryService = service as IQueryPattern<T, TKey>;
+                            var queryService = factoryService.Create(factoryName) as IQueryPattern<T, TKey>;
                             return await queryService!.QueryAsync(filter, cancellationToken).ToListAsync().NoContext();
                         });
                         if (response.Exception != null)
@@ -390,10 +391,10 @@ namespace Microsoft.Extensions.DependencyInjection
               .AddAuthorization(authorization, RepositoryMethods.Query, apiMap);
 
             _ = app.MapPost($"{apiMap.Uri}/Stream", (HttpRequest request,
-                    [FromBody] SerializableFilter? serializableFilter, [FromServices] TService service, CancellationToken cancellationToken)
+                    [FromBody] SerializableFilter? serializableFilter, [FromServices] IFactory<TService> factoryService, CancellationToken cancellationToken)
                 =>
                     {
-                        return QueryAsStreamAsync(serializableFilter, service, cancellationToken);
+                        return QueryAsStreamAsync(serializableFilter, factoryService.Create(factoryName), cancellationToken);
 
                         static async IAsyncEnumerable<Entity<T, TKey>> QueryAsStreamAsync(
                             SerializableFilter? serializableFilter, TService service, [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -414,6 +415,7 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void AddOperation<T, TKey, TService>(IEndpointRouteBuilder app,
             RequestApiMap apiMap,
             string name,
+            string factoryName,
             TKey? defaultKey,
             T? defaultEntity,
             ApiAuthorization? authorization)
@@ -425,7 +427,7 @@ namespace Microsoft.Extensions.DependencyInjection
             }
             _ = app.MapPost(apiMap.Uri,
                 async ([FromQuery] string op, [FromQuery] string? returnType,
-                    [FromBody] SerializableFilter? serializableFilter, [FromServices] TService service, CancellationToken cancellationToken) =>
+                    [FromBody] SerializableFilter? serializableFilter, [FromServices] IFactory<TService> factoryService, CancellationToken cancellationToken) =>
                 {
                     try
                     {
@@ -433,7 +435,7 @@ namespace Microsoft.Extensions.DependencyInjection
                         {
                             var filter = (serializableFilter ?? SerializableFilter.Empty).Deserialize<T>();
                             var type = CalculateTypeFromQuery();
-                            var queryService = service as IQueryPattern<T, TKey>;
+                            var queryService = factoryService.Create(factoryName) as IQueryPattern<T, TKey>;
                             var result = await Generics.WithStatic(
                                           typeof(EndpointRouteBuilderExtensions),
                                           nameof(GetResultFromOperation),
@@ -477,6 +479,7 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void AddInsert<T, TKey, TService>(IEndpointRouteBuilder app,
             RequestApiMap apiMap,
             string name,
+            string factoryName,
             TKey? defaultKey,
             T? defaultEntity,
             ApiAuthorization? authorization)
@@ -490,7 +493,7 @@ namespace Microsoft.Extensions.DependencyInjection
                             new Entity<T, TKey>(defaultEntity, defaultKey)
                         );
             }
-            app.AddApi(apiMap, name, authorization,
+            app.AddApi(apiMap, name, factoryName, authorization,
                 RepositoryMethods.Insert,
                 async (T entity, TKey key, TService service, CancellationToken cancellationToken) =>
                 {
@@ -510,6 +513,7 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void AddUpdate<T, TKey, TService>(IEndpointRouteBuilder app,
             RequestApiMap apiMap,
             string name,
+            string factoryName,
             TKey? defaultKey,
             T? defaultEntity,
             ApiAuthorization? authorization)
@@ -523,7 +527,7 @@ namespace Microsoft.Extensions.DependencyInjection
                             new Entity<T, TKey>(defaultEntity, defaultKey)
                         );
             }
-            app.AddApi(apiMap, name, authorization,
+            app.AddApi(apiMap, name, factoryName, authorization,
                 RepositoryMethods.Update,
                 async (T entity, TKey key, TService service, CancellationToken cancellationToken) =>
                 {
@@ -543,6 +547,7 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void AddDelete<T, TKey, TService>(IEndpointRouteBuilder app,
             RequestApiMap apiMap,
             string name,
+            string factoryName,
             TKey? defaultKey,
             T? defaultEntity,
             ApiAuthorization? authorization)
@@ -556,7 +561,7 @@ namespace Microsoft.Extensions.DependencyInjection
                             new Entity<T, TKey>(defaultEntity, defaultKey)
                         );
             }
-            app.AddApi<T, TKey, TService>(apiMap, name, authorization,
+            app.AddApi<T, TKey, TService>(apiMap, name, factoryName, authorization,
                 RepositoryMethods.Delete, null,
                 async (TKey key, TService service, CancellationToken cancellationToken) =>
                 {
@@ -575,6 +580,7 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void AddBatch<T, TKey, TService>(IEndpointRouteBuilder app,
             RequestApiMap apiMap,
             string name,
+            string factoryName,
             TKey? defaultKey,
             T? defaultEntity,
             ApiAuthorization? authorization)
@@ -617,13 +623,13 @@ namespace Microsoft.Extensions.DependencyInjection
                 apiMap.Response = response;
             }
             _ = app.MapPost(apiMap.Uri,
-                async ([FromBody] BatchOperations<T, TKey> operations, [FromServices] TService service, CancellationToken cancellationToken) =>
+                async ([FromBody] BatchOperations<T, TKey> operations, [FromServices] IFactory<TService> factoryService, CancellationToken cancellationToken) =>
             {
                 try
                 {
                     var response = await Try.WithDefaultOnCatchAsync(() =>
                     {
-                        var commandService = service as ICommandPattern<T, TKey>;
+                        var commandService = factoryService.Create(factoryName) as ICommandPattern<T, TKey>;
                         return commandService!.BatchAsync(operations, cancellationToken);
                     });
                     if (response.Exception != null)
@@ -642,6 +648,7 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void AddApi<T, TKey, TService>(this IEndpointRouteBuilder app,
             RequestApiMap singleApi,
             string name,
+            string factoryName,
             ApiAuthorization? authorization,
             RepositoryMethods method,
             Func<T, TKey, TService, CancellationToken, Task<IResult>>? action,
@@ -654,30 +661,30 @@ namespace Microsoft.Extensions.DependencyInjection
                 singleApi.KeyIsJsonable = true;
                 singleApi.HttpMethod = "Post";
                 apiMapped = app.MapPost(singleApi.Uri,
-                ([FromBody] TKey key, [FromServices] TService service, CancellationToken cancellationToken)
-                    => actionWithNoEntity.Invoke(key, service, cancellationToken));
+                ([FromBody] TKey key, [FromServices] IFactory<TService> factoryService, CancellationToken cancellationToken)
+                    => actionWithNoEntity.Invoke(key, factoryService.Create(factoryName), cancellationToken));
             }
             else if (KeySettings<TKey>.Instance.IsJsonable && action != null)
             {
                 singleApi.KeyIsJsonable = true;
                 singleApi.HttpMethod = "Post";
                 apiMapped = app.MapPost(singleApi.Uri,
-                ([FromBody] Entity<T, TKey> entity, [FromServices] TService service, CancellationToken cancellationToken)
-                    => action.Invoke(entity.Value!, entity.Key!, service, cancellationToken));
+                ([FromBody] Entity<T, TKey> entity, [FromServices] IFactory<TService> factoryService, CancellationToken cancellationToken)
+                    => action.Invoke(entity.Value!, entity.Key!, factoryService.Create(factoryName), cancellationToken));
             }
             else if (!KeySettings<TKey>.Instance.IsJsonable && action != null)
             {
                 singleApi.HttpMethod = "Post";
                 apiMapped = app.MapPost(singleApi.Uri,
-                ([FromQuery] string key, [FromBody] T entity, [FromServices] TService service, CancellationToken cancellationToken)
-                    => action.Invoke(entity, KeySettings<TKey>.Instance.Parse(key), service, cancellationToken));
+                ([FromQuery] string key, [FromBody] T entity, [FromServices] IFactory<TService> factoryService, CancellationToken cancellationToken)
+                    => action.Invoke(entity, KeySettings<TKey>.Instance.Parse(key), factoryService.Create(factoryName), cancellationToken));
             }
             else
             {
                 singleApi.HttpMethod = "Get";
                 apiMapped = app.MapGet(singleApi.Uri,
-                    ([FromQuery] string key, [FromServices] TService service, CancellationToken cancellationToken)
-                        => actionWithNoEntity!.Invoke(KeySettings<TKey>.Instance.Parse(key), service, cancellationToken));
+                    ([FromQuery] string key, [FromServices] IFactory<TService> factoryService, CancellationToken cancellationToken)
+                        => actionWithNoEntity!.Invoke(KeySettings<TKey>.Instance.Parse(key), factoryService.Create(factoryName), cancellationToken));
             }
             _ = apiMapped!
                     .WithName($"{method}{name}")

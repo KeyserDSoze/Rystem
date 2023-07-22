@@ -17,7 +17,7 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection
     {
         public string ServiceName { get; set; }
     }
-    public class BuiltScopedOptions : IServiceOptions<ScopedOption>
+    public class BuiltScopedOptions : IServiceOptionsAsync<ScopedOption>
     {
         public string ServiceName { get; set; }
 

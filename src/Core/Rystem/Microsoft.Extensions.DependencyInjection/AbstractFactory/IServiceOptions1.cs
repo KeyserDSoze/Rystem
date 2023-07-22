@@ -1,8 +1,8 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    public interface IServiceOptions<T> : IServiceOptions
+    public interface IServiceOptions<out T> : IServiceOptions
         where T : class
     {
-        Task<Func<T>> BuildAsync();
+        Func<T> Build();
     }
 }

@@ -3,33 +3,25 @@
     public sealed class ApiClientSettings<T, TKey>
         where TKey : notnull
     {
-        public static ApiClientSettings<T, TKey> Instance { get; } = new();
-        public string StartingPath { get; private set; } = "api";
-        public string? Version { get; private set; }
-        public string? Name { get; private set; }
-        public string GetPath { get; private set; } = null!;
-        public string ExistPath { get; private set; } = null!;
-        public string QueryPath { get; private set; } = null!;
-        public string OperationPath { get; private set; } = null!;
-        public string InsertPath { get; private set; } = null!;
-        public string UpdatePath { get; private set; } = null!;
-        public string DeletePath { get; private set; } = null!;
-        public string BatchPath { get; private set; } = null!;
-        private ApiClientSettings()
+        public string StartingPath { get; }
+        public string? Version { get; }
+        public string? Name { get; }
+        public string? FactoryName { get; }
+        public string GetPath { get; }
+        public string ExistPath { get; }
+        public string QueryPath { get; }
+        public string OperationPath { get; }
+        public string InsertPath { get; }
+        public string UpdatePath { get; }
+        public string DeletePath { get; }
+        public string BatchPath { get; }
+        public ApiClientSettings(string? startingPath, string? version, string? name, string? factoryName)
         {
-            RefreshPath();
-        }
-
-        internal void RefreshPath(string? startingPath = null, string? version = null, string? name = null)
-        {
-            if (startingPath != null)
-                StartingPath = startingPath;
-            if (version != null)
-                Version = version;
-            if (name != null)
-                Name = name;
-
-            var basePath = $"{StartingPath}/{(string.IsNullOrWhiteSpace(Version) ? string.Empty : $"{Version}/")}{Name ?? typeof(T).Name}/";
+            StartingPath = startingPath ?? "api";
+            Version = version;
+            Name = name;
+            FactoryName = factoryName;
+            var basePath = $"{StartingPath}/{(string.IsNullOrWhiteSpace(Version) ? string.Empty : $"{Version}/")}{Name ?? typeof(T).Name}/{(string.IsNullOrWhiteSpace(FactoryName) ? string.Empty : $"{FactoryName}/")}";
             if (KeySettings<TKey>.Instance.IsJsonable)
                 GetPath = $"{basePath}{nameof(RepositoryMethods.Get)}";
             else
