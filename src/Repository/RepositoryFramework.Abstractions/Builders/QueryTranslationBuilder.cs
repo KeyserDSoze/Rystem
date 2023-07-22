@@ -3,16 +3,17 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework
 {
-    internal sealed class QueryTranslationBuilder<T, TKey, TTranslated> : IQueryTranslationBuilder<T, TKey, TTranslated>
+    public sealed class QueryTranslationBuilder<T, TKey, TTranslated, TBuilder>
         where TKey : notnull
+        where TBuilder : IRepositoryBaseBuilder<T, TKey, TBuilder>
     {
-        public IServiceCollection Services => Settings.Services;
-        public RepositorySettings<T, TKey> Settings { get; }
-        public QueryTranslationBuilder(RepositorySettings<T, TKey> settings)
+        public TBuilder Builder { get; }
+        public IServiceCollection Services => Builder.Services;
+        public QueryTranslationBuilder(TBuilder builder)
         {
-            Settings = settings;
+            Builder = builder;
         }
-        public IQueryTranslationBuilder<T, TKey, TTranslated> WithKey<TProperty, TTranslatedProperty>(
+        public QueryTranslationBuilder<T, TKey, TTranslated, TBuilder> WithKey<TProperty, TTranslatedProperty>(
             Expression<Func<TKey, TProperty>> property,
             Expression<Func<TTranslated, TTranslatedProperty>> translatedProperty)
         {
@@ -30,7 +31,7 @@ namespace RepositoryFramework
                    ));
             return this;
         }
-        public IQueryTranslationBuilder<T, TKey, TTranslated> With<TProperty, TTranslatedProperty>(
+        public QueryTranslationBuilder<T, TKey, TTranslated, TBuilder> With<TProperty, TTranslatedProperty>(
             Expression<Func<T, TProperty>> property,
             Expression<Func<TTranslated, TTranslatedProperty>> translatedProperty)
         {
@@ -48,7 +49,7 @@ namespace RepositoryFramework
             FilterTranslation<T, TKey>.Instance.With(property, translatedProperty);
             return this;
         }
-        public IQueryTranslationBuilder<T, TKey, TTranslated> WithSamePorpertiesName()
+        public QueryTranslationBuilder<T, TKey, TTranslated, TBuilder> WithSamePorpertiesName()
         {
             var translatedProperties = typeof(TTranslated).GetProperties();
             foreach (var property in typeof(T).GetProperties())
@@ -67,7 +68,7 @@ namespace RepositoryFramework
             }
             return this;
         }
-        public IQueryTranslationBuilder<T, TKey, TFurtherTranslated> AndTranslate<TFurtherTranslated>()
-            => Settings.Translate<TFurtherTranslated>();
+        public QueryTranslationBuilder<T, TKey, TFurtherTranslated, TBuilder> AndTranslate<TFurtherTranslated>()
+            => Builder.Translate<TFurtherTranslated>();
     }
 }

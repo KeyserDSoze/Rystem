@@ -13,10 +13,10 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="settings">Settings for your repository.</param>
         /// <returns>IServiceCollection</returns>
         public static IServiceCollection AddRepository<T, TKey>(this IServiceCollection services,
-          Action<RepositorySettings<T, TKey>> settings)
+          Action<IRepositoryBuilder<T, TKey>> settings)
           where TKey : notnull
         {
-            var defaultSettings = new RepositorySettings<T, TKey>(services, PatternType.Repository);
+            var defaultSettings = new RepositoryFrameworkBuilder<T, TKey>();
             settings.Invoke(defaultSettings);
             return services;
         }
@@ -29,10 +29,10 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="settings">Settings for your repository.</param>
         /// <returns>IServiceCollection</returns>
         public static IServiceCollection AddCommand<T, TKey>(this IServiceCollection services,
-              Action<RepositorySettings<T, TKey>>? settings = null)
+              Action<ICommandBuilder<T, TKey>>? settings = null)
             where TKey : notnull
         {
-            var defaultSettings = new RepositorySettings<T, TKey>(services, PatternType.Command);
+            var defaultSettings = new CommandFrameworkBuilder<T, TKey>();
             settings?.Invoke(defaultSettings);
             return services;
         }
@@ -45,10 +45,10 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="settings">Settings for your repository.</param>
         /// <returns>IServiceCollection</returns>
         public static IServiceCollection AddQuery<T, TKey>(this IServiceCollection services,
-              Action<RepositorySettings<T, TKey>>? settings = null)
+              Action<IQueryBuilder<T, TKey>>? settings = null)
             where TKey : notnull
         {
-            var defaultSettings = new RepositorySettings<T, TKey>(services, PatternType.Query);
+            var defaultSettings = new QueryFrameworkBuilder<T, TKey>();
             settings?.Invoke(defaultSettings);
             return services;
         }
@@ -59,9 +59,8 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="TKey">Key to manage your data from repository.</typeparam>
         /// <param name="services">IServiceCollection.</param>
         /// <returns>RepositoryBusinessSettings<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static RepositoryBusinessSettings<T, TKey> AddBusinessForRepository<T, TKey>(this IServiceCollection services)
+        public static RepositoryBusinessBuilder<T, TKey> AddBusinessForRepository<T, TKey>(this IServiceCollection services)
             where TKey : notnull
             => new(services, null);
-        //todo to think about the passage of service life time
     }
 }
