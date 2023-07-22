@@ -126,7 +126,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 where TOptions : class, new()
         {
 
-            services.AddFactory<TInterface, TClass>(name, serviceLifetime);
+            services.AddFactory<TInterface, TClass>(name, serviceLifetime, whenExists);
             var countOptions = services.Count(x => x.ServiceType == typeof(TOptions));
             if (Factory<TInterface>.MapOptions.TryAdd(name ?? string.Empty, new()
             {
@@ -150,17 +150,17 @@ namespace Microsoft.Extensions.DependencyInjection
             return services;
         }
         private static IServiceCollection AddFactory<TInterface, TClass, TOptions, TBuiltOptions>(this IServiceCollection services,
-               Action<TOptions> createOptions,
-               string? name,
-                ServiceLifetime serviceLifetime,
-                Action? whenExists)
+            Action<TOptions> createOptions,
+            string? name,
+            ServiceLifetime serviceLifetime,
+            Action? whenExists)
                where TInterface : class
                where TClass : class, TInterface, IServiceWithOptions<TBuiltOptions>
                where TOptions : class, IServiceOptions<TBuiltOptions>, new()
                where TBuiltOptions : class
         {
             var countOptions = services.Count(x => x.ServiceType == typeof(TBuiltOptions));
-            services.AddFactory<TInterface, TClass>(name, serviceLifetime);
+            services.AddFactory<TInterface, TClass>(name, serviceLifetime, whenExists);
             TOptions options = new();
             createOptions.Invoke(options);
             var builtOptions = options.Build();
@@ -196,10 +196,10 @@ namespace Microsoft.Extensions.DependencyInjection
                 where TBuiltOptions : class
         {
             var countOptions = services.Count(x => x.ServiceType == typeof(TBuiltOptions));
-            services.AddFactory<TInterface, TClass>(name, serviceLifetime);
+            services.AddFactory<TInterface, TClass>(name, serviceLifetime, whenExists);
             TOptions options = new();
             createOptions.Invoke(options);
-            var builtOptions = await options.BuildAsync();
+            var builtOptions = await options.BuildAsync().NoContext();
             if (serviceLifetime == ServiceLifetime.Transient)
                 services.AddTransient(serviceProvider => builtOptions.Invoke());
             else if (serviceLifetime == ServiceLifetime.Singleton)
