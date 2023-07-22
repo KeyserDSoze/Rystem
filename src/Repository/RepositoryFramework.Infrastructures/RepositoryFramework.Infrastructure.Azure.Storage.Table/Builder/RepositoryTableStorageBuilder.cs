@@ -23,7 +23,6 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
            => WithProperty<TProperty, object>(nameof(WithRowKey), property, null);
         public IRepositoryTableStorageBuilder<T, TKey> WithTimestamp(Expression<Func<T, DateTime>> property)
             => WithProperty<DateTime, object>(nameof(WithTimestamp), property, null!);
-
         public IRepositoryTableStorageBuilder<T, TKey> WithTableStorageKeyReader<TKeyReader>()
             where TKeyReader : class, ITableStorageKeyReader<T, TKey>
         {
@@ -79,7 +78,6 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
                     TableStorageSettings<T, TKey>.Instance.Timestamp = name;
                 }
             }
-            Services.AddSingleton(TableStorageSettings<T, TKey>.Instance);
         }
     }
 }

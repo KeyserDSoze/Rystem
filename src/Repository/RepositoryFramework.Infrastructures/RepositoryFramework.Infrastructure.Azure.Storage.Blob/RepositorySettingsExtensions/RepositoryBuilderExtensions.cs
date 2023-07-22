@@ -1,6 +1,4 @@
-﻿using Azure.Storage.Blobs;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using RepositoryFramework;
+﻿using RepositoryFramework;
 using RepositoryFramework.Infrastructure.Azure.Storage.Blob;
 
 namespace Microsoft.Extensions.DependencyInjection
@@ -13,9 +11,9 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="T">Model used for your repository</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
-        /// <param name="connectionSettings">Settings for your Cosmos database.</param>
+        /// <param name="connectionSettings">Settings for your blob storage.</param>
         /// <returns>IRepositoryBlobStorageBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static async Task<IRepositoryBlobStorageBuilder<T, TKey>> WithBlobStorage<T, TKey>(
+        public static async Task<IRepositoryBlobStorageBuilder<T, TKey>> WithBlobStorageAsync<T, TKey>(
             this IRepositoryBuilder<T, TKey> builder,
             Action<BlobStorageConnectionSettings> connectionSettings,
             string? name = null)
@@ -38,9 +36,9 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="T">Model used for your repository</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">ICommandBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
-        /// <param name="connectionSettings">Settings for your Cosmos database.</param>
+        /// <param name="connectionSettings">Settings for your blob storage.</param>
         /// <returns>IRepositoryBlobStorageBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static async Task<IRepositoryBlobStorageBuilder<T, TKey>> WithBlobStorage<T, TKey>(
+        public static async Task<IRepositoryBlobStorageBuilder<T, TKey>> WithBlobStorageAsync<T, TKey>(
             this ICommandBuilder<T, TKey> builder,
             Action<BlobStorageConnectionSettings> connectionSettings,
             string? name = null)
@@ -63,9 +61,9 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="T">Model used for your repository</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">IQueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
-        /// <param name="connectionSettings">Settings for your Cosmos database.</param>
+        /// <param name="connectionSettings">Settings for your blob storage.</param>
         /// <returns>IRepositoryBlobStorageBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static async Task<IRepositoryBlobStorageBuilder<T, TKey>> WithBlobStorage<T, TKey>(
+        public static async Task<IRepositoryBlobStorageBuilder<T, TKey>> WithBlobStorageAsync<T, TKey>(
             this IQueryBuilder<T, TKey> builder,
             Action<BlobStorageConnectionSettings> connectionSettings,
             string? name = null)

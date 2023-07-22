@@ -3,23 +3,20 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Azure;
 using Azure.Data.Tables;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
 {
-    internal sealed class TableStorageRepository<T, TKey> : IRepository<T, TKey>
+    internal sealed class TableStorageRepository<T, TKey> : IRepository<T, TKey>, IServiceWithOptions<TableClientWrapper>
         where TKey : notnull
     {
-        private readonly TableClient _client;
+        private TableClient Client => Options.Client;
         private readonly ITableStorageKeyReader<T, TKey> _keyReader;
-        private readonly TableStorageSettings<T, TKey> _settings;
+        public TableClientWrapper Options { get; set; }
 
-        public TableStorageRepository(TableServiceClientFactory clientFactory,
-            ITableStorageKeyReader<T, TKey> keyReader,
-            TableStorageSettings<T, TKey> settings)
+        public TableStorageRepository(ITableStorageKeyReader<T, TKey> keyReader)
         {
-            _client = clientFactory.Get(typeof(T).Name);
             _keyReader = keyReader;
-            _settings = settings;
         }
         private sealed class TableEntity : ITableEntity
         {
@@ -33,7 +30,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
         public async Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default)
         {
             var (partitionKey, rowKey) = _keyReader.Read(key);
-            var response = await _client.DeleteEntityAsync(partitionKey, rowKey, cancellationToken: cancellationToken).NoContext();
+            var response = await Client.DeleteEntityAsync(partitionKey, rowKey, cancellationToken: cancellationToken).NoContext();
             return !response.IsError;
         }
 
@@ -42,7 +39,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
             var (partitionKey, rowKey) = _keyReader.Read(key);
             try
             {
-                var response = await _client.GetEntityAsync<TableEntity>(partitionKey, rowKey, cancellationToken: cancellationToken).NoContext();
+                var response = await Client.GetEntityAsync<TableEntity>(partitionKey, rowKey, cancellationToken: cancellationToken).NoContext();
                 if (response?.Value != null)
                     return JsonSerializer.Deserialize<T>(response.Value.Value);
             }
@@ -55,7 +52,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
         public async Task<State<T, TKey>> ExistAsync(TKey key, CancellationToken cancellationToken = default)
         {
             var (partitionKey, rowKey) = _keyReader.Read(key);
-            await foreach (var entity in _client.QueryAsync<TableEntity>(
+            await foreach (var entity in Client.QueryAsync<TableEntity>(
                 filter: $"PartitionKey eq '{partitionKey}' and RowKey eq '{rowKey}'", 1, cancellationToken: cancellationToken))
                 return State.Default(true, JsonSerializer.Deserialize<T>(entity.Value)!, key);
             return false;
@@ -70,14 +67,14 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
             var where = (filter.Operations.FirstOrDefault(x => x.Operation == FilterOperations.Where) as LambdaFilterOperation)?.Expression;
             string? filterAsString = null;
             if (where != null)
-                filterAsString = QueryStrategy.Create(where.Body, _settings.PartitionKey, _settings.RowKey, _settings.Timestamp);
+                filterAsString = QueryStrategy.Create(where.Body, TableStorageSettings<T, TKey>.Instance.PartitionKey, TableStorageSettings<T, TKey>.Instance.RowKey, TableStorageSettings<T, TKey>.Instance.Timestamp);
 
             var top = (filter.Operations.FirstOrDefault(x => x.Operation == FilterOperations.Top) as ValueFilterOperation)?.Value;
             var skip = (filter.Operations.FirstOrDefault(x => x.Operation == FilterOperations.Skip) as ValueFilterOperation)?.Value;
             var counter = 0;
             var items = new List<T>();
 
-            await foreach (var page in _client.QueryAsync<TableEntity>(filter: filterAsString,
+            await foreach (var page in Client.QueryAsync<TableEntity>(filter: filterAsString,
                 maxPerPage: 50,
                 cancellationToken: cancellationToken).AsPages())
             {
@@ -140,7 +137,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
         public async Task<State<T, TKey>> UpdateAsync(TKey key, T value, CancellationToken cancellationToken = default)
         {
             var (partitionKey, rowKey) = _keyReader.Read(key);
-            var response = await _client.UpsertEntityAsync(new TableEntity
+            var response = await Client.UpsertEntityAsync(new TableEntity
             {
                 PartitionKey = partitionKey,
                 RowKey = rowKey,
