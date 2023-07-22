@@ -14,11 +14,13 @@ namespace RepositoryFramework
         public bool IsNotExposable { get; internal set; }
         public ServiceLifetime ServiceLifetime { get; internal set; }
         public PatternType Type { get; }
-        public RepositoryFrameworkService(Type keyType, Type modelType, PatternType type)
+        public string FactoryName { get; }
+        public RepositoryFrameworkService(Type keyType, Type modelType, PatternType type, string name)
         {
             KeyType = keyType;
             ModelType = modelType;
             Type = type;
+            FactoryName = name;
         }
     }
 }

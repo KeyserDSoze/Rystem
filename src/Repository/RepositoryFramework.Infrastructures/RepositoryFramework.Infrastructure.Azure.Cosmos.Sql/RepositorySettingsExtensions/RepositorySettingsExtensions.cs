@@ -13,17 +13,18 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="settings">IRepositorySettings<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
         /// <param name="connectionSettings">Settings for your Cosmos database.</param>
         /// <returns>IRepositoryCosmosSqlBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static IRepositoryCosmosSqlBuilder<T, TKey> WithCosmosSql<T, TKey>(
+        public static async Task<IRepositoryCosmosSqlBuilder<T, TKey>> WithCosmosSqlAsync<T, TKey>(
            this RepositorySettings<T, TKey> settings,
-            Action<CosmosSqlConnectionSettings> connectionSettings)
+            Action<CosmosSqlConnectionSettings> connectionSettings,
+            string? name = null)
             where TKey : notnull
         {
-            var options = new CosmosSqlConnectionSettings();
-            connectionSettings.Invoke(options);
-            CosmosSqlServiceClientFactory.Instance.Add<T>(options);
-            settings.Services.AddSingleton(new CosmosSettings<T, TKey>(options.ContainerName ?? typeof(T).Name));
-            settings.Services.AddSingleton(CosmosSqlServiceClientFactory.Instance);
-            settings.SetStorage<CosmosSqlRepository<T, TKey>>(ServiceLifetime.Singleton);
+            await settings.SetStorageAsync<CosmosSqlRepository<T, TKey>, CosmosSqlConnectionSettings, CosmosSqlClient>(
+                options =>
+                {
+                    connectionSettings.Invoke(options);
+                    options.ModelType = typeof(T);
+                }, name, ServiceLifetime.Singleton).NoContext();
             return new RepositoryCosmosSqlBuilder<T, TKey>(settings.Services);
         }
     }

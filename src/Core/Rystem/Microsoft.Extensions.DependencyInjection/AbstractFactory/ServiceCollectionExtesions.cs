@@ -10,11 +10,11 @@ namespace Microsoft.Extensions.DependencyInjection
             where TInterface : class
             where TClass : class, TInterface
         {
+            services.TryAddTransient(typeof(IFactory<>), typeof(Factory<>));
             var count = services.Count(x => x.ServiceType == typeof(TInterface));
             if (Factory<TInterface>.Map.TryAdd(name ?? string.Empty, count))
             {
                 services.AddService<TInterface, TClass>(serviceLifetime);
-                services.TryAddTransient<IFactory<TInterface>, Factory<TInterface>>();
                 return services;
             }
             else
