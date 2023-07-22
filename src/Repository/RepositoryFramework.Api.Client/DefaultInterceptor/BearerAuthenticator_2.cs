@@ -2,10 +2,10 @@
 
 namespace RepositoryFramework.Api.Client.DefaultInterceptor
 {
-    internal class BearerAuthenticator<T> : BearerAuthenticator, IRepositoryClientInterceptor<T>
+    internal sealed class BearerAuthenticator<T, TKey> : BearerAuthenticator<T>, IRepositoryClientInterceptor<T, TKey>
     {
         public BearerAuthenticator(ITokenManager tokenManager,
-            AuthenticatorSettings<T> settings,
+            AuthenticatorSettings<T, TKey> settings,
             IServiceProvider provider) : base(tokenManager, settings, provider)
         {
         }

@@ -13,27 +13,46 @@ namespace RepositoryFramework.Api.Client
         private readonly HttpClient _httpClient;
         public ApiClientSettings<T, TKey>? Options { get; set; }
         private readonly KeySettings<TKey> _keySettings;
-        private readonly IRepositoryClientInterceptor? _clientInterceptor;
-        private readonly IRepositoryClientInterceptor<T>? _specificClientInterceptor;
+        private readonly IEnumerable<IRepositoryClientInterceptor>? _clientInterceptors;
+        private readonly IEnumerable<IRepositoryClientInterceptor<T>>? _specificClientInterceptors;
+        private readonly IEnumerable<IRepositoryClientInterceptor<T, TKey>>? _specificClientInterceptorsWithKeys;
         public RepositoryClient(IHttpClientFactory httpClientFactory,
             KeySettings<TKey> keySettings,
-            IRepositoryClientInterceptor? clientInterceptor = null,
-            IRepositoryClientInterceptor<T>? specificClientInterceptor = null)
+            IEnumerable<IRepositoryClientInterceptor>? clientInterceptors = null,
+            IEnumerable<IRepositoryClientInterceptor<T>>? specificClientInterceptors = null,
+            IEnumerable<IRepositoryClientInterceptor<T, TKey>>? specificClientInterceptorsWithKeys = null)
         {
             var name = typeof(T).Name;
             _httpClient = httpClientFactory.CreateClient($"{name}{Const.HttpClientName}");
             _keySettings = keySettings;
-            _clientInterceptor = clientInterceptor;
-            _specificClientInterceptor = specificClientInterceptor;
+            _clientInterceptors = clientInterceptors;
+            _specificClientInterceptors = specificClientInterceptors;
+            _specificClientInterceptorsWithKeys = specificClientInterceptorsWithKeys;
         }
+        private bool _clientAlreadyEnriched = false;
         private Task<HttpClient> EnrichedClientAsync(RepositoryMethods api)
         {
-            if (_specificClientInterceptor != null)
-                return _specificClientInterceptor.EnrichAsync(_httpClient, api);
-            else if (_clientInterceptor != null)
-                return _clientInterceptor.EnrichAsync(_httpClient, api);
+            if (_clientAlreadyEnriched)
+            {
+                return EnrichAsync();
+            }
             else
                 return Task.FromResult(_httpClient);
+
+            async Task<HttpClient> EnrichAsync()
+            {
+                if (_clientInterceptors != null)
+                    foreach (var interceptor in _clientInterceptors)
+                        await interceptor.EnrichAsync(_httpClient, api).NoContext();
+                if (_specificClientInterceptors != null)
+                    foreach (var interceptor in _specificClientInterceptors)
+                        await interceptor.EnrichAsync(_httpClient, api).NoContext();
+                if (_specificClientInterceptorsWithKeys != null)
+                    foreach (var interceptor in _specificClientInterceptorsWithKeys)
+                        await interceptor.EnrichAsync(_httpClient, api).NoContext();
+                _clientAlreadyEnriched = true;
+                return _httpClient;
+            }
         }
         private static async Task<TResult?> PostAsJson<TMessage, TResult>(HttpClient client, string path, TMessage message, CancellationToken cancellationToken)
         {
@@ -65,33 +84,33 @@ namespace RepositoryFramework.Api.Client
         {
             var client = await EnrichedClientAsync(RepositoryMethods.Delete).NoContext();
             if (_keySettings.IsJsonable)
-                return (await PostAsJson<TKey, State<T, TKey>>(client, Options.DeletePath, key, cancellationToken).NoContext())!;
+                return (await PostAsJson<TKey, State<T, TKey>>(client, Options!.DeletePath, key, cancellationToken).NoContext())!;
             else
-                return (await GetAsJson<State<T, TKey>>(client, GetCorrectUriWithKey(Options.DeletePath, key), cancellationToken).NoContext())!;
+                return (await GetAsJson<State<T, TKey>>(client, GetCorrectUriWithKey(Options!.DeletePath, key), cancellationToken).NoContext())!;
         }
         public async Task<T?> GetAsync(TKey key, CancellationToken cancellationToken = default)
         {
             var client = await EnrichedClientAsync(RepositoryMethods.Get).NoContext();
             if (_keySettings.IsJsonable)
-                return await PostAsJson<TKey, T>(client, Options.GetPath, key, cancellationToken).NoContext();
+                return await PostAsJson<TKey, T>(client, Options!.GetPath, key, cancellationToken).NoContext();
             else
-                return await GetAsJson<T>(client, GetCorrectUriWithKey(Options.GetPath, key), cancellationToken).NoContext();
+                return await GetAsJson<T>(client, GetCorrectUriWithKey(Options!.GetPath, key), cancellationToken).NoContext();
         }
         public async Task<State<T, TKey>> ExistAsync(TKey key, CancellationToken cancellationToken = default)
         {
             var client = await EnrichedClientAsync(RepositoryMethods.Exist).NoContext();
             if (_keySettings.IsJsonable)
-                return (await PostAsJson<TKey, State<T, TKey>>(client, Options.ExistPath, key, cancellationToken).NoContext())!;
+                return (await PostAsJson<TKey, State<T, TKey>>(client, Options!.ExistPath, key, cancellationToken).NoContext())!;
             else
-                return (await GetAsJson<State<T, TKey>>(client, GetCorrectUriWithKey(Options.ExistPath, key), cancellationToken).NoContext())!;
+                return (await GetAsJson<State<T, TKey>>(client, GetCorrectUriWithKey(Options!.ExistPath, key), cancellationToken).NoContext())!;
         }
         public async Task<State<T, TKey>> InsertAsync(TKey key, T value, CancellationToken cancellationToken = default)
         {
             var client = await EnrichedClientAsync(RepositoryMethods.Insert).NoContext();
             if (_keySettings.IsJsonable)
-                return (await PostAsJson<Entity<T, TKey>, State<T, TKey>>(client, Options.InsertPath, new(value, key), cancellationToken).NoContext())!;
+                return (await PostAsJson<Entity<T, TKey>, State<T, TKey>>(client, Options!.InsertPath, new(value, key), cancellationToken).NoContext())!;
             else
-                return (await PostAsJson<T, State<T, TKey>>(client, GetCorrectUriWithKey(Options.InsertPath, key), value, cancellationToken).NoContext())!;
+                return (await PostAsJson<T, State<T, TKey>>(client, GetCorrectUriWithKey(Options!.InsertPath, key), value, cancellationToken).NoContext())!;
         }
         private const string ApplicationJson = "application/json";
 
@@ -101,7 +120,7 @@ namespace RepositoryFramework.Api.Client
             var client = await EnrichedClientAsync(RepositoryMethods.Query).NoContext();
             var value = filter.Serialize();
             var jsonContent = new StringContent(value.ToJson(), Encoding.UTF8, ApplicationJson);
-            var request = new HttpRequestMessage(HttpMethod.Post, Options.QueryPath)
+            var request = new HttpRequestMessage(HttpMethod.Post, Options!.QueryPath)
             {
                 Content = jsonContent
             };
@@ -127,7 +146,7 @@ namespace RepositoryFramework.Api.Client
             var client = await EnrichedClientAsync(RepositoryMethods.Operation).NoContext();
             var value = filter.Serialize();
             var response = await client.PostAsJsonAsync(
-                string.Format(Options.OperationPath, operation.Name, GetPrimitiveNameOrAssemblyQualifiedName()),
+                string.Format(Options!.OperationPath, operation.Name, GetPrimitiveNameOrAssemblyQualifiedName()),
                 value, cancellationToken).NoContext();
             response.EnsureSuccessStatusCode();
             var result = await response.Content.ReadFromJsonAsync<TProperty>(cancellationToken: cancellationToken).NoContext();
@@ -147,14 +166,14 @@ namespace RepositoryFramework.Api.Client
         {
             var client = await EnrichedClientAsync(RepositoryMethods.Update).NoContext();
             if (_keySettings.IsJsonable)
-                return (await PostAsJson<Entity<T, TKey>, State<T, TKey>>(client, Options.UpdatePath, new(value, key), cancellationToken).NoContext())!;
+                return (await PostAsJson<Entity<T, TKey>, State<T, TKey>>(client, Options!.UpdatePath, new(value, key), cancellationToken).NoContext())!;
             else
-                return (await PostAsJson<T, State<T, TKey>>(client, GetCorrectUriWithKey(Options.UpdatePath, key), value, cancellationToken).NoContext())!;
+                return (await PostAsJson<T, State<T, TKey>>(client, GetCorrectUriWithKey(Options!.UpdatePath, key), value, cancellationToken).NoContext())!;
         }
         public async Task<BatchResults<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default)
         {
             var client = await EnrichedClientAsync(RepositoryMethods.Batch).NoContext();
-            var response = await client.PostAsJsonAsync(Options.BatchPath, operations, cancellationToken).NoContext();
+            var response = await client.PostAsJsonAsync(Options!.BatchPath, operations, cancellationToken).NoContext();
             response.EnsureSuccessStatusCode();
             return (await response.Content.ReadFromJsonAsync<BatchResults<T, TKey>>(cancellationToken: cancellationToken).NoContext())!;
         }

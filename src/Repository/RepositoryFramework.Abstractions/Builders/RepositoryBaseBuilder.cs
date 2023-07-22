@@ -13,18 +13,18 @@ namespace RepositoryFramework
         public IServiceCollection Services { get; internal set; }
         private TRepositoryBuilder Builder => (TRepositoryBuilder)(dynamic)this;
         private string _currentName = string.Empty;
+        private PatternType _currentPatternType = PatternType.Repository;
         private ServiceLifetime _serviceLifetime = ServiceLifetime.Scoped;
         private void SetDefaultFrameworkBeforeStorage<TStorage>(
             string? name,
             ServiceLifetime serviceLifetime)
             where TStorage : class, TRepositoryPattern
         {
-            var patternType = PatternType.Repository;
             if (!typeof(TRepository).IsSubclassOf(typeof(IRepositoryPattern)))
-                patternType = typeof(TRepository).IsSubclassOf(typeof(ICommandPattern)) ? PatternType.Command : PatternType.Query;
+                _currentPatternType = typeof(TRepository).IsSubclassOf(typeof(ICommandPattern)) ? PatternType.Command : PatternType.Query;
             _currentName = name ?? string.Empty;
             _serviceLifetime = serviceLifetime;
-            var service = SetService(_currentName, patternType);
+            var service = SetService();
             service.ServiceLifetime = serviceLifetime;
             service.InterfaceType = typeof(TRepository);
             service.ImplementationType = typeof(TStorage);
@@ -80,15 +80,15 @@ namespace RepositoryFramework
                 .AddFactory<TRepositoryPattern, TStorage>(_currentName, serviceLifetime);
             return Builder;
         }
-        private RepositoryFrameworkService SetService(string name, PatternType patternType)
+        private RepositoryFrameworkService SetService()
         {
             var entityType = typeof(T);
-            var serviceKey = RepositoryFrameworkRegistry.ToServiceKey(entityType, patternType, name);
+            var serviceKey = RepositoryFrameworkRegistry.ToServiceKey(entityType, _currentPatternType, _currentName);
             if (!RepositoryFrameworkRegistry.Instance.Services.ContainsKey(serviceKey))
             {
                 var keyType = typeof(TKey);
                 RepositoryFrameworkRegistry.Instance.Services.Add(serviceKey,
-                    new(keyType, entityType, patternType, name));
+                    new(keyType, entityType, _currentPatternType, _currentName));
                 Services.TryAddSingleton(RepositoryFrameworkRegistry.Instance);
             }
             return RepositoryFrameworkRegistry.Instance.Services[serviceKey];
@@ -101,6 +101,11 @@ namespace RepositoryFramework
             FilterTranslation<T, TKey>.Instance.Setup<TTranslated>();
             Services.AddSingleton<IRepositoryMapper<T, TKey, TTranslated>>(RepositoryMapper<T, TKey, TTranslated>.Instance);
             return new QueryTranslationBuilder<T, TKey, TTranslated, TRepositoryBuilder>(Builder);
+        }
+        public void SetNotExposable()
+        {
+            var service = SetService();
+            service.IsNotExposable = true;
         }
     }
 }

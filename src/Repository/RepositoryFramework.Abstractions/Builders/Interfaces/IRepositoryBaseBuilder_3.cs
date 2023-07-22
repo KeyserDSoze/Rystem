@@ -9,5 +9,6 @@ namespace RepositoryFramework
         IServiceCollection Services { get; }
         QueryTranslationBuilder<T, TKey, TTranslated, TRepositoryBuilder> Translate<TTranslated>();
         RepositoryBusinessBuilder<T, TKey> AddBusiness(ServiceLifetime? serviceLifetime = null);
+        void SetNotExposable();
     }
 }

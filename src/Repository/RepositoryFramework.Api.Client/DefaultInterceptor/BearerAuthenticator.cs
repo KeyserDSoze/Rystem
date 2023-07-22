@@ -1,6 +1,4 @@
-﻿using Microsoft.Identity.Web;
-using RepositoryFramework.Api.Client.Authorization;
-using System.Net.Http.Headers;
+﻿using RepositoryFramework.Api.Client.Authorization;
 
 namespace RepositoryFramework.Api.Client.DefaultInterceptor
 {
