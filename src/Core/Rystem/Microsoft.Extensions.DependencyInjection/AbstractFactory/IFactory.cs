@@ -1,7 +1,7 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    public interface IFactory<out T>
+    public interface IFactory<out TService>
     {
-        T Create(string? name = null);
+        TService Create(string? name = null);
     }
 }

@@ -1,224 +1,260 @@
 ﻿using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
     public static partial class ServiceCollectionExtesions
     {
-        private static void SendInError<TInterface>(string name)
+        private static void SendInError<TService>(string name)
         {
-            throw new ArgumentException($"Options name: {name} for your factory {typeof(TInterface).Name} already exists.");
+            throw new ArgumentException($"Options name: {name} for your factory {typeof(TService).Name} already exists.");
         }
-        public static IServiceCollection AddFactory<TInterface, TClass>(this IServiceCollection services,
+        public static IServiceCollection AddFactory<TService, TImplementation>(this IServiceCollection services,
            string? name = null,
-           ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
-           where TInterface : class
-           where TClass : class, TInterface
-            => services.AddFactory<TInterface, TClass>(name, serviceLifetime, () => SendInError<TInterface>(name ?? string.Empty));
-        public static IServiceCollection AddFactory<TInterface, TClass, TOptions>(this IServiceCollection services,
+           ServiceLifetime lifetime = ServiceLifetime.Transient)
+           where TService : class
+           where TImplementation : class, TService
+            => services.AddFactory<TService, TImplementation>(name, lifetime, () => SendInError<TService>(name ?? string.Empty), null);
+        public static IServiceCollection AddFactory<TService, TImplementation, TOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
             string? name = null,
-            ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
-            where TInterface : class
-            where TClass : class, TInterface, IServiceWithOptions<TOptions>
+            ServiceLifetime lifetime = ServiceLifetime.Transient)
+            where TService : class
+            where TImplementation : class, TService, IServiceWithOptions<TOptions>
             where TOptions : class, new()
-            => services.AddFactory<TInterface, TClass, TOptions>(createOptions, name, serviceLifetime, () => SendInError<TInterface>(name ?? string.Empty));
-        public static IServiceCollection AddFactory<TInterface, TClass, TOptions, TBuiltOptions>(this IServiceCollection services,
+            => services.AddFactory<TService, TImplementation, TOptions>(createOptions, name, lifetime, () => SendInError<TService>(name ?? string.Empty));
+        public static IServiceCollection AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
             string? name = null,
-            ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
-            where TInterface : class
-            where TClass : class, TInterface, IServiceWithOptions<TBuiltOptions>
+            ServiceLifetime lifetime = ServiceLifetime.Transient)
+            where TService : class
+            where TImplementation : class, TService, IServiceWithOptions<TBuiltOptions>
             where TOptions : class, IServiceOptions<TBuiltOptions>, new()
             where TBuiltOptions : class
-            => services.AddFactory<TInterface, TClass, TOptions, TBuiltOptions>(createOptions, name, serviceLifetime, () => SendInError<TInterface>(name ?? string.Empty));
-        public static Task<IServiceCollection> AddFactoryAsync<TInterface, TClass, TOptions, TBuiltOptions>(this IServiceCollection services,
+            => services.AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, lifetime, () => SendInError<TService>(name ?? string.Empty));
+        public static Task<IServiceCollection> AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
             string? name = null,
-            ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
-            where TInterface : class
-            where TClass : class, TInterface, IServiceWithOptions<TBuiltOptions>
+            ServiceLifetime lifetime = ServiceLifetime.Transient)
+            where TService : class
+            where TImplementation : class, TService, IServiceWithOptions<TBuiltOptions>
             where TOptions : class, IServiceOptionsAsync<TBuiltOptions>, new()
             where TBuiltOptions : class
-            => services.AddFactoryAsync<TInterface, TClass, TOptions, TBuiltOptions>(createOptions, name, serviceLifetime, () => SendInError<TInterface>(name ?? string.Empty));
+            => services.AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, lifetime, () => SendInError<TService>(name ?? string.Empty));
 
         private static void InformThatItsAlreadyInstalled(ref bool check)
         {
             check = false;
         }
 
-        public static bool TryAddFactory<TInterface, TClass>(this IServiceCollection services,
+        public static bool TryAddFactory<TService, TImplementation>(this IServiceCollection services,
            string? name = null,
-           ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
-           where TInterface : class
-           where TClass : class, TInterface
+           ServiceLifetime lifetime = ServiceLifetime.Transient)
+           where TService : class
+           where TImplementation : class, TService
         {
             var check = true;
-            services.AddFactory<TInterface, TClass>(name, serviceLifetime, () => InformThatItsAlreadyInstalled(ref check));
+            services.AddFactory<TService, TImplementation>(name, lifetime, () => InformThatItsAlreadyInstalled(ref check), null);
             return check;
         }
-        public static bool TryAddFactory<TInterface, TClass, TOptions>(this IServiceCollection services,
+        public static bool TryAddFactory<TService, TImplementation, TOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
             string? name = null,
-            ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
-            where TInterface : class
-            where TClass : class, TInterface, IServiceWithOptions<TOptions>
+            ServiceLifetime lifetime = ServiceLifetime.Transient)
+            where TService : class
+            where TImplementation : class, TService, IServiceWithOptions<TOptions>
             where TOptions : class, new()
         {
             var check = true;
-            services.AddFactory<TInterface, TClass, TOptions>(createOptions, name, serviceLifetime, () => InformThatItsAlreadyInstalled(ref check));
+            services.AddFactory<TService, TImplementation, TOptions>(createOptions, name, lifetime, () => InformThatItsAlreadyInstalled(ref check));
             return check;
         }
-        public static bool TryAddFactory<TInterface, TClass, TOptions, TBuiltOptions>(this IServiceCollection services,
+        public static bool TryAddFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
             string? name = null,
-            ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
-            where TInterface : class
-            where TClass : class, TInterface, IServiceWithOptions<TBuiltOptions>
+            ServiceLifetime lifetime = ServiceLifetime.Transient)
+            where TService : class
+            where TImplementation : class, TService, IServiceWithOptions<TBuiltOptions>
             where TOptions : class, IServiceOptions<TBuiltOptions>, new()
             where TBuiltOptions : class
         {
             var check = true;
-            services.AddFactory<TInterface, TClass, TOptions, TBuiltOptions>(createOptions, name, serviceLifetime, () => InformThatItsAlreadyInstalled(ref check));
+            services.AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, lifetime, () => InformThatItsAlreadyInstalled(ref check));
             return check;
         }
 
-        public static async Task<bool> TryAddFactoryAsync<TInterface, TClass, TOptions, TBuiltOptions>(this IServiceCollection services,
+        public static async Task<bool> TryAddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
             string? name = null,
-            ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
-            where TInterface : class
-            where TClass : class, TInterface, IServiceWithOptions<TBuiltOptions>
+            ServiceLifetime lifetime = ServiceLifetime.Transient)
+            where TService : class
+            where TImplementation : class, TService, IServiceWithOptions<TBuiltOptions>
             where TOptions : class, IServiceOptionsAsync<TBuiltOptions>, new()
             where TBuiltOptions : class
         {
             var check = true;
             await services
-                .AddFactoryAsync<TInterface, TClass, TOptions, TBuiltOptions>(createOptions, name, serviceLifetime, () => InformThatItsAlreadyInstalled(ref check))
-                .NoContext();
+                .AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, lifetime, () => InformThatItsAlreadyInstalled(ref check));
             return check;
         }
 
-        private static IServiceCollection AddFactory<TInterface, TClass>(this IServiceCollection services,
+        private static IServiceCollection AddFactory<TService, TImplementation>(this IServiceCollection services,
             string? name,
-            ServiceLifetime serviceLifetime,
-            Action? whenExists)
-            where TInterface : class
-            where TClass : class, TInterface
+            ServiceLifetime lifetime,
+            Action? whenExists,
+            Func<IServiceProvider, TService, TService>? addingBehaviorToFactory)
+            where TService : class
+            where TImplementation : class, TService
         {
+            name ??= string.Empty;
             services.TryAddTransient(typeof(IFactory<>), typeof(Factory<>));
-            var count = services.Count(x => x.ServiceType == typeof(TInterface));
-            if (Factory<TInterface>.Map.TryAdd(name ?? string.Empty, count))
+            if (Factory<TService>.Map.TryAdd(name, new()
             {
-                services.AddService<TInterface, TClass>(serviceLifetime);
-            }
-            else
-                whenExists?.Invoke();
-            return services;
-        }
-
-        public static IServiceCollection AddFactory<TInterface, TClass, TOptions>(this IServiceCollection services,
-                Action<TOptions> createOptions,
-                string? name,
-                ServiceLifetime serviceLifetime,
-                Action? whenExists)
-                where TInterface : class
-                where TClass : class, TInterface, IServiceWithOptions<TOptions>
-                where TOptions : class, new()
-        {
-
-            services.AddFactory<TInterface, TClass>(name, serviceLifetime, whenExists);
-            var countOptions = services.Count(x => x.ServiceType == typeof(TOptions));
-            if (Factory<TInterface>.MapOptions.TryAdd(name ?? string.Empty, new()
-            {
-                Index = countOptions,
-                Type = typeof(TOptions),
-                Setter = (service, options) =>
-                {
-                    if (service is IServiceWithOptions<TOptions> factoryWithOptions && options is TOptions tOptions)
-                    {
-                        factoryWithOptions.Options = tOptions;
-                    }
-                }
+                ServiceFactory = ServiceFactory,
+                ImplementationType = typeof(TImplementation)
             }))
             {
-                TOptions options = new();
-                createOptions.Invoke(options);
-                services.AddSingleton(options);
+                services.TryAddService<TImplementation>(lifetime);
+                services.AddOrOverrideService(ServiceFactory, lifetime);
             }
             else
                 whenExists?.Invoke();
+
+            TService ServiceFactory(IServiceProvider serviceProvider)
+            {
+                var factory = Factory<TService>.Map[name];
+                var service = GetService(factory.ImplementationType);
+
+                if (factory.DecoratorType != null)
+                {
+                    var decorator = GetService(factory.DecoratorType);
+                    if (decorator is IDecoratorService<TService> decorateWithService)
+                    {
+                        decorateWithService.DecoratedService = service;
+                    }
+                    return decorator;
+                }
+                return service;
+
+                TService GetService(Type implementationType)
+                {
+                    var service = (TService)serviceProvider.GetRequiredService(implementationType);
+                    addingBehaviorToFactory?.Invoke(serviceProvider, service);
+                    if (service is IFactoryService factoryService)
+                        factoryService.FactoryNameSource = name;
+                    foreach (var behavior in factory.FurtherBehaviors.Select(x => x.Value))
+                        service = behavior.Invoke(serviceProvider, service);
+                    return service;
+                }
+            }
+
             return services;
         }
-        private static IServiceCollection AddFactory<TInterface, TClass, TOptions, TBuiltOptions>(this IServiceCollection services,
+        private static TService AddOptionsToFactory<TService, TOptions>(
+            IServiceProvider serviceProvider,
+            TService service,
+            Func<TOptions>? optionsCreator,
+            string? optionsName)
+             where TOptions : class
+        {
+            if (service is IServiceWithOptions<TOptions> serviceWithOptions)
+            {
+                if (optionsName != null)
+                {
+                    var optionsFactory = serviceProvider.GetRequiredService<IOptionsFactory<TOptions>>();
+                    var options = optionsFactory.Create(optionsName);
+                    serviceWithOptions.Options = options;
+                }
+                else
+                    serviceWithOptions.Options = optionsCreator?.Invoke();
+            }
+            else if (service is IServiceWithOptions serviceWithCustomOptions)
+            {
+                var key = $"Rystem.Options.{typeof(TService).Name}.{typeof(TOptions).Name}.{optionsName}";
+                if (!s_optionsSetter.ContainsKey(key))
+                {
+                    var property = serviceWithCustomOptions.GetType().GetProperty(nameof(IServiceWithOptions<TOptions>.Options));
+                    if (property?.PropertyType != null)
+                    {
+                        if (optionsName != null)
+                        {
+                            var currentType = typeof(IOptionsFactory<>).MakeGenericType(property.PropertyType);
+                            s_optionsSetter.TryAdd(key, (serviceProvider, service) =>
+                            {
+                                var optionsFactory = (dynamic)serviceProvider.GetRequiredService(currentType);
+                                var options = optionsFactory.Create(optionsName);
+                                property.SetValue(serviceWithCustomOptions, options);
+                            });
+                        }
+                        else
+                            s_optionsSetter.TryAdd(key, (serviceProvider, service) =>
+                            {
+                                property.SetValue(serviceWithCustomOptions, optionsCreator?.Invoke());
+                            });
+                    }
+                }
+                s_optionsSetter[key]?.Invoke(serviceProvider, serviceWithCustomOptions);
+            }
+            return service;
+        }
+        private static readonly Dictionary<string, Action<IServiceProvider, object>?> s_optionsSetter = new();
+        public static IServiceCollection AddFactory<TService, TImplementation, TOptions>(this IServiceCollection services,
+                Action<TOptions> createOptions,
+                string? name,
+                ServiceLifetime lifetime,
+                Action? whenExists)
+                where TService : class
+                where TImplementation : class, TService, IServiceWithOptions<TOptions>
+                where TOptions : class, new()
+        {
+            var optionsName = $"Rystem.Factory.{name}.{typeof(TService).Name}";
+            services.AddOptions<TOptions>(optionsName)
+                .Configure(createOptions);
+            services.AddFactory<TService, TImplementation>(
+                name,
+                lifetime,
+                whenExists,
+                (serviceProvider, service) =>
+                    AddOptionsToFactory<TService, TOptions>(serviceProvider, service, null, optionsName)
+                );
+            return services;
+        }
+        private static IServiceCollection AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
             string? name,
-            ServiceLifetime serviceLifetime,
+            ServiceLifetime lifetime,
             Action? whenExists)
-               where TInterface : class
-               where TClass : class, TInterface, IServiceWithOptions<TBuiltOptions>
+               where TService : class
+               where TImplementation : class, TService, IServiceWithOptions<TBuiltOptions>
                where TOptions : class, IServiceOptions<TBuiltOptions>, new()
                where TBuiltOptions : class
         {
-            var countOptions = services.Count(x => x.ServiceType == typeof(TBuiltOptions));
-            services.AddFactory<TInterface, TClass>(name, serviceLifetime, whenExists);
             TOptions options = new();
             createOptions.Invoke(options);
             var builtOptions = options.Build();
-            if (serviceLifetime == ServiceLifetime.Transient)
-                services.AddTransient(serviceProvider => builtOptions.Invoke());
-            else if (serviceLifetime == ServiceLifetime.Singleton)
-                services.AddSingleton(serviceProvider => builtOptions.Invoke());
-            else
-                services.AddScoped(serviceProvider => builtOptions.Invoke());
-            if (!Factory<TInterface>.MapOptions.TryAdd(name ?? string.Empty, new()
-            {
-                Index = countOptions,
-                Type = typeof(TBuiltOptions),
-                Setter = (service, options) =>
-                {
-                    if (service is IServiceWithOptions<TBuiltOptions> factoryWithOptions && options is TBuiltOptions tOptions)
-                    {
-                        factoryWithOptions.Options = tOptions;
-                    }
-                }
-            }))
-                whenExists?.Invoke();
+            services.AddFactory<TService, TImplementation>(name, lifetime, whenExists,
+                (serviceProvider, service) =>
+                    AddOptionsToFactory(serviceProvider, service, builtOptions, null)
+                );
             return services;
         }
-        private static async Task<IServiceCollection> AddFactoryAsync<TInterface, TClass, TOptions, TBuiltOptions>(this IServiceCollection services,
+        private static async Task<IServiceCollection> AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
             string? name,
-            ServiceLifetime serviceLifetime,
+            ServiceLifetime lifetime,
             Action? whenExists)
-                where TInterface : class
-                where TClass : class, TInterface, IServiceWithOptions<TBuiltOptions>
+                where TService : class
+                where TImplementation : class, TService, IServiceWithOptions<TBuiltOptions>
                 where TOptions : class, IServiceOptionsAsync<TBuiltOptions>, new()
                 where TBuiltOptions : class
         {
-            var countOptions = services.Count(x => x.ServiceType == typeof(TBuiltOptions));
-            services.AddFactory<TInterface, TClass>(name, serviceLifetime, whenExists);
             TOptions options = new();
             createOptions.Invoke(options);
-            var builtOptions = await options.BuildAsync().NoContext();
-            if (serviceLifetime == ServiceLifetime.Transient)
-                services.AddTransient(serviceProvider => builtOptions.Invoke());
-            else if (serviceLifetime == ServiceLifetime.Singleton)
-                services.AddSingleton(serviceProvider => builtOptions.Invoke());
-            else
-                services.AddScoped(serviceProvider => builtOptions.Invoke());
-            if (!Factory<TInterface>.MapOptions.TryAdd(name ?? string.Empty, new()
-            {
-                Index = countOptions,
-                Type = typeof(TBuiltOptions),
-                Setter = (service, options) =>
-                {
-                    if (service is IServiceWithOptions<TBuiltOptions> factoryWithOptions && options is TBuiltOptions tOptions)
-                    {
-                        factoryWithOptions.Options = tOptions;
-                    }
-                }
-            }))
-                whenExists?.Invoke();
+            var builtOptions = await options.BuildAsync();
+            services.AddFactory<TService, TImplementation>(name, lifetime, whenExists,
+                (serviceProvider, service) =>
+                    AddOptionsToFactory(serviceProvider, service, builtOptions, null)
+                );
             return services;
         }
     }

@@ -1,8 +1,8 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    public interface IServiceOptions<out TService> : IServiceOptions
+    public interface IDecoratorService<TService>
         where TService : class
     {
-        Func<TService> Build();
+        TService DecoratedService { get; set; }
     }
 }

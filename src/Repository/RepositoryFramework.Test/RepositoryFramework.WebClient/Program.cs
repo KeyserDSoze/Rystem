@@ -26,40 +26,61 @@ builder.Services
     .AddRepository<CreativeUser, int>(settings =>
     {
         settings
-            .WithApiClient()
-            .WithHttpClient("localhost:7058")
+            .WithApiClient(apiBuilder =>
+            {
+                apiBuilder
+                .WithHttpClient("localhost:7058")
                 .ClientBuilder
             .AddPolicyHandler(retryPolicy);
+            });
     })
     .AddRepository<SuperUser, string>(settings =>
     {
-        settings.WithApiClient()
-        .WithHttpClient("localhost:7058");
+        settings.WithApiClient(apiBuilder =>
+        {
+            apiBuilder
+            .WithHttpClient("localhost:7058");
+        });
     })
     .AddRepository<IperUser, string>(settings =>
     {
-        settings.WithApiClient()
-        .WithHttpClient("localhost:7058");
+        settings.WithApiClient(apiBuilder =>
+        {
+            apiBuilder
+            .WithHttpClient("localhost:7058");
+        });
     })
     .AddRepository<Animal, AnimalKey>(settings =>
     {
-        settings.WithApiClient()
-        .WithHttpClient("localhost:7058");
+        settings.WithApiClient(apiBuilder =>
+        {
+            apiBuilder
+            .WithHttpClient("localhost:7058");
+        });
     })
     .AddRepository<AppUser, AppUserKey>(settings =>
     {
-        settings.WithApiClient()
-        .WithHttpClient("localhost:7058");
+        settings.WithApiClient(apiBuilder =>
+        {
+            apiBuilder
+            .WithHttpClient("localhost:7058");
+        });
     })
     .AddRepository<Car, Guid>(settings =>
     {
-        settings.WithApiClient()
-        .WithHttpClient("localhost:7058");
+        settings.WithApiClient(apiBuilder =>
+        {
+            apiBuilder
+            .WithHttpClient("localhost:7058");
+        });
     })
     .AddRepository<Car2, Range>(settings =>
     {
-        settings.WithApiClient()
-        .WithHttpClient("localhost:7058");
+        settings.WithApiClient(apiBuilder =>
+        {
+            apiBuilder
+            .WithHttpClient("localhost:7058");
+        });
     });
 
 builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient(settings =>

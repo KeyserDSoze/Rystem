@@ -1,33 +1,21 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    internal sealed class Factory<T> : IFactory<T>
+    internal sealed class Factory<TService> : IFactory<TService>
     {
-        private readonly IEnumerable<T> _services;
         private readonly IServiceProvider _serviceProvider;
-        public Factory(IEnumerable<T> services, IServiceProvider serviceProvider)
+        public Factory(IServiceProvider serviceProvider)
         {
-            _services = services;
             _serviceProvider = serviceProvider;
         }
-        public T Create(string? name = null)
+        public TService Create(string? name = null) 
+            => Map[name ?? string.Empty].ServiceFactory.Invoke(_serviceProvider);
+        internal static Dictionary<string, FactoryService> Map { get; } = new();
+        internal sealed class FactoryService
         {
-            var index = Map[name ?? string.Empty];
-            var service = _services.Skip(index).First();
-            if (service is IServiceWithOptions)
-            {
-                var options = MapOptions[name ?? string.Empty];
-                var optionsService = _serviceProvider.GetServices(options.Type).Skip(options.Index).First()!;
-                options.Setter(service, optionsService);
-            }
-            return service;
-        }
-        internal static Dictionary<string, int> Map { get; } = new();
-        internal static Dictionary<string, MappingOptions> MapOptions { get; } = new();
-        internal sealed class MappingOptions
-        {
-            public int Index { get; init; }
-            public Type Type { get; init; } = null!;
-            public Action<T, object> Setter { get; init; } = null!;
+            public Func<IServiceProvider, TService> ServiceFactory { get; set; } = null!;
+            public Type ImplementationType { get; set; } = null!;
+            public Type? DecoratorType { get; set; }
+            public Dictionary<string, Func<IServiceProvider, TService, TService>> FurtherBehaviors { get; set; } = new();
         }
     }
 }

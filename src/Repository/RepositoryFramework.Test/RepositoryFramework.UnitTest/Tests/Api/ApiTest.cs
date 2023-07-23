@@ -135,11 +135,11 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                                     .AddRepository<SuperUser, string>(
                                     settings =>
                                     {
-                                        settings.WithCosmosSql(x =>
+                                        (await settings.WithCosmosSqlAsync(x =>
                                         {
                                             x.ConnectionString = configuration["ConnectionString:CosmosSql"];
                                             x.DatabaseName = "BigDatabase";
-                                        })
+                                        }))
                                             .WithId(x => x.Email!);
                                         settings
                                         .AddBusiness()
@@ -231,70 +231,124 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                     .AddRepository<SuperUser, string>(settings =>
                     {
                         settings
-                            .WithApiClient(serviceLifetime: ServiceLifetime.Scoped)
-                            .WithVersion(Version)
-                            .WithStartingPath(Path);
+                            .WithApiClient(apiBuilder =>
+                            {
+                                apiBuilder
+                                    .WithVersion(Version)
+                                    .WithStartingPath(Path);
+                            },
+                            serviceLifetime: ServiceLifetime.Scoped);
                     })
                     .AddRepository<AppUser, AppUserKey>(settings =>
                     {
-                        settings.WithApiClient(serviceLifetime: ServiceLifetime.Scoped)
-                        .WithVersion(Version)
-                        .WithStartingPath(Path);
+                        settings
+                            .WithApiClient(apiBuilder =>
+                            {
+                                apiBuilder
+                                    .WithVersion(Version)
+                                    .WithStartingPath(Path);
+                            },
+                            serviceLifetime: ServiceLifetime.Scoped);
                     })
                     .AddRepository<Plant, int>(settings =>
                     {
-                        settings.WithApiClient(serviceLifetime: ServiceLifetime.Scoped)
-                        .WithVersion(Version)
-                        .WithStartingPath(Path);
+                        settings
+                            .WithApiClient(apiBuilder =>
+                            {
+                                apiBuilder
+                                    .WithVersion(Version)
+                                    .WithStartingPath(Path);
+                            },
+                            serviceLifetime: ServiceLifetime.Scoped);
                     })
                     .AddRepository<IperUser, string>(settings =>
                     {
-                        settings.WithApiClient(serviceLifetime: ServiceLifetime.Scoped)
-                        .WithVersion(Version)
-                        .WithStartingPath(Path);
+                        settings
+                            .WithApiClient(apiBuilder =>
+                            {
+                                apiBuilder
+                                    .WithVersion(Version)
+                                    .WithStartingPath(Path);
+                            },
+                            serviceLifetime: ServiceLifetime.Scoped);
                     })
                     .AddRepository<Animal, AnimalKey>(settings =>
                     {
-                        settings.WithApiClient(serviceLifetime: ServiceLifetime.Scoped)
-                        .WithVersion(Version)
-                        .WithStartingPath(Path);
+                        settings
+                            .WithApiClient(apiBuilder =>
+                            {
+                                apiBuilder
+                                    .WithVersion(Version)
+                                    .WithStartingPath(Path);
+                            },
+                            serviceLifetime: ServiceLifetime.Scoped);
                     })
                     .AddRepository<Car, Guid>(settings =>
                     {
-                        settings.WithApiClient(serviceLifetime: ServiceLifetime.Scoped)
-                        .WithVersion(Version)
-                        .WithStartingPath(Path);
+                        settings
+                            .WithApiClient(apiBuilder =>
+                            {
+                                apiBuilder
+                                    .WithVersion(Version)
+                                    .WithStartingPath(Path);
+                            },
+                            serviceLifetime: ServiceLifetime.Scoped);
                     })
                     .AddRepository<SuperCar, Guid>(settings =>
                     {
-                        settings.WithApiClient(serviceLifetime: ServiceLifetime.Scoped)
-                        .WithVersion(Version)
-                        .WithStartingPath(Path);
+                        settings
+                            .WithApiClient(apiBuilder =>
+                            {
+                                apiBuilder
+                                    .WithVersion(Version)
+                                    .WithStartingPath(Path);
+                            },
+                            serviceLifetime: ServiceLifetime.Scoped);
                     })
                     .AddRepository<CalamityUniverseUser, string>(settings =>
                     {
-                        settings.WithApiClient(serviceLifetime: ServiceLifetime.Scoped)
-                        .WithName("calamityuser")
-                        .WithVersion(Version)
-                        .WithStartingPath(Path);
+                        settings
+                            .WithApiClient(apiBuilder =>
+                            {
+                                apiBuilder
+                                    .WithName("calamityuser")
+                                    .WithVersion(Version)
+                                    .WithStartingPath(Path);
+                            },
+                            serviceLifetime: ServiceLifetime.Scoped);
                     })
                     .AddRepository<Cat, Guid>(settings =>
                     {
-                        settings.WithApiClient(serviceLifetime: ServiceLifetime.Scoped)
-                        .WithVersion(Version)
-                        .WithStartingPath(Path);
+                        settings
+                            .WithApiClient(apiBuilder =>
+                            {
+                                apiBuilder
+                                    .WithVersion(Version)
+                                    .WithStartingPath(Path);
+                            },
+                            serviceLifetime: ServiceLifetime.Scoped);
                     })
                     .AddRepository<MappingUser, int>(settings =>
                     {
-                        settings.WithApiClient(serviceLifetime: ServiceLifetime.Scoped)
-                        .WithVersion(Version)
-                        .WithStartingPath(Path);
+                        settings
+                            .WithApiClient(apiBuilder =>
+                            {
+                                apiBuilder
+                                    .WithVersion(Version)
+                                    .WithStartingPath(Path);
+                            },
+                            serviceLifetime: ServiceLifetime.Scoped);
                     })
                     .AddRepository<User, int>(settings =>
                     {
-                        settings.WithApiClient(serviceLifetime: ServiceLifetime.Scoped)
-                        .WithVersion(Version)
-                        .WithStartingPath(Path);
+                        settings
+                            .WithApiClient(apiBuilder =>
+                            {
+                                apiBuilder
+                                    .WithVersion(Version)
+                                    .WithStartingPath(Path);
+                            },
+                            serviceLifetime: ServiceLifetime.Scoped);
                     });
                 services.Finalize(out var serviceProvider);
                 HttpClientFactory.Instance.ServiceProvider = serviceProvider;

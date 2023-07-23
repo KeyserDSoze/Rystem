@@ -6,18 +6,19 @@ namespace Microsoft.Extensions.DependencyInjection
     public static partial class RepositorySettingsExtensions
     {
         private static void AddCacheManager<T, TKey>(
-            this RepositorySettings<T, TKey> settings,
+            this IServiceCollection services,
+            PatternType patternType,
             CacheOptions<T, TKey> options)
             where TKey : notnull
         {
-            if (settings.Type == PatternType.Repository)
-                settings.Services
-                    .Decorate<IRepository<T, TKey>, CachedRepository<T, TKey>>();
-            else if (settings.Type == PatternType.Query)
-                settings.Services
+            if (patternType == PatternType.Repository)
+                services
+                    .AddDecoration<IRepository<T, TKey>, CachedRepository<T, TKey>>();
+            else if (patternType == PatternType.Query)
+                services
                     .Decorate<IQuery<T, TKey>, CachedQuery<T, TKey>>();
-            else if (settings.Type == PatternType.Command && options.HasCommandPattern)
-                settings.Services
+            else if (patternType == PatternType.Command && options.HasCommandPattern)
+                services
                     .Decorate<ICommand<T, TKey>, CachedRepository<T, TKey>>();
         }
         /// <summary>
