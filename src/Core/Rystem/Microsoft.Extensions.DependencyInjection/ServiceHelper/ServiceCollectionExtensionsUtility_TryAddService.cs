@@ -41,6 +41,25 @@ namespace Microsoft.Extensions.DependencyInjection
             }
             return services;
         }
+        public static IServiceCollection TryAddService(this IServiceCollection services,
+            Type serviceType,
+            Func<IServiceProvider, object> implementationFactory,
+            ServiceLifetime lifetime)
+        {
+            switch (lifetime)
+            {
+                case ServiceLifetime.Transient:
+                    services.TryAddTransient(serviceType, implementationFactory);
+                    break;
+                case ServiceLifetime.Singleton:
+                    services.TryAddSingleton(serviceType, implementationFactory);
+                    break;
+                default:
+                    services.TryAddScoped(serviceType, implementationFactory);
+                    break;
+            }
+            return services;
+        }
         public static IServiceCollection TryAddService<TService>(
             this IServiceCollection services,
             Func<IServiceProvider, TService> implementationFactory,

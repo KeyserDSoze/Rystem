@@ -12,16 +12,16 @@ namespace Microsoft.Extensions.DependencyInjection
         /// </summary>
         /// <typeparam name="T">Model used for your repository.</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository.</typeparam>
-        /// <param name="settings">IRepositorySettings<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
+        /// <param name="builder">IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
         /// <param name="options">Settings for your cache.</param>
-        /// <returns>IRepositorySettings<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static RepositorySettings<T, TKey> WithInMemoryCache<T, TKey>(
-           this RepositorySettings<T, TKey> settings,
+        /// <returns>IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static IRepositoryBuilder<T, TKey> WithInMemoryCache<T, TKey>(
+           this IRepositoryBuilder<T, TKey> builder,
            Action<CacheOptions<T, TKey>>? options = null)
             where TKey : notnull
         {
-            settings.Services.AddMemoryCache();
-            return settings.WithCache<T, TKey, InMemoryCache<T, TKey>>(options, ServiceLifetime.Singleton);
+            builder.Services.AddMemoryCache();
+            return builder.WithCache<T, TKey, InMemoryCache<T, TKey>>(options, ServiceLifetime.Singleton);
         }
     }
 }

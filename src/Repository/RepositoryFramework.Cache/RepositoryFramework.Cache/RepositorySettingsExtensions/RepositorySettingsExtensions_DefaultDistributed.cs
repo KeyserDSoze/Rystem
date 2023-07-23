@@ -12,15 +12,15 @@ namespace Microsoft.Extensions.DependencyInjection
         /// </summary>
         /// <typeparam name="T">Model used for your repository.</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository.</typeparam>
-        /// <param name="settings">IRepositorySettings<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
+        /// <param name="builder">IRepositorySettings<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
         /// <param name="options">Settings for your cache.</param>
         /// <param name="lifetime">Service Lifetime.</param>
         /// <returns>IRepositorySettings<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static RepositorySettings<T, TKey> WithDistributedCache<T, TKey>(
-           this RepositorySettings<T, TKey> settings,
+        public static IRepositoryBuilder<T, TKey> WithDistributedCache<T, TKey>(
+           this IRepositoryBuilder<T, TKey> builder,
            Action<CacheOptions<T, TKey>>? options = null,
            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
-            => settings.WithDistributedCache<T, TKey, DistributedCache<T, TKey>>(options, lifetime);
+            => builder.WithDistributedCache<T, TKey, DistributedCache<T, TKey>>(options, lifetime);
     }
 }

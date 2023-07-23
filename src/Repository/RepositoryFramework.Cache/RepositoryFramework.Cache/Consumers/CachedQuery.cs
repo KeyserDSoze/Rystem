@@ -1,8 +1,9 @@
 ﻿using System.Runtime.CompilerServices;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Cache
 {
-    internal class CachedQuery<T, TKey> : IQuery<T, TKey>
+    internal class CachedQuery<T, TKey> : IQuery<T, TKey>, IDecoratorService<IQuery<T, TKey>>
          where TKey : notnull
     {
         private protected readonly IQuery<T, TKey> Query;
@@ -11,14 +12,14 @@ namespace RepositoryFramework.Cache
         private protected readonly IDistributedCache<T, TKey>? Distributed;
         private protected readonly DistributedCacheOptions<T, TKey> DistributedCacheOptions;
         private readonly string _cacheName;
-
-        public CachedQuery(IQuery<T, TKey> query,
+        public IQuery<T, TKey> DecoratedService { get; set; }
+        public CachedQuery(IDecoratedService<IQuery<T, TKey>> query,
             ICache<T, TKey>? cache = null,
             CacheOptions<T, TKey>? cacheOptions = null,
             IDistributedCache<T, TKey>? distributed = null,
             DistributedCacheOptions<T, TKey>? distributedCacheOptions = null)
         {
-            Query = query;
+            Query = query.Service;
             Cache = cache;
             CacheOptions = cacheOptions ?? CacheOptions<T, TKey>.Default;
             Distributed = distributed;

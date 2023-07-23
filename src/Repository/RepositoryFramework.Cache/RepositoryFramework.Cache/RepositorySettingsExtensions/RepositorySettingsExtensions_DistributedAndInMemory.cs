@@ -12,20 +12,20 @@ namespace Microsoft.Extensions.DependencyInjection
         /// </summary>
         /// <typeparam name="T">Model used for your repository.</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository.</typeparam>
-        /// <param name="settings">IRepositorySettings<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
+        /// <param name="builder">IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
         /// <param name="inMemoryOptions">Settings for your cache.</param>
         /// <param name="distributedOptions">Settings for your cache.</param>
         /// <param name="inMemoryLifetime">Service Lifetime.</param>
         /// <param name="distributedLifetime">Service Lifetime.</param>
-        /// <returns>IRepositorySettings<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static RepositorySettings<T, TKey> WithInMemoryAndDistributedCache<T, TKey>(
-           this RepositorySettings<T, TKey> settings,
+        /// <returns>IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static IRepositoryBuilder<T, TKey> WithInMemoryAndDistributedCache<T, TKey>(
+           this IRepositoryBuilder<T, TKey> builder,
            Action<CacheOptions<T, TKey>>? inMemoryOptions = null,
            Action<CacheOptions<T, TKey>>? distributedOptions = null,
            ServiceLifetime inMemoryLifetime = ServiceLifetime.Singleton,
            ServiceLifetime distributedLifetime = ServiceLifetime.Singleton)
             where TKey : notnull
-            => settings
+            => builder
                 .WithCache<T, TKey, InMemoryCache<T, TKey>>(inMemoryOptions, inMemoryLifetime)
                 .WithDistributedCache(distributedOptions, distributedLifetime);
     }

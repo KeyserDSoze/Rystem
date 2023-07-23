@@ -14,19 +14,20 @@ namespace Microsoft.Extensions.DependencyInjection
         /// </summary>
         /// <typeparam name="T">Model used for your repository.</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository.</typeparam>
-        /// <param name="settings">IRepositorySettings<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
+        /// <param name="builder">IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
         /// <param name="options">Settings for your storage connection.</param>
         /// <param name="cacheOptions">Settings for your cache.</param>
-        /// <returns>IRepositorySettings<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static RepositorySettings<T, TKey> WithBlobStorageCache<T, TKey>(
-           this RepositorySettings<T, TKey> settings,
+        /// <returns>IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static IRepositoryBuilder<T, TKey> WithBlobStorageCache<T, TKey>(
+           this IRepositoryBuilder<T, TKey> builder,
                 Action<BlobStorageConnectionSettings> options,
                 Action<DistributedCacheOptions<T, TKey>>? cacheOptions = null)
             where TKey : notnull
         {
-            settings
-                .WithBlobStorage(options);
-            return settings
+            builder
+                .WithBlobStorageAsync(options)
+                .ToResult();
+            return builder
                 .WithDistributedCache<T, TKey, BlobStorageCache<T, TKey>>(cacheOptions, ServiceLifetime.Singleton);
         }
     }

@@ -1,23 +1,29 @@
-﻿namespace RepositoryFramework.Cache
+﻿using Microsoft.Extensions.DependencyInjection;
+
+namespace RepositoryFramework.Cache
 {
-    internal sealed class CachedRepository<T, TKey> : CachedQuery<T, TKey>, IRepository<T, TKey>
+    internal sealed class CachedRepository<T, TKey> : CachedQuery<T, TKey>, IRepository<T, TKey>, IDecoratorService<IRepository<T, TKey>>, IDecoratorService<ICommand<T, TKey>>
          where TKey : notnull
     {
         private readonly IRepository<T, TKey>? _repository;
         private readonly ICommand<T, TKey>? _command;
 
-        public CachedRepository(IRepository<T, TKey>? repository = null,
-            ICommand<T, TKey>? command = null,
-            IQuery<T, TKey>? query = null,
+        public CachedRepository(IDecoratedService<IRepository<T, TKey>>? repository = null,
+            IDecoratedService<ICommand<T, TKey>>? command = null,
+            IDecoratedService<IQuery<T, TKey>>? query = null,
             ICache<T, TKey>? cache = null,
             CacheOptions<T, TKey>? cacheOptions = null,
             IDistributedCache<T, TKey>? distributed = null,
             DistributedCacheOptions<T, TKey>? distributedCacheOptions = null) :
-            base(repository ?? query!, cache, cacheOptions, distributed, distributedCacheOptions)
+            base(IDecoratedService<IQuery<T, TKey>>.Default(repository?.Service ?? query!.Service), cache, cacheOptions, distributed, distributedCacheOptions)
         {
-            _repository = repository;
-            _command = command;
+            _repository = repository?.Service;
+            _command = command?.Service;
         }
+
+        ICommand<T, TKey> IDecoratorService<ICommand<T, TKey>>.DecoratedService { get; set; }
+        IRepository<T, TKey> IDecoratorService<IRepository<T, TKey>>.DecoratedService { get; set; }
+
         public async Task<BatchResults<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default)
         {
             var results = await (_repository ?? _command!).BatchAsync(operations, cancellationToken).NoContext();
