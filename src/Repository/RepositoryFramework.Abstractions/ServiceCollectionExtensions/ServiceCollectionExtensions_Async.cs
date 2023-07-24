@@ -16,7 +16,7 @@ namespace Microsoft.Extensions.DependencyInjection
           Func<IRepositoryBuilder<T, TKey>, ValueTask> builder)
           where TKey : notnull
         {
-            var defaultSettings = new RepositoryFrameworkBuilder<T, TKey>();
+            var defaultSettings = new RepositoryFrameworkBuilder<T, TKey>(services);
             await builder.Invoke(defaultSettings).NoContext();
             return services;
         }
@@ -32,7 +32,7 @@ namespace Microsoft.Extensions.DependencyInjection
               Func<ICommandBuilder<T, TKey>, ValueTask> builder)
             where TKey : notnull
         {
-            var defaultSettings = new CommandFrameworkBuilder<T, TKey>();
+            var defaultSettings = new CommandFrameworkBuilder<T, TKey>(services);
             await builder.Invoke(defaultSettings).NoContext();
             return services;
         }
@@ -48,7 +48,7 @@ namespace Microsoft.Extensions.DependencyInjection
               Func<IQueryBuilder<T, TKey>, ValueTask> builder)
             where TKey : notnull
         {
-            var defaultSettings = new QueryFrameworkBuilder<T, TKey>();
+            var defaultSettings = new QueryFrameworkBuilder<T, TKey>(services);
             await builder.Invoke(defaultSettings).NoContext();
             return services;
         }

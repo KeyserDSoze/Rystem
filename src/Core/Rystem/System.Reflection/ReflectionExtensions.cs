@@ -1,19 +1,18 @@
 ﻿using System.Collections;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 
 namespace System.Reflection
 {
     public static class ReflectionExtensions
     {
-        private static readonly Dictionary<string, PropertyInfo[]> AllProperties = new();
-        private static readonly Dictionary<string, ConstructorInfo[]> AllConstructors = new();
-        private static readonly Dictionary<string, FieldInfo[]> AllFields = new();
-        private static readonly Dictionary<string, MethodInfo[]> AllMethods = new();
-        private static readonly Dictionary<string, MethodInfo[]> AllStaticMethods = new();
+        private static readonly Dictionary<string, PropertyInfo[]> s_allProperties = new();
+        private static readonly Dictionary<string, ConstructorInfo[]> s_allConstructors = new();
+        private static readonly Dictionary<string, FieldInfo[]> s_allFields = new();
+        private static readonly Dictionary<string, MethodInfo[]> s_allMethods = new();
+        private static readonly Dictionary<string, MethodInfo[]> s_allStaticMethods = new();
 
-        private static readonly object Semaphore = new();
-        private static readonly Type ObjectType = typeof(object);
+        private static readonly object s_semaphore = new();
+        private static readonly Type s_objectType = typeof(object);
         /// <summary>
         /// Check if type is the same type or a son of toCompare.
         /// </summary>
@@ -22,11 +21,11 @@ namespace System.Reflection
         /// <returns>bool</returns>
         public static bool IsTheSameTypeOrASon(this Type type, Type toCompare)
         {
-            if (toCompare == ObjectType)
+            if (toCompare == s_objectType)
                 return true;
-            if (type == ObjectType && toCompare == ObjectType)
+            if (type == s_objectType && toCompare == s_objectType)
                 return true;
-            while (type != null && type != ObjectType)
+            while (type != null && type != s_objectType)
             {
                 if (type == toCompare)
                     return true;
@@ -110,18 +109,18 @@ namespace System.Reflection
         /// <returns>PropertyInfo[]</returns>
         public static PropertyInfo[] FetchProperties(this Type type, params Type[] attributesToIgnore)
         {
-            if (!AllProperties.ContainsKey(type.FullName!))
-                lock (Semaphore)
-                    if (!AllProperties.ContainsKey(type.FullName!))
-                        AllProperties.Add(type.FullName!, type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            if (!s_allProperties.ContainsKey(type.FullName!))
+                lock (s_semaphore)
+                    if (!s_allProperties.ContainsKey(type.FullName!))
+                        s_allProperties.Add(type.FullName!, type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
                             .Where(x =>
                             {
-                                foreach (Type attributeToIgnore in attributesToIgnore)
+                                foreach (var attributeToIgnore in attributesToIgnore)
                                     if (x.GetCustomAttribute(attributeToIgnore) != default)
                                         return false;
                                 return true;
                             }).ToArray());
-            return AllProperties[type.FullName!];
+            return s_allProperties[type.FullName!];
         }
         /// <summary>
         /// Fetch all constructors.
@@ -130,11 +129,11 @@ namespace System.Reflection
         /// <returns>ConstructorInfo[]</returns>
         public static ConstructorInfo[] FecthConstructors(this Type type)
         {
-            if (!AllConstructors.ContainsKey(type.FullName!))
-                lock (Semaphore)
-                    if (!AllConstructors.ContainsKey(type.FullName!))
-                        AllConstructors.Add(type.FullName!, type.GetConstructors());
-            return AllConstructors[type.FullName!];
+            if (!s_allConstructors.ContainsKey(type.FullName!))
+                lock (s_semaphore)
+                    if (!s_allConstructors.ContainsKey(type.FullName!))
+                        s_allConstructors.Add(type.FullName!, type.GetConstructors());
+            return s_allConstructors[type.FullName!];
         }
         /// <summary>
         /// Fetch all fields.
@@ -143,11 +142,11 @@ namespace System.Reflection
         /// <returns>FieldInfo[]</returns>
         public static FieldInfo[] FetchFields(this Type type)
         {
-            if (!AllFields.ContainsKey(type.FullName!))
-                lock (Semaphore)
-                    if (!AllFields.ContainsKey(type.FullName!))
-                        AllFields.Add(type.FullName!, type.GetFields());
-            return AllFields[type.FullName!];
+            if (!s_allFields.ContainsKey(type.FullName!))
+                lock (s_semaphore)
+                    if (!s_allFields.ContainsKey(type.FullName!))
+                        s_allFields.Add(type.FullName!, type.GetFields());
+            return s_allFields[type.FullName!];
         }
         /// <summary>
         /// Fetch all methods.
@@ -156,11 +155,11 @@ namespace System.Reflection
         /// <returns>MethodInfo[]</returns>
         public static MethodInfo[] FetchMethods(this Type type)
         {
-            if (!AllMethods.ContainsKey(type.FullName!))
-                lock (Semaphore)
-                    if (!AllMethods.ContainsKey(type.FullName!))
-                        AllMethods.Add(type.FullName!, type.GetMethods());
-            return AllMethods[type.FullName!];
+            if (!s_allMethods.ContainsKey(type.FullName!))
+                lock (s_semaphore)
+                    if (!s_allMethods.ContainsKey(type.FullName!))
+                        s_allMethods.Add(type.FullName!, type.GetMethods());
+            return s_allMethods[type.FullName!];
         }
         /// <summary>
         /// Fetch all static methods.
@@ -169,11 +168,11 @@ namespace System.Reflection
         /// <returns>MethodInfo[]</returns>
         public static MethodInfo[] FetchStaticMethods(this Type type)
         {
-            if (!AllStaticMethods.ContainsKey(type.FullName!))
-                lock (Semaphore)
-                    if (!AllStaticMethods.ContainsKey(type.FullName!))
-                        AllStaticMethods.Add(type.FullName!, type.GetMethods(BindingFlags.Public | BindingFlags.Static));
-            return AllStaticMethods[type.FullName!];
+            if (!s_allStaticMethods.ContainsKey(type.FullName!))
+                lock (s_semaphore)
+                    if (!s_allStaticMethods.ContainsKey(type.FullName!))
+                        s_allStaticMethods.Add(type.FullName!, type.GetMethods(BindingFlags.Public | BindingFlags.Static));
+            return s_allStaticMethods[type.FullName!];
         }
         private static readonly ConcurrentDictionary<string, Func<object?>> s_defaultCreators = new();
         /// <summary>
@@ -265,11 +264,11 @@ namespace System.Reflection
                 }
                 else
                 {
-                    List<PropertyInfo> properties = type
+                    var properties = type
                             .GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic)
                             .Where(x => x.SetMethod != null)
                             .ToList();
-                    List<FieldInfo> fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic).ToList();
+                    var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic).ToList();
                     s_defaultCreatorsWithConstructorPropertiesAndField.TryAdd(type.FullName!,
                         () =>
                         {

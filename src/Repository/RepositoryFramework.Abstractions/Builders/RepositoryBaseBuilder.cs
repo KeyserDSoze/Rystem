@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace RepositoryFramework
@@ -10,18 +11,21 @@ namespace RepositoryFramework
         where TRepository : class
         where TRepositoryConcretization : class, TRepository
     {
-        public IServiceCollection Services { get; internal set; }
+        public IServiceCollection Services { get; }
         private TRepositoryBuilder Builder => (TRepositoryBuilder)(dynamic)this;
         private string _currentName = string.Empty;
         private PatternType _currentPatternType = PatternType.Repository;
         private ServiceLifetime _serviceLifetime = ServiceLifetime.Scoped;
+        public RepositoryBaseBuilder(IServiceCollection services)
+            => Services = services;
         private void SetDefaultFrameworkBeforeStorage<TStorage>(
             string? name,
             ServiceLifetime serviceLifetime)
             where TStorage : class, TRepositoryPattern
         {
-            if (!typeof(TRepository).IsSubclassOf(typeof(IRepositoryPattern)))
-                _currentPatternType = typeof(TRepository).IsSubclassOf(typeof(ICommandPattern)) ? PatternType.Command : PatternType.Query;
+            if (typeof(TRepository).GetInterface(nameof(IRepositoryPattern)) == null)
+                _currentPatternType = typeof(TRepository).GetInterface(nameof(ICommandPattern)) != null
+                    ? PatternType.Command : PatternType.Query;
             _currentName = name ?? string.Empty;
             _serviceLifetime = serviceLifetime;
             var service = SetService();
