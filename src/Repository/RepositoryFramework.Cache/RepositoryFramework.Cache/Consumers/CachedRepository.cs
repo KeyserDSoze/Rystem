@@ -2,34 +2,54 @@
 
 namespace RepositoryFramework.Cache
 {
-    internal sealed class CachedRepository<T, TKey> : CachedQuery<T, TKey>, IRepository<T, TKey>, IDecoratorService<IRepository<T, TKey>>, IDecoratorService<ICommand<T, TKey>>
+    internal sealed class CachedRepository<T, TKey> : CachedQuery<T, TKey>, IRepository<T, TKey>, IDecoratorService<IRepository<T, TKey>>, IDecoratorService<ICommand<T, TKey>>, IFactoryService
          where TKey : notnull
     {
-        private readonly IRepository<T, TKey>? _repository;
-        private readonly ICommand<T, TKey>? _command;
-        public void OnDecoratedServiceSet(IRepository<T, TKey> service)
+        private IRepository<T, TKey>? _repository;
+        private ICommand<T, TKey>? _command;
+        private readonly IFactory<ICommand<T, TKey>>? _commandFactory;
+
+        public void SetDecoratedService(IRepository<T, TKey> service)
         {
-            return;
+            _repository = service;
+            _query = service;
         }
-        public void OnDecoratedServiceSet(ICommand<T, TKey> service)
+        public void SetDecoratedService(ICommand<T, TKey> service)
         {
-            return;
+            _command = service;
         }
-        public CachedRepository(IDecoratedService<IRepository<T, TKey>>? repository = null,
+        public new void SetFactoryName(string name)
+        {
+            if (_queryFactory != null && _queryFactory.Exists(name))
+                _query = _queryFactory.CreateWithoutDecoration(name);
+            if (_commandFactory != null && _commandFactory.Exists(name))
+                _command = _commandFactory.CreateWithoutDecoration(name);
+            if (_repositoryFactory != null && _repositoryFactory.Exists(name))
+            {
+                _repository = _repositoryFactory.CreateWithoutDecoration(name);
+                if (!(_queryFactory != null && _queryFactory.Exists(name)))
+                    _query = _repository;
+                if (!(_commandFactory != null && _commandFactory.Exists(name)))
+                    _command = _repository;
+            }
+        }
+
+        public CachedRepository(IDecoratedService<IQuery<T, TKey>>? query = null,
             IDecoratedService<ICommand<T, TKey>>? command = null,
-            IDecoratedService<IQuery<T, TKey>>? query = null,
+            IDecoratedService<IRepository<T, TKey>>? repository = null,
+            IFactory<IQuery<T, TKey>>? queryFactory = null,
+            IFactory<ICommand<T, TKey>>? commandFactory = null,
+            IFactory<IRepository<T, TKey>>? repositoryFactory = null,
             ICache<T, TKey>? cache = null,
             CacheOptions<T, TKey>? cacheOptions = null,
             IDistributedCache<T, TKey>? distributed = null,
             DistributedCacheOptions<T, TKey>? distributedCacheOptions = null) :
-            base(IDecoratedService<IQuery<T, TKey>>.Default(repository?.Service ?? query!.Service), cache, cacheOptions, distributed, distributedCacheOptions)
+            base(query, repository, queryFactory, repositoryFactory, cache, cacheOptions, distributed, distributedCacheOptions)
         {
             _repository = repository?.Service;
             _command = command?.Service;
+            _commandFactory = commandFactory;
         }
-
-        ICommand<T, TKey> IDecoratorService<ICommand<T, TKey>>.DecoratedService { get; set; }
-        IRepository<T, TKey> IDecoratorService<IRepository<T, TKey>>.DecoratedService { get; set; }
 
         public async Task<BatchResults<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default)
         {
@@ -46,7 +66,7 @@ namespace RepositoryFramework.Cache
                         if (result.Command != CommandType.Delete)
                         {
                             await UpdateExistAndGetCacheAsync(operation.Key, operation.Value!,
-                                await (Query ?? _repository!).ExistAsync(operation.Key, cancellationToken).NoContext(),
+                                await (_query ?? _repository!).ExistAsync(operation.Key, cancellationToken).NoContext(),
                                 CacheOptions.HasCache(method),
                                 DistributedCacheOptions.HasCache(method),
                                 cancellationToken).NoContext();
@@ -79,7 +99,7 @@ namespace RepositoryFramework.Cache
             if ((Cache != null && CacheOptions.HasCache(RepositoryMethods.Insert))
                 || (Distributed != null && DistributedCacheOptions.HasCache(RepositoryMethods.Insert)))
                 await UpdateExistAndGetCacheAsync(key, value,
-                    await (Query ?? _repository!).ExistAsync(key, cancellationToken).NoContext(),
+                    await (_query ?? _repository!).ExistAsync(key, cancellationToken).NoContext(),
                     CacheOptions.HasCache(RepositoryMethods.Insert),
                     DistributedCacheOptions.HasCache(RepositoryMethods.Insert),
                     cancellationToken).NoContext();
@@ -92,7 +112,7 @@ namespace RepositoryFramework.Cache
             if ((Cache != null && CacheOptions.HasCache(RepositoryMethods.Update))
                 || (Distributed != null && DistributedCacheOptions.HasCache(RepositoryMethods.Update)))
                 await UpdateExistAndGetCacheAsync(key, value,
-                    await (Query ?? _repository!).ExistAsync(key, cancellationToken).NoContext(),
+                    await (_query ?? _repository!).ExistAsync(key, cancellationToken).NoContext(),
                     CacheOptions.HasCache(RepositoryMethods.Update),
                     DistributedCacheOptions.HasCache(RepositoryMethods.Update),
                     cancellationToken).NoContext();

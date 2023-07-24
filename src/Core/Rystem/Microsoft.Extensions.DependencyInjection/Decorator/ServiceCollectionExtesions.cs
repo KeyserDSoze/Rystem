@@ -37,7 +37,8 @@
 
                 if (Factory<TService>.Map.TryGetValue(name, out var factory))
                 {
-                    factory.DecoratorType = typeof(TImplementation);
+                    factory.DecoratorTypes ??= new();
+                    factory.DecoratorTypes.Add(typeof(TImplementation));
                     implementationType = factory.ImplementationType;
                 }
                 if (implementationType != null)
@@ -47,7 +48,7 @@
                         var service = (TService)serviceProvider.GetRequiredService<TImplementation>();
                         if (service is IDecoratorService<TService> decorator)
                         {
-                            decorator.DecoratedService = (TService)serviceProvider.GetRequiredService(implementationType);
+                            decorator.SetDecoratedService((TService)serviceProvider.GetRequiredService(implementationType));
                         }
                         return service;
                     }, lifetime);

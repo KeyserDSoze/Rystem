@@ -3,27 +3,40 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Cache
 {
-    internal class CachedQuery<T, TKey> : IQuery<T, TKey>, IDecoratorService<IQuery<T, TKey>>
+    internal class CachedQuery<T, TKey> : IQuery<T, TKey>, IDecoratorService<IQuery<T, TKey>>, IFactoryService
          where TKey : notnull
     {
-        private protected readonly IQuery<T, TKey> Query;
+        private protected IQuery<T, TKey> _query;
+        private protected readonly IFactory<IQuery<T, TKey>>? _queryFactory;
+        private protected readonly IFactory<IRepository<T, TKey>>? _repositoryFactory;
         private protected readonly ICache<T, TKey>? Cache;
         private protected readonly CacheOptions<T, TKey> CacheOptions;
         private protected readonly IDistributedCache<T, TKey>? Distributed;
         private protected readonly DistributedCacheOptions<T, TKey> DistributedCacheOptions;
         private readonly string _cacheName;
-        public IQuery<T, TKey> DecoratedService { get; set; }
-        public void OnDecoratedServiceSet(IQuery<T, TKey> service)
+        public void SetDecoratedService(IQuery<T, TKey> service)
         {
-            return;
+            _query = service;
         }
-        public CachedQuery(IDecoratedService<IQuery<T, TKey>> query,
+        public void SetFactoryName(string name)
+        {
+            if (_queryFactory != null && _queryFactory.Exists(name))
+                _query = _queryFactory.CreateWithoutDecoration(name);
+            else if (_repositoryFactory != null && _repositoryFactory.Exists(name))
+                _query = _repositoryFactory.CreateWithoutDecoration(name);
+        }
+        public CachedQuery(IDecoratedService<IQuery<T, TKey>>? query = null,
+            IDecoratedService<IRepository<T, TKey>>? repository = null,
+            IFactory<IQuery<T, TKey>>? queryFactory = null,
+            IFactory<IRepository<T, TKey>>? repositoryFactory = null,
             ICache<T, TKey>? cache = null,
             CacheOptions<T, TKey>? cacheOptions = null,
             IDistributedCache<T, TKey>? distributed = null,
             DistributedCacheOptions<T, TKey>? distributedCacheOptions = null)
         {
-            Query = query.Service;
+            _query = query?.Service ?? repository?.Service!;
+            _queryFactory = queryFactory;
+            _repositoryFactory = repositoryFactory;
             Cache = cache;
             CacheOptions = cacheOptions ?? CacheOptions<T, TKey>.Default;
             Distributed = distributed;
@@ -79,7 +92,7 @@ namespace RepositoryFramework.Cache
         {
             var keyAsString = GetKeyAsString(RepositoryMethods.Exist, key);
             var value = await RetrieveValueAsync(RepositoryMethods.Exist, keyAsString,
-                () => Query.ExistAsync(key, cancellationToken)!,
+                () => _query.ExistAsync(key, cancellationToken)!,
                 null, cancellationToken).NoContext();
 
             if (Cache != null || Distributed != null)
@@ -94,7 +107,7 @@ namespace RepositoryFramework.Cache
         {
             var keyAsString = GetKeyAsString(RepositoryMethods.Get, key);
             var value = await RetrieveValueAsync<T?>(RepositoryMethods.Get, keyAsString,
-                () => Query.GetAsync(key, cancellationToken),
+                () => _query.GetAsync(key, cancellationToken),
                 null, cancellationToken).NoContext();
 
             if (Cache != null || Distributed != null)
@@ -115,7 +128,7 @@ namespace RepositoryFramework.Cache
                 async () =>
                 {
                     List<Entity<T, TKey>> items = new();
-                    await foreach (var item in Query.QueryAsync(filter, cancellationToken)!)
+                    await foreach (var item in _query.QueryAsync(filter, cancellationToken)!)
                         items.Add(item);
                     return items;
                 },
@@ -139,7 +152,7 @@ namespace RepositoryFramework.Cache
 
             var value = await RetrieveValueAsync(RepositoryMethods.Operation, keyAsString,
                 null,
-                () => Query.OperationAsync(operation, filter, cancellationToken)!, cancellationToken).NoContext();
+                () => _query.OperationAsync(operation, filter, cancellationToken)!, cancellationToken).NoContext();
 
             if (Cache != null || Distributed != null)
                 await SaveOnCacheAsync(keyAsString, value.Response, value.Source,

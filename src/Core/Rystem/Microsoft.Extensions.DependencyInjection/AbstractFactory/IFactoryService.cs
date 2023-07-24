@@ -2,6 +2,6 @@
 {
     public interface IFactoryService
     {
-        public string FactoryNameSource { get; set; }
+        void SetFactoryName(string name);
     }
 }

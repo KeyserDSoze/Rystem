@@ -115,34 +115,39 @@ namespace Microsoft.Extensions.DependencyInjection
             }))
             {
                 services.TryAddService<TImplementation>(lifetime);
-                services.AddOrOverrideService(ServiceFactory, lifetime);
+                services.AddOrOverrideService(serviceProvider => ServiceFactory(serviceProvider, false), lifetime);
             }
             else
                 whenExists?.Invoke();
 
-            TService ServiceFactory(IServiceProvider serviceProvider)
+            TService ServiceFactory(IServiceProvider serviceProvider, bool withoutDecoration)
             {
                 var factory = Factory<TService>.Map[name];
-                var service = GetService(factory.ImplementationType);
+                var service = GetService(factory.ImplementationType, null);
 
-                if (factory.DecoratorType != null)
+                if (!withoutDecoration && factory.DecoratorTypes != null)
                 {
-                    var decorator = GetService(factory.DecoratorType);
-                    if (decorator is IDecoratorService<TService> decorateWithService)
+                    foreach (var decoratorType in factory.DecoratorTypes)
                     {
-                        decorateWithService.DecoratedService = service;
-                        decorateWithService.OnDecoratedServiceSet(service);
+                        service = GetService(decoratorType,
+                            decorator =>
+                            {
+                                if (decorator is IDecoratorService<TService> decorateWithService)
+                                {
+                                    decorateWithService.SetDecoratedService(service);
+                                }
+                            });
                     }
-                    return decorator;
                 }
                 return service;
 
-                TService GetService(Type implementationType)
+                TService GetService(Type implementationType, Action<TService>? afterCreation)
                 {
                     var service = (TService)serviceProvider.GetRequiredService(implementationType);
                     addingBehaviorToFactory?.Invoke(serviceProvider, service);
+                    afterCreation?.Invoke(service);
                     if (service is IFactoryService factoryService)
-                        factoryService.FactoryNameSource = name;
+                        factoryService.SetFactoryName(name);
                     foreach (var behavior in factory.FurtherBehaviors.Select(x => x.Value))
                         service = behavior.Invoke(serviceProvider, service);
                     return service;
