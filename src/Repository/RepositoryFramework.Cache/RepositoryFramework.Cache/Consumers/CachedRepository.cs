@@ -20,14 +20,14 @@ namespace RepositoryFramework.Cache
         }
         public new void SetFactoryName(string name)
         {
-            if (_queryFactory != null && _queryFactory.Exists(name))
-                _query = _queryFactory.CreateWithoutDecoration(name);
+            if (QueryFactory != null && QueryFactory.Exists(name))
+                _query = QueryFactory.CreateWithoutDecoration(name);
             if (_commandFactory != null && _commandFactory.Exists(name))
                 _command = _commandFactory.CreateWithoutDecoration(name);
             if (_repositoryFactory != null && _repositoryFactory.Exists(name))
             {
                 _repository = _repositoryFactory.CreateWithoutDecoration(name);
-                if (!(_queryFactory != null && _queryFactory.Exists(name)))
+                if (!(QueryFactory != null && QueryFactory.Exists(name)))
                     _query = _repository;
                 if (!(_commandFactory != null && _commandFactory.Exists(name)))
                     _command = _repository;

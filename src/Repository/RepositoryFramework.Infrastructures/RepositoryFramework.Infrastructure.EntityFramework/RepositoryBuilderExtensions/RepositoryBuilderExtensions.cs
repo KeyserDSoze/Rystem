@@ -6,14 +6,6 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static partial class RepositoryBuilderExtensions
     {
-        private static void Check<T, TKey, TEntityModel, TContext>()
-        where TKey : notnull
-        where TEntityModel : class
-        where TContext : DbContext
-        {
-            if (EntityFrameworkOptions<T, TKey, TEntityModel, TContext>.Instance.DbSet == null)
-                throw new ArgumentException($"DbSet not configured in option during {nameof(WithEntityFramework)} method for {typeof(TEntityModel).Name} for model {typeof(T).Name} and key {typeof(TKey).Name}");
-        }
         /// <summary>
         /// Add a default Entity Framework service for your repository pattern.
         /// </summary>
@@ -36,7 +28,6 @@ namespace Microsoft.Extensions.DependencyInjection
             builder.SetStorageWithOptions<EntityFrameworkRepository<T, TKey, TEntityModel, TContext>,
                 EntityFrameworkOptions<T, TKey, TEntityModel, TContext>>(
                 options, name, serviceLifetime);
-            Check<T, TKey, TEntityModel, TContext>();
             return builder;
         }
         /// <summary>
@@ -61,7 +52,6 @@ namespace Microsoft.Extensions.DependencyInjection
             builder.SetStorageWithOptions<EntityFrameworkRepository<T, TKey, TEntityModel, TContext>,
                 EntityFrameworkOptions<T, TKey, TEntityModel, TContext>>(
                 options, name, serviceLifetime);
-            Check<T, TKey, TEntityModel, TContext>();
             return builder;
         }
         /// <summary>
@@ -86,7 +76,6 @@ namespace Microsoft.Extensions.DependencyInjection
             builder.SetStorageWithOptions<EntityFrameworkRepository<T, TKey, TEntityModel, TContext>,
                 EntityFrameworkOptions<T, TKey, TEntityModel, TContext>>(
                 options, name, serviceLifetime);
-            Check<T, TKey, TEntityModel, TContext>();
             return builder;
         }
     }

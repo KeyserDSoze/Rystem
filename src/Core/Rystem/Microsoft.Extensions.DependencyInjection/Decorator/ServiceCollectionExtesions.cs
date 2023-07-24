@@ -35,7 +35,8 @@
                     implementationType = currentService.ImplementationInstance.GetType();
                 }
 
-                if (Factory<TService>.Map.TryGetValue(name, out var factory))
+                var map = services.FirstOrDefault(x => x.ServiceType == typeof(Dictionary<string, FactoryService<TService>>))?.ImplementationInstance as Dictionary<string, FactoryService<TService>>;
+                if (map != null && map.TryGetValue(name, out var factory))
                 {
                     factory.DecoratorTypes ??= new();
                     factory.DecoratorTypes.Add(typeof(TImplementation));

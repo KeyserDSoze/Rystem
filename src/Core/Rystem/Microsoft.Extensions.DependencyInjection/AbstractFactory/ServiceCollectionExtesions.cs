@@ -108,7 +108,13 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             name ??= string.Empty;
             services.TryAddTransient(typeof(IFactory<>), typeof(Factory<>));
-            if (Factory<TService>.Map.TryAdd(name, new()
+            var map = services.FirstOrDefault(x => x.ServiceType == typeof(Dictionary<string, FactoryService<TService>>))?.ImplementationInstance as Dictionary<string, FactoryService<TService>>;
+            if (map == null)
+            {
+                map = new Dictionary<string, FactoryService<TService>>();
+                services.TryAddSingleton(map);
+            }
+            if (map.TryAdd(name, new()
             {
                 ServiceFactory = ServiceFactory,
                 ImplementationType = typeof(TImplementation)
@@ -122,7 +128,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
             TService ServiceFactory(IServiceProvider serviceProvider, bool withoutDecoration)
             {
-                var factory = Factory<TService>.Map[name];
+                var factory = map[name];
                 var service = GetService(factory.ImplementationType, null);
 
                 if (!withoutDecoration && factory.DecoratorTypes != null)

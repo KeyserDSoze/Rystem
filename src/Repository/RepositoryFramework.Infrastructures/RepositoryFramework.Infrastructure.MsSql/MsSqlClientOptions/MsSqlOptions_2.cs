@@ -17,7 +17,7 @@ namespace RepositoryFramework.Infrastructure.MsSql
         public bool KeyIsPrimitive { get; } = typeof(TKey).IsPrimitive();
         public string? PrimaryKey { get; internal set; }
         internal List<PropertyHelper<T>> Properties { get; } = new();
-        internal static MsSqlOptions<T, TKey> Instance { get; private set; } = null!;
+        internal static MsSqlOptions<T, TKey> Instance { get; private set; } = new();
         public MsSqlOptions()
         {
             foreach (var property in typeof(T).GetProperties())
