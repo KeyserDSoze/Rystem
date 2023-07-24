@@ -8,22 +8,24 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void AddCacheManager<T, TKey>(
             this IServiceCollection services,
             PatternType patternType,
-            CacheOptions<T, TKey> options)
+            CacheOptions<T, TKey> options,
+            string? name)
             where TKey : notnull
         {
             if (patternType == PatternType.Repository)
                 services
-                    .AddDecoration<IRepository<T, TKey>, CachedRepository<T, TKey>>();
+                    .AddDecoration<IRepository<T, TKey>, CachedRepository<T, TKey>>(name);
             else if (patternType == PatternType.Query)
                 services
-                    .AddDecoration<IQuery<T, TKey>, CachedQuery<T, TKey>>();
+                    .AddDecoration<IQuery<T, TKey>, CachedQuery<T, TKey>>(name);
             else if (patternType == PatternType.Command && options.HasCommandPattern)
                 services
-                    .AddDecoration<ICommand<T, TKey>, CachedRepository<T, TKey>>();
+                    .AddDecoration<ICommand<T, TKey>, CachedRepository<T, TKey>>(name);
         }
         private static TRepositoryBuilder WithCache<T, TKey, TCache, TRepositoryPattern, TRepositoryBuilder>(
           this IRepositoryBaseBuilder<T, TKey, TRepositoryPattern, TRepositoryBuilder> builder,
           Action<CacheOptions<T, TKey>>? options,
+          string? name,
           ServiceLifetime lifetime)
            where TKey : notnull
            where TCache : class, ICache<T, TKey>
@@ -38,7 +40,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 .AddSingleton(defaultOptions);
             builder
                 .Services
-                .AddCacheManager(PatternType.Repository, defaultOptions);
+                .AddCacheManager(PatternType.Repository, defaultOptions, name);
             return (TRepositoryBuilder)builder;
         }
         /// <summary>
@@ -54,12 +56,13 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IRepositoryBuilder<T, TKey> WithCache<T, TKey, TCache>(
            this IRepositoryBuilder<T, TKey> builder,
            Action<CacheOptions<T, TKey>>? options = null,
+           string? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
             where TCache : class, ICache<T, TKey>
         {
             return builder
-                .WithCache<T, TKey, TCache, IRepositoryPattern<T, TKey>, IRepositoryBuilder<T, TKey>>(options, lifetime);
+                .WithCache<T, TKey, TCache, IRepositoryPattern<T, TKey>, IRepositoryBuilder<T, TKey>>(options, name, lifetime);
         }
         /// <summary>
         /// Add cache mechanism for your command pattern.
@@ -74,12 +77,13 @@ namespace Microsoft.Extensions.DependencyInjection
         public static ICommandBuilder<T, TKey> WithCache<T, TKey, TCache>(
            this ICommandBuilder<T, TKey> builder,
            Action<CacheOptions<T, TKey>>? options = null,
+           string? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
             where TCache : class, ICache<T, TKey>
         {
             return builder
-                .WithCache<T, TKey, TCache, ICommandPattern<T, TKey>, ICommandBuilder<T, TKey>>(options, lifetime);
+                .WithCache<T, TKey, TCache, ICommandPattern<T, TKey>, ICommandBuilder<T, TKey>>(options, name, lifetime);
         }
         /// <summary>
         /// Add cache mechanism for your query pattern. 
@@ -94,12 +98,13 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IQueryBuilder<T, TKey> WithCache<T, TKey, TCache>(
            this IQueryBuilder<T, TKey> builder,
            Action<CacheOptions<T, TKey>>? options = null,
+           string? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
             where TCache : class, ICache<T, TKey>
         {
             return builder
-                .WithCache<T, TKey, TCache, IQueryPattern<T, TKey>, IQueryBuilder<T, TKey>>(options, lifetime);
+                .WithCache<T, TKey, TCache, IQueryPattern<T, TKey>, IQueryBuilder<T, TKey>>(options, name, lifetime);
         }
         /// <summary>
         /// Add distributed (for multi-instance environments) cache mechanism for your Repository pattern. 
@@ -114,12 +119,13 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IRepositoryBuilder<T, TKey> WithDistributedCache<T, TKey, TCache>(
            this IRepositoryBuilder<T, TKey> builder,
            Action<DistributedCacheOptions<T, TKey>>? options = null,
+           string? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
             where TCache : class, IDistributedCache<T, TKey>
         {
             return builder
-                .WithDistributedCache<T, TKey, TCache, IRepositoryPattern<T, TKey>, IRepositoryBuilder<T, TKey>>(options, lifetime);
+                .WithDistributedCache<T, TKey, TCache, IRepositoryPattern<T, TKey>, IRepositoryBuilder<T, TKey>>(options, name, lifetime);
         }
         /// <summary>
         /// Add distributed (for multi-instance environments) cache mechanism for your command pattern. 
@@ -134,12 +140,13 @@ namespace Microsoft.Extensions.DependencyInjection
         public static ICommandBuilder<T, TKey> WithDistributedCache<T, TKey, TCache>(
            this ICommandBuilder<T, TKey> builder,
            Action<DistributedCacheOptions<T, TKey>>? options = null,
+           string? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
             where TCache : class, IDistributedCache<T, TKey>
         {
             return builder
-                .WithDistributedCache<T, TKey, TCache, ICommandPattern<T, TKey>, ICommandBuilder<T, TKey>>(options, lifetime);
+                .WithDistributedCache<T, TKey, TCache, ICommandPattern<T, TKey>, ICommandBuilder<T, TKey>>(options, name, lifetime);
         }
         /// <summary>
         /// Add distributed (for multi-instance environments) cache mechanism for your query pattern. 
@@ -154,16 +161,18 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IQueryBuilder<T, TKey> WithDistributedCache<T, TKey, TCache>(
            this IQueryBuilder<T, TKey> builder,
            Action<DistributedCacheOptions<T, TKey>>? options = null,
+           string? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
             where TCache : class, IDistributedCache<T, TKey>
         {
             return builder
-                .WithDistributedCache<T, TKey, TCache, IQueryPattern<T, TKey>, IQueryBuilder<T, TKey>>(options, lifetime);
+                .WithDistributedCache<T, TKey, TCache, IQueryPattern<T, TKey>, IQueryBuilder<T, TKey>>(options, name, lifetime);
         }
         public static TRepositoryBuilder WithDistributedCache<T, TKey, TCache, TRepositoryPattern, TRepositoryBuilder>(
           this IRepositoryBaseBuilder<T, TKey, TRepositoryPattern, TRepositoryBuilder> builder,
            Action<DistributedCacheOptions<T, TKey>>? options = null,
+           string? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
             where TCache : class, IDistributedCache<T, TKey>
@@ -176,7 +185,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 .RemoveService(typeof(IDistributedCache<T, TKey>))
                 .AddService<IDistributedCache<T, TKey>, TCache>(lifetime)
                 .AddSingleton(defaultOptions);
-            builder.Services.AddCacheManager(PatternType.Repository, defaultOptions);
+            builder.Services.AddCacheManager(PatternType.Repository, defaultOptions, name);
             return (TRepositoryBuilder)builder;
         }
     }

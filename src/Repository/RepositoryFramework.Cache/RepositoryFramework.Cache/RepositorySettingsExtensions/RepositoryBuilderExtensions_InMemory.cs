@@ -15,11 +15,12 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns>IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public static IRepositoryBuilder<T, TKey> WithInMemoryCache<T, TKey>(
            this IRepositoryBuilder<T, TKey> builder,
-           Action<CacheOptions<T, TKey>>? options = null)
+           Action<CacheOptions<T, TKey>>? options = null,
+           string? name = null)
             where TKey : notnull
         {
             builder.Services.AddMemoryCache();
-            return builder.WithCache<T, TKey, InMemoryCache<T, TKey>>(options, ServiceLifetime.Singleton);
+            return builder.WithCache<T, TKey, InMemoryCache<T, TKey>>(options, name, ServiceLifetime.Singleton);
         }
         /// <summary>
         /// Add in memory cache mechanism for your command pattern. 
@@ -31,11 +32,12 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns>ICommandBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public static ICommandBuilder<T, TKey> WithInMemoryCache<T, TKey>(
            this ICommandBuilder<T, TKey> builder,
-           Action<CacheOptions<T, TKey>>? options = null)
+           Action<CacheOptions<T, TKey>>? options = null,
+           string? name = null)
             where TKey : notnull
         {
             builder.Services.AddMemoryCache();
-            return builder.WithCache<T, TKey, InMemoryCache<T, TKey>>(options, ServiceLifetime.Singleton);
+            return builder.WithCache<T, TKey, InMemoryCache<T, TKey>>(options, name, ServiceLifetime.Singleton);
         }
         /// <summary>
         /// Add in memory cache mechanism for your query pattern. 
@@ -47,11 +49,12 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns>IQueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public static IQueryBuilder<T, TKey> WithInMemoryCache<T, TKey>(
            this IQueryBuilder<T, TKey> builder,
-           Action<CacheOptions<T, TKey>>? options = null)
+           Action<CacheOptions<T, TKey>>? options = null,
+           string? name = null)
             where TKey : notnull
         {
             builder.Services.AddMemoryCache();
-            return builder.WithCache<T, TKey, InMemoryCache<T, TKey>>(options, ServiceLifetime.Singleton);
+            return builder.WithCache<T, TKey, InMemoryCache<T, TKey>>(options, name, ServiceLifetime.Singleton);
         }
     }
 }

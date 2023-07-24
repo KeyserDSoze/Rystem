@@ -17,9 +17,10 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IRepositoryBuilder<T, TKey> WithDistributedCache<T, TKey>(
            this IRepositoryBuilder<T, TKey> builder,
            Action<CacheOptions<T, TKey>>? options = null,
+           string? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
-            => builder.WithDistributedCache<T, TKey, DistributedCache<T, TKey>>(options, lifetime);
+            => builder.WithDistributedCache<T, TKey, DistributedCache<T, TKey>>(options, name, lifetime);
         /// <summary>
         /// Add IDistributedCache you installed in your DI for your command pattern. 
         /// </summary>
@@ -32,9 +33,10 @@ namespace Microsoft.Extensions.DependencyInjection
         public static ICommandBuilder<T, TKey> WithDistributedCache<T, TKey>(
            this ICommandBuilder<T, TKey> builder,
            Action<CacheOptions<T, TKey>>? options = null,
+           string? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
-            => builder.WithDistributedCache<T, TKey, DistributedCache<T, TKey>>(options, lifetime);
+            => builder.WithDistributedCache<T, TKey, DistributedCache<T, TKey>>(options, name, lifetime);
         /// <summary>
         /// Add IDistributedCache you installed in your DI for your query pattern. 
         /// </summary>
@@ -47,8 +49,9 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IQueryBuilder<T, TKey> WithDistributedCache<T, TKey>(
            this IQueryBuilder<T, TKey> builder,
            Action<CacheOptions<T, TKey>>? options = null,
+           string? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
-            => builder.WithDistributedCache<T, TKey, DistributedCache<T, TKey>>(options, lifetime);
+            => builder.WithDistributedCache<T, TKey, DistributedCache<T, TKey>>(options, name, lifetime);
     }
 }

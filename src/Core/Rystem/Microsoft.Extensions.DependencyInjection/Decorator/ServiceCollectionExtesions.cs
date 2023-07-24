@@ -40,7 +40,7 @@
                     factory.DecoratorType = typeof(TImplementation);
                     implementationType = factory.ImplementationType;
                 }
-                else if (implementationType != null)
+                if (implementationType != null)
                 {
                     services.AddOrOverrideService(serviceProvider =>
                     {
@@ -51,9 +51,7 @@
                         }
                         return service;
                     }, lifetime);
-                }
-                if (implementationType != null)
-                {
+
                     services.TryAddService(
                         typeof(IDecoratedService<>).MakeGenericType(typeof(TService)),
                         typeof(DecoratedService<,>).MakeGenericType(typeof(TService), implementationType),

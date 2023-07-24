@@ -5,7 +5,7 @@ using RepositoryFramework.Infrastructure.Azure.Storage.Blob;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
-    public static partial class RepositorySettingsExtensions
+    public static partial class RepositoryBuilderExtensions
     {
         /// <summary>
         /// Add Azure Blob Storage cache mechanism for your Repository pattern.
@@ -19,14 +19,15 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IRepositoryBuilder<T, TKey> WithBlobStorageCache<T, TKey>(
            this IRepositoryBuilder<T, TKey> builder,
                 Action<BlobStorageConnectionSettings> options,
-                Action<DistributedCacheOptions<T, TKey>>? cacheOptions = null)
+                Action<DistributedCacheOptions<T, TKey>>? cacheOptions = null,
+                string? name = null)
             where TKey : notnull
         {
             builder
                 .WithBlobStorageAsync(options)
                 .ToResult();
             return builder
-                .WithDistributedCache<T, TKey, BlobStorageCache<T, TKey>>(cacheOptions, ServiceLifetime.Singleton);
+                .WithDistributedCache<T, TKey, BlobStorageCache<T, TKey>>(cacheOptions, name, ServiceLifetime.Singleton);
         }
         /// <summary>
         /// Add Azure Blob Storage cache mechanism for your command pattern.
@@ -40,14 +41,15 @@ namespace Microsoft.Extensions.DependencyInjection
         public static ICommandBuilder<T, TKey> WithBlobStorageCache<T, TKey>(
            this ICommandBuilder<T, TKey> builder,
                 Action<BlobStorageConnectionSettings> options,
-                Action<DistributedCacheOptions<T, TKey>>? cacheOptions = null)
+                Action<DistributedCacheOptions<T, TKey>>? cacheOptions = null,
+                string? name = null)
             where TKey : notnull
         {
             builder
                 .WithBlobStorageAsync(options)
                 .ToResult();
             return builder
-                .WithDistributedCache<T, TKey, BlobStorageCache<T, TKey>>(cacheOptions, ServiceLifetime.Singleton);
+                .WithDistributedCache<T, TKey, BlobStorageCache<T, TKey>>(cacheOptions, name, ServiceLifetime.Singleton);
         }
         /// <summary>
         /// Add Azure Blob Storage cache mechanism for your query pattern.
@@ -61,14 +63,15 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IQueryBuilder<T, TKey> WithBlobStorageCache<T, TKey>(
            this IQueryBuilder<T, TKey> builder,
                 Action<BlobStorageConnectionSettings> options,
-                Action<DistributedCacheOptions<T, TKey>>? cacheOptions = null)
+                Action<DistributedCacheOptions<T, TKey>>? cacheOptions = null,
+                string? name = null)
             where TKey : notnull
         {
             builder
                 .WithBlobStorageAsync(options)
                 .ToResult();
             return builder
-                .WithDistributedCache<T, TKey, BlobStorageCache<T, TKey>>(cacheOptions, ServiceLifetime.Singleton);
+                .WithDistributedCache<T, TKey, BlobStorageCache<T, TKey>>(cacheOptions, name, ServiceLifetime.Singleton);
         }
     }
 }
