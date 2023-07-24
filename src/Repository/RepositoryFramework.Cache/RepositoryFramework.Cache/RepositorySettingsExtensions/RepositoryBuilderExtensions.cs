@@ -23,8 +23,8 @@ namespace Microsoft.Extensions.DependencyInjection
         }
         private static TRepositoryBuilder WithCache<T, TKey, TCache, TRepositoryPattern, TRepositoryBuilder>(
           this IRepositoryBaseBuilder<T, TKey, TRepositoryPattern, TRepositoryBuilder> builder,
-          Action<CacheOptions<T, TKey>>? options = null,
-          ServiceLifetime lifetime = ServiceLifetime.Singleton)
+          Action<CacheOptions<T, TKey>>? options,
+          ServiceLifetime lifetime)
            where TKey : notnull
            where TCache : class, ICache<T, TKey>
            where TRepositoryPattern : class

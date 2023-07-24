@@ -14,28 +14,40 @@
             var currentService = services.FirstOrDefault(x => x.ServiceType == typeof(TService));
             if (currentService != null)
             {
+                var implementationType = currentService.ImplementationType;
                 if (currentService.ImplementationFactory != null)
-                    services.TryAddService(typeof(TService), currentService.ImplementationFactory, currentService.Lifetime);
+                {
+                    implementationType ??= typeof(TService);
+                    Try.WithDefaultOnCatch(() =>
+                    {
+                        var serviceProvider = services.BuildServiceProvider().CreateScope().ServiceProvider;
+                        var returnedService = currentService.ImplementationFactory.Invoke(serviceProvider);
+                        if (returnedService != null)
+                            implementationType = returnedService.GetType();
+                    });
+                    services.TryAddService(implementationType, currentService.ImplementationFactory, currentService.Lifetime);
+                }
                 else if (currentService.ImplementationType != null)
                     services.TryAddService(typeof(TService), currentService.ImplementationType, currentService.Lifetime);
+                else if (currentService.ImplementationInstance != null)
+                {
+                    services.TryAddService(currentService.ImplementationInstance, lifetime);
+                    implementationType = currentService.ImplementationInstance.GetType();
+                }
 
-                var implementationType = currentService.ImplementationType;
                 if (Factory<TService>.Map.TryGetValue(name, out var factory))
                 {
                     factory.DecoratorType = typeof(TImplementation);
                     implementationType = factory.ImplementationType;
                 }
-                else if (currentService.ImplementationType != null)
+                else if (implementationType != null)
                 {
-                    var decoratedImplementation = currentService.ImplementationType!;
-                    var decoratedLifetime = currentService.Lifetime;
-                    services.TryAddService(decoratedImplementation, decoratedLifetime);
                     services.AddOrOverrideService(serviceProvider =>
                     {
                         var service = (TService)serviceProvider.GetRequiredService<TImplementation>();
                         if (service is IDecoratorService<TService> decorator)
                         {
-                            decorator.DecoratedService = (TService)serviceProvider.GetRequiredService(decoratedImplementation);
+                            decorator.DecoratedService = (TService)serviceProvider.GetRequiredService(implementationType);
                         }
                         return service;
                     }, lifetime);

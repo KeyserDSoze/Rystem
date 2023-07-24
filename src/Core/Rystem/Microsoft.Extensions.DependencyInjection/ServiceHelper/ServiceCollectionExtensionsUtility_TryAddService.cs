@@ -6,6 +6,45 @@ namespace Microsoft.Extensions.DependencyInjection
     {
         public static IServiceCollection TryAddService<TService>(
             this IServiceCollection services,
+            object implementationInstance,
+           ServiceLifetime lifetime)
+           where TService : class
+        {
+            switch (lifetime)
+            {
+                case ServiceLifetime.Transient:
+                    services.TryAddTransient(serviceProvider => (TService)implementationInstance);
+                    break;
+                case ServiceLifetime.Singleton:
+                    services.TryAddSingleton(serviceProvider => (TService)implementationInstance);
+                    break;
+                default:
+                    services.TryAddScoped(serviceProvider => (TService)implementationInstance);
+                    break;
+            }
+            return services;
+        }
+        public static IServiceCollection TryAddService(
+            this IServiceCollection services,
+            object implementationInstance,
+           ServiceLifetime lifetime)
+        {
+            switch (lifetime)
+            {
+                case ServiceLifetime.Transient:
+                    services.TryAddTransient(implementationInstance.GetType(), serviceProvider => implementationInstance);
+                    break;
+                case ServiceLifetime.Singleton:
+                    services.TryAddSingleton(implementationInstance.GetType(), serviceProvider => implementationInstance);
+                    break;
+                default:
+                    services.TryAddScoped(implementationInstance.GetType(), serviceProvider => implementationInstance);
+                    break;
+            }
+            return services;
+        }
+        public static IServiceCollection TryAddService<TService>(
+            this IServiceCollection services,
            ServiceLifetime lifetime)
            where TService : class
         {
