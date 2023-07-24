@@ -1,11 +1,10 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using RepositoryFramework.InMemory;
 using RepositoryFramework.Migration;
 using RepositoryFramework.UnitTest.Migration.Models;
-using RepositoryFramework.UnitTest.Migration.Storage;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace RepositoryFramework.UnitTest.Migration
@@ -16,10 +15,18 @@ namespace RepositoryFramework.UnitTest.Migration
         static MigrationTest()
         {
             DiUtility.CreateDependencyInjectionWithConfiguration(out var configuration)
-                    .AddRepository<SuperMigrationUser, string, SuperMigrationTo>(settings =>
+                .AddRepository<SuperMigrationUser, string>(builder =>
+                {
+                    builder.WithInMemory(name: "source").PopulateWithRandomData();
+                })
+                .AddRepository<SuperMigrationUser, string>(builder =>
+                {
+                    builder.WithInMemory(name: "target").PopulateWithRandomData();
+                })
+                    .AddMigrationManager<SuperMigrationUser, string>(settings =>
                     {
-                        settings
-                            .AddMigrationSource<SuperMigrationUser, string, SuperMigrationFrom>(x => x.NumberOfConcurrentInserts = 2);
+                        settings.SourceFactoryName = "source";
+                        settings.DestinationFactoryName = "target";
                     })
                 .Finalize(out s_serviceProvider)
                 .WarmUpAsync()
@@ -27,13 +34,14 @@ namespace RepositoryFramework.UnitTest.Migration
         }
         private readonly IMigrationManager<SuperMigrationUser, string> _migrationService;
         private readonly IRepository<SuperMigrationUser, string> _repository;
-        private readonly IMigrationSource<SuperMigrationUser, string> _from;
+        private readonly IRepository<SuperMigrationUser, string> _from;
 
         public MigrationTest()
         {
             _migrationService = s_serviceProvider!.GetService<IMigrationManager<SuperMigrationUser, string>>()!;
-            _repository = s_serviceProvider!.GetService<IRepository<SuperMigrationUser, string>>()!;
-            _from = s_serviceProvider!.GetService<IMigrationSource<SuperMigrationUser, string>>()!;
+            var factory = s_serviceProvider!.GetService<IFactory<IRepository<SuperMigrationUser, string>>>()!;
+            _from = factory.Create("source");
+            _repository = factory.Create("target");
         }
         [Fact]
         public async Task TestAsync()

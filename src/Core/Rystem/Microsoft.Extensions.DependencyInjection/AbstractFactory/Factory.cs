@@ -7,8 +7,10 @@
         {
             _serviceProvider = serviceProvider;
         }
-        public TService Create(string? name = null) 
+        public TService Create(string? name = null)
             => Map[name ?? string.Empty].ServiceFactory.Invoke(_serviceProvider);
+        public bool Exists(string? name = null)
+            => Map.ContainsKey(name ?? string.Empty);
         internal static Dictionary<string, FactoryService> Map { get; } = new();
         internal sealed class FactoryService
         {

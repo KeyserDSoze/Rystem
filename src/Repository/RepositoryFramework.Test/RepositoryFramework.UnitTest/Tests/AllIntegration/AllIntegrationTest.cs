@@ -23,10 +23,10 @@ namespace RepositoryFramework.UnitTest.Repository
                     break;
                 case "tablestorage":
                     services
-                        .AddRepository<AppUser, AppUserKey>(settings =>
+                        .AddRepository<AppUser, AppUserKey>(async settings =>
                         {
-                            settings
-                            .WithTableStorage(x => x.ConnectionString = configuration["ConnectionString:Storage"])
+                            (await settings
+                            .WithTableStorageAsync(x => x.ConnectionString = configuration["ConnectionString:Storage"]))
                             .WithTableStorageKeyReader<TableStorageKeyReader>()
                                 .WithPartitionKey(x => x.Id, x => x.Id)
                                 .WithRowKey(x => x.Username)
@@ -35,19 +35,24 @@ namespace RepositoryFramework.UnitTest.Repository
                     break;
                 case "blobstorage":
                     services
-                        .AddRepository<AppUser, AppUserKey>(settings => settings
-                            .WithBlobStorage(x => x.ConnectionString = configuration["ConnectionString:Storage"]));
+                        .AddRepositoryAsync<AppUser, AppUserKey>(async settings =>
+                        {
+                            await settings
+                                .WithBlobStorageAsync(x => x.ConnectionString = configuration["ConnectionString:Storage"])
+                                .NoContext();
+                        }).ToResult();
                     break;
                 case "cosmos":
-                    services.AddRepository<AppUser, AppUserKey>(settings =>
+                    services.AddRepositoryAsync<AppUser, AppUserKey>(async settings =>
                     {
-                        settings.WithCosmosSql(x =>
+                        (await settings.WithCosmosSqlAsync(x =>
                         {
                             x.ConnectionString = configuration["ConnectionString:CosmosSql"];
                             x.DatabaseName = "unittestdatabase";
-                        })
+                        }).NoContext())
                         .WithId(x => new AppUserKey(x.Id));
-                    });
+                    })
+                        .ToResult();
                     break;
             }
             services.Finalize(out var serviceProvider);

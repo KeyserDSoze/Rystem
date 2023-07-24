@@ -176,9 +176,10 @@ namespace RepositoryFramework.UnitTest.Unitary
         static TranslationTest()
         {
             DiUtility.CreateDependencyInjectionWithConfiguration(out var configuration)
-                    .AddRepository<Translatable, string, TranslatableRepository>(settings =>
+                    .AddRepository<Translatable, string>(settings =>
                     {
                         settings
+                        .SetStorage<TranslatableRepository>()
                         .Translate<ToTranslateSomething>()
                            .With(x => x.Foolish, x => x.Folle)
                            .With(x => x.Id, x => x.IdccnlValidita)

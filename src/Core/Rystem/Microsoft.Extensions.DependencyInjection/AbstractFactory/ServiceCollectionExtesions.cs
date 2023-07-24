@@ -131,6 +131,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     if (decorator is IDecoratorService<TService> decorateWithService)
                     {
                         decorateWithService.DecoratedService = service;
+                        decorateWithService.OnDecoratedServiceSet(service);
                     }
                     return decorator;
                 }

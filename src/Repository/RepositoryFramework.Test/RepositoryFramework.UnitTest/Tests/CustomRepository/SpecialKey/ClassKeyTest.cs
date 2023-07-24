@@ -12,7 +12,10 @@ namespace RepositoryFramework.UnitTest.CustomRepository.SpecialKeys
         static ClassKeyTest()
         {
             DiUtility.CreateDependencyInjectionWithConfiguration(out _)
-                .AddRepository<ClassAnimal, ClassAnimalKey, ClassAnimalRepository>()
+                .AddRepository<ClassAnimal, ClassAnimalKey>(builder =>
+                {
+                    builder.SetStorage<ClassAnimalRepository>();
+                })
                 .Finalize(out s_serviceProvider);
         }
         private readonly IRepository<ClassAnimal, ClassAnimalKey> _repo;

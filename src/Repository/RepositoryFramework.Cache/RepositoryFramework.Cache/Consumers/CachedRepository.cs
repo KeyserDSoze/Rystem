@@ -7,7 +7,14 @@ namespace RepositoryFramework.Cache
     {
         private readonly IRepository<T, TKey>? _repository;
         private readonly ICommand<T, TKey>? _command;
-
+        public void OnDecoratedServiceSet(IRepository<T, TKey> service)
+        {
+            return;
+        }
+        public void OnDecoratedServiceSet(ICommand<T, TKey> service)
+        {
+            return;
+        }
         public CachedRepository(IDecoratedService<IRepository<T, TKey>>? repository = null,
             IDecoratedService<ICommand<T, TKey>>? command = null,
             IDecoratedService<IQuery<T, TKey>>? query = null,

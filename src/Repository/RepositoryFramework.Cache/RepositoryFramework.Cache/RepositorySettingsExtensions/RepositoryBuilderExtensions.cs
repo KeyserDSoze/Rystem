@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.DependencyInjection
             var defaultOptions = new CacheOptions<T, TKey>();
             options?.Invoke(defaultOptions);
             builder.Services
-                .RemoveServiceIfAlreadyInstalled<TCache>(true, typeof(ICache<T, TKey>))
+                .RemoveService(typeof(ICache<T, TKey>))
                 .AddService<ICache<T, TKey>, TCache>(lifetime)
                 .AddSingleton(defaultOptions);
             builder
@@ -173,7 +173,7 @@ namespace Microsoft.Extensions.DependencyInjection
             var defaultOptions = new DistributedCacheOptions<T, TKey>();
             options?.Invoke(defaultOptions);
             builder.Services
-                .RemoveServiceIfAlreadyInstalled<TCache>(true, typeof(IDistributedCache<T, TKey>))
+                .RemoveService(typeof(IDistributedCache<T, TKey>))
                 .AddService<IDistributedCache<T, TKey>, TCache>(lifetime)
                 .AddSingleton(defaultOptions);
             builder.Services.AddCacheManager(PatternType.Repository, defaultOptions);

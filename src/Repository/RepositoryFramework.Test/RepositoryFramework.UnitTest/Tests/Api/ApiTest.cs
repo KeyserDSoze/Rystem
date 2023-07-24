@@ -102,7 +102,11 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                                     });
 
                                 services
-                                    .AddRepository<ExtremelyRareUser, string, ExtremelyRareUserRepositoryStorage>();
+                                    .AddRepository<ExtremelyRareUser, string>(builder =>
+                                    {
+                                        builder
+                                        .SetStorage<ExtremelyRareUserRepositoryStorage>();
+                                    });
                                 services
                                     .AddRepository<Car, Guid>(settings =>
                                     {
@@ -132,20 +136,21 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                                         .AddBusinessBeforeInsert<SuperCarBeforeInsertBusiness2>();
                                     });
                                 services
-                                    .AddRepository<SuperUser, string>(
-                                    settings =>
+                                    .AddRepositoryAsync<SuperUser, string>(
+                                    async builder =>
                                     {
-                                        (await settings.WithCosmosSqlAsync(x =>
+                                        (await builder.WithCosmosSqlAsync(x =>
                                         {
                                             x.ConnectionString = configuration["ConnectionString:CosmosSql"];
                                             x.DatabaseName = "BigDatabase";
-                                        }))
+                                        }).NoContext())
                                             .WithId(x => x.Email!);
-                                        settings
+                                        builder
                                         .AddBusiness()
                                         .AddBusinessBeforeInsert<SuperUserBeforeInsertBusiness>()
                                         .AddBusinessBeforeInsert<SuperUserBeforeInsertBusiness2>();
-                                    });
+                                    })
+                                    .ToResult();
                                 services
                                     .AddUserRepositoryWithDatabaseSqlAndEntityFramework(configuration);
                                 services.

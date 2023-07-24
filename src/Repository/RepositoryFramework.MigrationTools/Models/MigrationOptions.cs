@@ -5,5 +5,7 @@
         where TKey : notnull
     {
         public int NumberOfConcurrentInserts { get; set; } = 10;
+        public string SourceFactoryName { get; set; } = null!;
+        public string DestinationFactoryName { get; set; } = null!;
     }
 }

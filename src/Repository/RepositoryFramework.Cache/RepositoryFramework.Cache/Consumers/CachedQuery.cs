@@ -13,6 +13,10 @@ namespace RepositoryFramework.Cache
         private protected readonly DistributedCacheOptions<T, TKey> DistributedCacheOptions;
         private readonly string _cacheName;
         public IQuery<T, TKey> DecoratedService { get; set; }
+        public void OnDecoratedServiceSet(IQuery<T, TKey> service)
+        {
+            return;
+        }
         public CachedQuery(IDecoratedService<IQuery<T, TKey>> query,
             ICache<T, TKey>? cache = null,
             CacheOptions<T, TKey>? cacheOptions = null,

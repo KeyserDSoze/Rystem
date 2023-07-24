@@ -1,5 +1,4 @@
 ﻿using System.Linq.Expressions;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Migration
 {

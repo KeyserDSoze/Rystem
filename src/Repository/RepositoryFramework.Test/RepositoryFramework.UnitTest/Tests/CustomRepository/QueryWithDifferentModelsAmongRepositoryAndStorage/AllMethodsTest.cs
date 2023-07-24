@@ -14,9 +14,10 @@ namespace RepositoryFramework.UnitTest.QueryWithDifferentModelsAmongRepositoryAn
         static QueryWithDifferentModelsAmongRepositoryAndStorage()
         {
             DiUtility.CreateDependencyInjectionWithConfiguration(out _)
-                .AddRepository<Car, int, CarRepository>(settings =>
+                .AddRepository<Car, int>(settings =>
                 {
                     settings
+                        .SetStorage<CarRepository>()
                         .Translate<Auto>()
                             .With(x => x.Id, x => x.Identificativo)
                             .With(x => x.Id2, x => x.Identificativo2)
@@ -53,7 +54,7 @@ namespace RepositoryFramework.UnitTest.QueryWithDifferentModelsAmongRepositoryAn
             var results3 = await _repository
                 .OrderBy(x => x.Id)
                 .PageAsync(1, 2);
-            Assert.Equal(2, results3.Items.Count());
+            Assert.Equal(2, results3.Items.Count);
             Assert.Equal(5, results3.TotalCount);
             Assert.Equal(1, results3.Items.First().Value!.Id);
         }

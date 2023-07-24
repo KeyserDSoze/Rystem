@@ -4,5 +4,6 @@
         where TService : class
     {
         TService DecoratedService { get; set; }
+        void OnDecoratedServiceSet(TService service);
     }
 }

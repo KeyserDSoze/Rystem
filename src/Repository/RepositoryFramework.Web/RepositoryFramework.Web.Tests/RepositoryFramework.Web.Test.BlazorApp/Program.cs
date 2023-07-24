@@ -33,27 +33,43 @@ builder.Services
     .AddRepository<AppConfiguration, string>(settings =>
     {
         settings
-            .WithApiClient()
-            .WithHttpClient("localhost:7246");
+            .WithApiClient(apiBuilder =>
+            {
+                apiBuilder
+                .WithHttpClient("localhost:7246");
+            });
         settings
             .ExposeFor(3);
     });
 
 builder.Services.AddRepository<AppGroup, string>(settings =>
 {
-    settings.WithApiClient()
-    .WithHttpClient("localhost:7246");
+    settings
+        .WithApiClient(apiBuilder =>
+        {
+            apiBuilder
+            .WithHttpClient("localhost:7246");
+        });
 });
 builder.Services.AddRepository<Weather, int>(settings =>
 {
-    settings.WithApiClient()
-    .WithHttpClient("localhost:7246");
+    settings
+        .WithApiClient(apiBuilder =>
+        {
+            apiBuilder
+            .WithHttpClient("localhost:7246");
+        });
 });
 
 builder.Services
     .AddRepository<AppUser, int>(settings =>
     {
-        settings.WithApiClient().WithHttpClient("localhost:7246");
+        settings
+           .WithApiClient(apiBuilder =>
+           {
+               apiBuilder
+               .WithHttpClient("localhost:7246");
+           });
         settings
             .MapPropertiesForUi<AppUser, int, AppUserDesignMapper>()
             .WithIcon("manage_accounts")
@@ -66,7 +82,12 @@ builder.Services
 builder.Services
     .AddRepository<AppUser2, int>(settings =>
     {
-        settings.WithApiClient().WithHttpClient("localhost:7246");
+        settings
+           .WithApiClient(apiBuilder =>
+           {
+               apiBuilder
+               .WithHttpClient("localhost:7246");
+           });
         settings
             .MapPropertiesForUi<AppUser2, int, AppUserDesignMapper2>()
             .AddAction<AppUser2, int, AppUserEditAction>()
