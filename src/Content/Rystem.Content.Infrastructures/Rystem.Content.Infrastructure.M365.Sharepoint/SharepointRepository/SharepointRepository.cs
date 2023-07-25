@@ -10,6 +10,10 @@ namespace Rystem.Content.Infrastructure
 {
     internal sealed class SharepointRepository : IContentRepository, IServiceWithOptions<SharepointClientWrapper>
     {
+        public void SetOptions(SharepointClientWrapper options)
+        {
+            Options = options;
+        }
         private GraphServiceClient _graphClient;
         private string _documentLibraryId;
         private SharepointClientWrapper _clientWrapper;

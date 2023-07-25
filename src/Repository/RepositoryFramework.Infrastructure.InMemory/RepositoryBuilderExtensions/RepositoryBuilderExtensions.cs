@@ -26,7 +26,7 @@ namespace RepositoryFramework.InMemory
                 },
                 name,
                 ServiceLifetime.Singleton);
-            return new RepositoryInMemoryBuilder<T, TKey>(builder.Services);
+            return new RepositoryInMemoryBuilder<T, TKey>(builder.Services, name ?? string.Empty);
         }
         /// <summary>
         /// Add an in memory storage to your command pattern.
@@ -50,7 +50,7 @@ namespace RepositoryFramework.InMemory
                 },
                 name,
                 ServiceLifetime.Singleton);
-            return new RepositoryInMemoryBuilder<T, TKey>(builder.Services);
+            return new RepositoryInMemoryBuilder<T, TKey>(builder.Services, name ?? string.Empty);
         }
         /// <summary>
         /// Add an in memory storage to your query pattern.
@@ -74,7 +74,7 @@ namespace RepositoryFramework.InMemory
                 },
                 name,
                 ServiceLifetime.Singleton);
-            return new RepositoryInMemoryBuilder<T, TKey>(builder.Services);
+            return new RepositoryInMemoryBuilder<T, TKey>(builder.Services, name ?? string.Empty);
         }
         private static void CheckSettings<T, TKey>(RepositoryBehaviorSettings<T, TKey> settings)
              where TKey : notnull

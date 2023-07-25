@@ -133,5 +133,10 @@ namespace RepositoryFramework.Infrastructure.EntityFramework
             }
             return results;
         }
+
+        public void SetOptions(EntityFrameworkOptions<T, TKey, TEntityModel, TContext> options)
+        {
+            Options = options;
+        }
     }
 }

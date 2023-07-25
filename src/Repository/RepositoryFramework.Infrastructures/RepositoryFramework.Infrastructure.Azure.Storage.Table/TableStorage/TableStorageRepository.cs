@@ -10,6 +10,10 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
     internal sealed class TableStorageRepository<T, TKey> : IRepository<T, TKey>, IServiceWithOptions<TableClientWrapper>
         where TKey : notnull
     {
+        public void SetOptions(TableClientWrapper options)
+        {
+            Options = options;
+        }
         private TableClient Client => Options!.Client;
         private readonly ITableStorageKeyReader<T, TKey> _keyReader;
         public TableClientWrapper? Options { get; set; }

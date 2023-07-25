@@ -7,6 +7,10 @@ namespace Rystem.Content.Infrastructure.Storage
 {
     internal sealed class BlobStorageRepository : IContentRepository, IServiceWithOptions<BlobServiceClientWrapper>
     {
+        public void SetOptions(BlobServiceClientWrapper options)
+        {
+            Options = options;
+        }
         private BlobContainerClient Client => Options?.ContainerClient ?? throw new ArgumentException("Client for F not installed correctly");
         public BlobServiceClientWrapper? Options { get; set; }
         public BlobStorageRepository(BlobServiceClientWrapper? options = null)

@@ -26,5 +26,7 @@ namespace RepositoryFramework
         TRepositoryBuilder SetStorageWithOptions<TStorage, TOptions>(Action<TOptions> options, string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
            where TStorage : class, TRepositoryPattern, IServiceWithOptions<TOptions>
            where TOptions : class, new();
+        Func<Task>? AfterBuildAsync { get; set; }
+        Action? AfterBuild { get; set; }
     }
 }

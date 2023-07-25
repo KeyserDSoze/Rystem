@@ -6,20 +6,20 @@ namespace Microsoft.Extensions.DependencyInjection
     {
         public static IServiceCollection TryAddService<TService>(
             this IServiceCollection services,
-            object implementationInstance,
+            TService implementationInstance,
            ServiceLifetime lifetime)
            where TService : class
         {
             switch (lifetime)
             {
                 case ServiceLifetime.Transient:
-                    services.TryAddTransient(serviceProvider => (TService)implementationInstance);
+                    services.TryAddTransient(serviceProvider => implementationInstance);
                     break;
                 case ServiceLifetime.Singleton:
-                    services.TryAddSingleton(serviceProvider => (TService)implementationInstance);
+                    services.TryAddSingleton(serviceProvider => implementationInstance);
                     break;
                 default:
-                    services.TryAddScoped(serviceProvider => (TService)implementationInstance);
+                    services.TryAddScoped(serviceProvider => implementationInstance);
                     break;
             }
             return services;
@@ -115,6 +115,27 @@ namespace Microsoft.Extensions.DependencyInjection
                     break;
                 default:
                     services.TryAddScoped(implementationFactory);
+                    break;
+            }
+            return services;
+        }
+        public static IServiceCollection TryAddService<TService, TImplementation>(
+           this IServiceCollection services,
+           TImplementation implementationInstance,
+          ServiceLifetime lifetime)
+            where TService : class
+            where TImplementation : class, TService
+        {
+            switch (lifetime)
+            {
+                case ServiceLifetime.Transient:
+                    services.TryAddTransient(serviceProvider => implementationInstance);
+                    break;
+                case ServiceLifetime.Singleton:
+                    services.TryAddSingleton(serviceProvider => implementationInstance);
+                    break;
+                default:
+                    services.TryAddScoped(serviceProvider => implementationInstance);
                     break;
             }
             return services;

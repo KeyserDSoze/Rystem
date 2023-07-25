@@ -2,6 +2,6 @@
 {
     public interface IServiceWithOptions<TOptions> : IServiceWithOptions
     {
-        TOptions? Options { get; set; }
+        void SetOptions(TOptions options);
     }
 }

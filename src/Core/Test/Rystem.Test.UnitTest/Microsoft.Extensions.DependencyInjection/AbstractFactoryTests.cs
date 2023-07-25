@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -32,6 +33,10 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection
     public class SingletonService : IMyService, IServiceWithOptions<SingletonOption>
     {
         public SingletonOption Options { get; set; }
+        public void SetOptions(SingletonOption options)
+        {
+            Options = options;
+        }
         public string Id { get; } = Guid.NewGuid().ToString();
         public string GetName()
         {
@@ -40,6 +45,10 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection
     }
     public class TransientService : IMyService, IServiceWithOptions<TransientOption>
     {
+        public void SetOptions(TransientOption options)
+        {
+            Options = options;
+        }
         public TransientOption Options { get; set; }
         public string Id { get; } = Guid.NewGuid().ToString();
         public string GetName()
@@ -49,6 +58,10 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection
     }
     public class ScopedService : IMyService, IServiceWithOptions<ScopedOption>
     {
+        public void SetOptions(ScopedOption options)
+        {
+            Options = options;
+        }
         public ScopedOption Options { get; set; }
         public string Id { get; } = Guid.NewGuid().ToString();
         public string GetName()
@@ -58,6 +71,10 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection
     }
     public class ScopedService2 : IMyService, IServiceWithOptions<ScopedOption>
     {
+        public void SetOptions(ScopedOption options)
+        {
+            Options = options;
+        }
         public ScopedOption Options { get; set; }
         public string Id { get; } = Guid.NewGuid().ToString();
 
@@ -68,6 +85,10 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection
     }
     public class ScopedService3 : IMyService, IServiceWithOptions<ScopedOption>
     {
+        public void SetOptions(ScopedOption options)
+        {
+            Options = options;
+        }
         public ScopedOption Options { get; set; }
         public string Id { get; } = Guid.NewGuid().ToString();
 
@@ -78,6 +99,10 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection
     }
     public class ScopedService4 : IMyService, IServiceWithOptions<ScopedOption>
     {
+        public void SetOptions(ScopedOption options)
+        {
+            Options = options;
+        }
         public ScopedOption Options { get; set; }
         public string Id { get; } = Guid.NewGuid().ToString();
 

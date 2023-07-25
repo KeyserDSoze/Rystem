@@ -1,17 +1,28 @@
-﻿namespace RepositoryFramework
+﻿using Microsoft.Extensions.DependencyInjection;
+
+namespace RepositoryFramework
 {
-    internal class Query<T, TKey> : IQuery<T, TKey>
+    internal class Query<T, TKey> : IQuery<T, TKey>, IFactoryService
         where TKey : notnull
     {
-        private readonly IQueryPattern<T, TKey> _query;
+        private IQueryPattern<T, TKey> _query;
+        private readonly IFactory<IQueryPattern<T, TKey>> _queryFactory;
         private readonly IRepositoryBusinessManager<T, TKey>? _businessManager;
         private readonly IRepositoryFilterTranslator<T, TKey>? _translator;
-
-        public Query(IQueryPattern<T, TKey> query,
+        public void SetFactoryName(string name)
+        {
+            _query = _queryFactory.Create(name);
+        }
+        internal Query<T, TKey> SetQuery(IQueryPattern<T, TKey> query)
+        {
+            _query = query;
+            return this;
+        }
+        public Query(IFactory<IQueryPattern<T, TKey>>? queryFactory = null,
             IRepositoryBusinessManager<T, TKey>? businessManager = null,
             IRepositoryFilterTranslator<T, TKey>? translator = null)
         {
-            _query = query;
+            _queryFactory = queryFactory;
             _businessManager = businessManager;
             _translator = translator;
         }

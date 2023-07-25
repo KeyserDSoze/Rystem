@@ -41,6 +41,9 @@ builder.Services
         settins.WithInMemory()
             .PopulateWithRandomData(120, 5)
             .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
+        settins.WithInMemory(name: "inmemory")
+            .PopulateWithRandomData(2, 5)
+            .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
     });
 
 builder.Services.AddRepository<SuperiorUser, string>(settings =>

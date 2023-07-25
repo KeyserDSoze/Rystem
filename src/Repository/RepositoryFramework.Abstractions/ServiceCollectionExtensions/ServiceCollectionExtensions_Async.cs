@@ -18,6 +18,9 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             var defaultSettings = new RepositoryFrameworkBuilder<T, TKey>(services);
             await builder.Invoke(defaultSettings).NoContext();
+            defaultSettings.AfterBuild?.Invoke();
+            if (defaultSettings.AfterBuildAsync != null)
+                await defaultSettings.AfterBuildAsync.Invoke().NoContext();
             return services;
         }
         /// <summary>
@@ -34,6 +37,9 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             var defaultSettings = new CommandFrameworkBuilder<T, TKey>(services);
             await builder.Invoke(defaultSettings).NoContext();
+            defaultSettings.AfterBuild?.Invoke();
+            if (defaultSettings.AfterBuildAsync != null)
+                await defaultSettings.AfterBuildAsync.Invoke().NoContext();
             return services;
         }
         /// <summary>
@@ -50,6 +56,9 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             var defaultSettings = new QueryFrameworkBuilder<T, TKey>(services);
             await builder.Invoke(defaultSettings).NoContext();
+            defaultSettings.AfterBuild?.Invoke();
+            if (defaultSettings.AfterBuildAsync != null)
+                await defaultSettings.AfterBuildAsync.Invoke().NoContext();
             return services;
         }
     }

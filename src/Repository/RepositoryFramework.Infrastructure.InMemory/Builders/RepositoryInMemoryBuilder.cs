@@ -9,12 +9,32 @@ namespace RepositoryFramework.InMemory
         where TKey : notnull
     {
         public IServiceCollection Services { get; }
-        public RepositoryInMemoryBuilder(IServiceCollection services)
+        private readonly ICommandPattern<T, TKey>? _commandPattern;
+        public RepositoryInMemoryBuilder(IServiceCollection services, string factoryName)
         {
             Services = services;
+            var serviceProvider = Services.BuildServiceProvider().CreateScope().ServiceProvider;
+            var factory = serviceProvider.GetService<IFactory<IRepositoryPattern<T, TKey>>>();
+            if (factory != null && factory.Exists(factoryName))
+                _commandPattern = factory.Create(factoryName);
+            else
+            {
+                var commandFactory = serviceProvider.GetService<IFactory<ICommandPattern<T, TKey>>>();
+                if (commandFactory != null && commandFactory.Exists(factoryName))
+                    _commandPattern = commandFactory.Create(factoryName);
+                else
+                {
+                    var queryFactory = serviceProvider.GetService<IFactory<IQueryPattern<T, TKey>>>();
+                    if (queryFactory != null && queryFactory.Exists(factoryName))
+                        _commandPattern = queryFactory.Create(factoryName) as InMemoryStorage<T, TKey>;
+                }
+            }
         }
-        private static void AddElementBasedOnGenericElements(TKey key, T value)
-            => InMemoryStorage<T, TKey>.AddValue(key, value);
+        private void AddElementBasedOnGenericElements(TKey key, T value)
+        {
+            if (_commandPattern != null)
+                _commandPattern.InsertAsync(key, value).ToResult();
+        }
         public IRepositoryInMemoryBuilder<T, TKey> PopulateWithJsonData(
             Expression<Func<T, TKey>> navigationKey,
             string json)

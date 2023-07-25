@@ -9,6 +9,10 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
     internal sealed class BlobStorageRepository<T, TKey> : IRepository<T, TKey>, IServiceWithOptions<BlobContainerClientWrapper>
         where TKey : notnull
     {
+        public void SetOptions(BlobContainerClientWrapper options)
+        {
+            Options = options;
+        }
         public BlobContainerClientWrapper? Options { get; set; }
         public BlobStorageRepository(BlobContainerClientWrapper? options = null)
         {

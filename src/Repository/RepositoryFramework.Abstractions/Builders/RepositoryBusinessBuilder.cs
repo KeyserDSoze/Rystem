@@ -15,7 +15,8 @@ namespace RepositoryFramework
             else
             {
                 var entityType = typeof(T);
-                var servicesByModel = RepositoryFrameworkRegistry.Instance.GetByModel(entityType);
+                var registry = Services.TryAddSingletonAndGetService<RepositoryFrameworkRegistry>();
+                var servicesByModel = registry.GetByModel(entityType);
                 ServiceLifetime = servicesByModel.OrderByDescending(x => x.ServiceLifetime).FirstOrDefault()?.ServiceLifetime ?? ServiceLifetime.Transient;
             }
         }

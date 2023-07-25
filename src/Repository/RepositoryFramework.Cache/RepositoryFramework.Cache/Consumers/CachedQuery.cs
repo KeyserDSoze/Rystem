@@ -8,7 +8,7 @@ namespace RepositoryFramework.Cache
     {
         private protected IQuery<T, TKey> _query;
         private protected readonly IFactory<IQuery<T, TKey>>? QueryFactory;
-        private protected readonly IFactory<IRepository<T, TKey>>? _repositoryFactory;
+        private protected readonly IFactory<IRepository<T, TKey>>? RepositoryFactory;
         private protected readonly ICache<T, TKey>? Cache;
         private protected readonly CacheOptions<T, TKey> CacheOptions;
         private protected readonly IDistributedCache<T, TKey>? Distributed;
@@ -22,8 +22,8 @@ namespace RepositoryFramework.Cache
         {
             if (QueryFactory != null && QueryFactory.Exists(name))
                 _query = QueryFactory.CreateWithoutDecoration(name);
-            else if (_repositoryFactory != null && _repositoryFactory.Exists(name))
-                _query = _repositoryFactory.CreateWithoutDecoration(name);
+            else if (RepositoryFactory != null && RepositoryFactory.Exists(name))
+                _query = RepositoryFactory.CreateWithoutDecoration(name);
         }
         public CachedQuery(IDecoratedService<IQuery<T, TKey>>? query = null,
             IDecoratedService<IRepository<T, TKey>>? repository = null,
@@ -36,7 +36,7 @@ namespace RepositoryFramework.Cache
         {
             _query = query?.Service ?? repository?.Service!;
             QueryFactory = queryFactory;
-            _repositoryFactory = repositoryFactory;
+            RepositoryFactory = repositoryFactory;
             Cache = cache;
             CacheOptions = cacheOptions ?? CacheOptions<T, TKey>.Default;
             Distributed = distributed;

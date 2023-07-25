@@ -11,6 +11,10 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
     internal sealed class DataverseRepository<T, TKey> : IRepository<T, TKey>, IServiceWithOptions<DataverseClientWrapper>
         where TKey : notnull
     {
+        public void SetOptions(DataverseClientWrapper options)
+        {
+            Options = options;
+        }
         private ServiceClient Client => Options!.Client;
         public DataverseOptions<T, TKey> Settings { get; }
         public DataverseClientWrapper? Options { get; set; }

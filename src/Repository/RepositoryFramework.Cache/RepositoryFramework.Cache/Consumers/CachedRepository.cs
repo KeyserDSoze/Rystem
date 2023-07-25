@@ -24,9 +24,9 @@ namespace RepositoryFramework.Cache
                 _query = QueryFactory.CreateWithoutDecoration(name);
             if (_commandFactory != null && _commandFactory.Exists(name))
                 _command = _commandFactory.CreateWithoutDecoration(name);
-            if (_repositoryFactory != null && _repositoryFactory.Exists(name))
+            if (RepositoryFactory != null && RepositoryFactory.Exists(name))
             {
-                _repository = _repositoryFactory.CreateWithoutDecoration(name);
+                _repository = RepositoryFactory.CreateWithoutDecoration(name);
                 if (!(QueryFactory != null && QueryFactory.Exists(name)))
                     _query = _repository;
                 if (!(_commandFactory != null && _commandFactory.Exists(name)))

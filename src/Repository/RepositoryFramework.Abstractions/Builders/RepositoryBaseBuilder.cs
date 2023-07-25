@@ -1,14 +1,13 @@
-﻿using System.Reflection;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace RepositoryFramework
 {
     public abstract class RepositoryBaseBuilder<T, TKey, TRepository, TRepositoryConcretization, TRepositoryPattern, TRepositoryBuilder> : IRepositoryBaseBuilder<T, TKey, TRepositoryPattern, TRepositoryBuilder>
         where TKey : notnull
-        where TRepositoryPattern : class
-        where TRepositoryBuilder : IRepositoryBaseBuilder<T, TKey, TRepositoryPattern, TRepositoryBuilder>
         where TRepository : class
+        where TRepositoryBuilder : IRepositoryBaseBuilder<T, TKey, TRepositoryPattern, TRepositoryBuilder>
+        where TRepositoryPattern : class
         where TRepositoryConcretization : class, TRepository
     {
         public IServiceCollection Services { get; }
@@ -18,6 +17,8 @@ namespace RepositoryFramework
         private ServiceLifetime _serviceLifetime = ServiceLifetime.Scoped;
         public RepositoryBaseBuilder(IServiceCollection services)
             => Services = services;
+        public Func<Task>? AfterBuildAsync { get; set; }
+        public Action? AfterBuild { get; set; }
         private void SetDefaultFrameworkBeforeStorage<TStorage>(
             string? name,
             ServiceLifetime serviceLifetime)
@@ -88,14 +89,14 @@ namespace RepositoryFramework
         {
             var entityType = typeof(T);
             var serviceKey = RepositoryFrameworkRegistry.ToServiceKey(entityType, _currentPatternType, _currentName);
-            if (!RepositoryFrameworkRegistry.Instance.Services.ContainsKey(serviceKey))
+            var registry = Services.TryAddSingletonAndGetService<RepositoryFrameworkRegistry>();
+            if (!registry.Services.ContainsKey(serviceKey))
             {
                 var keyType = typeof(TKey);
-                RepositoryFrameworkRegistry.Instance.Services.Add(serviceKey,
+                registry.Services.Add(serviceKey,
                     new(keyType, entityType, _currentPatternType, _currentName));
-                Services.TryAddSingleton(RepositoryFrameworkRegistry.Instance);
             }
-            return RepositoryFrameworkRegistry.Instance.Services[serviceKey];
+            return registry.Services[serviceKey];
         }
         public RepositoryBusinessBuilder<T, TKey> AddBusiness(ServiceLifetime? serviceLifetime = null)
             => new(Services, serviceLifetime ?? _serviceLifetime);

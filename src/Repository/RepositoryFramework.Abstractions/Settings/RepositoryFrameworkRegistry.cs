@@ -5,9 +5,7 @@
     /// </summary>
     public class RepositoryFrameworkRegistry
     {
-        public static RepositoryFrameworkRegistry Instance { get; } = new();
         public Dictionary<string, RepositoryFrameworkService> Services { get; } = new();
-        private RepositoryFrameworkRegistry() { }
         public static string ToServiceKey(Type modelType, PatternType type, string name)
             => $"{modelType.FullName}_{type}_{name}";
         public IEnumerable<RepositoryFrameworkService> GetByModel(Type modelType)

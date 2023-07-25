@@ -9,6 +9,10 @@ namespace RepositoryFramework.Infrastructure.MsSql
     internal sealed class SqlRepository<T, TKey> : IRepository<T, TKey>, IAsyncDisposable, IDisposable, IServiceWithOptions<MsSqlOptions<T, TKey>>
         where TKey : notnull
     {
+        public void SetOptions(MsSqlOptions<T, TKey> options)
+        {
+            Options = options;
+        }
         private MsSqlOptions<T, TKey>? _options;
         public MsSqlOptions<T, TKey>? Options
         {

@@ -35,15 +35,20 @@
                     implementationType = currentService.ImplementationInstance.GetType();
                 }
 
-                var map = services.FirstOrDefault(x => x.ServiceType == typeof(Dictionary<string, FactoryService<TService>>))?.ImplementationInstance as Dictionary<string, FactoryService<TService>>;
-                if (map != null && map.TryGetValue(name, out var factory))
+                var map = services.TryAddSingletonAndGetService<FactoryServices<TService>>();
+                if (map != null && map.Services.TryGetValue(name, out var factory))
                 {
-                    factory.DecoratorTypes ??= new();
-                    factory.DecoratorTypes.Add(typeof(TImplementation));
-                    implementationType = factory.ImplementationType;
+                    factory.Decorators ??= new();
+                    factory.Decorators.Add(new()
+                    {
+                        Type = typeof(TImplementation),
+                        Index = 0
+                    });
+                    implementationType = factory.Implementation.Type;
                 }
                 if (implementationType != null)
                 {
+
                     services.AddOrOverrideService(serviceProvider =>
                     {
                         var service = (TService)serviceProvider.GetRequiredService<TImplementation>();
@@ -61,9 +66,9 @@
                     return services;
                 }
                 else
-                    throw new ArgumentException($"Service {typeof(TService).Name} is not possible to decorate. Use decoration on service with only implementationType or implementationFactory.");
+                    throw new ArgumentException($"Service {typeof(TService).FullName} with implementation {typeof(TImplementation).FullName} is not possible to decorate. Use decoration on service with only implementationType or implementationFactory.");
             }
-            throw new ArgumentException($"Service {typeof(TService).Name} is not possible to decorate. Use decoration after a correct setup of service.");
+            throw new ArgumentException($"Service {typeof(TService).FullName} with implementation {typeof(TImplementation).FullName} is not possible to decorate. Use decoration after a correct setup of service.");
         }
     }
 }

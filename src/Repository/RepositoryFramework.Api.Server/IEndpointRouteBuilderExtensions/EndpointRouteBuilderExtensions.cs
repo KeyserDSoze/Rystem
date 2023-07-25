@@ -194,13 +194,13 @@ namespace Microsoft.Extensions.DependencyInjection
                     ApiSettings.Instance.CorsInstalled = true;
                 }
             }
-            Dictionary<string, bool> configuredMethods = new();
             foreach (var service in services)
             {
                 if (!service.IsNotExposable)
                 {
                     if (s_setupRepositories.ContainsKey(service.Key))
                         continue;
+                    Dictionary<string, bool> configuredMethods = new();
                     s_setupRepositories.Add(service.Key, true);
                     object? defaultKey = null;
                     object? defaultValue = null;
@@ -386,7 +386,7 @@ namespace Microsoft.Extensions.DependencyInjection
                         return Results.StatusCode(409);
                     }
                 })
-                .WithName($"{nameof(RepositoryMethods.Query)}{name}")
+                .WithName($"{nameof(RepositoryMethods.Query)}{factoryName}{name}")
                 .WithTags(name)
               .AddAuthorization(authorization, RepositoryMethods.Query, apiMap);
 
@@ -408,7 +408,7 @@ namespace Microsoft.Extensions.DependencyInjection
                         }
                     }
                 )
-                .WithName($"{nameof(RepositoryMethods.Query)}{name}Stream")
+                .WithName($"{nameof(RepositoryMethods.Query)}{factoryName}{name}Stream")
                 .WithTags(name)
               .AddAuthorization(authorization, RepositoryMethods.Query, apiMap);
         }
@@ -463,7 +463,7 @@ namespace Microsoft.Extensions.DependencyInjection
                         return calculatedType ?? typeof(object);
                     }
                 })
-                .WithName($"{nameof(RepositoryMethods.Operation)}{name}")
+                .WithName($"{nameof(RepositoryMethods.Operation)}{factoryName}{name}")
                 .WithTags(name)
               .AddAuthorization(authorization, RepositoryMethods.Operation, apiMap);
         }
@@ -641,7 +641,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     return Results.StatusCode(409);
                 }
             })
-            .WithName($"{nameof(RepositoryMethods.Batch)}{name}")
+            .WithName($"{nameof(RepositoryMethods.Batch)}{factoryName}{name}")
             .WithTags(name)
             .AddAuthorization(authorization, RepositoryMethods.Batch, apiMap);
         }
@@ -687,7 +687,7 @@ namespace Microsoft.Extensions.DependencyInjection
                         => actionWithNoEntity!.Invoke(KeySettings<TKey>.Instance.Parse(key), factoryService.Create(factoryName), cancellationToken));
             }
             _ = apiMapped!
-                    .WithName($"{method}{name}")
+                    .WithName($"{method}{factoryName}{name}")
                     .WithTags(name)
                     .AddAuthorization(authorization, method, singleApi);
 

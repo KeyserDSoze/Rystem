@@ -1,17 +1,29 @@
-﻿namespace RepositoryFramework
+﻿using Microsoft.Extensions.DependencyInjection;
+
+namespace RepositoryFramework
 {
-    internal class Repository<T, TKey> : IRepository<T, TKey>
+    internal class Repository<T, TKey> : IRepository<T, TKey>, IFactoryService
         where TKey : notnull
     {
-        private readonly Lazy<Query<T, TKey>> _query;
-        private readonly Lazy<Command<T, TKey>> _command;
+        private Lazy<Query<T, TKey>> _query;
+        private Lazy<Command<T, TKey>> _command;
+        private readonly IFactory<IRepositoryPattern<T, TKey>> _repositoryFactory;
+        private readonly IRepositoryBusinessManager<T, TKey>? _businessManager;
+        private readonly IRepositoryFilterTranslator<T, TKey>? _translator;
 
-        public Repository(IRepositoryPattern<T, TKey> repository,
+        public void SetFactoryName(string name)
+        {
+            var repository = _repositoryFactory.Create(name);
+            _query = new Lazy<Query<T, TKey>>(() => new Query<T, TKey>(null, _businessManager, _translator).SetQuery(repository));
+            _command = new Lazy<Command<T, TKey>>(() => new Command<T, TKey>(null, _businessManager).SetCommand(repository));
+        }
+        public Repository(IFactory<IRepositoryPattern<T, TKey>> repositoryFactory,
             IRepositoryBusinessManager<T, TKey>? businessManager = null,
             IRepositoryFilterTranslator<T, TKey>? translator = null)
         {
-            _query = new Lazy<Query<T, TKey>>(() => new Query<T, TKey>(repository, businessManager, translator));
-            _command = new Lazy<Command<T, TKey>>(() => new Command<T, TKey>(repository, businessManager));
+            _repositoryFactory = repositoryFactory;
+            _businessManager = businessManager;
+            _translator = translator;
         }
         public Task<State<T, TKey>> ExistAsync(TKey key, CancellationToken cancellationToken = default)
             => _query.Value.ExistAsync(key, cancellationToken);
@@ -32,5 +44,7 @@
            => _command.Value.DeleteAsync(key, cancellationToken);
         public Task<BatchResults<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default)
             => _command.Value.BatchAsync(operations, cancellationToken);
+
+
     }
 }

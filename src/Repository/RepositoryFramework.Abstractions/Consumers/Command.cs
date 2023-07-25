@@ -1,15 +1,26 @@
-﻿namespace RepositoryFramework
+﻿using Microsoft.Extensions.DependencyInjection;
+
+namespace RepositoryFramework
 {
     internal class Command<T, TKey> : ICommand<T, TKey>
         where TKey : notnull
     {
-        private readonly ICommandPattern<T, TKey> _command;
+        private ICommandPattern<T, TKey> _command;
+        private readonly IFactory<ICommandPattern<T, TKey>> _commandFactory;
         private readonly IRepositoryBusinessManager<T, TKey>? _businessManager;
-
-        public Command(ICommandPattern<T, TKey> command,
-            IRepositoryBusinessManager<T, TKey>? businessManager = null)
+        public void SetFactoryName(string name)
+        {
+            _command = _commandFactory.Create(name);
+        }
+        internal Command<T, TKey> SetCommand(ICommandPattern<T, TKey> command)
         {
             _command = command;
+            return this;
+        }
+        public Command(IFactory<ICommandPattern<T, TKey>>? commandFactory = null,
+            IRepositoryBusinessManager<T, TKey>? businessManager = null)
+        {
+            _commandFactory = commandFactory;
             _businessManager = businessManager;
         }
         public Task<State<T, TKey>> InsertAsync(TKey key, T value, CancellationToken cancellationToken = default)

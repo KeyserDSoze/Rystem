@@ -5,23 +5,27 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.InMemory
 {
-    internal class InMemoryStorage<T, TKey> : IRepository<T, TKey>, IServiceWithOptions<RepositoryBehaviorSettings<T, TKey>>
+    internal class InMemoryStorage<T, TKey> : IRepository<T, TKey>,
+        IServiceWithOptions<RepositoryBehaviorSettings<T, TKey>>
         where TKey : notnull
     {
+        public void SetOptions(RepositoryBehaviorSettings<T, TKey> options)
+        {
+            Options = options;
+        }
         public RepositoryBehaviorSettings<T, TKey>? Options { get; set; }
+        private readonly ConcurrentDictionary<string, Entity<T, TKey>> _values = new();
         public InMemoryStorage(RepositoryBehaviorSettings<T, TKey>? options = null)
         {
             Options = options;
         }
-        private static string GetKeyAsString(TKey key)
+        public static string GetKeyAsString(TKey key)
         {
             if (key is IKey customKey)
                 return customKey.AsString();
             return key.ToString()!;
         }
-        private static ConcurrentDictionary<string, Entity<T, TKey>> Values { get; } = new();
-        internal static void AddValue(TKey key, T value)
-            => Values.TryAdd(GetKeyAsString(key), Entity.Default(value, key));
+
         private static int GetRandomNumber(Range range)
         {
             var maxPlusOne = range.End.Value + 1 - range.Start.Value;
@@ -77,8 +81,8 @@ namespace RepositoryFramework.InMemory
             => ExecuteAsync(RepositoryMethods.Delete, () =>
             {
                 var keyAsString = GetKeyAsString(key);
-                if (Values.ContainsKey(keyAsString))
-                    return SetState(Values.TryRemove(keyAsString, out _), default!, key);
+                if (_values.ContainsKey(keyAsString))
+                    return SetState(_values.TryRemove(keyAsString, out _), default!, key);
                 return false;
             }, cancellationToken);
 
@@ -97,7 +101,7 @@ namespace RepositoryFramework.InMemory
                 if (!cancellationToken.IsCancellationRequested)
                 {
                     var keyAsString = GetKeyAsString(key);
-                    return Values.TryGetValue(keyAsString, out var value) ? value.Value : default;
+                    return _values.TryGetValue(keyAsString, out var value) ? value.Value : default;
                 }
                 else
                     throw new TaskCanceledException();
@@ -111,9 +115,9 @@ namespace RepositoryFramework.InMemory
             => ExecuteAsync(RepositoryMethods.Insert, () =>
             {
                 var keyAsString = GetKeyAsString(key);
-                if (!Values.ContainsKey(keyAsString))
+                if (!_values.ContainsKey(keyAsString))
                 {
-                    Values.TryAdd(keyAsString, Entity.Default(value, key));
+                    _values.TryAdd(keyAsString, Entity.Default(value, key));
                     return SetState(true, value, key);
                 }
                 else
@@ -124,9 +128,9 @@ namespace RepositoryFramework.InMemory
             => ExecuteAsync(RepositoryMethods.Update, () =>
             {
                 var keyAsString = GetKeyAsString(key);
-                if (Values.ContainsKey(keyAsString))
+                if (_values.ContainsKey(keyAsString))
                 {
-                    Values[keyAsString] = Entity.Default(value, key);
+                    _values[keyAsString] = Entity.Default(value, key);
                     return SetState(true, value, key);
                 }
                 else
@@ -146,10 +150,10 @@ namespace RepositoryFramework.InMemory
                     await Task.Delay(GetRandomNumber(settings.MillisecondsOfWaitWhenException), cancellationToken).NoContext();
                     throw exception;
                 }
-                foreach (var item in filter.Apply(Values.Select(x => x.Value.Value)))
+                foreach (var item in filter.Apply(_values.Select(x => x.Value.Value)))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    yield return Values.First(x => x.Value.Value.Equals(item)).Value;
+                    yield return _values.First(x => x.Value.Value.Equals(item)).Value;
                 }
             }
             else
@@ -172,7 +176,7 @@ namespace RepositoryFramework.InMemory
                 }
                 if (!cancellationToken.IsCancellationRequested)
                 {
-                    var filtered = filter.Apply(Values.Select(x => x.Value.Value));
+                    var filtered = filter.Apply(_values.Select(x => x.Value.Value));
                     var selected = filter.ApplyAsSelect(filtered);
                     return (await operation.ExecuteDefaultOperationAsync(
                         () => Invoke<TProperty>(selected.Count()),
@@ -193,7 +197,7 @@ namespace RepositoryFramework.InMemory
             => ExecuteAsync(RepositoryMethods.Exist, () =>
             {
                 var keyAsString = GetKeyAsString(key);
-                return Values.ContainsKey(keyAsString);
+                return _values.ContainsKey(keyAsString);
             }, cancellationToken);
 
         public async Task<BatchResults<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default)
@@ -216,5 +220,6 @@ namespace RepositoryFramework.InMemory
             }
             return results;
         }
+
     }
 }

@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection.Extensions;
+﻿using System.Runtime.Serialization;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Extensions.DependencyInjection
@@ -97,7 +98,11 @@ namespace Microsoft.Extensions.DependencyInjection
                 .AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, lifetime, () => InformThatItsAlreadyInstalled(ref check));
             return check;
         }
-
+        internal static string GetOptionsName<TService, TOptions>(string optionsName)
+        {
+            var key = $"Rystem.Options.{typeof(TService).Name}.{typeof(TOptions).Name}.{optionsName}";
+            return key;
+        }
         private static IServiceCollection AddFactory<TService, TImplementation>(this IServiceCollection services,
             string? name,
             ServiceLifetime lifetime,
@@ -107,20 +112,20 @@ namespace Microsoft.Extensions.DependencyInjection
             where TImplementation : class, TService
         {
             name ??= string.Empty;
-            services.TryAddTransient(typeof(IFactory<>), typeof(Factory<>));
-            var map = services.FirstOrDefault(x => x.ServiceType == typeof(Dictionary<string, FactoryService<TService>>))?.ImplementationInstance as Dictionary<string, FactoryService<TService>>;
-            if (map == null)
-            {
-                map = new Dictionary<string, FactoryService<TService>>();
-                services.TryAddSingleton(map);
-            }
-            if (map.TryAdd(name, new()
+            services.TryAddTransient<IFactory<TService>, Factory<TService>>();
+            var map = services.TryAddSingletonAndGetService<FactoryServices<TService>>();
+            var count = services.Count(x => x.ImplementationType == typeof(TImplementation));
+            if (map.Services.TryAdd(name, new()
             {
                 ServiceFactory = ServiceFactory,
-                ImplementationType = typeof(TImplementation)
+                Implementation = new()
+                {
+                    Type = typeof(TImplementation),
+                    Index = count
+                }
             }))
             {
-                services.TryAddService<TImplementation>(lifetime);
+                services.AddService<TImplementation>(lifetime);
                 services.AddOrOverrideService(serviceProvider => ServiceFactory(serviceProvider, false), lifetime);
             }
             else
@@ -128,12 +133,12 @@ namespace Microsoft.Extensions.DependencyInjection
 
             TService ServiceFactory(IServiceProvider serviceProvider, bool withoutDecoration)
             {
-                var factory = map[name];
-                var service = GetService(factory.ImplementationType, null);
+                var factory = map.Services[name];
+                var service = GetService(factory.Implementation, null);
 
-                if (!withoutDecoration && factory.DecoratorTypes != null)
+                if (!withoutDecoration && factory.Decorators != null)
                 {
-                    foreach (var decoratorType in factory.DecoratorTypes)
+                    foreach (var decoratorType in factory.Decorators)
                     {
                         service = GetService(decoratorType,
                             decorator =>
@@ -147,9 +152,12 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
                 return service;
 
-                TService GetService(Type implementationType, Action<TService>? afterCreation)
+                TService GetService(FactoryServiceType implementationType, Action<TService>? afterCreation)
                 {
-                    var service = (TService)serviceProvider.GetRequiredService(implementationType);
+                    var service = (TService)serviceProvider
+                         .GetServices(implementationType.Type)
+                         .Skip(implementationType.Index)
+                         .First()!;
                     addingBehaviorToFactory?.Invoke(serviceProvider, service);
                     afterCreation?.Invoke(service);
                     if (service is IFactoryService factoryService)
@@ -175,35 +183,35 @@ namespace Microsoft.Extensions.DependencyInjection
                 {
                     var optionsFactory = serviceProvider.GetRequiredService<IOptionsFactory<TOptions>>();
                     var options = optionsFactory.Create(optionsName);
-                    serviceWithOptions.Options = options;
+                    serviceWithOptions.SetOptions(options);
                 }
                 else
-                    serviceWithOptions.Options = optionsCreator?.Invoke();
+                    serviceWithOptions.SetOptions(optionsCreator?.Invoke()!);
             }
             else if (service is IServiceWithOptions serviceWithCustomOptions)
             {
-                var key = $"Rystem.Options.{typeof(TService).Name}.{typeof(TOptions).Name}.{optionsName}";
+                var key = GetOptionsName<TService, TOptions>(optionsName ?? string.Empty);
                 if (!s_optionsSetter.ContainsKey(key))
                 {
-                    var property = serviceWithCustomOptions.GetType().GetProperty(nameof(IServiceWithOptions<TOptions>.Options));
-                    if (property?.PropertyType != null)
+                    var serviceOptionsInterface = service.GetType().GetInterfaces().FirstOrDefault(x => x.IsGenericType && x.Name == nameof(IServiceWithOptions));
+                    if (serviceOptionsInterface != null)
                     {
                         if (optionsName != null)
                         {
-                            var currentType = typeof(IOptionsFactory<>).MakeGenericType(property.PropertyType);
-                            s_optionsSetter.TryAdd(key, (serviceProvider, service) =>
-                            {
-                                var optionsFactory = (dynamic)serviceProvider.GetRequiredService(currentType);
-                                var options = optionsFactory.Create(optionsName);
-                                property.SetValue(serviceWithCustomOptions, options);
-                            });
+                            var genericType = serviceOptionsInterface.GenericTypeArguments.First();
+                            var optionsFactoryType = typeof(IOptionsFactory<>).MakeGenericType(genericType);
+                            var optionsFactory = (dynamic)serviceProvider.GetRequiredService(optionsFactoryType);
+                            var options = optionsFactory.Create(optionsName);
+                            ((dynamic)serviceWithCustomOptions).SetOptions(options);
                         }
                         else
                             s_optionsSetter.TryAdd(key, (serviceProvider, service) =>
                             {
-                                property.SetValue(serviceWithCustomOptions, optionsCreator?.Invoke());
+                                ((dynamic)service).SetOptions(optionsCreator?.Invoke());
                             });
                     }
+                    else
+                        s_optionsSetter.TryAdd(key, null);
                 }
                 s_optionsSetter[key]?.Invoke(serviceProvider, serviceWithCustomOptions);
             }
@@ -219,7 +227,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 where TImplementation : class, TService, IServiceWithOptions<TOptions>
                 where TOptions : class, new()
         {
-            var optionsName = $"Rystem.Factory.{name}.{typeof(TService).Name}";
+            var optionsName = GetOptionsName<TService, TOptions>(name ?? string.Empty);
             services.AddOptions<TOptions>(optionsName)
                 .Configure(createOptions);
             services.AddFactory<TService, TImplementation>(

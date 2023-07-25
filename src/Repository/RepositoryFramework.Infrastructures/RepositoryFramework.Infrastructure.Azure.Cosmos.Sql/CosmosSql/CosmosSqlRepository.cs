@@ -11,6 +11,10 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
     internal sealed class CosmosSqlRepository<T, TKey> : IRepository<T, TKey>, IServiceWithOptions<CosmosSqlClient>
         where TKey : notnull
     {
+        public void SetOptions(CosmosSqlClient options)
+        {
+            Options = options;
+        }
         private Container Client => Options!.Container;
         private PropertyInfo[] Properties => Options!.Properties;
         private readonly ICosmosSqlKeyManager<T, TKey> _keyManager;
