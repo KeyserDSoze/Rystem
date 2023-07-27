@@ -11,25 +11,17 @@ namespace RepositoryFramework.Infrastructure.MsSql
     {
         public void SetOptions(MsSqlOptions<T, TKey> options)
         {
-            Options = options;
-        }
-        private MsSqlOptions<T, TKey>? _options;
-        public MsSqlOptions<T, TKey>? Options
-        {
-            get => _options;
-            set
+            _options = options;
+            if (_options != null)
             {
-                _options = value;
-                if (_options != null)
-                {
-                    _connection = new SqlConnection(_options.ConnectionString);
-                }
+                _connection = new SqlConnection(_options.ConnectionString);
             }
         }
+        private MsSqlOptions<T, TKey>? _options;
         private SqlConnection _connection = null!;
         public SqlRepository(MsSqlOptions<T, TKey>? options = null)
         {
-            Options = options;
+            _options = options;
         }
         private async Task<SqlCommand> GetCommandAsync(string text, List<SqlParameter>? collection = null)
         {
@@ -43,8 +35,8 @@ namespace RepositoryFramework.Infrastructure.MsSql
         }
         public async Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default)
         {
-            var keyAsString = Options!.KeyIsPrimitive ? key.ToString() : key.ToJson();
-            var command = await GetCommandAsync(Options.Delete);
+            var keyAsString = _options!.KeyIsPrimitive ? key.ToString() : key.ToJson();
+            var command = await GetCommandAsync(_options.Delete);
             command.Parameters.Add(new SqlParameter("Key", keyAsString));
             var response = (await command.ExecuteScalarAsync(cancellationToken)).Cast<int>();
             return response >= 0;
@@ -52,8 +44,8 @@ namespace RepositoryFramework.Infrastructure.MsSql
 
         public async Task<State<T, TKey>> ExistAsync(TKey key, CancellationToken cancellationToken = default)
         {
-            var keyAsString = Options!.KeyIsPrimitive ? key.ToString() : key.ToJson();
-            var command = await GetCommandAsync(Options.Exist);
+            var keyAsString = _options!.KeyIsPrimitive ? key.ToString() : key.ToJson();
+            var command = await GetCommandAsync(_options.Exist);
             command.Parameters.Add(new SqlParameter("Key", keyAsString));
             var response = (await command.ExecuteScalarAsync(cancellationToken)).Cast<int>();
             return response > 0;
@@ -61,14 +53,14 @@ namespace RepositoryFramework.Infrastructure.MsSql
 
         public async Task<T?> GetAsync(TKey key, CancellationToken cancellationToken = default)
         {
-            var keyAsString = Options!.KeyIsPrimitive ? key.ToString() : key.ToJson();
-            var command = await GetCommandAsync(Options.Top1);
+            var keyAsString = _options!.KeyIsPrimitive ? key.ToString() : key.ToJson();
+            var command = await GetCommandAsync(_options.Top1);
             command.Parameters.Add(new SqlParameter("Key", keyAsString));
             var response = await command.ExecuteReaderAsync(cancellationToken);
             while (response != null && await response.ReadAsync(cancellationToken))
             {
                 var entity = Activator.CreateInstance<T>();
-                Options.SetEntity(response, entity);
+                _options.SetEntity(response, entity);
                 if (entity != null)
                     return entity;
             }
@@ -76,8 +68,8 @@ namespace RepositoryFramework.Infrastructure.MsSql
         }
         public async Task<State<T, TKey>> InsertAsync(TKey key, T value, CancellationToken cancellationToken = default)
         {
-            var parameters = Options!.SetEntityForDatabase(value, key);
-            var command = await GetCommandAsync(string.Format(Options.Insert,
+            var parameters = _options!.SetEntityForDatabase(value, key);
+            var command = await GetCommandAsync(string.Format(_options.Insert,
                 string.Join(',', parameters.Select(x => $"[{x.ParameterName}]")),
                 string.Join(',', parameters.Select(x => $"@{x.ParameterName}"))),
                 parameters);
@@ -86,8 +78,8 @@ namespace RepositoryFramework.Infrastructure.MsSql
         }
         public async Task<State<T, TKey>> UpdateAsync(TKey key, T value, CancellationToken cancellationToken = default)
         {
-            var parameters = Options!.SetEntityForDatabase(value, key);
-            var command = await GetCommandAsync(string.Format(Options.Update,
+            var parameters = _options!.SetEntityForDatabase(value, key);
+            var command = await GetCommandAsync(string.Format(_options.Update,
                 string.Join(',', parameters.Select(x => $"[{x.ParameterName}]=@{x.ParameterName}"))),
                 parameters);
             var response = (await command.ExecuteScalarAsync(cancellationToken)).Cast<int>();
@@ -96,13 +88,13 @@ namespace RepositoryFramework.Infrastructure.MsSql
         public async IAsyncEnumerable<Entity<T, TKey>> QueryAsync(IFilterExpression filter,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var command = await GetCommandAsync(Options!.BaseQuery);
+            var command = await GetCommandAsync(_options!.BaseQuery);
             var response = await command.ExecuteReaderAsync(cancellationToken);
             Dictionary<T, Entity<T, TKey>> entities = new();
             while (response != null && await response.ReadAsync(cancellationToken))
             {
                 var entity = Activator.CreateInstance<T>();
-                var key = Options.SetEntity(response, entity);
+                var key = _options.SetEntity(response, entity);
                 entities.Add(entity, new(entity, key));
             }
             foreach (var entity in filter.Apply(entities.Keys))
@@ -143,6 +135,40 @@ namespace RepositoryFramework.Infrastructure.MsSql
                 }
             }
             return results;
+        }
+        internal async Task MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync()
+        {
+            if (_options!.PrimaryKey == null)
+                throw new ArgumentException($"Please install a key in your repository sql for table {_options.TableName}");
+            using SqlConnection sqlConnection = new(_options.ConnectionString);
+            sqlConnection.Open();
+            var command = new SqlCommand("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @TableName", sqlConnection);
+            command.Parameters.Add(new SqlParameter("TableName", _options.TableName));
+            var reader = await command.ExecuteReaderAsync();
+            List<string> columns = new();
+            while (reader != null && await reader.ReadAsync())
+            {
+                columns.Add(reader["COLUMN_NAME"].ToString()!);
+            }
+            await reader!.DisposeAsync();
+            if (columns.Count == 0)
+            {
+                command = new SqlCommand("SELECT count(*) FROM sys.schemas where name=@Name", sqlConnection);
+                command.Parameters.Add(new SqlParameter("Name", _options.Schema));
+                var response = (await command.ExecuteScalarAsync()).Cast<int>();
+                if (response <= 0)
+                {
+                    command = new SqlCommand($"CREATE SCHEMA {_options.Schema}", sqlConnection);
+                    await command.ExecuteNonQueryAsync();
+                    command = new SqlCommand("SELECT count(*) FROM sys.schemas where name=@Name", sqlConnection);
+                    command.Parameters.Add(new SqlParameter("Name", _options.Schema));
+                    response = (await command.ExecuteScalarAsync()).Cast<int>();
+                    if (response <= 0)
+                        throw new ArgumentException($"It was not possible to create a schema {_options.Schema} for table {_options.TableName}");
+                }
+                command = new SqlCommand(_options.GetCreationalQueryForTable(), sqlConnection);
+                await command.ExecuteNonQueryAsync();
+            }
         }
 
         public ValueTask DisposeAsync()

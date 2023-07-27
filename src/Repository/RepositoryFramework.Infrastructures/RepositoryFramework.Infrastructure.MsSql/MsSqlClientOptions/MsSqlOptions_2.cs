@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
@@ -17,13 +18,11 @@ namespace RepositoryFramework.Infrastructure.MsSql
         public bool KeyIsPrimitive { get; } = typeof(TKey).IsPrimitive();
         public string? PrimaryKey { get; internal set; }
         internal List<PropertyHelper<T>> Properties { get; } = new();
-        internal static MsSqlOptions<T, TKey> Instance { get; private set; } = new();
         public MsSqlOptions()
         {
             foreach (var property in typeof(T).GetProperties())
                 Properties.Add(new PropertyHelper<T>(property));
             RefreshColumnNames();
-            Instance = this;
         }
         internal string Top1 { get; private set; } = null!;
         internal string Exist { get; private set; } = null!;
@@ -73,6 +72,20 @@ namespace RepositoryFramework.Infrastructure.MsSql
             stringBuilder.Append($"CONSTRAINT [PK_{TableName}] PRIMARY KEY CLUSTERED ([{PrimaryKey}] ASC)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]) ON [PRIMARY]");
             return stringBuilder.ToString();
         }
-
+        internal void WithPrimaryKey<TProperty>(Expression<Func<T, TProperty>> property, Action<PropertyHelper<T>> value)
+        {
+            var propertyName = property.Body.ToString().Split('.').Last();
+            var prop = Properties.First(x => x.PropertyInfo.Name == propertyName);
+            value.Invoke(prop);
+            PrimaryKey = prop.ColumnName;
+            RefreshColumnNames();
+        }
+        public void WithColumn<TProperty>(Expression<Func<T, TProperty>> property, Action<PropertyHelper<T>> value)
+        {
+            var propertyName = property.Body.ToString().Split('.').Last();
+            var prop = Properties.First(x => x.PropertyInfo.Name == propertyName);
+            value.Invoke(prop);
+            RefreshColumnNames();
+        }
     }
 }

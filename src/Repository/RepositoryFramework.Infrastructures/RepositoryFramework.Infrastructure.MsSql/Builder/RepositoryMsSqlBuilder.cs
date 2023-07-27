@@ -9,21 +9,28 @@ namespace RepositoryFramework.Infrastructure.MsSql
         public IServiceCollection Services { get; }
         public RepositoryMsSqlBuilder(IServiceCollection services)
             => Services = services;
+        public List<Action<MsSqlOptions<T, TKey>>> ActionsToDoDuringSettingsSetup { get; } = new();
         public IRepositoryMsSqlBuilder<T, TKey> WithPrimaryKey<TProperty>(Expression<Func<T, TProperty>> property, Action<PropertyHelper<T>> value)
         {
-            var propertyName = property.Body.ToString().Split('.').Last();
-            var prop = MsSqlOptions<T, TKey>.Instance.Properties.First(x => x.PropertyInfo.Name == propertyName);
-            value.Invoke(prop);
-            MsSqlOptions<T, TKey>.Instance.PrimaryKey = prop.ColumnName;
-            MsSqlOptions<T, TKey>.Instance.RefreshColumnNames();
+            ActionsToDoDuringSettingsSetup.Add(options =>
+            {
+                var propertyName = property.Body.ToString().Split('.').Last();
+                var prop = options.Properties.First(x => x.PropertyInfo.Name == propertyName);
+                value.Invoke(prop);
+                options.PrimaryKey = prop.ColumnName;
+                options.RefreshColumnNames();
+            });
             return this;
         }
         public IRepositoryMsSqlBuilder<T, TKey> WithColumn<TProperty>(Expression<Func<T, TProperty>> property, Action<PropertyHelper<T>> value)
         {
-            var propertyName = property.Body.ToString().Split('.').Last();
-            var prop = MsSqlOptions<T, TKey>.Instance.Properties.First(x => x.PropertyInfo.Name == propertyName);
-            value.Invoke(prop);
-            MsSqlOptions<T, TKey>.Instance.RefreshColumnNames();
+            ActionsToDoDuringSettingsSetup.Add(options =>
+            {
+                var propertyName = property.Body.ToString().Split('.').Last();
+                var prop = options.Properties.First(x => x.PropertyInfo.Name == propertyName);
+                value.Invoke(prop);
+                options.RefreshColumnNames();
+            });
             return this;
         }
     }

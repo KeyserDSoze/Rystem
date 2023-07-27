@@ -20,15 +20,22 @@ namespace Microsoft.Extensions.DependencyInjection
                ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TKey : notnull
         {
+            var sqlBuilder = new RepositoryMsSqlBuilder<T, TKey>(builder.Services);
             builder.SetStorageWithOptions<SqlRepository<T, TKey>, MsSqlOptions<T, TKey>>(
-                options,
+                settings =>
+                {
+                    options.Invoke(settings);
+                    settings.RefreshColumnNames();
+                    foreach (var action in sqlBuilder.ActionsToDoDuringSettingsSetup)
+                        action.Invoke(settings);
+                },
                 name,
                 serviceLifetime);
             builder.Services.AddWarmUp(serviceProvider =>
-                MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync(
-                    serviceProvider.GetService<IFactory<IRepository<T, TKey>>>()!.Create(name ?? string.Empty)
-                    as SqlRepository<T, TKey>));
-            return new RepositoryMsSqlBuilder<T, TKey>(builder.Services);
+                (serviceProvider.GetRequiredService<IFactory<IRepository<T, TKey>>>()!.Create(name ?? string.Empty)
+                    as SqlRepository<T, TKey>)!.MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync(
+                    ));
+            return sqlBuilder;
         }
         /// <summary>
         /// Add a default MsSql service for your command pattern.
@@ -45,15 +52,22 @@ namespace Microsoft.Extensions.DependencyInjection
                ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TKey : notnull
         {
+            var sqlBuilder = new RepositoryMsSqlBuilder<T, TKey>(builder.Services);
             builder.SetStorageWithOptions<SqlRepository<T, TKey>, MsSqlOptions<T, TKey>>(
-                options,
+                settings =>
+                {
+                    options.Invoke(settings);
+                    settings.RefreshColumnNames();
+                    foreach (var action in sqlBuilder.ActionsToDoDuringSettingsSetup)
+                        action.Invoke(settings);
+                },
                 name,
                 serviceLifetime);
             builder.Services.AddWarmUp(serviceProvider =>
-                MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync(
-                    serviceProvider.GetService<IFactory<ICommand<T, TKey>>>()!.Create(name ?? string.Empty)
-                    as SqlRepository<T, TKey>));
-            return new RepositoryMsSqlBuilder<T, TKey>(builder.Services);
+                (serviceProvider.GetRequiredService<IFactory<ICommand<T, TKey>>>()!.Create(name ?? string.Empty)
+                    as SqlRepository<T, TKey>)!.MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync(
+                    ));
+            return sqlBuilder;
         }
         /// <summary>
         /// Add a default MsSql service for your query pattern.
@@ -70,15 +84,22 @@ namespace Microsoft.Extensions.DependencyInjection
                ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TKey : notnull
         {
+            var sqlBuilder = new RepositoryMsSqlBuilder<T, TKey>(builder.Services);
             builder.SetStorageWithOptions<SqlRepository<T, TKey>, MsSqlOptions<T, TKey>>(
-                options,
+                settings =>
+                {
+                    options.Invoke(settings);
+                    settings.RefreshColumnNames();
+                    foreach (var action in sqlBuilder.ActionsToDoDuringSettingsSetup)
+                        action.Invoke(settings);
+                },
                 name,
                 serviceLifetime);
             builder.Services.AddWarmUp(serviceProvider =>
-                MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync(
-                    serviceProvider.GetService<IFactory<IQuery<T, TKey>>>()!.Create(name ?? string.Empty)
-                    as SqlRepository<T, TKey>));
-            return new RepositoryMsSqlBuilder<T, TKey>(builder.Services);
+                (serviceProvider.GetRequiredService<IFactory<IQuery<T, TKey>>>()!.Create(name ?? string.Empty)
+                    as SqlRepository<T, TKey>)!.MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync(
+                    ));
+            return sqlBuilder;
         }
     }
 }
