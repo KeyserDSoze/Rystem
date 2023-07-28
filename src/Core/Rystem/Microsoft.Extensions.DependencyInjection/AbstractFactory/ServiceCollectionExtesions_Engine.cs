@@ -4,18 +4,32 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static partial class ServiceCollectionExtesions
     {
+        private static void SendInError<TService, TImplementation>(string name)
+        {
+            throw new ArgumentException($"Service {typeof(TImplementation).Name} with name: {name} for your factory {typeof(TService).Name} already exists.");
+        }
+        private static void InformThatItsAlreadyInstalled(ref bool check)
+        {
+            check = false;
+        }
         private static IServiceCollection AddFactory<TService, TImplementation>(this IServiceCollection services,
             string? name,
             ServiceLifetime lifetime,
+            TImplementation? implementationInstance,
+            Func<IServiceProvider, TService>? implementationFactory,
             Action? whenExists,
             Func<IServiceProvider, TService, TService>? addingBehaviorToFactory)
             where TService : class
             where TImplementation : class, TService
         {
             name ??= string.Empty;
+            var serviceType = typeof(TService);
+            var implementationType = typeof(TImplementation);
             services.TryAddTransient<IFactory<TService>, Factory<TService>>();
             var map = services.TryAddSingletonAndGetService<FactoryServices<TService>>();
-            var count = services.Count(x => x.ImplementationType == typeof(TImplementation));
+            var count = serviceType == implementationType ?
+                services.Count(x => x.ImplementationType == serviceType)
+                : services.Count(x => x.ImplementationType == implementationType);
             if (map.Services.TryAdd(name, new()
             {
                 ServiceFactory = ServiceFactory,
@@ -26,7 +40,18 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
             }))
             {
-                services.AddService<TImplementation>(lifetime);
+                if (implementationFactory != null)
+                {
+                    services.AddService(serviceProvider => (TImplementation)implementationFactory.Invoke(serviceProvider), lifetime);
+                }
+                else if (implementationInstance != null)
+                {
+                    services.AddSingleton(implementationInstance);
+                }
+                else
+                {
+                    services.AddService<TImplementation>(lifetime);
+                }
                 services.AddOrOverrideService(serviceProvider => ServiceFactory(serviceProvider, false), lifetime);
             }
             else
@@ -69,69 +94,6 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
             }
 
-            return services;
-        }
-        private static IServiceCollection AddFactory<TService, TImplementation, TOptions>(
-            this IServiceCollection services,
-                Action<TOptions> createOptions,
-                string? name,
-                ServiceLifetime lifetime,
-                Action? whenExists)
-                where TService : class
-                where TImplementation : class, TService, IServiceWithOptions<TOptions>
-                where TOptions : class, new()
-        {
-            var options = new TOptions();
-            createOptions.Invoke(options);
-            services.TryAddSingleton(options);
-            services.AddFactory<TOptions>(name, ServiceLifetime.Singleton);
-            services.AddFactory<TService, TImplementation>(
-                name,
-                lifetime,
-                whenExists,
-                (serviceProvider, service) =>
-                    AddOptionsToFactory(serviceProvider, service, serviceProvider => options)
-                );
-            return services;
-        }
-        private static IServiceCollection AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
-            Action<TOptions> createOptions,
-            string? name,
-            ServiceLifetime lifetime,
-            Action? whenExists)
-               where TService : class
-               where TImplementation : class, TService, IServiceWithOptions<TBuiltOptions>
-               where TOptions : class, IServiceOptions<TBuiltOptions>, new()
-               where TBuiltOptions : class
-        {
-            TOptions options = new();
-            createOptions.Invoke(options);
-            var builtOptions = options.Build();
-            services.TryAddTransient(builtOptions);
-            services.AddFactory<TService, TImplementation>(name, lifetime, whenExists,
-                (serviceProvider, service) =>
-                    AddOptionsToFactory(serviceProvider, service, builtOptions)
-                );
-            return services;
-        }
-        private static async Task<IServiceCollection> AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
-            Action<TOptions> createOptions,
-            string? name,
-            ServiceLifetime lifetime,
-            Action? whenExists)
-                where TService : class
-                where TImplementation : class, TService, IServiceWithOptions<TBuiltOptions>
-                where TOptions : class, IServiceOptionsAsync<TBuiltOptions>, new()
-                where TBuiltOptions : class
-        {
-            TOptions options = new();
-            createOptions.Invoke(options);
-            var builtOptions = await options.BuildAsync();
-            services.TryAddTransient(builtOptions);
-            services.AddFactory<TService, TImplementation>(name, lifetime, whenExists,
-                (serviceProvider, service) =>
-                    AddOptionsToFactory(serviceProvider, service, builtOptions)
-                );
             return services;
         }
         private static TService AddOptionsToFactory<TService, TOptions>(

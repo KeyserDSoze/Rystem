@@ -10,6 +10,7 @@
            where TImplementation : class, TService, IDecoratorService<TService>
         {
             name ??= string.Empty;
+            var map = services.TryAddSingletonAndGetService<FactoryServices<TService>>();
             services.TryAddService<TImplementation>(lifetime);
             var currentService = services.FirstOrDefault(x => x.ServiceType == typeof(TService));
             if (currentService != null)
@@ -35,7 +36,7 @@
                     implementationType = currentService.ImplementationInstance.GetType();
                 }
 
-                var map = services.TryAddSingletonAndGetService<FactoryServices<TService>>();
+                
                 if (map != null && map.Services.TryGetValue(name, out var factory))
                 {
                     factory.Decorators ??= new();
@@ -48,7 +49,6 @@
                 }
                 if (implementationType != null)
                 {
-
                     services.AddOrOverrideService(serviceProvider =>
                     {
                         var service = (TService)serviceProvider.GetRequiredService<TImplementation>();
