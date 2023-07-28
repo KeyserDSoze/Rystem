@@ -3,6 +3,6 @@
     public interface IServiceOptions<out TService> : IServiceOptions
         where TService : class
     {
-        Func<TService> Build();
+        Func<IServiceProvider, TService> Build();
     }
 }

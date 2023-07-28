@@ -7,14 +7,14 @@ namespace RepositoryFramework
         where TRepositoryPattern : class
         where TRepositoryBuilder : IRepositoryBaseBuilder<T, TKey, TRepositoryPattern, TRepositoryBuilder>
     {
-        TRepositoryBuilder SetStorageAndBuildOptions<TStorage, TStorageOptions, TConnection>(
+        RepositoryBuilderWrapper<TRepositoryBuilder, TConnection> SetStorageAndBuildOptions<TStorage, TStorageOptions, TConnection>(
             Action<TStorageOptions> options,
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern, IServiceWithOptions<TConnection>
             where TStorageOptions : class, IServiceOptions<TConnection>, new()
             where TConnection : class;
-        Task<TRepositoryBuilder> SetStorageAndBuildOptionsAsync<TStorage, TStorageOptions, TConnection>(
+        Task<RepositoryBuilderWrapper<TRepositoryBuilder, TConnection>> SetStorageAndBuildOptionsAsync<TStorage, TStorageOptions, TConnection>(
             Action<TStorageOptions> options,
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
@@ -23,9 +23,9 @@ namespace RepositoryFramework
             where TConnection : class;
         TRepositoryBuilder SetStorage<TStorage>(string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern;
-        TRepositoryBuilder SetStorageWithOptions<TStorage, TOptions>(Action<TOptions> options, string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
-           where TStorage : class, TRepositoryPattern, IServiceWithOptions<TOptions>
-           where TOptions : class, new();
+        RepositoryBuilderWrapper<TRepositoryBuilder, TStorageOptions> SetStorageWithOptions<TStorage, TStorageOptions>(Action<TOptions> options, string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
+           where TStorage : class, TRepositoryPattern, IServiceWithOptions<TStorageOptions>
+           where TStorageOptions : class, new();
         Func<Task>? AfterBuildAsync { get; set; }
         Action? AfterBuild { get; set; }
     }

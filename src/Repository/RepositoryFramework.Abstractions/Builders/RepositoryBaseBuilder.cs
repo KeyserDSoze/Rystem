@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.Data.Common;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace RepositoryFramework
@@ -36,7 +37,7 @@ namespace RepositoryFramework
             Services.TryAddSingleton(KeySettings<TKey>.Instance);
             Services.AddFactory<TRepository, TRepositoryConcretization>(_currentName, serviceLifetime);
         }
-        public async Task<TRepositoryBuilder> SetStorageAndBuildOptionsAsync<TStorage, TStorageOptions, TConnection>(
+        public async Task<RepositoryBuilderWrapper<TRepositoryBuilder, TConnection>> SetStorageAndBuildOptionsAsync<TStorage, TStorageOptions, TConnection>(
             Action<TStorageOptions> options,
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
@@ -50,7 +51,7 @@ namespace RepositoryFramework
                 .NoContext();
             return Builder;
         }
-        public TRepositoryBuilder SetStorageAndBuildOptions<TStorage, TStorageOptions, TConnection>(
+        public RepositoryBuilderWrapper<TRepositoryBuilder, TConnection> SetStorageAndBuildOptions<TStorage, TStorageOptions, TConnection>(
             Action<TStorageOptions> options,
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
@@ -63,7 +64,7 @@ namespace RepositoryFramework
                 .AddFactory<TRepositoryPattern, TStorage, TStorageOptions, TConnection>(options, _currentName, serviceLifetime);
             return Builder;
         }
-        public TRepositoryBuilder SetStorageWithOptions<TStorage, TStorageOptions>(
+        public RepositoryBuilderWrapper<TRepositoryBuilder, TStorageOptions> SetStorageWithOptions<TStorage, TStorageOptions>(
             Action<TStorageOptions> options,
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)

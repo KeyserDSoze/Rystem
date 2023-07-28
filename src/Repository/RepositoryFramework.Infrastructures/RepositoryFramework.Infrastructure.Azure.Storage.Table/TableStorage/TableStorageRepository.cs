@@ -73,7 +73,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
             var where = (filter.Operations.FirstOrDefault(x => x.Operation == FilterOperations.Where) as LambdaFilterOperation)?.Expression;
             string? filterAsString = null;
             if (where != null)
-                filterAsString = QueryStrategy.Create(where.Body, TableStorageSettings<T, TKey>.Instance.PartitionKey, TableStorageSettings<T, TKey>.Instance.RowKey, TableStorageSettings<T, TKey>.Instance.Timestamp);
+                filterAsString = QueryStrategy.Create(where.Body, Options!.PartitionKey, Options!.RowKey, Options!.Timestamp);
 
             var top = (filter.Operations.FirstOrDefault(x => x.Operation == FilterOperations.Top) as ValueFilterOperation)?.Value;
             var skip = (filter.Operations.FirstOrDefault(x => x.Operation == FilterOperations.Skip) as ValueFilterOperation)?.Value;

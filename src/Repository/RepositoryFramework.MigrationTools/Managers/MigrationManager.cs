@@ -4,44 +4,27 @@ using Microsoft.Extensions.Options;
 
 namespace RepositoryFramework.Migration
 {
-    internal class MigrationManager<T, TKey> : IMigrationManager<T, TKey>
+    internal class MigrationManager<T, TKey> : IMigrationManager<T, TKey>, IServiceWithOptions<MigrationOptions<T, TKey>>
          where TKey : notnull
     {
-        private readonly IQuery<T, TKey> _source;
-        private readonly ICommand<T, TKey> _destination;
-        private readonly IRepository<T, TKey>? _destinationAsRepository;
-        private readonly MigrationOptions<T, TKey> _options;
-        public static readonly string OptionsKey = $"Rystem.Repository.Migration.{typeof(T).Name}.{typeof(TKey).Name}";
+        private readonly IFactory<IRepository<T, TKey>>? _repositoryFactory;
+        private readonly IFactory<IQuery<T, TKey>>? _queryFactory;
+        private readonly IFactory<ICommand<T, TKey>>? _commandFactory;
+        private IQuery<T, TKey> _source;
+        private ICommand<T, TKey> _destination;
+        private IRepository<T, TKey>? _destinationAsRepository;
+        private MigrationOptions<T, TKey> _options;
         public MigrationManager(
-            IOptionsFactory<MigrationOptions<T, TKey>> optionsFactory,
+            MigrationOptions<T, TKey>? options = null,
             IFactory<IRepository<T, TKey>>? repositoryFactory = null,
             IFactory<IQuery<T, TKey>>? queryFactory = null,
             IFactory<ICommand<T, TKey>>? commandFactory = null)
         {
-            _options = optionsFactory.Create(OptionsKey);
-            if (queryFactory != null && queryFactory.Exists(_options.SourceFactoryName))
-            {
-                _source = queryFactory.Create(_options.SourceFactoryName);
-            }
-            else if (repositoryFactory != null && repositoryFactory.Exists(_options.SourceFactoryName))
-            {
-                _source = repositoryFactory.Create(_options.SourceFactoryName);
-            }
-            else
-                throw new ArgumentException($"Source '{_options.SourceFactoryName}' is not installed as Repository pattern or Query pattern.");
-
-            if (commandFactory != null && commandFactory.Exists(_options.DestinationFactoryName))
-            {
-                _destination = commandFactory.Create(_options.DestinationFactoryName);
-            }
-            else if (repositoryFactory != null && repositoryFactory.Exists(_options.DestinationFactoryName))
-            {
-                _destination = repositoryFactory.Create(_options.DestinationFactoryName);
-            }
-            else
-                throw new ArgumentException($"Destination '{_options.DestinationFactoryName}' is not installed as Repository pattern or Command pattern.");
-            if (_destination is IRepository<T, TKey> repository)
-                _destinationAsRepository = repository;
+            _repositoryFactory = repositoryFactory;
+            _queryFactory = queryFactory;
+            _commandFactory = commandFactory;
+            if (options != null)
+                SetOptions(options);
         }
 
         public async Task<bool> MigrateAsync(Expression<Func<T, TKey>> navigationKey,
@@ -81,6 +64,33 @@ namespace RepositoryFramework.Migration
                 }
             }
             return true;
+        }
+
+        public void SetOptions(MigrationOptions<T, TKey> options)
+        {
+            if (_queryFactory != null && _queryFactory.Exists(_options.SourceFactoryName))
+            {
+                _source = _queryFactory.Create(_options.SourceFactoryName);
+            }
+            else if (_repositoryFactory != null && _repositoryFactory.Exists(_options.SourceFactoryName))
+            {
+                _source = _repositoryFactory.Create(_options.SourceFactoryName);
+            }
+            else
+                throw new ArgumentException($"Source '{_options.SourceFactoryName}' is not installed as Repository pattern or Query pattern.");
+
+            if (_commandFactory != null && _commandFactory.Exists(_options.DestinationFactoryName))
+            {
+                _destination = _commandFactory.Create(_options.DestinationFactoryName);
+            }
+            else if (_repositoryFactory != null && _repositoryFactory.Exists(_options.DestinationFactoryName))
+            {
+                _destination = _repositoryFactory.Create(_options.DestinationFactoryName);
+            }
+            else
+                throw new ArgumentException($"Destination '{_options.DestinationFactoryName}' is not installed as Repository pattern or Command pattern.");
+            if (_destination is IRepository<T, TKey> repository)
+                _destinationAsRepository = repository;
         }
     }
 }

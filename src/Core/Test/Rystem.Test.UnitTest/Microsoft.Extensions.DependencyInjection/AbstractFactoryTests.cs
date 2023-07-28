@@ -22,9 +22,9 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection
     {
         public string ServiceName { get; set; }
 
-        public Task<Func<ScopedOption>> BuildAsync()
+        public Task<Func<IServiceProvider, ScopedOption>> BuildAsync()
         {
-            return Task.FromResult(() => new ScopedOption
+            return Task.FromResult((IServiceProvider serviceProvider) => new ScopedOption
             {
                 ServiceName = ServiceName
             });
