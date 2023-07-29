@@ -180,7 +180,7 @@ namespace System.Reflection
                     methodGenerator.Emit(OpCodes.Newarr, typeof(object));
                     methodGenerator.Emit(OpCodes.Stloc_1);
                     methodGenerator.Emit(OpCodes.Ldloc_1);
-                    for (int i = 0; i < parameters.Length; i++)
+                    for (var i = 0; i < parameters.Length; i++)
                     {
                         methodGenerator.Emit(OpCodes.Ldc_I4, i);
                         methodGenerator.Emit(OpCodes.Ldarg, i + 1);
