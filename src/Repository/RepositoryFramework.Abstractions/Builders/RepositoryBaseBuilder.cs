@@ -12,7 +12,7 @@ namespace RepositoryFramework
         where TRepositoryConcretization : class, TRepository
     {
         public IServiceCollection Services { get; }
-        private TRepositoryBuilder Builder => (TRepositoryBuilder)(dynamic)this;
+        private TRepositoryBuilder Builder => (TRepositoryBuilder)(object)this;
         private string _currentName = string.Empty;
         private PatternType _currentPatternType = PatternType.Repository;
         private ServiceLifetime _serviceLifetime = ServiceLifetime.Scoped;
@@ -37,7 +37,7 @@ namespace RepositoryFramework
             Services.TryAddSingleton(KeySettings<TKey>.Instance);
             Services.AddFactory<TRepository, TRepositoryConcretization>(_currentName, serviceLifetime);
         }
-        public async Task<RepositoryBuilderWrapper<TRepositoryBuilder, TConnection>> SetStorageAndBuildOptionsAsync<TStorage, TStorageOptions, TConnection>(
+        public async Task<TRepositoryBuilder> SetStorageAndBuildOptionsAsync<TStorage, TStorageOptions, TConnection>(
             Action<TStorageOptions> options,
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
@@ -51,7 +51,7 @@ namespace RepositoryFramework
                 .NoContext();
             return Builder;
         }
-        public RepositoryBuilderWrapper<TRepositoryBuilder, TConnection> SetStorageAndBuildOptions<TStorage, TStorageOptions, TConnection>(
+        public TRepositoryBuilder SetStorageAndBuildOptions<TStorage, TStorageOptions, TConnection>(
             Action<TStorageOptions> options,
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
@@ -64,7 +64,7 @@ namespace RepositoryFramework
                 .AddFactory<TRepositoryPattern, TStorage, TStorageOptions, TConnection>(options, _currentName, serviceLifetime);
             return Builder;
         }
-        public RepositoryBuilderWrapper<TRepositoryBuilder, TStorageOptions> SetStorageWithOptions<TStorage, TStorageOptions>(
+        public TRepositoryBuilder SetStorageWithOptions<TStorage, TStorageOptions>(
             Action<TStorageOptions> options,
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)

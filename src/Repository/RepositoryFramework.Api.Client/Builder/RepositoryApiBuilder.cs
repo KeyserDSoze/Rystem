@@ -48,10 +48,10 @@ namespace RepositoryFramework
             return new RepositoryHttpClientBuilder<T, TKey>(this, httpClientService);
         }
 
-        public Func<ApiClientSettings<T, TKey>> Build()
+        public Func<IServiceProvider, ApiClientSettings<T, TKey>> Build()
         {
             var settings = new ApiClientSettings<T, TKey>(_path, _version, _name, _factoryName);
-            return () => settings;
+            return (serviceProvider) => settings;
         }
     }
 }

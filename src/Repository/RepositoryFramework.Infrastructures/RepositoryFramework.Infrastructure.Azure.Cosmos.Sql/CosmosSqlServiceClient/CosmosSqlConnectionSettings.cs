@@ -19,7 +19,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
         public CosmosSettings? DatabaseOptions { get; set; }
         public CosmosSettings? ContainerOptions { get; set; }
         internal Type ModelType { get; set; } = null!;
-        public Task<Func<CosmosSqlClient>> BuildAsync()
+        public Task<Func<IServiceProvider, CosmosSqlClient>> BuildAsync()
         {
             if (ConnectionString == null && EndpointUri != null)
             {
@@ -35,7 +35,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
             }
             throw new ArgumentException($"Wrong installation for {ModelType.Name} model in your repository cosmos sql database. Use managed identity or a connection string.");
         }
-        private async Task<Func<CosmosSqlClient>> AddAsync(string databaseName, string name, string keyName, CosmosClient cosmosClient, CosmosSettings? databaseOptions, CosmosSettings? containerOptions)
+        private async Task<Func<IServiceProvider, CosmosSqlClient>> AddAsync(string databaseName, string name, string keyName, CosmosClient cosmosClient, CosmosSettings? databaseOptions, CosmosSettings? containerOptions)
         {
             var databaseResponse = await cosmosClient
                 .CreateDatabaseIfNotExistsAsync(databaseName,
@@ -62,7 +62,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
                         Properties = ModelType.GetProperties(),
                         ExistsQuery = $"SELECT * FROM {name} x WHERE x.id = @id"
                     };
-                    return () => client;
+                    return (serviceProvider) => client;
                 }
                 else
                     throw new ArgumentException($"It's not possible to create a container with name {name} and key path {keyName}.");

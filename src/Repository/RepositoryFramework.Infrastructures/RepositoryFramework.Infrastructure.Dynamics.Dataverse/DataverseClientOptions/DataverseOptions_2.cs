@@ -122,9 +122,9 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
             }
         }
         private ServiceClient GetClient() => new($"Url=https://{Environment}.dynamics.com;AuthType=ClientSecret;ClientId={ApplicationIdentity!.ClientId};ClientSecret={ApplicationIdentity!.ClientSecret};RequireNewInstance=true");
-        public Func<DataverseClientWrapper> Build()
+        public Func<IServiceProvider, DataverseClientWrapper> Build()
             =>
-            () => new()
+            (serviceProvider) => new()
             {
                 Client = GetClient()
             };

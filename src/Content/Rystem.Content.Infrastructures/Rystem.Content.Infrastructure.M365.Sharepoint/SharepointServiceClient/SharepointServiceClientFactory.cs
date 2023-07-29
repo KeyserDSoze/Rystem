@@ -7,7 +7,7 @@ namespace Rystem.Content.Infrastructure
     internal static class SharepointServiceClientFactory
     {
         private static readonly string[] s_scopes = new string[1] { "https://graph.microsoft.com/.default" };
-        public static async Task<Func<SharepointClientWrapper>> GetFunctionAsync(SharepointConnectionSettings settings)
+        public static async Task<Func<IServiceProvider, SharepointClientWrapper>> GetFunctionAsync(SharepointConnectionSettings settings)
         {
             if (settings.TenantId == null)
                 throw new ArgumentException(nameof(settings.TenantId));
@@ -28,7 +28,7 @@ namespace Rystem.Content.Infrastructure
                 throw new ArgumentException(nameof(settings.SiteId));
             if (settings.DocumentLibraryId == null)
                 throw new ArgumentException(nameof(settings.DocumentLibraryId));
-            return () => new SharepointClientWrapper
+            return (serviceProvider) => new SharepointClientWrapper
             {
                 Creator = () =>
                 {

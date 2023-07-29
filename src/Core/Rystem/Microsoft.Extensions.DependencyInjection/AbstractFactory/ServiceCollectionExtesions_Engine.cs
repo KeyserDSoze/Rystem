@@ -57,14 +57,14 @@ namespace Microsoft.Extensions.DependencyInjection
                 else
                 {
                     var suffix = $"{serviceType.Name}{typeof(TImplementation).Name}{name}{Guid.NewGuid():N}";
-                    var newInjectedType = services
+                    var (@interface, implementation) = services
                         .AddProxy(
                             serviceType,
                             implementationType,
                             $"RystemProxyService{suffix}Interface",
                             $"RystemProxyService{suffix}Concretization",
                             lifetime);
-                    serviceDescriptor = new ServiceDescriptor(newInjectedType.Interface, newInjectedType.Implementation, lifetime);
+                    serviceDescriptor = new ServiceDescriptor(@interface, implementation, lifetime);
                 }
                 map.Services.TryAdd(name, new()
                 {

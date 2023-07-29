@@ -64,7 +64,7 @@ namespace Rystem.Content.Infrastructure
             OnlyDocumentLibrary = true;
         }
 
-        public Task<Func<SharepointClientWrapper>> BuildAsync()
+        public Task<Func<IServiceProvider, SharepointClientWrapper>> BuildAsync()
             => SharepointServiceClientFactory.GetFunctionAsync(this);
     }
 }

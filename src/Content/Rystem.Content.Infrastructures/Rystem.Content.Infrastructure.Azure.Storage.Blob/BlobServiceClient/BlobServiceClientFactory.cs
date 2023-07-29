@@ -6,7 +6,7 @@ namespace Rystem.Content.Infrastructure.Storage
 {
     internal static class BlobServiceClientFactory
     {
-        internal static Task<Func<BlobServiceClientWrapper>> GetClientAsync(BlobStorageConnectionSettings settings)
+        internal static Task<Func<IServiceProvider, BlobServiceClientWrapper>> GetClientAsync(BlobStorageConnectionSettings settings)
         {
             if (settings.ConnectionString != null)
             {
@@ -23,17 +23,12 @@ namespace Rystem.Content.Infrastructure.Storage
             throw new ArgumentException($"Wrong installation. You lack for connection string or managed identity.");
         }
 
-        internal static Task<Func<BlobServiceClientWrapper>> GetClientAsync()
-        {
-            throw new NotImplementedException();
-        }
-
-        private static async Task<Func<BlobServiceClientWrapper>> GetClientFactoryAsync(BlobContainerClient containerClient, string? prefix, bool isPublic)
+       private static async Task<Func<IServiceProvider, BlobServiceClientWrapper>> GetClientFactoryAsync(BlobContainerClient containerClient, string? prefix, bool isPublic)
         {
             _ = await containerClient.CreateIfNotExistsAsync().NoContext();
             if (isPublic)
                 await containerClient.SetAccessPolicyAsync(Azure.Storage.Blobs.Models.PublicAccessType.Blob).NoContext();
-            return () => new BlobServiceClientWrapper
+            return (serviceProvider) => new BlobServiceClientWrapper
             {
                 ContainerClient = containerClient,
                 Prefix = prefix

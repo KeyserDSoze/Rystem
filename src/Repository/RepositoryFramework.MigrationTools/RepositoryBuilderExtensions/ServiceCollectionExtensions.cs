@@ -20,15 +20,15 @@ namespace Microsoft.Extensions.DependencyInjection
             Action<MigrationOptions<T, TKey>> options)
           where TKey : notnull
         {
-            services
-                .AddOptions<MigrationOptions<T, TKey>>(MigrationManager<T, TKey>.OptionsKey)
-                .Configure(options)
-                .PostConfigure(options =>
-                {
-                    options.SourceFactoryName ??= string.Empty;
-                    options.DestinationFactoryName ??= string.Empty;
-                })
-                .Validate(x => x.SourceFactoryName != x.DestinationFactoryName);
+            var migrationOptions = new MigrationOptions<T, TKey>();
+            options.Invoke(migrationOptions);
+            migrationOptions.SourceFactoryName ??= string.Empty;
+            migrationOptions.DestinationFactoryName ??= string.Empty;
+            if (migrationOptions.SourceFactoryName == migrationOptions.DestinationFactoryName)
+            {
+                throw new ArgumentException("It's not possibile to migrate the same source. You have to set SourceFactoryName and DestinationFactoryName with different values.");
+            }
+            services.TryAddSingleton(migrationOptions);
             services
                 .TryAddTransient<IMigrationManager<T, TKey>, MigrationManager<T, TKey>>();
             return services;

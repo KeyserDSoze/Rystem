@@ -7,22 +7,32 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
 {
-    internal sealed class TableStorageRepository<T, TKey> : IRepository<T, TKey>, IServiceWithOptions<TableClientWrapper>
+    internal sealed class TableStorageRepository<T, TKey> : IRepository<T, TKey>, IServiceWithOptions<TableClientWrapper>, IFactoryService
         where TKey : notnull
     {
         public void SetOptions(TableClientWrapper options)
         {
             Options = options;
         }
+        public void SetFactoryName(string name)
+        {
+            _settings = _settingsFactory.Create(name);
+        }
         private TableClient Client => Options!.Client;
         private readonly ITableStorageKeyReader<T, TKey> _keyReader;
+        private readonly IFactory<TableStorageSettings<T, TKey>> _settingsFactory;
+        private TableStorageSettings<T, TKey>? _settings;
+
         public TableClientWrapper? Options { get; set; }
 
-        public TableStorageRepository(ITableStorageKeyReader<T, TKey> keyReader,
+        public TableStorageRepository(
+            ITableStorageKeyReader<T, TKey> keyReader,
+            IFactory<TableStorageSettings<T, TKey>> settingsFactory,
             TableClientWrapper? options = null)
         {
             _keyReader = keyReader;
             Options = options;
+            _settingsFactory = settingsFactory;
         }
         private sealed class TableEntity : ITableEntity
         {
@@ -73,7 +83,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
             var where = (filter.Operations.FirstOrDefault(x => x.Operation == FilterOperations.Where) as LambdaFilterOperation)?.Expression;
             string? filterAsString = null;
             if (where != null)
-                filterAsString = QueryStrategy.Create(where.Body, Options!.PartitionKey, Options!.RowKey, Options!.Timestamp);
+                filterAsString = QueryStrategy.Create(where.Body, _settings!.PartitionKey, _settings!.RowKey, _settings!.Timestamp);
 
             var top = (filter.Operations.FirstOrDefault(x => x.Operation == FilterOperations.Top) as ValueFilterOperation)?.Value;
             var skip = (filter.Operations.FirstOrDefault(x => x.Operation == FilterOperations.Skip) as ValueFilterOperation)?.Value;

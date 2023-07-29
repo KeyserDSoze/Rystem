@@ -9,10 +9,12 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
     {
         private readonly TableStorageSettings<T, TKey> _settings;
         public IServiceCollection Services { get; }
-        public RepositoryTableStorageBuilder(IServiceCollection services, TableStorageSettings<T, TKey> settings)
+        public RepositoryTableStorageBuilder(IServiceCollection services, string name)
         {
             Services = services;
-            _settings = settings;
+            _settings = new TableStorageSettings<T, TKey>();
+            WithTableStorageKeyReader<DefaultTableStorageKeyReader<T, TKey>>();
+            Services.TryAddFactory(_settings, name, ServiceLifetime.Singleton);
         }
 
         public IRepositoryTableStorageBuilder<T, TKey> WithPartitionKey<TProperty, TKeyProperty>(

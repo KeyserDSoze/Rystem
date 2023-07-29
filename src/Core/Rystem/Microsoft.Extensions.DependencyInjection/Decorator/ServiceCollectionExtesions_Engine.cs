@@ -25,9 +25,8 @@
             var map = services.TryAddSingletonAndGetService<FactoryServices<TService>>();
             if (!map.Services.ContainsKey(name))
             {
-                var currentService = services.FirstOrDefault(x => x.ServiceType == serviceType);
-                if (currentService == null)
-                    throw new ArgumentException($"It's not possible to override a service not installed. There isn't another instance of {typeof(TService).Name} in your Service collection to decorate with {typeof(TImplementation).Name}.");
+                var currentService = services.FirstOrDefault(x => x.ServiceType == serviceType)
+                    ?? throw new ArgumentException($"It's not possible to override a service not installed. There isn't another instance of {typeof(TService).Name} in your Service collection to decorate with {typeof(TImplementation).Name}.");
                 services
                     .AddEngineFactoryWithoutGenerics(
                         serviceType,
@@ -55,14 +54,14 @@
                 else
                 {
                     var decoratorName = $"{serviceType.Name}{implementationType.Name}{name}{Guid.NewGuid():N}Count{factory.Decorators.Count}";
-                    var newInjectedType = services
+                    var (@interface, implementation) = services
                        .AddProxy(
                             serviceType,
                             implementationType,
                            $"RystemProxyService{decoratorName}DecoratorInterface",
                            $"RystemProxyService{decoratorName}DecoratorConcretization",
                            lifetime);
-                    serviceDescriptor = new ServiceDescriptor(newInjectedType.Interface, newInjectedType.Implementation, lifetime);
+                    serviceDescriptor = new ServiceDescriptor(@interface, implementation, lifetime);
                 }
                 factory.Decorators.Add(serviceDescriptor);
             }

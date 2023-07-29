@@ -30,7 +30,6 @@ namespace Microsoft.Extensions.DependencyInjection
             typeBuilder.SetParent(parentType);
             foreach (var furtherInterface in furtherInterfaces)
                 typeBuilder.AddInterfaceImplementation(furtherInterface);
-            //var fieldInfo = typeof(ProxyService<>).MakeGenericType(interfaceType).GetField($"<{nameof(ProxyService<object>.Proxy)}>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
             var fieldInfo = typeof(ProxyService<>).MakeGenericType(interfaceType).GetField("_proxy", BindingFlags.NonPublic | BindingFlags.Instance);
             var constructors = implementationType.GetConstructors();
             if (constructors.Length == 0)

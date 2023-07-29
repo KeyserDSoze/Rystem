@@ -2,7 +2,7 @@
 {
     public abstract class ProxyService<T>
     {
-        protected T _proxy;
-        public T Proxy => _proxy;
+        protected T? _proxy;
+        public T Proxy => _proxy!;
     }
 }

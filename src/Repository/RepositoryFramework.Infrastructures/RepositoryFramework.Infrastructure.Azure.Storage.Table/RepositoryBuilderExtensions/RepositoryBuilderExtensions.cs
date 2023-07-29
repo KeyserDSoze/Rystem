@@ -30,8 +30,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     name,
                     ServiceLifetime.Singleton)
                 .NoContext();
-            return new RepositoryTableStorageBuilder<T, TKey>(builder.Services)
-               .WithTableStorageKeyReader<DefaultTableStorageKeyReader<T, TKey>>();
+            return new RepositoryTableStorageBuilder<T, TKey>(builder.Services, name ?? string.Empty);
         }
         /// <summary>
         /// Add a default table storage service for your command pattern.
@@ -58,8 +57,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     name,
                     ServiceLifetime.Singleton)
                 .NoContext();
-            return new RepositoryTableStorageBuilder<T, TKey>(builder.Services)
-               .WithTableStorageKeyReader<DefaultTableStorageKeyReader<T, TKey>>();
+            return new RepositoryTableStorageBuilder<T, TKey>(builder.Services, name ?? string.Empty);
         }
         /// <summary>
         /// Add a default table storage service for your query pattern.
@@ -86,8 +84,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     name,
                     ServiceLifetime.Singleton)
                 .NoContext();
-            return new RepositoryTableStorageBuilder<T, TKey>(builder.Services)
-               .WithTableStorageKeyReader<DefaultTableStorageKeyReader<T, TKey>>();
+            return new RepositoryTableStorageBuilder<T, TKey>(builder.Services, name ?? string.Empty);
         }
     }
 }

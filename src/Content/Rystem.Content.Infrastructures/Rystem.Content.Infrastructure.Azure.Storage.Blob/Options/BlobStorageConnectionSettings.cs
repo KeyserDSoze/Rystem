@@ -13,7 +13,7 @@ namespace Rystem.Content.Infrastructure.Storage
         public bool IsPublic { get; set; }
         public BlobClientOptions? ClientOptions { get; set; }
 
-        public Task<Func<BlobServiceClientWrapper>> BuildAsync()
+        public Task<Func<IServiceProvider, BlobServiceClientWrapper>> BuildAsync()
             => BlobServiceClientFactory.GetClientAsync(this);
     }
 }

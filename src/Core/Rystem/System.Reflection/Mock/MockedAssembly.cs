@@ -15,12 +15,12 @@ namespace System.Reflection
             var assembly = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run); ;
             Builder = assembly.DefineDynamicModule(assemblyName.Name!);
         }
-        private static readonly Dictionary<Type, MockedType> Types = new();
+        private static readonly Dictionary<Type, MockedType> s_types = new();
         public Type? GetMockedType(Type baseType)
         {
-            if (!Types.ContainsKey(baseType))
-                Types.Add(baseType, new(DefineNewImplementation(baseType)));
-            return Types[baseType].Type;
+            if (!s_types.ContainsKey(baseType))
+                s_types.Add(baseType, new(DefineNewImplementation(baseType)));
+            return s_types[baseType].Type;
         }
         public Type? GetMockedType<T>()
             => GetMockedType(typeof(T));
@@ -72,7 +72,7 @@ namespace System.Reflection
                     constructorIterator.MoveNext();
                     var constructorInfo = (constructorIterator.Current as ConstructorInfo)!;
                     constructorGenerator.Emit(OpCodes.Ldarg_0);
-                    int counter = 1;
+                    var counter = 1;
                     foreach (var parameter in constructorInfo.GetParameters())
                         constructorGenerator.Emit(OpCodes.Ldarg, counter++);
                     constructorGenerator.Emit(OpCodes.Call, constructorInfo);
@@ -152,7 +152,7 @@ namespace System.Reflection
             {
                 createdNames.Add(signature, true);
                 var parameters = methodInfo.GetParameters().Select(x => x.ParameterType).ToArray();
-                MethodBuilder methodBuilder = typeBuilder.DefineMethod(methodInfo.Name,
+                var methodBuilder = typeBuilder.DefineMethod(methodInfo.Name,
                     MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
                     methodInfo.ReturnType, parameters);
                 var methodGenerator = methodBuilder.GetILGenerator();
@@ -198,12 +198,12 @@ namespace System.Reflection
         }
         private static bool Check(Type type)
         {
-            foreach (Type typeR in NormalTypes)
+            foreach (var typeR in s_normalTypes)
                 if (typeR == type)
                     return true;
             return false;
         }
-        private static readonly List<Type> NormalTypes = new()
+        private static readonly List<Type> s_normalTypes = new()
         {
             typeof(int),
             typeof(bool),
@@ -246,7 +246,7 @@ namespace System.Reflection
                 var getParameters = property.GetMethod!.GetParameters().Select(x => x.ParameterType).ToArray();
 
                 var isIndexer = getParameters.Length > 0;
-                Type propertyType = !isIndexer ? property.PropertyType : typeof(Dictionary<,>).MakeGenericType(typeof(string), property.PropertyType);
+                var propertyType = !isIndexer ? property.PropertyType : typeof(Dictionary<,>).MakeGenericType(typeof(string), property.PropertyType);
 
                 var privateFieldBuilder = typeBuilder.DefineField(privateFieldName, propertyType, FieldAttributes.Private);
                 createdNames.Add(privateFieldName, true);
@@ -262,7 +262,7 @@ namespace System.Reflection
                 }
 
                 var propertyBuilder = typeBuilder.DefineProperty(property.Name, PropertyAttributes.None, property.PropertyType, null);
-                MethodBuilder getMethodBuilder = CreateMethod(property.GetMethod, typeBuilder, createdNames, (generator) =>
+                var getMethodBuilder = CreateMethod(property.GetMethod, typeBuilder, createdNames, (generator) =>
                 {
                     generator.Emit(OpCodes.Ldarg_0);
                     generator.Emit(OpCodes.Ldfld, privateFieldBuilder);
@@ -278,7 +278,7 @@ namespace System.Reflection
                 if (property.SetMethod != null)
                 {
                     var setParameters = property.SetMethod.GetParameters().Select(x => x.ParameterType).ToArray();
-                    MethodBuilder setMethodBuilder = CreateMethod(property.SetMethod, typeBuilder, createdNames,
+                    var setMethodBuilder = CreateMethod(property.SetMethod, typeBuilder, createdNames,
                         (generator) =>
                         {
                             generator.Emit(OpCodes.Ldarg_0);
@@ -314,7 +314,7 @@ namespace System.Reflection
         {
             public static object? InvokeMethod(object entity, string methodName, params object[] parameters)
             {
-                Type type = entity.GetType();
+                var type = entity.GetType();
                 var method = type.GetMethod(methodName);
                 if (method == null)
                     return default;

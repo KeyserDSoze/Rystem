@@ -21,9 +21,8 @@ namespace System
         }
         public static void CopyPropertiesFrom(this object destination, object? source)
         {
-            Type type = destination.GetType();
-            if (source == null)
-                source = type.CreateWithDefaultConstructorPropertiesAndField();
+            var type = destination.GetType();
+            source ??= type.CreateWithDefaultConstructorPropertiesAndField();
             foreach (var property in type.FetchProperties())
             {
                 if (property.SetMethod != null)
@@ -32,10 +31,8 @@ namespace System
         }
         public static void CopyPropertiesFrom<T>(this T? destination, T? source)
         {
-            if (source == null)
-                source = typeof(T).CreateWithDefaultConstructorPropertiesAndField<T>();
-            if (destination == null)
-                destination = typeof(T).CreateWithDefaultConstructorPropertiesAndField<T>();
+            source ??= typeof(T).CreateWithDefaultConstructorPropertiesAndField<T>();
+            destination ??= typeof(T).CreateWithDefaultConstructorPropertiesAndField<T>();
             foreach (var property in typeof(T).FetchProperties())
             {
                 if (property.SetMethod != null)
