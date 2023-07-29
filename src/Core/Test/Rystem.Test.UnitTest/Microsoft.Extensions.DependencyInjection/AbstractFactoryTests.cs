@@ -1,205 +1,144 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection
+namespace Rystem.Test.UnitTest.DependencyInjection
 {
-    public class SingletonOption
+    public interface ITestService
     {
-        public string ServiceName { get; set; }
-    }
-    public class TransientOption
-    {
-        public string ServiceName { get; set; }
-    }
-    public class ScopedOption
-    {
-        public string ServiceName { get; set; }
-    }
-    public class BuiltScopedOptions : IServiceOptionsAsync<ScopedOption>
-    {
-        public string ServiceName { get; set; }
-
-        public Task<Func<IServiceProvider, ScopedOption>> BuildAsync()
-        {
-            return Task.FromResult((IServiceProvider serviceProvider) => new ScopedOption
-            {
-                ServiceName = ServiceName
-            });
-        }
-    }
-    public class SingletonService : IMyService, IServiceWithOptions<SingletonOption>
-    {
-        public SingletonOption Options { get; set; }
-        public void SetOptions(SingletonOption options)
-        {
-            Options = options;
-        }
-        public string Id { get; } = Guid.NewGuid().ToString();
-        public string GetName()
-        {
-            return $"{Options.ServiceName} with id {Id}";
-        }
-    }
-    public class TransientService : IMyService, IServiceWithOptions<TransientOption>
-    {
-        public void SetOptions(TransientOption options)
-        {
-            Options = options;
-        }
-        public TransientOption Options { get; set; }
-        public string Id { get; } = Guid.NewGuid().ToString();
-        public string GetName()
-        {
-            return $"{Options.ServiceName} with id {Id}";
-        }
-    }
-    public class ScopedService : IMyService, IServiceWithOptions<ScopedOption>
-    {
-        public void SetOptions(ScopedOption options)
-        {
-            Options = options;
-        }
-        public ScopedOption Options { get; set; }
-        public string Id { get; } = Guid.NewGuid().ToString();
-        public string GetName()
-        {
-            return $"{Options.ServiceName} with id {Id}";
-        }
-    }
-    public class ScopedService2 : IMyService, IServiceWithOptions<ScopedOption>
-    {
-        public void SetOptions(ScopedOption options)
-        {
-            Options = options;
-        }
-        public ScopedOption Options { get; set; }
-        public string Id { get; } = Guid.NewGuid().ToString();
-
-        public string GetName()
-        {
-            return $"{Options.ServiceName} with id {Id}";
-        }
-    }
-    public class ScopedService3 : IMyService, IServiceWithOptions<ScopedOption>
-    {
-        public void SetOptions(ScopedOption options)
-        {
-            Options = options;
-        }
-        public ScopedOption Options { get; set; }
-        public string Id { get; } = Guid.NewGuid().ToString();
-
-        public string GetName()
-        {
-            return $"{Options.ServiceName} with id {Id}";
-        }
-    }
-    public class ScopedService4 : IMyService, IServiceWithOptions<ScopedOption>
-    {
-        public void SetOptions(ScopedOption options)
-        {
-            Options = options;
-        }
-        public ScopedOption Options { get; set; }
-        public string Id { get; } = Guid.NewGuid().ToString();
-
-        public string GetName()
-        {
-            return $"{Options.ServiceName} with id {Id}";
-        }
-    }
-    public interface IMyService
-    {
-        string GetName();
         string Id { get; }
+        string FactoryName { get; }
+    }
+    public class TestService : ITestService, IFactoryService, IDecoratorService<ITestService>, IServiceWithOptions<TestOptions>
+    {
+        public string Id => Options.ClassicName;
+        public string FactoryName { get; private set; }
+        public ITestService Test { get; private set; }
+        public TestOptions Options { get; private set; }
+        public void SetDecoratedService(ITestService service)
+        {
+            Test = service;
+        }
+
+        public void SetFactoryName(string name)
+        {
+            FactoryName = name;
+        }
+        public void SetOptions(TestOptions options)
+        {
+            Options = options;
+        }
+    }
+    public class TestOptions
+    {
+        public string ClassicName { get; set; }
+    }
+    public class DecoratorTestService : ITestService, IDecoratorService<ITestService>, IServiceWithOptions<TestOptions>, IFactoryService
+    {
+        public string Id => $"Decoration {Test.Id} with same Options {Options.ClassicName}";
+        public ITestService Test { get; private set; }
+        public string FactoryName => $"Decoration {DecoratedFactoryName} with {Test.FactoryName}";
+        public string DecoratedFactoryName { get; private set; }
+        public void SetFactoryName(string name)
+        {
+            DecoratedFactoryName = name;
+        }
+        public void SetDecoratedService(ITestService service)
+        {
+            Test = service;
+        }
+        public TestOptions Options { get; private set; }
+        public void SetOptions(TestOptions options)
+        {
+            Options = options;
+        }
+    }
+    public interface ITestWithoutFactoryService
+    {
+        string Id { get; }
+    }
+    public class TestWithoutFactoryService : ITestWithoutFactoryService
+    {
+        public string Id { get; } = Guid.NewGuid().ToString();
+    }
+    public class TestWithoutFactoryServiceDecorator : ITestWithoutFactoryService, IDecoratorService<ITestWithoutFactoryService>
+    {
+        public string Id { get; } = Guid.NewGuid().ToString();
+        public ITestWithoutFactoryService Test { get; private set; }
+        public void SetDecoratedService(ITestWithoutFactoryService service)
+        {
+            Test = service;
+        }
     }
     public class AbstractFactoryTests
     {
-        [Fact]
-        public async Task RunAsync()
+        [Theory]
+        [InlineData("singleton", ServiceLifetime.Singleton, "classicName")]
+        [InlineData("scoped", ServiceLifetime.Scoped, "classicName")]
+        [InlineData("transient", ServiceLifetime.Transient, "classicName")]
+        public async Task RunAsync(string name, ServiceLifetime lifetime, string classicName)
         {
             var services = new ServiceCollection();
-            services.AddFactory<IMyService, SingletonService, SingletonOption>(x =>
+            try
             {
-                x.ServiceName = "singleton";
-            },
-            "singleton",
-            ServiceLifetime.Singleton);
-
-            services.AddFactory<IMyService, TransientService, TransientOption>(x =>
+                services
+                    .AddDecoration<ITestWithoutFactoryService, TestWithoutFactoryServiceDecorator>(null, lifetime);
+                Assert.Fail();
+            }
+            catch (Exception ex)
             {
-                x.ServiceName = "transient";
-            },
-            "transient",
-            ServiceLifetime.Transient);
-
-            services.AddFactory<IMyService, ScopedService, ScopedOption>(x =>
+                Assert.StartsWith("It's not possible to override a service not installed", ex.Message);
+            }
+            try
             {
-                x.ServiceName = "scoped";
-            },
-            "scoped",
-            ServiceLifetime.Scoped);
-
-            services.AddFactory<IMyService, ScopedService2, ScopedOption>(x =>
+                services
+                    .AddDecoration<ITestService, DecoratorTestService>(name, lifetime);
+                Assert.Fail();
+            }
+            catch (Exception ex)
             {
-                x.ServiceName = "scoped2";
+                Assert.StartsWith("It's not possible to override a service not installed", ex.Message);
+            }
+
+            services.AddFactory<ITestService, TestService, TestOptions>(x =>
+            {
+                x.ClassicName = classicName;
             },
-            "scoped2",
-            ServiceLifetime.Scoped);
+            name,
+            lifetime);
+            services
+                .AddDecoration<ITestService, DecoratorTestService>(name, lifetime);
+            services
+                .AddService<ITestWithoutFactoryService, TestWithoutFactoryService>(lifetime);
+            services
+                   .AddDecoration<ITestWithoutFactoryService, TestWithoutFactoryServiceDecorator>(null, lifetime);
 
-            await services.AddFactoryAsync<IMyService, ScopedService3, BuiltScopedOptions, ScopedOption>(
-                x =>
-                {
-                    x.ServiceName = "scoped3";
-                },
-                "scoped3"
-            );
-
-            await services.AddFactoryAsync<IMyService, ScopedService3, BuiltScopedOptions, ScopedOption>(
-               x =>
-               {
-                   x.ServiceName = "scoped3_2";
-               },
-               "scoped3_2"
-           );
-
-            await services.AddFactoryAsync<IMyService, ScopedService4, BuiltScopedOptions, ScopedOption>(
-               x =>
-               {
-                   x.ServiceName = "scoped4";
-               },
-               "scoped4"
-           );
-
+            _ = string.Join('\n', services.Select(x => x.ServiceType.FullName));
             var serviceProvider = services.BuildServiceProvider().CreateScope().ServiceProvider;
-            var factory = serviceProvider.GetService<IFactory<IMyService>>()!;
-            var factory2 = serviceProvider.GetService<IFactory<IMyService>>()!;
 
-            var singletonFromFactory = factory.Create("singleton").Id;
-            var singletonFromFactory2 = factory2.Create("singleton").Id;
-            var transientFromFactory = factory.Create("transient").Id;
-            var transientFromFactory2 = factory2.Create("transient").Id;
-            var scopedFromFactory = factory.Create("scoped").Id;
-            var scopedFromFactory2 = factory2.Create("scoped").Id;
-            var scoped2FromFactory = factory.Create("scoped2").Id;
-            var scoped2FromFactory2 = factory2.Create("scoped2").Id;
-            var scoped3FromFactory = factory.Create("scoped3").Id;
-            var scoped3FromFactory2 = factory2.Create("scoped3").Id;
-            var scoped3_2FromFactory = factory.Create("scoped3_2").Id;
-            var scoped3_2FromFactory2 = factory2.Create("scoped3_2").Id;
-            var scoped4FromFactory = factory.Create("scoped4").Id;
-            var scoped4FromFactory2 = factory2.Create("scoped4").Id;
+            var factory = serviceProvider.GetRequiredService<IFactory<ITestService>>();
+            var serviceFromFactoryFromDi = serviceProvider.GetRequiredService<ITestService>();
+            Assert.NotNull(serviceFromFactoryFromDi.FactoryName);
+            Assert.NotNull(((dynamic)serviceFromFactoryFromDi).Test);
+            var serviceFromFactory = factory.Create(name);
 
-            Assert.Equal(singletonFromFactory, singletonFromFactory2);
-            Assert.NotEqual(transientFromFactory, transientFromFactory2);
-            Assert.Equal(scopedFromFactory, scopedFromFactory2);
-            Assert.Equal(scoped2FromFactory, scoped2FromFactory2);
-            Assert.NotEqual(scoped3FromFactory, scoped3FromFactory2);
-            Assert.NotEqual(scoped3_2FromFactory, scoped3_2FromFactory2);
-            Assert.NotEqual(scoped4FromFactory, scoped4FromFactory2);
+            var decorator = serviceProvider.GetRequiredService<ITestWithoutFactoryService>();
+            var decorated = serviceProvider.GetRequiredService<IDecoratedService<ITestWithoutFactoryService>>();
+
+            var id = $"Decoration {classicName} with same Options {classicName}";
+            var decoratedName = $"Decoration {name} with {name}";
+            Assert.Equal(decoratedName, serviceFromFactoryFromDi.FactoryName);
+            Assert.Equal(decoratedName, serviceFromFactory.FactoryName);
+            Assert.Equal(id, serviceFromFactoryFromDi.Id);
+            Assert.Equal(id, serviceFromFactory.Id);
+            Assert.NotNull(decorated.Service.Id);
+            Assert.NotNull(decorator.Id);
+            if (lifetime != ServiceLifetime.Transient)
+                Assert.Equal(decorated.Service.Id, decorator.Id);
+            else
+                Assert.NotEqual(decorated.Service.Id, decorator.Id);
         }
     }
 }

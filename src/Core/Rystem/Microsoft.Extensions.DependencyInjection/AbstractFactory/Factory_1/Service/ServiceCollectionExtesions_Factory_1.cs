@@ -6,7 +6,7 @@
            string? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Transient)
            where TService : class
-            => services.AddFactory<TService, TService>(name, lifetime, null, null, () => SendInError<TService, TService>(name ?? string.Empty), null);
+            => services.AddEngineFactory<TService, TService>(name, lifetime, null, null, () => SendInError<TService, TService>(name ?? string.Empty), null);
         public static IServiceCollection AddFactory<TService, TOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
             string? name = null,

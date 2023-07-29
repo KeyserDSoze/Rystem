@@ -9,7 +9,7 @@
            where TImplementation : class, TService
         {
             var check = true;
-            services.AddFactory<TService, TImplementation>(name, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check), null);
+            services.AddEngineFactory<TService, TImplementation>(name, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check), null);
             return check;
         }
         public static bool TryAddFactory<TService, TImplementation, TOptions>(this IServiceCollection services,

@@ -94,7 +94,7 @@ namespace System.Reflection
 
             foreach (var property in properties)
             {
-                string privateFieldName = GetPrivateFieldForPropertyName(property.Name);
+                var privateFieldName = GetPrivateFieldForPropertyName(property.Name);
                 var privateFieldBuilder = typeBuilder.DefineField(privateFieldName, property.Type, FieldAttributes.Private);
                 var propertyBuilder = typeBuilder.DefineProperty(property.Name, PropertyAttributes.None, property.Type, null);
                 var getMethodName = $"get_{property.Name}";
@@ -147,7 +147,7 @@ namespace System.Reflection
         private static MethodBuilder CreateMethod(MethodInfo methodInfo, TypeBuilder typeBuilder, Dictionary<string, bool> createdNames, Action<ILGenerator>? action = null, bool returnDefault = false)
         {
             //todo: it doesn't work with generic methods, protected and private protected too
-            string signature = ToSignature(methodInfo);
+            var signature = ToSignature(methodInfo);
             if (!createdNames.ContainsKey(signature))
             {
                 createdNames.Add(signature, true);
@@ -237,7 +237,7 @@ namespace System.Reflection
         };
         private void ConfigureProperty(PropertyInfo property, TypeBuilder typeBuilder, List<ILGenerator> constructorGenerators, Dictionary<string, bool> createdNames)
         {
-            string privateFieldName = GetPrivateFieldForPropertyName(property.Name);
+            var privateFieldName = GetPrivateFieldForPropertyName(property.Name);
 
             if (!createdNames.ContainsKey(privateFieldName))
             {

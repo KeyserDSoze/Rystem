@@ -8,7 +8,7 @@
            where TService : class
         {
             var check = true;
-            services.AddFactory<TService, TService>(name, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check), null);
+            services.AddEngineFactory<TService, TService>(name, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check), null);
             return check;
         }
         public static bool TryAddFactory<TService, TOptions>(this IServiceCollection services,

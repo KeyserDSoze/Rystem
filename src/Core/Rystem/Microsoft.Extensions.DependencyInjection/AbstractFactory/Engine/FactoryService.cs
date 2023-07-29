@@ -2,9 +2,9 @@
 {
     public sealed class FactoryService<TService>
     {
-        public Func<IServiceProvider, bool, TService> ServiceFactory { get; set; } = null!;
-        public FactoryServiceType Implementation { get; set; } = null!;
-        public List<FactoryServiceType>? Decorators { get; set; }
+        public Func<IServiceProvider, bool, TService> ServiceFactory { get; internal set; } = null!;
+        public ServiceDescriptor Descriptor { get; internal set; } = null!;
+        public List<ServiceDescriptor>? Decorators { get; internal set; }
         public Dictionary<string, Func<IServiceProvider, TService, TService>> FurtherBehaviors { get; set; } = new();
     }
 }

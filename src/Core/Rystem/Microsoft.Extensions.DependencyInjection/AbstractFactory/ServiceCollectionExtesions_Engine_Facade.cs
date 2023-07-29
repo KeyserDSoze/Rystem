@@ -17,7 +17,7 @@
             var options = new TOptions();
             createOptions.Invoke(options);
             services.AddFactory(options, name, ServiceLifetime.Singleton);
-            services.AddFactory(
+            services.AddEngineFactory(
                 name,
                 lifetime,
                 implementationInstance,
@@ -44,7 +44,7 @@
             createOptions.Invoke(options);
             var builtOptions = options.Build();
             services.AddFactory(builtOptions, name, ServiceLifetime.Transient);
-            services.AddFactory(name, lifetime,
+            services.AddEngineFactory(name, lifetime,
                 implementationInstance,
                 implementationFactory,
                 whenExists,
@@ -69,7 +69,7 @@
             createOptions.Invoke(options);
             var builtOptions = await options.BuildAsync();
             services.AddFactory(builtOptions, name, ServiceLifetime.Transient);
-            services.AddFactory(name, lifetime,
+            services.AddEngineFactory(name, lifetime,
                 implementationInstance,
                 implementationFactory,
                 whenExists,

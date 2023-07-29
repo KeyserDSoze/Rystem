@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection.Extensions;
+﻿using System.Reflection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -12,7 +13,22 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             check = false;
         }
-        private static IServiceCollection AddFactory<TService, TImplementation>(this IServiceCollection services,
+        private static IServiceCollection AddEngineFactoryWithoutGenerics(this IServiceCollection services,
+            Type serviceType,
+            Type implementationType,
+            string? name,
+            ServiceLifetime lifetime,
+            object? implementationInstance,
+            Func<IServiceProvider, object>? implementationFactory,
+            Action? whenExists,
+            Func<IServiceProvider, object, object>? addingBehaviorToFactory
+            )
+        {
+            return Generics
+                .WithStatic(typeof(ServiceCollectionExtesions), nameof(ServiceCollectionExtesions.AddEngineFactory), serviceType, implementationType)
+                .Invoke(services, name!, lifetime, implementationInstance!, implementationFactory!, whenExists!, addingBehaviorToFactory!);
+        }
+        private static IServiceCollection AddEngineFactory<TService, TImplementation>(this IServiceCollection services,
             string? name,
             ServiceLifetime lifetime,
             TImplementation? implementationInstance,
@@ -27,42 +43,45 @@ namespace Microsoft.Extensions.DependencyInjection
             var implementationType = typeof(TImplementation);
             services.TryAddTransient<IFactory<TService>, Factory<TService>>();
             var map = services.TryAddSingletonAndGetService<FactoryServices<TService>>();
-            var count = serviceType == implementationType ?
-                services.Count(x => x.ImplementationType == serviceType)
-                : services.Count(x => x.ImplementationType == implementationType);
-            if (map.Services.TryAdd(name, new()
+            if (!map.Services.ContainsKey(name))
             {
-                ServiceFactory = ServiceFactory,
-                Implementation = new()
-                {
-                    Type = typeof(TImplementation),
-                    Index = count
-                }
-            }))
-            {
+                ServiceDescriptor? serviceDescriptor = null;
                 if (implementationFactory != null)
                 {
-                    services.AddService(serviceProvider => (TImplementation)implementationFactory.Invoke(serviceProvider), lifetime);
+                    serviceDescriptor = new ServiceDescriptor(serviceType, implementationFactory, lifetime);
                 }
                 else if (implementationInstance != null)
                 {
-                    services.AddSingleton(implementationInstance);
+                    serviceDescriptor = new ServiceDescriptor(serviceType, implementationInstance);
                 }
                 else
                 {
-                    services.AddService<TImplementation>(lifetime);
+                    var suffix = $"{serviceType.Name}{typeof(TImplementation).Name}{name}{Guid.NewGuid():N}";
+                    var newInjectedType = services
+                        .AddProxy(
+                            serviceType,
+                            implementationType,
+                            $"RystemProxyService{suffix}Interface",
+                            $"RystemProxyService{suffix}Concretization",
+                            lifetime);
+                    serviceDescriptor = new ServiceDescriptor(newInjectedType.Interface, newInjectedType.Implementation, lifetime);
                 }
-                services.AddOrOverrideService(serviceProvider => ServiceFactory(serviceProvider, false), lifetime);
+                map.Services.TryAdd(name, new()
+                {
+                    ServiceFactory = ServiceFactory,
+                    Descriptor = serviceDescriptor,
+                });
+                services.AddOrOverrideService(serviceProvider => ServiceFactory(serviceProvider, true), lifetime);
             }
             else
                 whenExists?.Invoke();
 
-            TService ServiceFactory(IServiceProvider serviceProvider, bool withoutDecoration)
+            TService ServiceFactory(IServiceProvider serviceProvider, bool withDecoration)
             {
                 var factory = map.Services[name];
-                var service = GetService(factory.Implementation, null);
+                var service = GetService(factory.Descriptor, null);
 
-                if (!withoutDecoration && factory.Decorators != null)
+                if (withDecoration && factory.Decorators != null)
                 {
                     foreach (var decoratorType in factory.Decorators)
                     {
@@ -78,12 +97,24 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
                 return service;
 
-                TService GetService(FactoryServiceType implementationType, Action<TService>? afterCreation)
+                TService GetService(ServiceDescriptor serviceDescriptor, Action<TService>? afterCreation)
                 {
-                    var service = (TService)serviceProvider
-                         .GetServices(implementationType.Type)
-                         .Skip(implementationType.Index)
-                         .First()!;
+                    var service = GetServiceFromServiceProvider();
+                    TService GetServiceFromServiceProvider()
+                    {
+                        if (serviceDescriptor.ImplementationInstance != null)
+                            return (TService)serviceDescriptor.ImplementationInstance;
+                        else if (serviceDescriptor.ImplementationFactory != null)
+                            return (TService)serviceDescriptor.ImplementationFactory(serviceProvider);
+                        else
+                        {
+                            var proxyService = serviceProvider.GetRequiredService(serviceDescriptor.ServiceType);
+                            if (proxyService is ProxyService<TService> proxyServiceProxy)
+                                return proxyServiceProxy.Proxy;
+                        }
+                        return default!;
+                    }
+
                     addingBehaviorToFactory?.Invoke(serviceProvider, service);
                     afterCreation?.Invoke(service);
                     if (service is IFactoryService factoryService)
