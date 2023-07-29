@@ -13,7 +13,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
         public string? TableName { get; set; }
         public TableClientOptions ClientOptions { get; set; } = null!;
         internal Type ModelType { get; set; } = null!;
-        public Task<Func<TableClientWrapper>> BuildAsync()
+        public Task<Func<IServiceProvider, TableClientWrapper>> BuildAsync()
         {
             if (ConnectionString != null)
             {
@@ -30,7 +30,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
             }
             throw new ArgumentException($"Wrong installation for {ModelType.Name} model in your repository table storage. Use managed identity or a connection string.");
         }
-        private static async Task<Func<TableClientWrapper>> AddAsync(string name, TableServiceClient serviceClient, TableClient tableClient)
+        private static async Task<Func<IServiceProvider, TableClientWrapper>> AddAsync(string name, TableServiceClient serviceClient, TableClient tableClient)
         {
             _ = await serviceClient
                 .CreateTableIfNotExistsAsync(name)
@@ -39,7 +39,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
             {
                 Client = tableClient
             };
-            return () => wrapper;
+            return (serviceProvider) => wrapper;
         }
     }
 }

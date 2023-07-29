@@ -14,7 +14,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
         public string? Prefix { get; set; }
         public BlobClientOptions? ClientOptions { get; set; }
         internal Type ModelType { get; set; } = null!;
-        public Task<Func<BlobContainerClientWrapper>> BuildAsync()
+        public Task<Func<IServiceProvider, BlobContainerClientWrapper>> BuildAsync()
         {
             if (ConnectionString != null)
             {
@@ -33,7 +33,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
             }
             throw new ArgumentException($"Wrong installation for {ModelType.Name} model in your repository blob storage. Use managed identity or a connection string.");
         }
-        private async Task<Func<BlobContainerClientWrapper>> AddAsync(BlobContainerClient containerClient)
+        private async Task<Func<IServiceProvider, BlobContainerClientWrapper>> AddAsync(BlobContainerClient containerClient)
         {
             _ = await containerClient.CreateIfNotExistsAsync().NoContext();
             var wrapper = new BlobContainerClientWrapper
@@ -41,7 +41,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
                 Client = containerClient,
                 Prefix = Prefix,
             };
-            return () => wrapper;
+            return serviceProvider => wrapper;
         }
     }
 }

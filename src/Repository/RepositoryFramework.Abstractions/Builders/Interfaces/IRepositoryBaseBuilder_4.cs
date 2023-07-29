@@ -23,7 +23,7 @@ namespace RepositoryFramework
             where TConnection : class;
         TRepositoryBuilder SetStorage<TStorage>(string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern;
-        RepositoryBuilderWrapper<TRepositoryBuilder, TStorageOptions> SetStorageWithOptions<TStorage, TStorageOptions>(Action<TOptions> options, string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
+        RepositoryBuilderWrapper<TRepositoryBuilder, TStorageOptions> SetStorageWithOptions<TStorage, TStorageOptions>(Action<TStorageOptions> options, string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
            where TStorage : class, TRepositoryPattern, IServiceWithOptions<TStorageOptions>
            where TStorageOptions : class, new();
         Func<Task>? AfterBuildAsync { get; set; }
