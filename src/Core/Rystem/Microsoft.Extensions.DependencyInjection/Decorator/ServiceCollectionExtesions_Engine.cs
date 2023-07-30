@@ -76,7 +76,7 @@
                     if (service is IFactoryService factoryService)
                         factoryService.SetFactoryName(name ?? string.Empty);
                     return new DecoratedService<TService>(service);
-                }, ServiceLifetime.Transient);
+                }, lifetime);
 
             return services;
         }
