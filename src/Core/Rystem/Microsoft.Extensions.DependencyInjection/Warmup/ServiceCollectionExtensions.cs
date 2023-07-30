@@ -13,10 +13,10 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IServiceCollection AddWarmUp(this IServiceCollection services,
             Action<IServiceProvider> actionAfterBuild)
         {
-            ServiceProviderUtility.Instance.AfterBuildEvents.Add((serviceProvider) => 
+            ServiceProviderUtility.Instance.AfterBuildEvents.Add((serviceProvider) =>
             {
-                actionAfterBuild.Invoke(serviceProvider); 
-                return Task.CompletedTask; 
+                actionAfterBuild.Invoke(serviceProvider);
+                return Task.CompletedTask;
             });
             return services;
         }

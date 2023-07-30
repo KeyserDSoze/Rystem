@@ -32,10 +32,23 @@ namespace Rystem.Test.UnitTest.DependencyInjection
             services
                    .AddDecoration<ITestWithoutFactoryService, TestWithoutFactoryServiceDecorator>(null, lifetime);
 
-            var provider = services.BuildServiceProvider().CreateScope().ServiceProvider;
+            var providerWithoutScope = services.BuildServiceProvider();
+            var provider = providerWithoutScope.CreateScope().ServiceProvider;
 
             var decorator = provider.GetService<IRepository<ToSave>>();
             Assert.Null(decorator.Get());
+            decorator.Format = "Alzo";
+
+            var provider2 = providerWithoutScope.CreateScope().ServiceProvider;
+            var decorator2 = provider2.GetService<IRepository<ToSave>>();
+            if (lifetime == ServiceLifetime.Singleton)
+            {
+                Assert.Equal("Alzo", decorator2.Format);
+            }
+            else
+            {
+                Assert.NotEqual("Alzo", decorator2.Format);
+            }
 
         }
     }

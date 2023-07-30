@@ -8,7 +8,7 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection.Decorati
     }
     public interface IRepository<T> : IRepositoryPattern<T>
     {
-
+        string Format { get; set; }
     }
     internal sealed class RepositoryPattern<T> : IRepositoryPattern<T>
     {
@@ -19,6 +19,7 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection.Decorati
         private RepositoryOptions _options;
         private readonly IFactory<IRepositoryPattern<T>> _patternFactory;
         private IRepositoryPattern<T> _pattern;
+        public string Format { get; set; }
         public Repository(IFactory<IRepositoryPattern<T>> patternFactory)
         {
             _patternFactory = patternFactory;
@@ -38,6 +39,7 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection.Decorati
     {
         private RepositoryOptions _options;
         private IRepository<T>? _repository;
+        public string Format { get; set; }
         public Cache(RepositoryOptions options, IDecoratedService<IRepository<T>>? repository = null)
         {
             _repository = repository.Service;
