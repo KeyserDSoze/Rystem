@@ -30,17 +30,13 @@ namespace Microsoft.Extensions.DependencyInjection
             typeBuilder.SetParent(parentType);
             foreach (var furtherInterface in furtherInterfaces)
                 typeBuilder.AddInterfaceImplementation(furtherInterface);
-            var fieldInfo = typeof(ProxyService<>).MakeGenericType(interfaceType).GetField("_proxy", BindingFlags.NonPublic | BindingFlags.Instance);
+            var fieldInfo = parentType.GetField("_proxy", BindingFlags.NonPublic | BindingFlags.Instance);
+            var fieldInfoParameters = parentType.GetField("_parameters", BindingFlags.NonPublic | BindingFlags.Instance);
+            var fieldType = parentType.GetField("_proxyType", BindingFlags.NonPublic | BindingFlags.Instance);
             var constructors = implementationType.GetConstructors();
             if (constructors.Length == 0)
             {
-                var constructorBuilder = typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes);
-                var constructorGenerator = constructorBuilder.GetILGenerator();
-                constructorGenerator.Emit(OpCodes.Ldarg_0);
-                constructorGenerator.Emit(OpCodes.Newobj, implementationType);
-                constructorGenerator.Emit(OpCodes.Castclass, interfaceType);
-                constructorGenerator.Emit(OpCodes.Stfld, fieldInfo!);
-                constructorGenerator.Emit(OpCodes.Ret);
+                throw new InvalidOperationException($"{implementationType.Name} has no suitable public constructor.");
             }
             else
             {
@@ -49,16 +45,47 @@ namespace Microsoft.Extensions.DependencyInjection
                     var constructorBuilder = typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, constructor?.GetParameters().Select(x => x.ParameterType).ToArray() ?? Type.EmptyTypes);
                     var constructorGenerator = constructorBuilder.GetILGenerator();
                     constructorGenerator.Emit(OpCodes.Ldarg_0);
+                    var localArrayOfObject = constructorGenerator.DeclareLocal(typeof(object[]));
+                    if (!implementationType.IsPublic)
+                    {
+                        constructorGenerator.Emit(OpCodes.Ldc_I4, constructor!.GetParameters().Length);
+                        constructorGenerator.Emit(OpCodes.Newarr, typeof(object));
+                        constructorGenerator.Emit(OpCodes.Stloc, localArrayOfObject.LocalIndex);
+                    }
                     var counter = 1;
-                    foreach (var parameter in constructor!.GetParameters())
-                        constructorGenerator.Emit(OpCodes.Ldarg, counter++);
-                    constructorGenerator.Emit(OpCodes.Newobj, constructor);
-                    constructorGenerator.Emit(OpCodes.Castclass, interfaceType);
-                    constructorGenerator.Emit(OpCodes.Stfld, fieldInfo!);
+                    foreach (var parameterType in constructor!.GetParameters().Select(x => x.ParameterType))
+                    {
+                        if (implementationType.IsPublic)
+                            constructorGenerator.Emit(OpCodes.Ldarg, counter++);
+                        else
+                        {
+                            constructorGenerator.Emit(OpCodes.Ldloc, localArrayOfObject.LocalIndex);
+                            constructorGenerator.Emit(OpCodes.Ldc_I4, counter - 1);
+                            constructorGenerator.Emit(OpCodes.Ldarg, counter++);
+                            if (parameterType.IsValueType)
+                                constructorGenerator.Emit(OpCodes.Box, parameterType);
+                            constructorGenerator.Emit(OpCodes.Stelem_Ref);
+                        }
+                    }
+                    if (implementationType.IsPublic)
+                    {
+                        constructorGenerator.Emit(OpCodes.Newobj, constructor);
+                        constructorGenerator.Emit(OpCodes.Castclass, interfaceType);
+                        constructorGenerator.Emit(OpCodes.Stfld, fieldInfo!);
+                    }
+                    else
+                    {
+                        constructorGenerator.Emit(OpCodes.Ldloc, localArrayOfObject.LocalIndex);
+                        constructorGenerator.Emit(OpCodes.Stfld, fieldInfoParameters!);
+                        constructorGenerator.Emit(OpCodes.Ldarg_0);
+                        constructorGenerator.Emit(OpCodes.Ldtoken, implementationType);
+                        constructorGenerator.EmitWriteLine("call class [System.Runtime]System.Type [System.Runtime]System.Type::GetTypeFromHandle(valuetype [System.Runtime]System.RuntimeTypeHandle)");
+                        constructorGenerator.Emit(OpCodes.Stfld, fieldType);
+                    }
+
                     constructorGenerator.Emit(OpCodes.Ret);
                 }
             }
-
             var newType = typeBuilder.CreateType();
             services.Add(new ServiceDescriptor(newInterfaceType, newType, lifetime));
             return (newInterfaceType, newType);
