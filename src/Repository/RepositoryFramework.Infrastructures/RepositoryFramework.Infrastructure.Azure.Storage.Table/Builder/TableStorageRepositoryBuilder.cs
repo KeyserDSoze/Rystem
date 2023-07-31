@@ -11,13 +11,14 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
         where TKey : notnull
     {
         private readonly TableStorageSettings<T, TKey> _settings = new();
-        internal IServiceCollection Services { get; set; } = null!;
-        internal string FactoryName { get; set; } = null!;
+        private IServiceCollection _services = null!;
+        private string _factoryName = null!;
         public TableStorageConnectionSettings Settings { get; } = new();
-        public TableStorageRepositoryBuilder()
+        public void SetDefault(IServiceCollection services, string? factoryName)
         {
+            _services = services;
+            _factoryName = factoryName ?? string.Empty;
             WithTableStorageKeyReader<DefaultTableStorageKeyReader<T, TKey>>();
-            AddPropertyForTableStorageBaseProperties<int, int>(string.Empty, null, null);
         }
 
         public ITableStorageRepositoryBuilder<T, TKey> WithPartitionKey<TProperty, TKeyProperty>(
@@ -36,8 +37,8 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
         public ITableStorageRepositoryBuilder<T, TKey> WithTableStorageKeyReader<TKeyReader>()
             where TKeyReader : class, ITableStorageKeyReader<T, TKey>
         {
-            Services
-                .AddOrOverrideFactory<ITableStorageKeyReader<T, TKey>, TKeyReader>(FactoryName);
+            _services
+                .AddOrOverrideFactory<ITableStorageKeyReader<T, TKey>, TKeyReader>(_factoryName);
             return this;
         }
         private ITableStorageRepositoryBuilder<T, TKey> WithProperty<TProperty, TKeyProperty>(

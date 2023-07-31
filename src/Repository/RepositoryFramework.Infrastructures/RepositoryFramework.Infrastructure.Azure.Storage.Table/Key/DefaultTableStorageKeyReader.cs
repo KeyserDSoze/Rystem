@@ -1,14 +1,17 @@
 ﻿using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
 {
-    internal sealed class DefaultTableStorageKeyReader<T, TKey> : ITableStorageKeyReader<T, TKey>
+    internal sealed class DefaultTableStorageKeyReader<T, TKey> : ITableStorageKeyReader<T, TKey>, IServiceForFactory
         where TKey : notnull
     {
-        private readonly TableStorageSettings<T, TKey> _options;
-        public DefaultTableStorageKeyReader(TableStorageSettings<T, TKey> options)
+        private TableStorageSettings<T, TKey> _options = null!;
+        private readonly IFactory<TableClientWrapper<T, TKey>> _factory;
+
+        public DefaultTableStorageKeyReader(IFactory<TableClientWrapper<T, TKey>> factory)
         {
-            _options = options;
+            _factory = factory;
         }
 
         public (string PartitionKey, string RowKey) Read(TKey key)
@@ -19,6 +22,11 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
                 return Constructor.InvokeWithBestDynamicFit<TKey>(_options.PartitionKeyFunction(entity), _options.RowKeyFunction(entity))!;
             else
                 return CastExtensions.Cast<TKey>(_options.PartitionKeyFunction.Invoke(entity))!;
+        }
+
+        public void SetFactoryName(string name)
+        {
+            _options = _factory.Create(name).Settings;
         }
     }
 }

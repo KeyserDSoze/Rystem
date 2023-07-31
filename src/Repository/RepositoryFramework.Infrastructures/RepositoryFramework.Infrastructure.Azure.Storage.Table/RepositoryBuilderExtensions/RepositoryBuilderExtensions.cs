@@ -25,8 +25,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 TableClientWrapper<T, TKey>>(
                     options =>
                     {
-                        options.Services = builder.Services;
-                        options.FactoryName = name ?? string.Empty;
+                        options.SetDefault(builder.Services, name);
                         tableStorageBuilder.Invoke(options);
                         options.Settings.ModelType = typeof(T);
                     },
@@ -55,8 +54,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 TableClientWrapper<T, TKey>>(
                     options =>
                     {
-                        options.Services = builder.Services;
-                        options.FactoryName = name ?? string.Empty;
+                        options.SetDefault(builder.Services, name);
                         tableStorageBuilder.Invoke(options);
                         options.Settings.ModelType = typeof(T);
                     },
@@ -85,8 +83,7 @@ namespace Microsoft.Extensions.DependencyInjection
                  TableClientWrapper<T, TKey>>(
                      options =>
                      {
-                         options.Services = builder.Services;
-                         options.FactoryName = name ?? string.Empty;
+                         options.SetDefault(builder.Services, name);
                          tableStorageBuilder.Invoke(options);
                          options.Settings.ModelType = typeof(T);
                      },

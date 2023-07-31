@@ -76,7 +76,7 @@ namespace Microsoft.Extensions.DependencyInjection
                             lifetime);
                     serviceDescriptor = new ServiceDescriptor(@interface, implementation, lifetime);
                 }
-                if (!canOverrideConfiguration)
+                if (!map.Services.ContainsKey(name))
                     map.Services.TryAdd(name, new()
                     {
                         ServiceFactory = ServiceFactory,
