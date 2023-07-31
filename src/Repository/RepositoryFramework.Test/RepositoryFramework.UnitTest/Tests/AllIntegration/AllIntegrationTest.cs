@@ -23,7 +23,7 @@ namespace RepositoryFramework.UnitTest.Repository
                     break;
                 case "tablestorage":
                     services
-                        .AddRepository<AppUser, AppUserKey>(async settings =>
+                        .AddRepositoryAsync<AppUser, AppUserKey>(async settings =>
                         {
                             await settings
                             .WithTableStorageAsync(builder =>
@@ -35,7 +35,7 @@ namespace RepositoryFramework.UnitTest.Repository
                                     .WithRowKey(x => x.Username)
                                     .WithTimestamp(x => x.CreationTime);
                             });
-                        });
+                        }).ToResult();
                     break;
                 case "blobstorage":
                     services

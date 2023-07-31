@@ -17,6 +17,7 @@ namespace Microsoft.Extensions.DependencyInjection
             Type serviceType,
             Type implementationType,
             string? name,
+            bool canOverrideConfiguration,
             ServiceLifetime lifetime,
             object? implementationInstance,
             Func<IServiceProvider, object>? implementationFactory,
@@ -26,7 +27,7 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             return Generics
                 .WithStatic(typeof(ServiceCollectionExtesions), nameof(ServiceCollectionExtesions.AddEngineFactory), serviceType, implementationType)
-                .Invoke(services, name!, lifetime, implementationInstance!, implementationFactory!, whenExists!, addingBehaviorToFactory!);
+                .Invoke(services, name!, canOverrideConfiguration, lifetime, implementationInstance!, implementationFactory!, whenExists!, addingBehaviorToFactory!);
         }
         private static IServiceCollection AddEngineFactory<TService, TImplementation>(this IServiceCollection services,
             string? name,

@@ -11,6 +11,7 @@ namespace RepositoryFramework.UnitTest.Migration
 {
     public class MigrationTest
     {
+        public const int NumberOfItems = 100;
         private static readonly IServiceProvider? s_serviceProvider;
         static MigrationTest()
         {
@@ -20,7 +21,7 @@ namespace RepositoryFramework.UnitTest.Migration
                     builder.WithInMemory(builder =>
                     {
                         builder
-                            .PopulateWithRandomData();
+                            .PopulateWithRandomData(NumberOfItems);
                     }, "source");
                 })
                 .AddRepository<SuperMigrationUser, string>(builder =>
@@ -28,7 +29,7 @@ namespace RepositoryFramework.UnitTest.Migration
                     builder.WithInMemory(builder =>
                     {
                         builder
-                            .PopulateWithRandomData();
+                            .PopulateWithRandomData(NumberOfItems);
                     }, "target");
                 })
                     .AddMigrationManager<SuperMigrationUser, string>(settings =>
@@ -55,7 +56,7 @@ namespace RepositoryFramework.UnitTest.Migration
         public async Task TestAsync()
         {
             var migrationResult = await _migrationService.MigrateAsync(x => x.Id!, true).NoContext();
-            Assert.Equal(4, (await _repository.QueryAsync().ToListAsync().NoContext()).Count);
+            Assert.Equal(NumberOfItems * 2, (await _repository.QueryAsync().ToListAsync().NoContext()).Count);
             await foreach (var user in _from.QueryAsync())
             {
                 Assert.True((await _repository.ExistAsync(user.Key!).NoContext()).IsOk);

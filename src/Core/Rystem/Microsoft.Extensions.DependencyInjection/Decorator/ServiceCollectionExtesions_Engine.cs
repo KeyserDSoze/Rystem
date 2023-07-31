@@ -32,6 +32,7 @@
                         serviceType,
                         currentService.ImplementationType ?? currentService.ServiceType,
                         name,
+                        false,
                         lifetime,
                         currentService.ImplementationInstance,
                         currentService.ImplementationFactory,

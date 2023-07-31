@@ -140,10 +140,11 @@ namespace Rystem.Test.UnitTest.DependencyInjection
             Assert.Equal(id, serviceFromFactory.Id);
             Assert.NotNull(decorated.Service.Id);
             Assert.NotNull(decorator.Id);
+
             if (lifetime != ServiceLifetime.Transient)
-                Assert.Equal(decorated.Service.Id, decorator.Id);
+                Assert.Equal(((dynamic)decorator).Test.Id, decorated.Service.Id);
             else
-                Assert.NotEqual(decorated.Service.Id, decorator.Id);
+                Assert.NotEqual(((dynamic)decorator).Test.Id, decorated.Service.Id);
         }
     }
 }
