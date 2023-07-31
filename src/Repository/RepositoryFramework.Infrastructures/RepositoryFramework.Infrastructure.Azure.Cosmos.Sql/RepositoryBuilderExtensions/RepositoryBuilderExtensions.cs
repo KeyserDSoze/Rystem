@@ -11,21 +11,24 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="T">Model used for your repository</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
-        /// <param name="connectionSettings">Settings for your Cosmos database.</param>
-        /// <returns>IRepositoryCosmosSqlBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static async Task<IRepositoryCosmosSqlBuilder<T, TKey>> WithCosmosSqlAsync<T, TKey>(
+        /// <param name="cosmosSqlBuilder">Settings for your Cosmos database.</param>
+        /// <param name="name">Factory name</param>
+        /// <returns>IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static async Task<IRepositoryBuilder<T, TKey>> WithCosmosSqlAsync<T, TKey>(
            this IRepositoryBuilder<T, TKey> builder,
-            Action<CosmosSqlConnectionSettings> connectionSettings,
+            Action<ICosmosSqlRepositoryBuilder<T, TKey>> cosmosSqlBuilder,
             string? name = null)
             where TKey : notnull
         {
-            await builder.SetStorageAndBuildOptionsAsync<CosmosSqlRepository<T, TKey>, CosmosSqlConnectionSettings, CosmosSqlClient>(
+            await builder.SetStorageAndBuildOptionsAsync<CosmosSqlRepository<T, TKey>,
+                CosmosSqlRepositoryBuilder<T, TKey>,
+                CosmosSqlClient>(
                 options =>
                 {
-                    connectionSettings.Invoke(options);
-                    options.ModelType = typeof(T);
+                    options.Services = builder.Services;
+                    cosmosSqlBuilder.Invoke(options);
                 }, name, ServiceLifetime.Singleton).NoContext();
-            return new RepositoryCosmosSqlBuilder<T, TKey>(builder.Services);
+            return builder;
         }
         /// <summary>
         /// Add a default cosmos sql service for your command pattern.
@@ -33,21 +36,24 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="T">Model used for your repository</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">ICommandBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
-        /// <param name="connectionSettings">Settings for your Cosmos database.</param>
-        /// <returns>IRepositoryCosmosSqlBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static async Task<IRepositoryCosmosSqlBuilder<T, TKey>> WithCosmosSqlAsync<T, TKey>(
+        /// <param name="cosmosSqlBuilder">Settings for your Cosmos database.</param>
+        /// <param name="name">Factory name</param>
+        /// <returns>ICommandBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static async Task<ICommandBuilder<T, TKey>> WithCosmosSqlAsync<T, TKey>(
            this ICommandBuilder<T, TKey> builder,
-            Action<CosmosSqlConnectionSettings> connectionSettings,
+            Action<ICosmosSqlRepositoryBuilder<T, TKey>> cosmosSqlBuilder,
             string? name = null)
             where TKey : notnull
         {
-            await builder.SetStorageAndBuildOptionsAsync<CosmosSqlRepository<T, TKey>, CosmosSqlConnectionSettings, CosmosSqlClient>(
-                options =>
-                {
-                    connectionSettings.Invoke(options);
-                    options.ModelType = typeof(T);
-                }, name, ServiceLifetime.Singleton).NoContext();
-            return new RepositoryCosmosSqlBuilder<T, TKey>(builder.Services);
+            await builder.SetStorageAndBuildOptionsAsync<CosmosSqlRepository<T, TKey>,
+                 CosmosSqlRepositoryBuilder<T, TKey>,
+                 CosmosSqlClient>(
+                 options =>
+                 {
+                     options.Services = builder.Services;
+                     cosmosSqlBuilder.Invoke(options);
+                 }, name, ServiceLifetime.Singleton).NoContext();
+            return builder;
         }
         /// <summary>
         /// Add a default cosmos sql service for your query pattern.
@@ -55,21 +61,24 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="T">Model used for your repository</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">IQueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
-        /// <param name="connectionSettings">Settings for your Cosmos database.</param>
-        /// <returns>IRepositoryCosmosSqlBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static async Task<IRepositoryCosmosSqlBuilder<T, TKey>> WithCosmosSqlAsync<T, TKey>(
+        /// <param name="cosmosSqlBuilder">Settings for your Cosmos database.</param>
+        /// <param name="name">Factory name</param>
+        /// <returns>IQueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static async Task<IQueryBuilder<T, TKey>> WithCosmosSqlAsync<T, TKey>(
            this IQueryBuilder<T, TKey> builder,
-            Action<CosmosSqlConnectionSettings> connectionSettings,
+            Action<ICosmosSqlRepositoryBuilder<T, TKey>> cosmosSqlBuilder,
             string? name = null)
             where TKey : notnull
         {
-            await builder.SetStorageAndBuildOptionsAsync<CosmosSqlRepository<T, TKey>, CosmosSqlConnectionSettings, CosmosSqlClient>(
+            await builder.SetStorageAndBuildOptionsAsync<CosmosSqlRepository<T, TKey>,
+                CosmosSqlRepositoryBuilder<T, TKey>,
+                CosmosSqlClient>(
                 options =>
                 {
-                    connectionSettings.Invoke(options);
-                    options.ModelType = typeof(T);
+                    options.Services = builder.Services;
+                    cosmosSqlBuilder.Invoke(options);
                 }, name, ServiceLifetime.Singleton).NoContext();
-            return new RepositoryCosmosSqlBuilder<T, TKey>(builder.Services);
+            return builder;
         }
     }
 }

@@ -38,7 +38,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
             where TKeyReader : class, ITableStorageKeyReader<T, TKey>
         {
             _services
-                .AddOrOverrideFactory<ITableStorageKeyReader<T, TKey>, TKeyReader>(_factoryName);
+                .AddOrOverrideFactory<ITableStorageKeyReader<T, TKey>, TKeyReader>(_factoryName, ServiceLifetime.Singleton);
             return this;
         }
         private ITableStorageRepositoryBuilder<T, TKey> WithProperty<TProperty, TKeyProperty>(

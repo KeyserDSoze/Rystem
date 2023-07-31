@@ -134,10 +134,10 @@ builder.Services
     {
         settings.WithCosmosSql(x =>
         {
-            x.ConnectionString = builder.Configuration["ConnectionString:CosmosSql"];
-            x.DatabaseName = "BigDatabase";
-        })
-        .WithId(x => x.Email!);
+            x.Settings.ConnectionString = builder.Configuration["ConnectionString:CosmosSql"];
+            x.Settings.DatabaseName = "BigDatabase";
+            x.WithId(x => x.Email!);
+        });
     });
 
 #pragma warning restore S125 // Sections of code should not be commented out

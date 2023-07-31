@@ -147,12 +147,12 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                                     .AddRepositoryAsync<SuperUser, string>(
                                     async builder =>
                                     {
-                                        (await builder.WithCosmosSqlAsync(x =>
+                                        await builder.WithCosmosSqlAsync(x =>
                                         {
-                                            x.ConnectionString = configuration["ConnectionString:CosmosSql"];
-                                            x.DatabaseName = "BigDatabase";
-                                        }).NoContext())
-                                            .WithId(x => x.Email!);
+                                            x.Settings.ConnectionString = configuration["ConnectionString:CosmosSql"];
+                                            x.Settings.DatabaseName = "BigDatabase";
+                                            x.WithId(x => x.Email!);
+                                        }).NoContext();
                                         builder
                                         .AddBusiness()
                                         .AddBusinessBeforeInsert<SuperUserBeforeInsertBusiness>()

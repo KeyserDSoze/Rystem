@@ -49,12 +49,12 @@ namespace RepositoryFramework.UnitTest.Repository
                 case "cosmos":
                     services.AddRepositoryAsync<AppUser, AppUserKey>(async settings =>
                     {
-                        (await settings.WithCosmosSqlAsync(x =>
+                        await settings.WithCosmosSqlAsync(x =>
                         {
-                            x.ConnectionString = configuration["ConnectionString:CosmosSql"];
-                            x.DatabaseName = "unittestdatabase";
-                        }).NoContext())
-                        .WithId(x => new AppUserKey(x.Id));
+                            x.Settings.ConnectionString = configuration["ConnectionString:CosmosSql"];
+                            x.Settings.DatabaseName = "unittestdatabase";
+                            x.WithId(x => new AppUserKey(x.Id));
+                        }).NoContext();
                     })
                         .ToResult();
                     break;
