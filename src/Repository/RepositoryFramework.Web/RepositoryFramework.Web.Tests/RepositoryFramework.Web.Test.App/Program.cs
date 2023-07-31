@@ -12,8 +12,7 @@ builder.Services
     .AddRepositoryUi(x => x.Name = "SuperSite");
 builder.Services.AddRepository<AppUser, int>(settings =>
 {
-    settings.WithInMemory()
-    .PopulateWithRandomData(2, 2);
+    settings.WithInMemory(builder => builder.PopulateWithRandomData(2, 2));
 });
 var app = builder.Build();
 await app.Services.WarmUpAsync();

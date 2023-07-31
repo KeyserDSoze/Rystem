@@ -12,7 +12,7 @@ namespace RepositoryFramework
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern, IServiceWithOptions<TConnection>
-            where TStorageOptions : class, IOptionsToBuild<TConnection>, new()
+            where TStorageOptions : class, IOptionsBuilder<TConnection>, new()
             where TConnection : class;
         TRepositoryBuilder SetStorageWithOptions<TStorage, TStorageOptions>(Action<TStorageOptions> options, string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
            where TStorage : class, TRepositoryPattern, IServiceWithOptions<TStorageOptions>
@@ -22,7 +22,7 @@ namespace RepositoryFramework
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern, IServiceWithOptions<TConnection>
-            where TStorageOptions : class, IOptionsToBuildAsync<TConnection>, new()
+            where TStorageOptions : class, IOptionsBuilderAsync<TConnection>, new()
             where TConnection : class;
         TRepositoryBuilder SetStorage<TStorage>(string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern;

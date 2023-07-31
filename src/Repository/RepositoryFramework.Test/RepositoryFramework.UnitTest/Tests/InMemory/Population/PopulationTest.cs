@@ -16,43 +16,45 @@ namespace RepositoryFramework.UnitTest.InMemory.Population
             DiUtility.CreateDependencyInjectionWithConfiguration(out var configuration)
                  .AddRepository<User, string>(settings =>
                  {
-                     settings.WithInMemory(options =>
+                     settings.WithInMemory(builder =>
                      {
                          var writingRange = new Range(int.Parse(configuration["data_creation:delay_in_write_from"]),
                              int.Parse(configuration["data_creation:delay_in_write_to"]));
-                         options.AddForCommandPattern(new MethodBehaviorSetting
+                         builder.Settings.AddForCommandPattern(new MethodBehaviorSetting
                          {
                              MillisecondsOfWait = writingRange,
                          });
                          var readingRange = new Range(int.Parse(configuration["data_creation:delay_in_read_from"]),
                              int.Parse(configuration["data_creation:delay_in_read_to"]));
-                         options.AddForQueryPattern(new MethodBehaviorSetting
+                         builder.Settings.AddForQueryPattern(new MethodBehaviorSetting
                          {
                              MillisecondsOfWait = readingRange
                          });
-                     })
-                    .PopulateWithRandomData(100)
-                    .WithPattern(x => x.Value.Email, @"[a-z]{4,10}@gmail\.com");
+                         builder
+                            .PopulateWithRandomData(100)
+                            .WithPattern(x => x.Value.Email, @"[a-z]{4,10}@gmail\.com");
+                     });
                  })
                 .AddRepository<SuperUser, string>(settings =>
                 {
-                    settings.WithInMemory(options =>
+                    settings.WithInMemory(builder =>
                     {
                         var writingRange = new Range(int.Parse(configuration["data_creation:delay_in_write_from"]),
                             int.Parse(configuration["data_creation:delay_in_write_to"]));
-                        options.AddForCommandPattern(new MethodBehaviorSetting
+                        builder.Settings.AddForCommandPattern(new MethodBehaviorSetting
                         {
                             MillisecondsOfWait = writingRange,
                         });
                         var readingRange = new Range(int.Parse(configuration["data_creation:delay_in_read_from"]),
                             int.Parse(configuration["data_creation:delay_in_read_to"]));
-                        options.AddForQueryPattern(new MethodBehaviorSetting
+                        builder.Settings.AddForQueryPattern(new MethodBehaviorSetting
                         {
                             MillisecondsOfWait = readingRange
                         });
-                    })
-                    .PopulateWithRandomData(100)
-                    .WithPattern(x => x.Value.Email, @"[a-z]{4,10}@gmail\.com");
+                        builder
+                            .PopulateWithRandomData(100)
+                            .WithPattern(x => x.Value.Email, @"[a-z]{4,10}@gmail\.com");
+                    });
                 })
                 .Finalize(out s_serviceProvider)
                 .WarmUpAsync()

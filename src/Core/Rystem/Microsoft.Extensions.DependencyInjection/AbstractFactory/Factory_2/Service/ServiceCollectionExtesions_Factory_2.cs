@@ -22,7 +22,7 @@
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
             where TImplementation : class, TService, IServiceWithOptions<TBuiltOptions>
-            where TOptions : class, IOptionsToBuild<TBuiltOptions>, new()
+            where TOptions : class, IOptionsBuilder<TBuiltOptions>, new()
             where TBuiltOptions : class
             => services.AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, lifetime, null, null, () => SendInError<TService, TImplementation>(name ?? string.Empty));
         public static Task<IServiceCollection> AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
@@ -31,7 +31,7 @@
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
             where TImplementation : class, TService, IServiceWithOptions<TBuiltOptions>
-            where TOptions : class, IOptionsToBuildAsync<TBuiltOptions>, new()
+            where TOptions : class, IOptionsBuilderAsync<TBuiltOptions>, new()
             where TBuiltOptions : class
             => services.AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, lifetime, null, null, () => SendInError<TService, TImplementation>(name ?? string.Empty));
 

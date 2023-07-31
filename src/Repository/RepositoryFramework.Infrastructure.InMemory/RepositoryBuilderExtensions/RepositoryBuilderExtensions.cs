@@ -10,23 +10,24 @@ namespace RepositoryFramework.InMemory
         /// <typeparam name="T"></typeparam>
         /// <typeparam name="TKey"></typeparam>
         /// <param name="builder"></param>
-        /// <param name="behaviorSettings"></param>
-        /// <returns>IRepositoryInMemoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static IRepositoryInMemoryBuilder<T, TKey> WithInMemory<T, TKey>(
+        /// <param name="inMemoryBuilder"></param>
+        /// <returns>IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static IRepositoryBuilder<T, TKey> WithInMemory<T, TKey>(
             this IRepositoryBuilder<T, TKey> builder,
-            Action<RepositoryBehaviorSettings<T, TKey>>? behaviorSettings = default,
+            Action<IRepositoryInMemoryBuilder<T, TKey>>? inMemoryBuilder = null,
             string? name = null)
             where TKey : notnull
         {
-            builder.SetStorageWithOptions<InMemoryStorage<T, TKey>, RepositoryBehaviorSettings<T, TKey>>(
+            builder.SetStorageAndBuildOptions<InMemoryStorage<T, TKey>, RepositoryInMemoryBuilder<T, TKey>, RepositoryBehaviorSettings<T, TKey>>(
                 options =>
                 {
-                    behaviorSettings?.Invoke(options);
-                    CheckSettings(options);
+                    options.Services = builder.Services;
+                    options.FactoryName = name ?? string.Empty;
+                    inMemoryBuilder?.Invoke(options);
                 },
                 name,
                 ServiceLifetime.Singleton);
-            return new RepositoryInMemoryBuilder<T, TKey>(builder.Services, name ?? string.Empty);
+            return builder;
         }
         /// <summary>
         /// Add an in memory storage to your command pattern.
@@ -34,23 +35,24 @@ namespace RepositoryFramework.InMemory
         /// <typeparam name="T"></typeparam>
         /// <typeparam name="TKey"></typeparam>
         /// <param name="builder"></param>
-        /// <param name="behaviorSettings"></param>
-        /// <returns>IRepositoryInMemoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static IRepositoryInMemoryBuilder<T, TKey> WithInMemory<T, TKey>(
+        /// <param name="inMemoryBuilder"></param>
+        /// <returns>ICommandBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static ICommandBuilder<T, TKey> WithInMemory<T, TKey>(
             this ICommandBuilder<T, TKey> builder,
-            Action<RepositoryBehaviorSettings<T, TKey>>? behaviorSettings = default,
+            Action<IRepositoryInMemoryBuilder<T, TKey>>? inMemoryBuilder = null,
             string? name = null)
             where TKey : notnull
         {
-            builder.SetStorageWithOptions<InMemoryStorage<T, TKey>, RepositoryBehaviorSettings<T, TKey>>(
+            builder.SetStorageAndBuildOptions<InMemoryStorage<T, TKey>, RepositoryInMemoryBuilder<T, TKey>, RepositoryBehaviorSettings<T, TKey>>(
                 options =>
                 {
-                    behaviorSettings?.Invoke(options);
-                    CheckSettings(options);
+                    options.Services = builder.Services;
+                    options.FactoryName = name ?? string.Empty;
+                    inMemoryBuilder?.Invoke(options);
                 },
                 name,
                 ServiceLifetime.Singleton);
-            return new RepositoryInMemoryBuilder<T, TKey>(builder.Services, name ?? string.Empty);
+            return builder;
         }
         /// <summary>
         /// Add an in memory storage to your query pattern.
@@ -58,47 +60,24 @@ namespace RepositoryFramework.InMemory
         /// <typeparam name="T"></typeparam>
         /// <typeparam name="TKey"></typeparam>
         /// <param name="builder"></param>
-        /// <param name="behaviorSettings"></param>
-        /// <returns>IRepositoryInMemoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static IRepositoryInMemoryBuilder<T, TKey> WithInMemory<T, TKey>(
+        /// <param name="inMemoryBuilder"></param>
+        /// <returns>IQueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static IQueryBuilder<T, TKey> WithInMemory<T, TKey>(
             this IQueryBuilder<T, TKey> builder,
-            Action<RepositoryBehaviorSettings<T, TKey>>? behaviorSettings = default,
+            Action<IRepositoryInMemoryBuilder<T, TKey>>? inMemoryBuilder = null,
             string? name = null)
             where TKey : notnull
         {
-            builder.SetStorageWithOptions<InMemoryStorage<T, TKey>, RepositoryBehaviorSettings<T, TKey>>(
+            builder.SetStorageAndBuildOptions<InMemoryStorage<T, TKey>, RepositoryInMemoryBuilder<T, TKey>, RepositoryBehaviorSettings<T, TKey>>(
                 options =>
                 {
-                    behaviorSettings?.Invoke(options);
-                    CheckSettings(options);
+                    options.Services = builder.Services;
+                    options.FactoryName = name ?? string.Empty;
+                    inMemoryBuilder?.Invoke(options);
                 },
                 name,
                 ServiceLifetime.Singleton);
-            return new RepositoryInMemoryBuilder<T, TKey>(builder.Services, name ?? string.Empty);
-        }
-        private static void CheckSettings<T, TKey>(RepositoryBehaviorSettings<T, TKey> settings)
-             where TKey : notnull
-        {
-            Check(settings.Get(RepositoryMethods.Insert).ExceptionOdds);
-            Check(settings.Get(RepositoryMethods.Update).ExceptionOdds);
-            Check(settings.Get(RepositoryMethods.Delete).ExceptionOdds);
-            Check(settings.Get(RepositoryMethods.Batch).ExceptionOdds);
-            Check(settings.Get(RepositoryMethods.Get).ExceptionOdds);
-            Check(settings.Get(RepositoryMethods.Query).ExceptionOdds);
-            Check(settings.Get(RepositoryMethods.Exist).ExceptionOdds);
-            Check(settings.Get(RepositoryMethods.Operation).ExceptionOdds);
-            Check(settings.Get(RepositoryMethods.All).ExceptionOdds);
-
-            static void Check(List<ExceptionOdds> odds)
-            {
-                var total = odds.Sum(x => x.Percentage);
-                if (odds.Any(x => x.Percentage <= 0 || x.Percentage > 100))
-                {
-                    throw new ArgumentException("Some percentages are wrong, greater than 100% or lesser than 0.");
-                }
-                if (total > 100)
-                    throw new ArgumentException("Your total percentage is greater than 100.");
-            }
+            return builder;
         }
     }
 }

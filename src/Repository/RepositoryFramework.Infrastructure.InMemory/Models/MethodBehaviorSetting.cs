@@ -1,6 +1,6 @@
 ﻿namespace RepositoryFramework.InMemory
 {
-    public class MethodBehaviorSetting
+    public sealed class MethodBehaviorSetting
     {
         public Range MillisecondsOfWait { get; set; }
         public Range MillisecondsOfWaitWhenException { get; set; }

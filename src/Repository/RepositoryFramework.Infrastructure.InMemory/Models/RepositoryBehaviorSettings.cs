@@ -9,7 +9,7 @@ namespace RepositoryFramework.InMemory
     /// <typeparam name="T">Model used for your repository.</typeparam>
     /// <typeparam name="TKey">Key to manage your data from repository.</typeparam>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S2326:Unused type parameters should be removed", Justification = "It's not used but it's needed for the return methods that use this class.")]
-    public class RepositoryBehaviorSettings<T, TKey>
+    public sealed class RepositoryBehaviorSettings<T, TKey>
         where TKey : notnull
     {
         private readonly Dictionary<RepositoryMethods, MethodBehaviorSetting> _settings = new();

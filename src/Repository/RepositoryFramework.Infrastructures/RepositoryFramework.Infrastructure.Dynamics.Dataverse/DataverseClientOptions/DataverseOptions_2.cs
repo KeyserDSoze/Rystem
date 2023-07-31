@@ -10,7 +10,7 @@ using Microsoft.Xrm.Sdk.Query;
 
 namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
 {
-    public sealed class DataverseOptions<T, TKey> : IOptionsToBuild<DataverseClientWrapper>
+    public sealed class DataverseOptions<T, TKey> : IOptionsBuilder<DataverseClientWrapper>
     {
         public string Environment { get; set; } = null!;
         private string _prefix = "new_";

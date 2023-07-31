@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
 {
-    public class BlobStorageConnectionSettings : IOptionsToBuildAsync<BlobContainerClientWrapper>
+    public class BlobStorageConnectionSettings : IOptionsBuilderAsync<BlobContainerClientWrapper>
     {
         public Uri? EndpointUri { get; set; }
         public string? ManagedIdentityClientId { get; set; }

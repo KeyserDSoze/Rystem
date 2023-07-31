@@ -69,9 +69,12 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                                 services.AddRepository<IperUser, string>(settings =>
                                 {
                                     settings
-                                        .WithInMemory()
-                                        .PopulateWithRandomData(120, 5)
-                                        .WithPattern(x => x.Value.Email, @"[a-z]{5,10}@gmail\.com");
+                                        .WithInMemory(builder =>
+                                        {
+                                            builder
+                                                .PopulateWithRandomData(120, 5)
+                                                .WithPattern(x => x.Value.Email, @"[a-z]{5,10}@gmail\.com");
+                                        });
                                     settings
                                         .AddBusiness()
                                             .AddBusinessBeforeInsert<IperRepositoryBeforeInsertBusiness>();

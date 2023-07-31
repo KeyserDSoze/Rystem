@@ -20,134 +20,149 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation
                   .AddRepository<PopulationTest, string>(settings =>
                   {
                       settings
-                        .WithInMemory()
-                          .PopulateWithRandomData()
-                            .WithPattern(x => x.Value!.J!.First().A, "[a-z]{4,5}")
-                            .WithPattern(x => x.Value!.Y!.First().Value.A, "[a-z]{4,5}")
-                            .WithImplementation(x => x.Value!.I, typeof(MyInnerInterfaceImplementation))
-                            .WithPattern(x => x.Value!.I!.A!, "[a-z]{4,5}")
-                            .WithPattern(x => x.Value!.II!.A!, "[a-z]{4,5}")
-                            .WithImplementation<IInnerInterface, MyInnerInterfaceImplementation>(x => x.Value!.I!);
+                        .WithInMemory(builder =>
+                        {
+                            builder
+                                .PopulateWithRandomData()
+                                .WithPattern(x => x.Value!.J!.First().A, "[a-z]{4,5}")
+                                .WithPattern(x => x.Value!.Y!.First().Value.A, "[a-z]{4,5}")
+                                .WithImplementation(x => x.Value!.I, typeof(MyInnerInterfaceImplementation))
+                                .WithPattern(x => x.Value!.I!.A!, "[a-z]{4,5}")
+                                .WithPattern(x => x.Value!.II!.A!, "[a-z]{4,5}")
+                                .WithImplementation<IInnerInterface, MyInnerInterfaceImplementation>(x => x.Value!.I!);
+                        });
                   })
                 .AddRepository<RegexPopulationTest, string>(settings =>
                 {
                     settings
-                        .WithInMemory()
-                        .PopulateWithRandomData(90, 8)
-                        .WithAutoIncrement(x => x.Value!.Id, 0)
-                        .WithPattern(x => x.Value!.A, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.AA, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.B, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.BB, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.C, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.CC, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.D, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.DD, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.E, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.EE, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.F, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.FF, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.G, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.GG, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.H, "[1-9]{1,3}")
-                        .WithPattern(x => x.Value!.HH, "[1-9]{1,3}")
-                        .WithPattern(x => x.Value!.L, "[1-9]{1,3}")
-                        .WithPattern(x => x.Value!.LL, "[1-9]{1,3}")
-                        .WithPattern(x => x.Value!.M, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.MM, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.N, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.NN, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.O, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.OO, "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.P, "[1-9a-zA-Z]{5,20}")
-                        .WithPattern(x => x.Value!.Q, "true")
-                        .WithPattern(x => x.Value!.QQ, "true")
-                        .WithPattern(x => x.Value!.R, "[a-z]{1}")
-                        .WithPattern(x => x.Value!.RR, "[a-z]{1}")
-                        .WithPattern(x => x.Value!.S, "([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})")
-                        .WithPattern(x => x.Value!.SS, "([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})")
-                        .WithPattern(x => x.Value!.T, @"(?:2018|2019|2020|2021|2022)/(?:10|11|12)/(?:06|07|08) (00:00:00)")
-                        .WithPattern(x => x.Value!.TT, @"(?:2018|2019|2020|2021|2022)/(?:10|11|12)/(?:06|07|08) (00:00:00)")
-                        .WithPattern(x => x.Value!.U, "[1-9]{1,4}")
-                        .WithPattern(x => x.Value!.UU, "[1-9]{1,4}")
-                        .WithPattern(x => x.Value!.V, @"(?:10|11|12)/(?:06|07|08)/(?:2018|2019|2020|2021|2022) (00:00:00 AM \+00:00)")
-                        .WithPattern(x => x.Value!.VV, @"(?:10|11|12)/(?:06|07|08)/(?:2018|2019|2020|2021|2022) (00:00:00 AM \+00:00)")
-                        .WithPattern(x => x.Value!.Z, "[1-9]{1,2}", "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.ZZ, "[1-9]{1,2}", "[1-9]{1,2}")
-                        .WithPattern(x => x.Value!.J!.First().A, "[a-z]{4,5}")
-                        .WithPattern(x => x.Value!.Y!.First().Value.A, "[a-z]{4,5}");
+                        .WithInMemory(builder =>
+                        {
+                            builder
+                                .PopulateWithRandomData(90, 8)
+                                .WithAutoIncrement(x => x.Value!.Id, 0)
+                                .WithPattern(x => x.Value!.A, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.AA, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.B, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.BB, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.C, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.CC, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.D, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.DD, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.E, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.EE, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.F, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.FF, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.G, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.GG, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.H, "[1-9]{1,3}")
+                                .WithPattern(x => x.Value!.HH, "[1-9]{1,3}")
+                                .WithPattern(x => x.Value!.L, "[1-9]{1,3}")
+                                .WithPattern(x => x.Value!.LL, "[1-9]{1,3}")
+                                .WithPattern(x => x.Value!.M, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.MM, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.N, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.NN, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.O, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.OO, "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.P, "[1-9a-zA-Z]{5,20}")
+                                .WithPattern(x => x.Value!.Q, "true")
+                                .WithPattern(x => x.Value!.QQ, "true")
+                                .WithPattern(x => x.Value!.R, "[a-z]{1}")
+                                .WithPattern(x => x.Value!.RR, "[a-z]{1}")
+                                .WithPattern(x => x.Value!.S, "([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})")
+                                .WithPattern(x => x.Value!.SS, "([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})")
+                                .WithPattern(x => x.Value!.T, @"(?:2018|2019|2020|2021|2022)/(?:10|11|12)/(?:06|07|08) (00:00:00)")
+                                .WithPattern(x => x.Value!.TT, @"(?:2018|2019|2020|2021|2022)/(?:10|11|12)/(?:06|07|08) (00:00:00)")
+                                .WithPattern(x => x.Value!.U, "[1-9]{1,4}")
+                                .WithPattern(x => x.Value!.UU, "[1-9]{1,4}")
+                                .WithPattern(x => x.Value!.V, @"(?:10|11|12)/(?:06|07|08)/(?:2018|2019|2020|2021|2022) (00:00:00 AM \+00:00)")
+                                .WithPattern(x => x.Value!.VV, @"(?:10|11|12)/(?:06|07|08)/(?:2018|2019|2020|2021|2022) (00:00:00 AM \+00:00)")
+                                .WithPattern(x => x.Value!.Z, "[1-9]{1,2}", "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.ZZ, "[1-9]{1,2}", "[1-9]{1,2}")
+                                .WithPattern(x => x.Value!.J!.First().A, "[a-z]{4,5}")
+                                .WithPattern(x => x.Value!.Y!.First().Value.A, "[a-z]{4,5}");
+                        });
                 })
                 .AddQuery<DelegationPopulation, string>(settings =>
                 {
                     settings
-                        .WithInMemory()
-                            .PopulateWithRandomData()
-                            .WithValue(x => x.Value!.A, () => 2)
-                            .WithValue(x => x.Value!.AA, () => 2)
-                            .WithValue(x => x.Value!.B, () => (uint)2)
-                            .WithValue(x => x.Value!.BB, () => (uint)2)
-                            .WithValue(x => x.Value!.C, () => (byte)2)
-                            .WithValue(x => x.Value!.CC, () => (byte)2)
-                            .WithValue(x => x.Value!.D, () => (sbyte)2)
-                            .WithValue(x => x.Value!.DD, () => (sbyte)2)
-                            .WithValue(x => x.Value!.E, () => (short)2)
-                            .WithValue(x => x.Value!.EE, () => (short)2)
-                            .WithValue(x => x.Value!.F, () => (ushort)2)
-                            .WithValue(x => x.Value!.FF, () => (ushort)2)
-                            .WithValue(x => x.Value!.G, () => 2)
-                            .WithValue(x => x.Value!.GG, () => 2)
-                            .WithValue(x => x.Value!.H, () => (nint)2)
-                            .WithValue(x => x.Value!.HH, () => (nint)2)
-                            .WithValue(x => x.Value!.L, () => (nuint)2)
-                            .WithValue(x => x.Value!.LL, () => (nuint)2)
-                            .WithValue(x => x.Value!.M, () => 2)
-                            .WithValue(x => x.Value!.MM, () => 2)
-                            .WithValue(x => x.Value!.N, () => 2)
-                            .WithValue(x => x.Value!.NN, () => 2)
-                            .WithValue(x => x.Value!.O, () => 2)
-                            .WithValue(x => x.Value!.OO, () => 2)
-                            .WithValue(x => x.Value!.P, () => Guid.NewGuid().ToString())
-                            .WithValue(x => x.Value!.Q, () => true)
-                            .WithValue(x => x.Value!.QQ, () => true)
-                            .WithValue(x => x.Value!.R, () => 'a')
-                            .WithValue(x => x.Value!.RR, () => 'a')
-                            .WithValue(x => x.Value!.S, () => Guid.NewGuid())
-                            .WithValue(x => x.Value!.SS, () => Guid.NewGuid())
-                            .WithValue(x => x.Value!.T, () => DateTime.UtcNow)
-                            .WithValue(x => x.Value!.TT, () => DateTime.UtcNow)
-                            .WithValue(x => x.Value!.U, () => new TimeSpan(2))
-                            .WithValue(x => x.Value!.UU, () => new TimeSpan(2))
-                            .WithValue(x => x.Value!.V, () => DateTimeOffset.UtcNow)
-                            .WithValue(x => x.Value!.VV, () => DateTimeOffset.UtcNow)
-                            .WithValue(x => x.Value!.Z, () => new Range(new Index(1), new Index(2)))
-                            .WithValue(x => x.Value!.ZZ, () => new Range(new Index(1), new Index(2)))
-                            .WithValue(x => x.Value!.J, () =>
-                            {
-                                List<InnerDelegationPopulation> inners = new();
-                                for (var i = 0; i < 10; i++)
+                        .WithInMemory(builder =>
+                        {
+                            builder
+                                .PopulateWithRandomData()
+                                .WithValue(x => x.Value!.A, () => 2)
+                                .WithValue(x => x.Value!.AA, () => 2)
+                                .WithValue(x => x.Value!.B, () => (uint)2)
+                                .WithValue(x => x.Value!.BB, () => (uint)2)
+                                .WithValue(x => x.Value!.C, () => (byte)2)
+                                .WithValue(x => x.Value!.CC, () => (byte)2)
+                                .WithValue(x => x.Value!.D, () => (sbyte)2)
+                                .WithValue(x => x.Value!.DD, () => (sbyte)2)
+                                .WithValue(x => x.Value!.E, () => (short)2)
+                                .WithValue(x => x.Value!.EE, () => (short)2)
+                                .WithValue(x => x.Value!.F, () => (ushort)2)
+                                .WithValue(x => x.Value!.FF, () => (ushort)2)
+                                .WithValue(x => x.Value!.G, () => 2)
+                                .WithValue(x => x.Value!.GG, () => 2)
+                                .WithValue(x => x.Value!.H, () => (nint)2)
+                                .WithValue(x => x.Value!.HH, () => (nint)2)
+                                .WithValue(x => x.Value!.L, () => (nuint)2)
+                                .WithValue(x => x.Value!.LL, () => (nuint)2)
+                                .WithValue(x => x.Value!.M, () => 2)
+                                .WithValue(x => x.Value!.MM, () => 2)
+                                .WithValue(x => x.Value!.N, () => 2)
+                                .WithValue(x => x.Value!.NN, () => 2)
+                                .WithValue(x => x.Value!.O, () => 2)
+                                .WithValue(x => x.Value!.OO, () => 2)
+                                .WithValue(x => x.Value!.P, () => Guid.NewGuid().ToString())
+                                .WithValue(x => x.Value!.Q, () => true)
+                                .WithValue(x => x.Value!.QQ, () => true)
+                                .WithValue(x => x.Value!.R, () => 'a')
+                                .WithValue(x => x.Value!.RR, () => 'a')
+                                .WithValue(x => x.Value!.S, () => Guid.NewGuid())
+                                .WithValue(x => x.Value!.SS, () => Guid.NewGuid())
+                                .WithValue(x => x.Value!.T, () => DateTime.UtcNow)
+                                .WithValue(x => x.Value!.TT, () => DateTime.UtcNow)
+                                .WithValue(x => x.Value!.U, () => new TimeSpan(2))
+                                .WithValue(x => x.Value!.UU, () => new TimeSpan(2))
+                                .WithValue(x => x.Value!.V, () => DateTimeOffset.UtcNow)
+                                .WithValue(x => x.Value!.VV, () => DateTimeOffset.UtcNow)
+                                .WithValue(x => x.Value!.Z, () => new Range(new Index(1), new Index(2)))
+                                .WithValue(x => x.Value!.ZZ, () => new Range(new Index(1), new Index(2)))
+                                .WithValue(x => x.Value!.J, () =>
                                 {
-                                    inners.Add(new InnerDelegationPopulation()
+                                    List<InnerDelegationPopulation> inners = new();
+                                    for (var i = 0; i < 10; i++)
                                     {
-                                        A = i.ToString(),
-                                        B = i
-                                    });
-                                }
-                                return inners;
-                            });
+                                        inners.Add(new InnerDelegationPopulation()
+                                        {
+                                            A = i.ToString(),
+                                            B = i
+                                        });
+                                    }
+                                    return inners;
+                                });
+                        });
                 })
                 .AddRepository<AutoincrementModel, int>(settings =>
                 {
                     settings
-                        .WithInMemory()
-                        .PopulateWithRandomData()
-                        .WithAutoIncrement(x => x.Value!.Id, 0);
+                        .WithInMemory(builder =>
+                        {
+                            builder
+                                .PopulateWithRandomData()
+                                .WithAutoIncrement(x => x.Value!.Id, 0);
+                        });
                 })
                 .AddRepository<AutoincrementModel2, int>(settings =>
                 {
                     settings
-                        .WithInMemory()
-                        .PopulateWithRandomData()
-                        .WithAutoIncrement(x => x.Value!.Id, 1);
+                        .WithInMemory(builder =>
+                        {
+                            builder
+                                .PopulateWithRandomData()
+                                .WithAutoIncrement(x => x.Value!.Id, 1);
+                        });
                 })
                 .Finalize(out s_serviceProvider)
                 .WarmUpAsync()

@@ -38,20 +38,29 @@ builder.Services.AddQuery<IperUser, string>(x =>
 builder.Services
     .AddRepository<SuperUser, string>(settins =>
     {
-        settins.WithInMemory()
-            .PopulateWithRandomData(120, 5)
-            .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
-        settins.WithInMemory(name: "inmemory")
-            .PopulateWithRandomData(2, 5)
-            .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
+        settins.WithInMemory(builder =>
+        {
+            builder
+                .PopulateWithRandomData(120, 5)
+                .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
+        });
+        settins.WithInMemory(builder =>
+        {
+            builder
+                .PopulateWithRandomData(2, 5)
+                .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
+        }, "inmemory");
     });
 
 builder.Services.AddRepository<SuperiorUser, string>(settings =>
 {
-    settings.WithInMemory()
-        .PopulateWithRandomData(120, 5)
-        .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com")
-        .WithPattern(x => x.Value!.Port, @"[1-9]{3,4}");
+    settings.WithInMemory(builder =>
+    {
+        builder
+            .PopulateWithRandomData(120, 5)
+            .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com")
+            .WithPattern(x => x.Value!.Port, @"[1-9]{3,4}");
+    });
     settings.SetNotExposable();
 });
 

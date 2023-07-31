@@ -42,7 +42,7 @@ namespace RepositoryFramework
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern, IServiceWithOptions<TConnection>
-            where TStorageOptions : class, IOptionsToBuildAsync<TConnection>, new()
+            where TStorageOptions : class, IOptionsBuilderAsync<TConnection>, new()
             where TConnection : class
         {
             SetDefaultFrameworkBeforeStorage<TStorage>(name, serviceLifetime);
@@ -56,7 +56,7 @@ namespace RepositoryFramework
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern, IServiceWithOptions<TConnection>
-            where TStorageOptions : class, IOptionsToBuild<TConnection>, new()
+            where TStorageOptions : class, IOptionsBuilder<TConnection>, new()
             where TConnection : class
         {
             SetDefaultFrameworkBeforeStorage<TStorage>(name, serviceLifetime);

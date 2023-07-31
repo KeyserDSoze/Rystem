@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.MsSql
 {
-    internal sealed class MsSqlRepositoryBuilder<T, TKey> : IMsSqlRepositoryBuilder<T, TKey>, IOptionsToBuild<MsSqlOptions<T, TKey>>
+    internal sealed class MsSqlRepositoryBuilder<T, TKey> : IMsSqlRepositoryBuilder<T, TKey>, IOptionsBuilder<MsSqlOptions<T, TKey>>
         where TKey : notnull
     {
         public string Schema { get; set; } = "dbo";

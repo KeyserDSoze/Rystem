@@ -17,7 +17,7 @@ namespace RepositoryFramework.UnitTest.InMemory.Exceptions
             DiUtility.CreateDependencyInjectionWithConfiguration(out var configuration)
                 .AddRepository<Car, string>(settings =>
                 {
-                    settings.WithInMemory(options =>
+                    settings.WithInMemory(builder =>
                     {
                         var customExceptions = new List<ExceptionOdds>
                         {
@@ -37,7 +37,7 @@ namespace RepositoryFramework.UnitTest.InMemory.Exceptions
                                 Percentage = 40.548
                             }
                         };
-                        options.AddForRepositoryPattern(new MethodBehaviorSetting
+                        builder.Settings.AddForRepositoryPattern(new MethodBehaviorSetting
                         {
                             ExceptionOdds = customExceptions
                         });

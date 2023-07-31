@@ -13,35 +13,36 @@ builder.Services.AddApiFromRepositoryFramework()
 builder.Services
     .AddRepository<AppConfiguration, string>(settings =>
     {
-        settings.WithInMemory()
-        .PopulateWithRandomData(34, 2);
+        settings.WithInMemory(builder => builder.PopulateWithRandomData(34, 2));
     });
 
 builder.Services.AddRepository<AppGroup, string>(settings =>
 {
-    settings.WithInMemory()
-    .PopulateWithRandomData(24, 2);
+    settings.WithInMemory(builder => builder.PopulateWithRandomData(24, 2));
 });
 
 builder.Services.AddRepository<Weather, int>(settings =>
 {
-    settings.WithInMemory().PopulateWithRandomData(5, 2);
+    settings.WithInMemory(builder => builder.PopulateWithRandomData(5, 2));
 });
 
 builder.Services
     .AddRepository<AppUser, int>(settings =>
     {
-        settings.WithInMemory()
-            .PopulateWithRandomData(67, 2)
-            .WithRandomValue(x => x.Value.Groups, async serviceProvider =>
-            {
-                var repository = serviceProvider.GetService<IRepository<AppGroup, string>>()!;
-                return (await repository.ToListAsync().NoContext()).Select(x => new Group()
+        settings.WithInMemory(builder =>
+        {
+            builder
+                .PopulateWithRandomData(67, 2)
+                .WithRandomValue(x => x.Value.Groups, async serviceProvider =>
                 {
-                    Id = x.Key,
-                    Name = x.Value.Name
+                    var repository = serviceProvider.GetService<IRepository<AppGroup, string>>()!;
+                    return (await repository.ToListAsync().NoContext()).Select(x => new Group()
+                    {
+                        Id = x.Key,
+                        Name = x.Value.Name
+                    });
                 });
-            });
+        });
     });
 
 builder.Services

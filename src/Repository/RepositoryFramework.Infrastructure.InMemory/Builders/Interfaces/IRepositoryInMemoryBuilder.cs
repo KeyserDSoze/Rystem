@@ -1,13 +1,12 @@
 ﻿using System.Linq.Expressions;
 using System.Population.Random;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.InMemory
 {
     public interface IRepositoryInMemoryBuilder<T, TKey>
         where TKey : notnull
     {
-        IServiceCollection Services { get; }
+        RepositoryBehaviorSettings<T, TKey> Settings { get; }
         IRepositoryInMemoryBuilder<T, TKey> PopulateWithJsonData(
             Expression<Func<T, TKey>> navigationKey,
             string json);

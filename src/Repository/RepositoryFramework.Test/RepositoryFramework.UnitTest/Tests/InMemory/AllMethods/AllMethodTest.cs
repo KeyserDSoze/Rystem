@@ -26,8 +26,11 @@ namespace RepositoryFramework.UnitTest.AllMethods
                 .AddRepository<Animal, AnimalKey>(settings =>
                 {
                     settings
-                        .WithInMemory()
-                        .PopulateWithRandomData(100);
+                        .WithInMemory(builder =>
+                        {
+                            builder
+                                .PopulateWithRandomData(100);
+                        });
                 })
                 .Finalize(out s_serviceProvider)
                 .WarmUpAsync()

@@ -17,11 +17,19 @@ namespace RepositoryFramework.UnitTest.Migration
             DiUtility.CreateDependencyInjectionWithConfiguration(out var configuration)
                 .AddRepository<SuperMigrationUser, string>(builder =>
                 {
-                    builder.WithInMemory(name: "source").PopulateWithRandomData();
+                    builder.WithInMemory(builder =>
+                    {
+                        builder
+                            .PopulateWithRandomData();
+                    }, "source");
                 })
                 .AddRepository<SuperMigrationUser, string>(builder =>
                 {
-                    builder.WithInMemory(name: "target").PopulateWithRandomData();
+                    builder.WithInMemory(builder =>
+                    {
+                        builder
+                            .PopulateWithRandomData();
+                    }, "target");
                 })
                     .AddMigrationManager<SuperMigrationUser, string>(settings =>
                     {
