@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Minimization;
@@ -56,9 +56,9 @@ namespace Rystem.Test.UnitTest.Minimization
         [Fact]
         public void Test1()
         {
-            var value = _models.ToMinimize(';');
+            var value = _models.ToMinimize('&');
             Assert.True(value.Length < _models.ToJson().Length);
-            var models2 = value.FromMinimization<List<CsvModel>>(';');
+            var models2 = value.FromMinimization<List<CsvModel>>('&');
             Assert.Equal(_models.Count, models2.Count);
         }
         [Fact]
