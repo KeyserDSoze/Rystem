@@ -6,6 +6,7 @@
             this IServiceCollection services,
                 Action<TOptions> createOptions,
                 string? name,
+                bool canOverrideConfiguration,
                 ServiceLifetime lifetime,
                 TImplementation? implementationInstance,
                 Func<IServiceProvider, TService>? implementationFactory,
@@ -19,6 +20,7 @@
             services.AddFactory(options, name, ServiceLifetime.Singleton);
             services.AddEngineFactory(
                 name,
+                canOverrideConfiguration,
                 lifetime,
                 implementationInstance,
                 implementationFactory,
@@ -31,6 +33,7 @@
         private static IServiceCollection AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
             string? name,
+            bool canOverrideConfiguration,
             ServiceLifetime lifetime,
             TImplementation? implementationInstance,
             Func<IServiceProvider, TService>? implementationFactory,
@@ -44,7 +47,7 @@
             createOptions.Invoke(options);
             var builtOptions = options.Build();
             services.AddFactory(builtOptions, name, ServiceLifetime.Transient);
-            services.AddEngineFactory(name, lifetime,
+            services.AddEngineFactory(name, canOverrideConfiguration, lifetime,
                 implementationInstance,
                 implementationFactory,
                 whenExists,
@@ -56,6 +59,7 @@
         private static async Task<IServiceCollection> AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
             string? name,
+            bool canOverrideConfiguration,
             ServiceLifetime lifetime,
             TImplementation? implementationInstance,
             Func<IServiceProvider, TService>? implementationFactory,
@@ -69,7 +73,7 @@
             createOptions.Invoke(options);
             var builtOptions = await options.BuildAsync();
             services.AddFactory(builtOptions, name, ServiceLifetime.Transient);
-            services.AddEngineFactory(name, lifetime,
+            services.AddEngineFactory(name, canOverrideConfiguration, lifetime,
                 implementationInstance,
                 implementationFactory,
                 whenExists,

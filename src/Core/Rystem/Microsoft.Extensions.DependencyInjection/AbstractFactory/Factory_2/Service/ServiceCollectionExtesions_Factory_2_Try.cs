@@ -9,7 +9,7 @@
            where TImplementation : class, TService
         {
             var check = true;
-            services.AddEngineFactory<TService, TImplementation>(name, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check), null);
+            services.AddEngineFactory<TService, TImplementation>(name, false, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check), null);
             return check;
         }
         public static bool TryAddFactory<TService, TImplementation, TOptions>(this IServiceCollection services,
@@ -21,7 +21,7 @@
             where TOptions : class, new()
         {
             var check = true;
-            services.AddFactory<TService, TImplementation, TOptions>(createOptions, name, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check));
+            services.AddFactory<TService, TImplementation, TOptions>(createOptions, name, false, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check));
             return check;
         }
         public static bool TryAddFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
@@ -34,7 +34,7 @@
             where TBuiltOptions : class
         {
             var check = true;
-            services.AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check));
+            services.AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, false, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check));
             return check;
         }
 
@@ -49,7 +49,7 @@
         {
             var check = true;
             await services
-                .AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check));
+                .AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, false, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check));
             return check;
         }
     }

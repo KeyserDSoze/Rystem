@@ -36,9 +36,8 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
         public ITableStorageRepositoryBuilder<T, TKey> WithTableStorageKeyReader<TKeyReader>()
             where TKeyReader : class, ITableStorageKeyReader<T, TKey>
         {
-#warning it goes in error when you add another service, we need an override for Factory interface
             Services
-                .AddFactory<ITableStorageKeyReader<T, TKey>, TKeyReader>(FactoryName);
+                .AddOrOverrideFactory<ITableStorageKeyReader<T, TKey>, TKeyReader>(FactoryName);
             return this;
         }
         private ITableStorageRepositoryBuilder<T, TKey> WithProperty<TProperty, TKeyProperty>(

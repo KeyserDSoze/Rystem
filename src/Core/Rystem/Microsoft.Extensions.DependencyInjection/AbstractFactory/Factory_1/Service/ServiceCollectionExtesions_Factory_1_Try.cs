@@ -8,7 +8,7 @@
            where TService : class
         {
             var check = true;
-            services.AddEngineFactory<TService, TService>(name, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check), null);
+            services.AddEngineFactory<TService, TService>(name, false, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check), null);
             return check;
         }
         public static bool TryAddFactory<TService, TOptions>(this IServiceCollection services,
@@ -19,7 +19,7 @@
             where TOptions : class, new()
         {
             var check = true;
-            services.AddFactory<TService, TService, TOptions>(createOptions, name, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check));
+            services.AddFactory<TService, TService, TOptions>(createOptions, name, false, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check));
             return check;
         }
         public static bool TryAddFactory<TService, TOptions, TBuiltOptions>(this IServiceCollection services,
@@ -31,7 +31,7 @@
             where TBuiltOptions : class
         {
             var check = true;
-            services.AddFactory<TService, TService, TOptions, TBuiltOptions>(createOptions, name, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check));
+            services.AddFactory<TService, TService, TOptions, TBuiltOptions>(createOptions, name, false, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check));
             return check;
         }
 
@@ -45,7 +45,7 @@
         {
             var check = true;
             await services
-                .AddFactoryAsync<TService, TService, TOptions, TBuiltOptions>(createOptions, name, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check));
+                .AddFactoryAsync<TService, TService, TOptions, TBuiltOptions>(createOptions, name, false, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check));
             return check;
         }
     }

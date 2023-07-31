@@ -2,19 +2,17 @@
 {
     public static partial class ServiceCollectionExtesions
     {
-        public static bool TryAddFactory<TService, TImplementation>(this IServiceCollection services,
-            Func<IServiceProvider, TService> implementationFactory,
+        public static bool AddOrOverrideFactory<TService, TImplementation>(this IServiceCollection services,
            string? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Transient)
            where TService : class
            where TImplementation : class, TService
         {
             var check = true;
-            services.AddEngineFactory<TService, TImplementation>(name, false, lifetime, null, implementationFactory, () => InformThatItsAlreadyInstalled(ref check), null);
+            services.AddEngineFactory<TService, TImplementation>(name, true, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check), null);
             return check;
         }
-        public static bool TryAddFactory<TService, TImplementation, TOptions>(this IServiceCollection services,
-            Func<IServiceProvider, TService> implementationFactory,
+        public static bool AddOrOverrideFactory<TService, TImplementation, TOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
             string? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
@@ -23,11 +21,10 @@
             where TOptions : class, new()
         {
             var check = true;
-            services.AddFactory<TService, TImplementation, TOptions>(createOptions, name, false, lifetime, null, implementationFactory, () => InformThatItsAlreadyInstalled(ref check));
+            services.AddFactory<TService, TImplementation, TOptions>(createOptions, name, true, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check));
             return check;
         }
-        public static bool TryAddFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
-            Func<IServiceProvider, TService> implementationFactory,
+        public static bool AddOrOverrideFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
             string? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
@@ -37,12 +34,11 @@
             where TBuiltOptions : class
         {
             var check = true;
-            services.AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, false, lifetime, null, implementationFactory, () => InformThatItsAlreadyInstalled(ref check));
+            services.AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, true, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check));
             return check;
         }
 
-        public static async Task<bool> TryAddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
-            Func<IServiceProvider, TService> implementationFactory,
+        public static async Task<bool> AddOrOverrideFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
             string? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
@@ -53,7 +49,7 @@
         {
             var check = true;
             await services
-                .AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, false, lifetime, null, implementationFactory, () => InformThatItsAlreadyInstalled(ref check));
+                .AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, true, lifetime, null, null, () => InformThatItsAlreadyInstalled(ref check));
             return check;
         }
     }

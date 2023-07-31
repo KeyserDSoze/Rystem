@@ -30,6 +30,7 @@ namespace Microsoft.Extensions.DependencyInjection
         }
         private static IServiceCollection AddEngineFactory<TService, TImplementation>(this IServiceCollection services,
             string? name,
+            bool canOverrideConfiguration,
             ServiceLifetime lifetime,
             TImplementation? implementationInstance,
             Func<IServiceProvider, TService>? implementationFactory,
@@ -43,7 +44,16 @@ namespace Microsoft.Extensions.DependencyInjection
             var implementationType = typeof(TImplementation);
             services.TryAddTransient<IFactory<TService>, Factory<TService>>();
             var map = services.TryAddSingletonAndGetService<FactoryServices<TService>>();
-            if (!map.Services.ContainsKey(name))
+            if (map.Services.TryGetValue(name, out var value) && canOverrideConfiguration)
+            {
+                var descriptor = value.Descriptor;
+                var toRemove = services.Where(x => x.ServiceType == descriptor.ServiceType).ToList();
+                if (descriptor.ImplementationType != null)
+                    toRemove.AddRange(services.Where(x => x.ImplementationType == descriptor.ImplementationType));
+                foreach (var service in toRemove)
+                    services.Remove(service);
+            }
+            if (!map.Services.ContainsKey(name) || canOverrideConfiguration)
             {
                 ServiceDescriptor? serviceDescriptor = null;
                 if (implementationFactory != null)
@@ -66,11 +76,17 @@ namespace Microsoft.Extensions.DependencyInjection
                             lifetime);
                     serviceDescriptor = new ServiceDescriptor(@interface, implementation, lifetime);
                 }
-                map.Services.TryAdd(name, new()
+                if (!canOverrideConfiguration)
+                    map.Services.TryAdd(name, new()
+                    {
+                        ServiceFactory = ServiceFactory,
+                        Descriptor = serviceDescriptor,
+                    });
+                else
                 {
-                    ServiceFactory = ServiceFactory,
-                    Descriptor = serviceDescriptor,
-                });
+                    map.Services[name].ServiceFactory = ServiceFactory;
+                    map.Services[name].Descriptor = serviceDescriptor;
+                }
                 services.AddOrOverrideService(serviceProvider => ServiceFactory(serviceProvider, true), lifetime);
             }
             else
