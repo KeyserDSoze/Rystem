@@ -15,7 +15,7 @@ namespace RepositoryFramework.UnitTest
 
         static CacheTest()
         {
-            DiUtility.CreateDependencyInjectionWithConfiguration(out var configuration)
+            var services = DiUtility.CreateDependencyInjectionWithConfiguration(out var configuration)
                 .AddStackExchangeRedisCache(options =>
                 {
                     options.Configuration = configuration["ConnectionString:Redis"];
@@ -35,10 +35,12 @@ namespace RepositoryFramework.UnitTest
                         {
                             settings.ExpiringTime = TimeSpan.FromSeconds(10);
                         });
-                })
-                .Finalize(out s_serviceProvider)
-                .WarmUpAsync()
-                .ToResult();
+                });
+            var qq = services.Select(x => x).ToList();
+            services
+            .Finalize(out s_serviceProvider)
+            .WarmUpAsync()
+            .ToResult();
         }
 
         private readonly IRepository<Country, CountryKey> _repo;
