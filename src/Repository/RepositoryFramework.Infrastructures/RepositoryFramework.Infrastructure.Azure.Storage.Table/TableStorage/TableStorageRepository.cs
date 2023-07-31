@@ -7,32 +7,30 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
 {
-    internal sealed class TableStorageRepository<T, TKey> : IRepository<T, TKey>, IServiceForFactoryWithOptions<TableClientWrapper>, IServiceForFactory
+    internal sealed class TableStorageRepository<T, TKey> : IRepository<T, TKey>, IServiceForFactoryWithOptions<TableClientWrapper<T, TKey>>
         where TKey : notnull
     {
-        public void SetOptions(TableClientWrapper options)
+        public void SetOptions(TableClientWrapper<T, TKey> options)
         {
-            Options = options;
+            _options = options;
         }
         public void SetFactoryName(string name)
         {
-            _settings = _settingsFactory.Create(name);
+            _keyReader = _keyReaderFactory.Create(name);
         }
-        private TableClient Client => Options!.Client;
-        private readonly ITableStorageKeyReader<T, TKey> _keyReader;
-        private readonly IFactory<TableStorageSettings<T, TKey>> _settingsFactory;
-        private TableStorageSettings<T, TKey>? _settings;
-
-        public TableClientWrapper? Options { get; set; }
-
+        private TableClient Client => _options!.Client;
+        private TableStorageSettings<T, TKey>? Settings => _options.Settings;
+        private readonly IFactory<ITableStorageKeyReader<T, TKey>> _keyReaderFactory;
+        private ITableStorageKeyReader<T, TKey> _keyReader;
+        private TableClientWrapper<T, TKey> _options;
         public TableStorageRepository(
-            ITableStorageKeyReader<T, TKey> keyReader,
-            IFactory<TableStorageSettings<T, TKey>> settingsFactory,
-            TableClientWrapper? options = null)
+            IFactory<ITableStorageKeyReader<T, TKey>> keyReaderFactory,
+            ITableStorageKeyReader<T, TKey>? keyReader = null,
+            TableClientWrapper<T, TKey>? options = null)
         {
-            _keyReader = keyReader;
-            Options = options;
-            _settingsFactory = settingsFactory;
+            _keyReaderFactory = keyReaderFactory;
+            _keyReader = keyReader!;
+            _options = options!;
         }
         private sealed class TableEntity : ITableEntity
         {
@@ -83,7 +81,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
             var where = (filter.Operations.FirstOrDefault(x => x.Operation == FilterOperations.Where) as LambdaFilterOperation)?.Expression;
             string? filterAsString = null;
             if (where != null)
-                filterAsString = QueryStrategy.Create(where.Body, _settings!.PartitionKey, _settings!.RowKey, _settings!.Timestamp);
+                filterAsString = QueryStrategy.Create(where.Body, Settings!.PartitionKey, Settings!.RowKey, Settings!.Timestamp);
 
             var top = (filter.Operations.FirstOrDefault(x => x.Operation == FilterOperations.Top) as ValueFilterOperation)?.Value;
             var skip = (filter.Operations.FirstOrDefault(x => x.Operation == FilterOperations.Skip) as ValueFilterOperation)?.Value;

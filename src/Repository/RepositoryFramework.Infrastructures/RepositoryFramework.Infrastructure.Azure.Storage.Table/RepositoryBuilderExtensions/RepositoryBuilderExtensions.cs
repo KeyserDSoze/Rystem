@@ -11,26 +11,29 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="T">Model used for your repository</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
-        /// <param name="connectionSettings">Settings for your table storage.</param>
-        /// <returns>IRepositoryTableStorageBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static async Task<IRepositoryTableStorageBuilder<T, TKey>> WithTableStorageAsync<T, TKey>(
+        /// <param name="tableStorageBuilder">Settings for your table storage.</param>
+        /// <param name="name">Factory name.</param>
+        /// <returns>IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static async Task<IRepositoryBuilder<T, TKey>> WithTableStorageAsync<T, TKey>(
             this IRepositoryBuilder<T, TKey> builder,
-            Action<TableStorageConnectionSettings> connectionSettings,
+            Action<ITableStorageRepositoryBuilder<T, TKey>> tableStorageBuilder,
             string? name = null)
             where TKey : notnull
         {
             await builder.SetStorageAndBuildOptionsAsync<TableStorageRepository<T, TKey>,
-                TableStorageConnectionSettings,
-                TableClientWrapper>(
+                TableStorageRepositoryBuilder<T, TKey>,
+                TableClientWrapper<T, TKey>>(
                     options =>
                     {
-                        connectionSettings.Invoke(options);
-                        options.ModelType = typeof(T);
+                        options.Services = builder.Services;
+                        options.FactoryName = name ?? string.Empty;
+                        tableStorageBuilder.Invoke(options);
+                        options.Settings.ModelType = typeof(T);
                     },
                     name,
                     ServiceLifetime.Singleton)
                 .NoContext();
-            return new RepositoryTableStorageBuilder<T, TKey>(builder.Services, name ?? string.Empty);
+            return builder;
         }
         /// <summary>
         /// Add a default table storage service for your command pattern.
@@ -38,26 +41,29 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="T">Model used for your repository</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">ICommandBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
-        /// <param name="connectionSettings">Settings for your table storage.</param>
-        /// <returns>IRepositoryTableStorageBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static async Task<IRepositoryTableStorageBuilder<T, TKey>> WithTableStorageAsync<T, TKey>(
+        /// <param name="tableStorageBuilder">Settings for your table storage.</param>
+        /// <param name="name">Factory name.</param>
+        /// <returns>ICommandBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static async Task<ICommandBuilder<T, TKey>> WithTableStorageAsync<T, TKey>(
             this ICommandBuilder<T, TKey> builder,
-            Action<TableStorageConnectionSettings> connectionSettings,
+            Action<ITableStorageRepositoryBuilder<T, TKey>> tableStorageBuilder,
             string? name = null)
             where TKey : notnull
         {
             await builder.SetStorageAndBuildOptionsAsync<TableStorageRepository<T, TKey>,
-                TableStorageConnectionSettings,
-                TableClientWrapper>(
+                TableStorageRepositoryBuilder<T, TKey>,
+                TableClientWrapper<T, TKey>>(
                     options =>
                     {
-                        connectionSettings.Invoke(options);
-                        options.ModelType = typeof(T);
+                        options.Services = builder.Services;
+                        options.FactoryName = name ?? string.Empty;
+                        tableStorageBuilder.Invoke(options);
+                        options.Settings.ModelType = typeof(T);
                     },
                     name,
                     ServiceLifetime.Singleton)
                 .NoContext();
-            return new RepositoryTableStorageBuilder<T, TKey>(builder.Services, name ?? string.Empty);
+            return builder;
         }
         /// <summary>
         /// Add a default table storage service for your query pattern.
@@ -65,26 +71,29 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="T">Model used for your repository</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">IQueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
-        /// <param name="connectionSettings">Settings for your table storage.</param>
-        /// <returns>IRepositoryTableStorageBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static async Task<IRepositoryTableStorageBuilder<T, TKey>> WithTableStorageAsync<T, TKey>(
+        /// <param name="tableStorageBuilder">Settings for your table storage.</param>
+        /// <param name="name">Factory name.</param>
+        /// <returns>IQueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static async Task<IQueryBuilder<T, TKey>> WithTableStorageAsync<T, TKey>(
             this IQueryBuilder<T, TKey> builder,
-            Action<TableStorageConnectionSettings> connectionSettings,
+            Action<ITableStorageRepositoryBuilder<T, TKey>> tableStorageBuilder,
             string? name = null)
             where TKey : notnull
         {
             await builder.SetStorageAndBuildOptionsAsync<TableStorageRepository<T, TKey>,
-                TableStorageConnectionSettings,
-                TableClientWrapper>(
-                    options =>
-                    {
-                        connectionSettings.Invoke(options);
-                        options.ModelType = typeof(T);
-                    },
-                    name,
-                    ServiceLifetime.Singleton)
-                .NoContext();
-            return new RepositoryTableStorageBuilder<T, TKey>(builder.Services, name ?? string.Empty);
+                 TableStorageRepositoryBuilder<T, TKey>,
+                 TableClientWrapper<T, TKey>>(
+                     options =>
+                     {
+                         options.Services = builder.Services;
+                         options.FactoryName = name ?? string.Empty;
+                         tableStorageBuilder.Invoke(options);
+                         options.Settings.ModelType = typeof(T);
+                     },
+                     name,
+                     ServiceLifetime.Singleton)
+                 .NoContext();
+            return builder;
         }
     }
 }

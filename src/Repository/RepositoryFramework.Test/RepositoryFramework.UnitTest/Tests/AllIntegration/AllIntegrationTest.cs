@@ -25,12 +25,16 @@ namespace RepositoryFramework.UnitTest.Repository
                     services
                         .AddRepository<AppUser, AppUserKey>(async settings =>
                         {
-                            (await settings
-                            .WithTableStorageAsync(x => x.ConnectionString = configuration["ConnectionString:Storage"]))
-                            .WithTableStorageKeyReader<TableStorageKeyReader>()
-                                .WithPartitionKey(x => x.Id, x => x.Id)
-                                .WithRowKey(x => x.Username)
-                                .WithTimestamp(x => x.CreationTime);
+                            await settings
+                            .WithTableStorageAsync(builder =>
+                            {
+                                builder.Settings.ConnectionString = configuration["ConnectionString:Storage"];
+                                builder
+                                .WithTableStorageKeyReader<TableStorageKeyReader>()
+                                    .WithPartitionKey(x => x.Id, x => x.Id)
+                                    .WithRowKey(x => x.Username)
+                                    .WithTimestamp(x => x.CreationTime);
+                            });
                         });
                     break;
                 case "blobstorage":

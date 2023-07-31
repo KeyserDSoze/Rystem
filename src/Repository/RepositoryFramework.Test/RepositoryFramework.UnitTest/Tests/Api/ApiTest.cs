@@ -128,11 +128,16 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                                     settings =>
                                     {
                                         settings
-                                            .WithTableStorage(x => x.ConnectionString = configuration["ConnectionString:Storage"])
-                                            .WithPartitionKey(x => x.Id, x => x)
-                                            .WithRowKey(x => x.Name)
-                                            .WithTimestamp(x => x.Time)
-                                            .WithTableStorageKeyReader<Car2KeyStorageReader>();
+                                            .WithTableStorage(builder =>
+                                            {
+                                                builder.Settings
+                                                    .ConnectionString = configuration["ConnectionString:Storage"];
+                                                builder
+                                                     .WithPartitionKey(x => x.Id, x => x)
+                                                    .WithRowKey(x => x.Name)
+                                                    .WithTimestamp(x => x.Time)
+                                                    .WithTableStorageKeyReader<Car2KeyStorageReader>();
+                                            });
                                         settings
                                         .AddBusiness()
                                         .AddBusinessBeforeInsert<SuperCarBeforeInsertBusiness>()

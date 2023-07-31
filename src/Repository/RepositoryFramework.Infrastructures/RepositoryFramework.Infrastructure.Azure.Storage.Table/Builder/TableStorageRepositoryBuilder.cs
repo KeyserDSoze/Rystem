@@ -1,43 +1,47 @@
 ﻿using System.Linq.Expressions;
 using System.Reflection;
+using Azure.Core;
+using Azure.Data.Tables;
+using Azure.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
 {
-    internal sealed class RepositoryTableStorageBuilder<T, TKey> : IRepositoryTableStorageBuilder<T, TKey>
+    internal sealed class TableStorageRepositoryBuilder<T, TKey> : ITableStorageRepositoryBuilder<T, TKey>, IOptionsBuilderAsync<TableClientWrapper<T, TKey>>
         where TKey : notnull
     {
-        private readonly TableStorageSettings<T, TKey> _settings;
-        public IServiceCollection Services { get; }
-        public RepositoryTableStorageBuilder(IServiceCollection services, string name)
+        private readonly TableStorageSettings<T, TKey> _settings = new();
+        internal IServiceCollection Services { get; set; } = null!;
+        internal string FactoryName { get; set; } = null!;
+        public TableStorageConnectionSettings Settings { get; } = new();
+        public TableStorageRepositoryBuilder()
         {
-            Services = services;
-            _settings = new TableStorageSettings<T, TKey>();
             WithTableStorageKeyReader<DefaultTableStorageKeyReader<T, TKey>>();
-            Services.TryAddFactory(_settings, name, ServiceLifetime.Singleton);
+            AddPropertyForTableStorageBaseProperties<int, int>(string.Empty, null, null);
         }
 
-        public IRepositoryTableStorageBuilder<T, TKey> WithPartitionKey<TProperty, TKeyProperty>(
+        public ITableStorageRepositoryBuilder<T, TKey> WithPartitionKey<TProperty, TKeyProperty>(
             Expression<Func<T, TProperty>> property,
             Expression<Func<TKey, TKeyProperty>> keyProperty)
             => WithProperty(nameof(WithPartitionKey), property, keyProperty);
-        public IRepositoryTableStorageBuilder<T, TKey> WithRowKey<TProperty, TKeyProperty>(
+        public ITableStorageRepositoryBuilder<T, TKey> WithRowKey<TProperty, TKeyProperty>(
             Expression<Func<T, TProperty>> property,
             Expression<Func<TKey, TKeyProperty>> keyProperty)
             => WithProperty(nameof(WithRowKey), property, keyProperty);
-        public IRepositoryTableStorageBuilder<T, TKey> WithRowKey<TProperty>(
+        public ITableStorageRepositoryBuilder<T, TKey> WithRowKey<TProperty>(
            Expression<Func<T, TProperty>> property)
            => WithProperty<TProperty, object>(nameof(WithRowKey), property, null);
-        public IRepositoryTableStorageBuilder<T, TKey> WithTimestamp(Expression<Func<T, DateTime>> property)
+        public ITableStorageRepositoryBuilder<T, TKey> WithTimestamp(Expression<Func<T, DateTime>> property)
             => WithProperty<DateTime, object>(nameof(WithTimestamp), property, null!);
-        public IRepositoryTableStorageBuilder<T, TKey> WithTableStorageKeyReader<TKeyReader>()
+        public ITableStorageRepositoryBuilder<T, TKey> WithTableStorageKeyReader<TKeyReader>()
             where TKeyReader : class, ITableStorageKeyReader<T, TKey>
         {
+#warning it goes in error when you add another service, we need an override for Factory interface
             Services
-                .AddSingleton<ITableStorageKeyReader<T, TKey>, TKeyReader>();
+                .AddFactory<ITableStorageKeyReader<T, TKey>, TKeyReader>(FactoryName);
             return this;
         }
-        private IRepositoryTableStorageBuilder<T, TKey> WithProperty<TProperty, TKeyProperty>(
+        private ITableStorageRepositoryBuilder<T, TKey> WithProperty<TProperty, TKeyProperty>(
            string propertyName,
            Expression<Func<T, TProperty>> property,
            Expression<Func<TKey, TKeyProperty>>? keyProperty)
@@ -85,6 +89,35 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
                     _settings.Timestamp = name;
                 }
             }
+        }
+        public Task<Func<IServiceProvider, TableClientWrapper<T, TKey>>> BuildAsync()
+        {
+            if (Settings.ConnectionString != null)
+            {
+                var serviceClient = new TableServiceClient(Settings.ConnectionString, Settings.ClientOptions);
+                var tableClient = new TableClient(Settings.ConnectionString, Settings.TableName ?? Settings.ModelType.Name, Settings.ClientOptions);
+                return AddAsync(Settings.ModelType.Name, serviceClient, tableClient);
+            }
+            else if (Settings.EndpointUri != null)
+            {
+                TokenCredential defaultCredential = Settings.ManagedIdentityClientId == null ? new DefaultAzureCredential() : new ManagedIdentityCredential(Settings.ManagedIdentityClientId);
+                var serviceClient = new TableServiceClient(Settings.EndpointUri, defaultCredential, Settings.ClientOptions);
+                var tableClient = new TableClient(Settings.EndpointUri, Settings.TableName ?? Settings.ModelType.Name, defaultCredential, Settings.ClientOptions);
+                return AddAsync(Settings.ModelType.Name, serviceClient, tableClient);
+            }
+            throw new ArgumentException($"Wrong installation for {Settings.ModelType.Name} model in your repository table storage. Use managed identity or a connection string.");
+        }
+        private async Task<Func<IServiceProvider, TableClientWrapper<T, TKey>>> AddAsync(string name, TableServiceClient serviceClient, TableClient tableClient)
+        {
+            _ = await serviceClient
+                .CreateTableIfNotExistsAsync(name)
+                .NoContext();
+            var wrapper = new TableClientWrapper<T, TKey>
+            {
+                Client = tableClient,
+                Settings = _settings
+            };
+            return (serviceProvider) => wrapper;
         }
     }
 }
