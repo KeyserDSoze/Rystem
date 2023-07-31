@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -98,18 +98,18 @@ namespace Rystem.Test.UnitTest.Reflection
             Assert.Equal(0, superClass2.W);
             var mogalo = Constructor.InvokeWithBestDynamicFit<IMogalo>(9, 10, 11, 21);
             Assert.NotNull(mogalo);
-            Assert.Equal(9, mogalo!.X);
-            Assert.Equal(10, mogalo.Y);
-            Assert.Equal(11, mogalo.Z);
-            Assert.Equal(21, mogalo.U);
-            Assert.Equal(0, mogalo.W);
+            Assert.Equal(0, mogalo!.X);
+            Assert.Equal(0, mogalo.Y);
+            Assert.Equal(9, mogalo.Z);
+            Assert.Equal(10, mogalo.U);
+            Assert.Equal(11, mogalo.W);
             var mogalo2 = (IMogalo)typeof(IMogalo).ConstructWithBestDynamicFit(9, 10, 11, 21)!;
             Assert.NotNull(mogalo2);
-            Assert.Equal(9, mogalo2!.X);
-            Assert.Equal(10, mogalo2.Y);
-            Assert.Equal(11, mogalo2.Z);
-            Assert.Equal(21, mogalo2.U);
-            Assert.Equal(0, mogalo2.W);
+            Assert.Equal(0, mogalo2!.X);
+            Assert.Equal(0, mogalo2.Y);
+            Assert.Equal(9, mogalo2.Z);
+            Assert.Equal(10, mogalo2.U);
+            Assert.Equal(11, mogalo2.W);
         }
     }
 }

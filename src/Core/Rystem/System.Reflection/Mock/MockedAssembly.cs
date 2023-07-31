@@ -144,7 +144,8 @@ namespace System.Reflection
         {
             return new();
         }
-        private static MethodBuilder CreateMethod(MethodInfo methodInfo, TypeBuilder typeBuilder, Dictionary<string, bool> createdNames, Action<ILGenerator>? action = null, bool returnDefault = false)
+        private static MethodBuilder CreateMethod(MethodInfo methodInfo, TypeBuilder typeBuilder, Dictionary<string, bool> createdNames, Action<ILGenerator>? action = null, bool returnDefault = false,
+             Type[][]? parameterTypeRequiredCustomModifiers = null, Type[][]? parameterTypeOptionalCustomModifiers = null)
         {
             //todo: it doesn't work with generic methods, protected and private protected too
             var signature = ToSignature(methodInfo);
@@ -153,8 +154,13 @@ namespace System.Reflection
                 createdNames.Add(signature, true);
                 var parameters = methodInfo.GetParameters().Select(x => x.ParameterType).ToArray();
                 var methodBuilder = typeBuilder.DefineMethod(methodInfo.Name,
-                    MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
-                    methodInfo.ReturnType, parameters);
+                    methodInfo.Attributes & ~MethodAttributes.Abstract,
+                    methodInfo.CallingConvention,
+                    methodInfo.ReturnType,
+                    methodInfo.ReturnParameter.GetRequiredCustomModifiers(),
+                    methodInfo.ReturnParameter.GetOptionalCustomModifiers(),
+                    parameters,
+                    parameterTypeRequiredCustomModifiers, parameterTypeOptionalCustomModifiers);
                 var methodGenerator = methodBuilder.GetILGenerator();
                 if (action != null)
                 {
@@ -247,8 +253,10 @@ namespace System.Reflection
 
                 var isIndexer = getParameters.Length > 0;
                 var propertyType = !isIndexer ? property.PropertyType : typeof(Dictionary<,>).MakeGenericType(typeof(string), property.PropertyType);
-
-                var privateFieldBuilder = typeBuilder.DefineField(privateFieldName, propertyType, FieldAttributes.Private);
+                var attributes = FieldAttributes.Private;
+                if (property.SetMethod != null && !property.CanWrite)
+                    attributes |= FieldAttributes.InitOnly;
+                var privateFieldBuilder = typeBuilder.DefineField(privateFieldName, propertyType, attributes);
                 createdNames.Add(privateFieldName, true);
 
                 if (isIndexer)
