@@ -11,6 +11,7 @@ namespace RepositoryFramework.InMemory
         /// <typeparam name="TKey"></typeparam>
         /// <param name="builder"></param>
         /// <param name="inMemoryBuilder"></param>
+        /// <param name="name">Factory name</param>
         /// <returns>IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public static IRepositoryBuilder<T, TKey> WithInMemory<T, TKey>(
             this IRepositoryBuilder<T, TKey> builder,
@@ -36,6 +37,7 @@ namespace RepositoryFramework.InMemory
         /// <typeparam name="TKey"></typeparam>
         /// <param name="builder"></param>
         /// <param name="inMemoryBuilder"></param>
+        /// <param name="name">Factory name</param>
         /// <returns>ICommandBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public static ICommandBuilder<T, TKey> WithInMemory<T, TKey>(
             this ICommandBuilder<T, TKey> builder,
@@ -61,6 +63,7 @@ namespace RepositoryFramework.InMemory
         /// <typeparam name="TKey"></typeparam>
         /// <param name="builder"></param>
         /// <param name="inMemoryBuilder"></param>
+        /// <param name="name">Factory name</param>
         /// <returns>IQueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public static IQueryBuilder<T, TKey> WithInMemory<T, TKey>(
             this IQueryBuilder<T, TKey> builder,

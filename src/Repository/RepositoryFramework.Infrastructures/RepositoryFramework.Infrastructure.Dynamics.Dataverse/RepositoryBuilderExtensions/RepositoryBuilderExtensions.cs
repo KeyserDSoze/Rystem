@@ -12,6 +12,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
         /// <param name="dataverseBuilder">Settings for your dataverse.</param>
+        /// <param name="name">Factory name</param>
         /// <returns>IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public static IRepositoryBuilder<T, TKey> WithDataverse<T, TKey>(
             this IRepositoryBuilder<T, TKey> builder,
@@ -38,6 +39,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">ICommandBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
         /// <param name="dataverseBuilder">Settings for your dataverse.</param>
+        /// <param name="name">Factory name</param>
         /// <returns>ICommandBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public static ICommandBuilder<T, TKey> WithDataverse<T, TKey>(
             this ICommandBuilder<T, TKey> builder,
@@ -64,6 +66,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">IQueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
         /// <param name="dataverseBuilder">Settings for your dataverse.</param>
+        /// <param name="name">Factory name</param>
         /// <returns>IRepositoryDataverseBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public static IQueryBuilder<T, TKey> WithDataverse<T, TKey>(
             this IQueryBuilder<T, TKey> builder,

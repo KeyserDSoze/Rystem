@@ -14,15 +14,19 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="TContext">Specify DB context to use. Please remember to configure it in DI.</typeparam>
         /// <param name="builder">IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
         /// <param name="options">Settings for your Entity Framework connection.</param>
+        /// <param name="name">Factory name</param>
+        /// <param name="lifetime">Service lifetime</param>
         /// <returns>QueryTranslationBuilder</returns>
         public static QueryTranslationBuilder<T, TKey, T, IRepositoryBuilder<T, TKey>> WithEntityFramework<T, TKey, TContext>(
             this IRepositoryBuilder<T, TKey> builder,
-            Action<EntityFrameworkOptions<T, TKey, T, TContext>> options)
+            Action<EntityFrameworkOptions<T, TKey, T, TContext>> options,
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Scoped)
             where TKey : notnull
             where T : class
             where TContext : DbContext
         {
-            _ = builder.WithEntityFramework<T, TKey, T, TContext>(options);
+            _ = builder.WithEntityFramework<T, TKey, T, TContext>(options, name, lifetime);
             return builder.Translate<T>().WithSamePorpertiesName();
         }
         /// <summary>
@@ -33,15 +37,19 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="TContext">Specify DB context to use. Please remember to configure it in DI.</typeparam>
         /// <param name="builder">ICommandBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
         /// <param name="options">Settings for your Entity Framework connection.</param>
+        /// <param name="name">Factory name</param>
+        /// <param name="lifetime">Service lifetime</param>
         /// <returns>QueryTranslationBuilder</returns>
         public static QueryTranslationBuilder<T, TKey, T, ICommandBuilder<T, TKey>> WithEntityFramework<T, TKey, TContext>(
            this ICommandBuilder<T, TKey> builder,
-                Action<EntityFrameworkOptions<T, TKey, T, TContext>> options)
+                Action<EntityFrameworkOptions<T, TKey, T, TContext>> options,
+                string? name = null,
+                ServiceLifetime lifetime = ServiceLifetime.Scoped)
             where TKey : notnull
             where T : class
             where TContext : DbContext
         {
-            _ = builder.WithEntityFramework<T, TKey, T, TContext>(options);
+            _ = builder.WithEntityFramework<T, TKey, T, TContext>(options, name, lifetime);
             return builder.Translate<T>().WithSamePorpertiesName();
         }
         /// <summary>
@@ -52,15 +60,19 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="TContext">Specify DB context to use. Please remember to configure it in DI.</typeparam>
         /// <param name="builder">IQueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
         /// <param name="options">Settings for your Entity Framework connection.</param>
+        /// <param name="name">Factory name</param>
+        /// <param name="lifetime">Service lifetime</param>
         /// <returns>QueryTranslationBuilder</returns>
         public static QueryTranslationBuilder<T, TKey, T, IQueryBuilder<T, TKey>> WithEntityFramework<T, TKey, TContext>(
             this IQueryBuilder<T, TKey> builder,
-            Action<EntityFrameworkOptions<T, TKey, T, TContext>> options)
+            Action<EntityFrameworkOptions<T, TKey, T, TContext>> options,
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Scoped)
             where TKey : notnull
             where T : class
             where TContext : DbContext
         {
-            _ = builder.WithEntityFramework<T, TKey, T, TContext>(options);
+            _ = builder.WithEntityFramework<T, TKey, T, TContext>(options, name, lifetime);
             return builder.Translate<T>().WithSamePorpertiesName();
         }
     }

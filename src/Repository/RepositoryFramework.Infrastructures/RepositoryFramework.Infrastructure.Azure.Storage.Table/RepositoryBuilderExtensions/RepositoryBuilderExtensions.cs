@@ -70,7 +70,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">IQueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
         /// <param name="tableStorageBuilder">Settings for your table storage.</param>
-        /// <param name="name">Factory name.</param>
+        /// <param name="name">Factory name</param>
         /// <returns>IQueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public static async Task<IQueryBuilder<T, TKey>> WithTableStorageAsync<T, TKey>(
             this IQueryBuilder<T, TKey> builder,
