@@ -14,10 +14,12 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="TKey">Key to retrieve, update or delete your data from repository.</typeparam>
         /// <param name="services">IServiceCollection.</param>
         /// <param name="options">Settings for migration.</param>
+        /// <param name="name">Factory name.</param>
         /// <returns>IServiceCollection</returns>
         public static IServiceCollection AddMigrationManager<T, TKey>(
             this IServiceCollection services,
-            Action<MigrationOptions<T, TKey>> options)
+            Action<MigrationOptions<T, TKey>> options,
+            string? name = null)
           where TKey : notnull
         {
             var migrationOptions = new MigrationOptions<T, TKey>();
@@ -28,9 +30,10 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 throw new ArgumentException("It's not possibile to migrate the same source. You have to set SourceFactoryName and DestinationFactoryName with different values.");
             }
-            services.TryAddSingleton(migrationOptions);
             services
-                .TryAddTransient<IMigrationManager<T, TKey>, MigrationManager<T, TKey>>();
+                .AddFactory<IMigrationManager<T, TKey>, MigrationManager<T, TKey>, MigrationOptions<T, TKey>>(
+                options,
+                name);
             return services;
         }
     }
