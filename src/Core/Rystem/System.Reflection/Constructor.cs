@@ -20,7 +20,7 @@ namespace System.Reflection
                 if (Constructor == null)
                     return null;
                 var valuesForConstructor = new object[ConstructorIndex.Count];
-                for (int i = 0; i < ConstructorIndex.Count; i++)
+                for (var i = 0; i < ConstructorIndex.Count; i++)
                 {
                     valuesForConstructor[i] = args[ConstructorIndex[i]];
                 }
@@ -37,11 +37,11 @@ namespace System.Reflection
                 return entity;
             }
         }
-        private static readonly ConcurrentDictionary<string, Constructable> Constructors = new();
+        private static readonly ConcurrentDictionary<string, Constructable> s_constructors = new();
         public static object? ConstructWithBestDynamicFit(this Type type, params object[] args)
         {
-            string argsKey =$"{type.FullName}_{string.Join("_", args.Select(x => x.GetType().FullName))}";
-            if (!Constructors.ContainsKey(argsKey))
+            var argsKey = $"{type.FullName}_{string.Join("_", args.Select(x => x.GetType().FullName))}";
+            if (!s_constructors.ContainsKey(argsKey))
             {
                 var constructors = type.FecthConstructors();
                 if (constructors.Length == 0)
@@ -56,7 +56,7 @@ namespace System.Reflection
                     List<int> constructorIndex = new();
                     foreach (var property in parameters)
                     {
-                        for (int i = 0; i < args.Length; i++)
+                        for (var i = 0; i < args.Length; i++)
                             if (!constructorIndex.Contains(i) && args[i].GetType() == property.ParameterType)
                             {
                                 constructorIndex.Add(i);
@@ -71,11 +71,11 @@ namespace System.Reflection
                     {
                         var settableProperties = type.FetchProperties().Where(x => x.SetMethod != null).ToList();
                         List<int> propertyIndex = new();
-                        for (int i = 0; i < args.Length; i++)
+                        for (var i = 0; i < args.Length; i++)
                         {
                             if (!constructorIndex.Contains(i) && !constructable.PropertyIndex.Contains(i))
                             {
-                                for (int j = 0; j < settableProperties.Count; j++)
+                                for (var j = 0; j < settableProperties.Count; j++)
                                 {
                                     if (!propertyIndex.Contains(j) && settableProperties[j].PropertyType == args[i].GetType())
                                     {
@@ -88,11 +88,11 @@ namespace System.Reflection
                             }
                         }
                     }
-                    Constructors.TryAdd(argsKey, constructable);
+                    s_constructors.TryAdd(argsKey, constructable);
                     break;
                 }
             }
-            return Constructors[argsKey].Construct(args);
+            return s_constructors[argsKey].Construct(args);
         }
     }
 }
