@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    public interface IFactoryService
+    public interface IServiceForFactory
     {
         void SetFactoryName(string name);
     }

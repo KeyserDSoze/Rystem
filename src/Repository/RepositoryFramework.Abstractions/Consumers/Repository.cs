@@ -2,7 +2,7 @@
 
 namespace RepositoryFramework
 {
-    internal class Repository<T, TKey> : IRepository<T, TKey>, IFactoryService
+    internal class Repository<T, TKey> : IRepository<T, TKey>, IServiceForFactory
         where TKey : notnull
     {
         private Lazy<Query<T, TKey>> _query;

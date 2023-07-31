@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    public interface IServiceOptions<out TService> : IServiceOptions
+    public interface IOptionsToBuild<out TService> : IOptionsToBuild
         where TService : class
     {
         Func<IServiceProvider, TService> Build();

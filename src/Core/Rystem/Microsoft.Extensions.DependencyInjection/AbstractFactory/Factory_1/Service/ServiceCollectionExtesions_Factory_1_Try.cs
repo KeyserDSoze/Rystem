@@ -27,7 +27,7 @@
             string? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class, IServiceWithOptions<TBuiltOptions>
-            where TOptions : class, IServiceOptions<TBuiltOptions>, new()
+            where TOptions : class, IOptionsToBuild<TBuiltOptions>, new()
             where TBuiltOptions : class
         {
             var check = true;
@@ -40,7 +40,7 @@
             string? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class, IServiceWithOptions<TBuiltOptions>
-            where TOptions : class, IServiceOptionsAsync<TBuiltOptions>, new()
+            where TOptions : class, IOptionsToBuildAsync<TBuiltOptions>, new()
             where TBuiltOptions : class
         {
             var check = true;

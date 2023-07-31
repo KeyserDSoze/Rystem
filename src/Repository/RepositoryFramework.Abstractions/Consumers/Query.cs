@@ -2,7 +2,7 @@
 
 namespace RepositoryFramework
 {
-    internal class Query<T, TKey> : IQuery<T, TKey>, IFactoryService
+    internal class Query<T, TKey> : IQuery<T, TKey>, IServiceForFactory
         where TKey : notnull
     {
         private IQueryPattern<T, TKey> _query;

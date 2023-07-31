@@ -11,7 +11,7 @@ namespace Rystem.Test.UnitTest.DependencyInjection
         string Id { get; }
         string FactoryName { get; }
     }
-    public class TestService : ITestService, IFactoryService, IDecoratorService<ITestService>, IServiceWithOptions<TestOptions>
+    public class TestService : ITestService, IServiceForFactory, IDecoratorService<ITestService>, IServiceWithOptions<TestOptions>
     {
         public string Id => Options.ClassicName;
         public string FactoryName { get; private set; }
@@ -35,7 +35,7 @@ namespace Rystem.Test.UnitTest.DependencyInjection
     {
         public string ClassicName { get; set; }
     }
-    public class DecoratorTestService : ITestService, IDecoratorService<ITestService>, IServiceWithOptions<TestOptions>, IFactoryService
+    public class DecoratorTestService : ITestService, IDecoratorService<ITestService>, IServiceWithOptions<TestOptions>, IServiceForFactory
     {
         public string Id => $"Decoration {Test.Id} with same Options {Options.ClassicName}";
         public ITestService Test { get; private set; }

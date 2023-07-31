@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    public interface IServiceWithOptions
+    public interface IOptionsToBuild
     {
     }
 }

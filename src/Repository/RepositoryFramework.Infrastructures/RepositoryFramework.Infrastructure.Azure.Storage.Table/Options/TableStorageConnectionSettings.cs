@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
 {
-    public class TableStorageConnectionSettings : IServiceOptionsAsync<TableClientWrapper>
+    public class TableStorageConnectionSettings : IOptionsToBuildAsync<TableClientWrapper>
     {
         public Uri? EndpointUri { get; set; }
         public string? ManagedIdentityClientId { get; set; }

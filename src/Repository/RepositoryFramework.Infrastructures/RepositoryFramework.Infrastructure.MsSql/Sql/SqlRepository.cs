@@ -68,7 +68,7 @@ namespace RepositoryFramework.Infrastructure.MsSql
         }
         public async Task<State<T, TKey>> InsertAsync(TKey key, T value, CancellationToken cancellationToken = default)
         {
-            var parameters = _options!.SetEntityForDatabase(value, key);
+            var parameters = _options!.SetEntityForDatabase(value);
             var command = await GetCommandAsync(string.Format(_options.Insert,
                 string.Join(',', parameters.Select(x => $"[{x.ParameterName}]")),
                 string.Join(',', parameters.Select(x => $"@{x.ParameterName}"))),
@@ -78,7 +78,7 @@ namespace RepositoryFramework.Infrastructure.MsSql
         }
         public async Task<State<T, TKey>> UpdateAsync(TKey key, T value, CancellationToken cancellationToken = default)
         {
-            var parameters = _options!.SetEntityForDatabase(value, key);
+            var parameters = _options!.SetEntityForDatabase(value);
             var command = await GetCommandAsync(string.Format(_options.Update,
                 string.Join(',', parameters.Select(x => $"[{x.ParameterName}]=@{x.ParameterName}"))),
                 parameters);

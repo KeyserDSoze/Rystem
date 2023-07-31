@@ -117,7 +117,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
                     addingBehaviorToFactory?.Invoke(serviceProvider, service);
                     afterCreation?.Invoke(service);
-                    if (service is IFactoryService factoryService)
+                    if (service is IServiceForFactory factoryService)
                         factoryService.SetFactoryName(name);
                     foreach (var behavior in factory.FurtherBehaviors.Select(x => x.Value))
                         service = behavior.Invoke(serviceProvider, service);

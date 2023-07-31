@@ -11,31 +11,24 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="T">Model used for your repository</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">Builder for your repository.</param>
-        /// <param name="options">Settings for your MsSql connection.</param>
-        /// <returns>IRepositoryMsSqlBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static IRepositoryMsSqlBuilder<T, TKey> WithMsSql<T, TKey>(
+        /// <param name="sqlBuilder">Settings for your MsSql connection.</param>
+        /// <returns>IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static IRepositoryBuilder<T, TKey> WithMsSql<T, TKey>(
            this IRepositoryBuilder<T, TKey> builder,
-               Action<MsSqlOptions<T, TKey>> options,
+               Action<IMsSqlRepositoryBuilder<T, TKey>> sqlBuilder,
                string? name = null,
                ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TKey : notnull
         {
-            var sqlBuilder = new RepositoryMsSqlBuilder<T, TKey>(builder.Services);
-            builder.SetStorageWithOptions<SqlRepository<T, TKey>, MsSqlOptions<T, TKey>>(
-                settings =>
-                {
-                    options.Invoke(settings);
-                    settings.RefreshColumnNames();
-                    foreach (var action in sqlBuilder.ActionsToDoDuringSettingsSetup)
-                        action.Invoke(settings);
-                },
+            builder.SetStorageAndBuildOptions<SqlRepository<T, TKey>, MsSqlRepositoryBuilder<T, TKey>, MsSqlOptions<T, TKey>>(
+                sqlBuilder,
                 name,
                 serviceLifetime);
             builder.Services.AddWarmUp(serviceProvider =>
                 (serviceProvider.GetRequiredService<IFactory<IRepository<T, TKey>>>()!.Create(name ?? string.Empty)
                     as SqlRepository<T, TKey>)!.MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync(
                     ));
-            return sqlBuilder;
+            return builder;
         }
         /// <summary>
         /// Add a default MsSql service for your command pattern.
@@ -43,63 +36,49 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="T">Model used for your repository</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">Builder for your repository.</param>
-        /// <param name="options">Settings for your MsSql connection.</param>
-        /// <returns>IRepositoryMsSqlBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static IRepositoryMsSqlBuilder<T, TKey> WithMsSql<T, TKey>(
+        /// <param name="sqlBuilder">Settings for your MsSql connection.</param>
+        /// <returns>ICommandBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static ICommandBuilder<T, TKey> WithMsSql<T, TKey>(
            this ICommandBuilder<T, TKey> builder,
-               Action<MsSqlOptions<T, TKey>> options,
+               Action<IMsSqlRepositoryBuilder<T, TKey>> sqlBuilder,
                string? name = null,
                ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TKey : notnull
         {
-            var sqlBuilder = new RepositoryMsSqlBuilder<T, TKey>(builder.Services);
-            builder.SetStorageWithOptions<SqlRepository<T, TKey>, MsSqlOptions<T, TKey>>(
-                settings =>
-                {
-                    options.Invoke(settings);
-                    settings.RefreshColumnNames();
-                    foreach (var action in sqlBuilder.ActionsToDoDuringSettingsSetup)
-                        action.Invoke(settings);
-                },
-                name,
-                serviceLifetime);
+            builder.SetStorageAndBuildOptions<SqlRepository<T, TKey>, MsSqlRepositoryBuilder<T, TKey>, MsSqlOptions<T, TKey>>(
+               sqlBuilder,
+               name,
+               serviceLifetime);
             builder.Services.AddWarmUp(serviceProvider =>
                 (serviceProvider.GetRequiredService<IFactory<ICommand<T, TKey>>>()!.Create(name ?? string.Empty)
                     as SqlRepository<T, TKey>)!.MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync(
                     ));
-            return sqlBuilder;
+            return builder;
         }
         /// <summary>
         /// Add a default MsSql service for your query pattern.
         /// </summary>
         /// <typeparam name="T">Model used for your repository</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
-        /// <param name="builder">Builder for your repository.</param>
+        /// <param name="sqlBuilder">Builder for your repository.</param>
         /// <param name="options">Settings for your MsSql connection.</param>
-        /// <returns>IRepositoryMsSqlBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static IRepositoryMsSqlBuilder<T, TKey> WithMsSql<T, TKey>(
+        /// <returns>IQueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static IQueryBuilder<T, TKey> WithMsSql<T, TKey>(
            this IQueryBuilder<T, TKey> builder,
-               Action<MsSqlOptions<T, TKey>> options,
+               Action<IMsSqlRepositoryBuilder<T, TKey>> sqlBuilder,
                string? name = null,
                ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TKey : notnull
         {
-            var sqlBuilder = new RepositoryMsSqlBuilder<T, TKey>(builder.Services);
-            builder.SetStorageWithOptions<SqlRepository<T, TKey>, MsSqlOptions<T, TKey>>(
-                settings =>
-                {
-                    options.Invoke(settings);
-                    settings.RefreshColumnNames();
-                    foreach (var action in sqlBuilder.ActionsToDoDuringSettingsSetup)
-                        action.Invoke(settings);
-                },
-                name,
-                serviceLifetime);
+            builder.SetStorageAndBuildOptions<SqlRepository<T, TKey>, MsSqlRepositoryBuilder<T, TKey>, MsSqlOptions<T, TKey>>(
+               sqlBuilder,
+               name,
+               serviceLifetime);
             builder.Services.AddWarmUp(serviceProvider =>
                 (serviceProvider.GetRequiredService<IFactory<IQuery<T, TKey>>>()!.Create(name ?? string.Empty)
                     as SqlRepository<T, TKey>)!.MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync(
                     ));
-            return sqlBuilder;
+            return builder;
         }
     }
 }

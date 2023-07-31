@@ -7,22 +7,19 @@ using Microsoft.Data.SqlClient;
 
 namespace RepositoryFramework.Infrastructure.MsSql
 {
-    public sealed class MsSqlOptions<T, TKey>
+    internal sealed class MsSqlOptions<T, TKey>
         where TKey : notnull
     {
         public string Schema { get; set; } = "dbo";
         public string TableName { get; set; } = typeof(T).Name;
         public string ConnectionString { get; set; } = null!;
-        public Type ModelType { get; } = typeof(T);
-        public Type KeyType { get; } = typeof(TKey);
-        public bool KeyIsPrimitive { get; } = typeof(TKey).IsPrimitive();
-        public string? PrimaryKey { get; internal set; }
+        internal string? PrimaryKey { get; set; }
+        internal bool KeyIsPrimitive { get; } = typeof(TKey).IsPrimitive();
         internal List<PropertyHelper<T>> Properties { get; } = new();
         public MsSqlOptions()
         {
             foreach (var property in typeof(T).GetProperties())
                 Properties.Add(new PropertyHelper<T>(property));
-            RefreshColumnNames();
         }
         internal string Top1 { get; private set; } = null!;
         internal string Exist { get; private set; } = null!;
@@ -40,7 +37,7 @@ namespace RepositoryFramework.Infrastructure.MsSql
             Insert = $"INSERT INTO [{Schema}].[{TableName}] ({{0}}) VALUES ({{1}});";
             Update = $"Update [{Schema}].[{TableName}] SET {{0}} where [{PrimaryKey}] = @Key";
         }
-        internal List<SqlParameter> SetEntityForDatabase(T entity, TKey key)
+        internal List<SqlParameter> SetEntityForDatabase(T entity)
         {
             List<SqlParameter> parameters = new();
             foreach (var property in Properties)

@@ -37,7 +37,7 @@
             Action? whenExists)
                where TService : class
                where TImplementation : class, TService, IServiceWithOptions<TBuiltOptions>
-               where TOptions : class, IServiceOptions<TBuiltOptions>, new()
+               where TOptions : class, IOptionsToBuild<TBuiltOptions>, new()
                where TBuiltOptions : class
         {
             TOptions options = new();
@@ -62,7 +62,7 @@
             Action? whenExists)
                 where TService : class
                 where TImplementation : class, TService, IServiceWithOptions<TBuiltOptions>
-                where TOptions : class, IServiceOptionsAsync<TBuiltOptions>, new()
+                where TOptions : class, IOptionsToBuildAsync<TBuiltOptions>, new()
                 where TBuiltOptions : class
         {
             TOptions options = new();

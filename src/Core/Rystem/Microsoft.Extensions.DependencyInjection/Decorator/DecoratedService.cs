@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    internal sealed class DecoratedService<TService> : IDecoratedService<TService>, IFactoryService
+    internal sealed class DecoratedService<TService> : IDecoratedService<TService>, IServiceForFactory
         where TService : class
     {
         public TService Service { get; }

@@ -1,7 +1,6 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    public interface IServiceWithOptions<TOptions> : IServiceWithOptions
+    public interface IServiceWithOptions
     {
-        void SetOptions(TOptions options);
     }
 }

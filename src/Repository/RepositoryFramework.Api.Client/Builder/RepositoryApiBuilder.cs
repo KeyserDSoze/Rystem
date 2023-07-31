@@ -3,7 +3,7 @@ using RepositoryFramework.Api.Client;
 
 namespace RepositoryFramework
 {
-    public sealed class RepositoryApiBuilder<T, TKey> : IServiceOptions<ApiClientSettings<T, TKey>>
+    public sealed class RepositoryApiBuilder<T, TKey> : IOptionsToBuild<ApiClientSettings<T, TKey>>
         where TKey : notnull
     {
         internal IServiceCollection Services { get; set; }

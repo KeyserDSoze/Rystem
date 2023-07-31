@@ -174,20 +174,20 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                                    AddRepository<Cat, Guid>(settings =>
                                    {
                                        settings
-                                        .WithMsSql(x =>
+                                        .WithMsSql(builder =>
                                         {
-                                            x.Schema = "repo";
-                                            x.ConnectionString = configuration["ConnectionString:Database"];
-                                        })
-                                            .WithPrimaryKey(x => x.Id, x =>
+                                            builder.Schema = "repo";
+                                            builder.ConnectionString = configuration["ConnectionString:Database"];
+                                            builder.WithPrimaryKey(x => x.Id, x =>
+                                              {
+                                                  x.ColumnName = "Key";
+                                              })
+                                            .WithColumn(x => x.Paws, x =>
                                             {
-                                                x.ColumnName = "Key";
-                                            })
-                                           .WithColumn(x => x.Paws, x =>
-                                           {
-                                               x.ColumnName = "Zampe";
-                                               x.IsNullable = true;
-                                           });
+                                                x.ColumnName = "Zampe";
+                                                x.IsNullable = true;
+                                            });
+                                        });
                                    });
                                 services.
                                   AddBusinessForRepository<Cat, Guid>()

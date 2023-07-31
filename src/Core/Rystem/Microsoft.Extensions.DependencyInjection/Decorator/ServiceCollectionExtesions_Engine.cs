@@ -73,7 +73,7 @@
                 {
                     var factory = serviceProvider.GetRequiredService<IFactory<TService>>();
                     var service = factory.CreateWithoutDecoration(name);
-                    if (service is IFactoryService factoryService)
+                    if (service is IServiceForFactory factoryService)
                         factoryService.SetFactoryName(name ?? string.Empty);
                     return new DecoratedService<TService>(service);
                 }, lifetime);
