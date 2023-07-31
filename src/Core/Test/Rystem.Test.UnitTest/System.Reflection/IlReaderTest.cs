@@ -53,7 +53,7 @@ namespace Rystem.Test.UnitTest.Reflection
         [Fact]
         public void Test3()
         {
-            var method = typeof(Sulo).GetMethod(nameof(Sulo.Something3), BindingFlags.Public | BindingFlags.Instance);
+            var method = typeof(Sulo).GetMethod(nameof(Sulo.Something), BindingFlags.Public | BindingFlags.Instance);
             var value = method.GetInstructions();
             Assert.Equal(value[1].Operand, "dddd");
         }
