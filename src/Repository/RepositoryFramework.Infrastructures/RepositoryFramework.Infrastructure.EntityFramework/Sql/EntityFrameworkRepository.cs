@@ -5,11 +5,15 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.EntityFramework
 {
-    internal sealed class EntityFrameworkRepository<T, TKey, TEntityModel, TContext> : IRepository<T, TKey>, IServiceWithOptions<EntityFrameworkOptions<T, TKey, TEntityModel, TContext>>
+    internal sealed class EntityFrameworkRepository<T, TKey, TEntityModel, TContext> : IRepository<T, TKey>, IServiceForFactoryWithOptions<EntityFrameworkOptions<T, TKey, TEntityModel, TContext>>
         where TEntityModel : class
         where TKey : notnull
         where TContext : DbContext
     {
+        public void SetFactoryName(string name)
+        {
+            return;
+        }
         private readonly TContext _context;
         private readonly IRepositoryMapper<T, TKey, TEntityModel> _mapper;
         private DbSet<TEntityModel> _dbSet = null!;

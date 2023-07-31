@@ -22,7 +22,7 @@ namespace Rystem.Content
             Action<TOptions> options,
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
-            where TFileRepository : class, IContentRepository, IServiceWithOptions<TOptions>
+            where TFileRepository : class, IContentRepository, IServiceForFactoryWithOptions<TOptions>
             where TOptions : class, new()
         {
             Services.AddFactory<IContentRepository, TFileRepository, TOptions>(options, name, serviceLifetime);
@@ -32,7 +32,7 @@ namespace Rystem.Content
             Action<TOptions> options,
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
-            where TFileRepository : class, IContentRepository, IServiceWithOptions<TConnection>
+            where TFileRepository : class, IContentRepository, IServiceForFactoryWithOptions<TConnection>
             where TOptions : class, IOptionsBuilderAsync<TConnection>, new()
             where TConnection : class
         {

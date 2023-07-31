@@ -8,21 +8,23 @@ using Microsoft.Xrm.Sdk.Query;
 
 namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
 {
-    internal sealed class DataverseRepository<T, TKey> : IRepository<T, TKey>, IServiceWithOptions<DataverseClientWrapper>
+    internal sealed class DataverseRepository<T, TKey> : IRepository<T, TKey>, IServiceForFactoryWithOptions<DataverseClientWrapper<T, TKey>>
         where TKey : notnull
     {
-        public void SetOptions(DataverseClientWrapper options)
+        public void SetOptions(DataverseClientWrapper<T, TKey> options)
         {
             Options = options;
         }
-        private ServiceClient Client => Options!.Client;
-        public DataverseOptions<T, TKey> Settings { get; }
-        public DataverseClientWrapper? Options { get; set; }
-        public DataverseRepository(DataverseOptions<T, TKey> settings,
-            DataverseClientWrapper? options = null)
+        public void SetFactoryName(string name)
         {
-            Settings = settings;
-            Options = options;
+            return;
+        }
+        private ServiceClient Client => Options!.Client;
+        public DataverseOptions<T, TKey> Settings => Options.Settings;
+        public DataverseClientWrapper<T, TKey> Options { get; set; }
+        public DataverseRepository(DataverseClientWrapper<T, TKey>? options = null)
+        {
+            Options = options!;
         }
         public async Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default)
         {

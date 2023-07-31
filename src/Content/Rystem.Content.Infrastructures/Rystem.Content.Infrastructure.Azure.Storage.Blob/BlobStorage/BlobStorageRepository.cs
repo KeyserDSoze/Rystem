@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Rystem.Content.Infrastructure.Storage
 {
-    internal sealed class BlobStorageRepository : IContentRepository, IServiceWithOptions<BlobServiceClientWrapper>
+    internal sealed class BlobStorageRepository : IContentRepository, IServiceForFactoryWithOptions<BlobServiceClientWrapper>
     {
         public void SetOptions(BlobServiceClientWrapper options)
         {
@@ -164,6 +164,11 @@ namespace Rystem.Content.Infrastructure.Storage
                 await blobClient.SetTagsAsync(options.Tags, cancellationToken: cancellationToken).NoContext();
             }
             return true;
+        }
+
+        public void SetFactoryName(string name)
+        {
+            return;
         }
     }
 }

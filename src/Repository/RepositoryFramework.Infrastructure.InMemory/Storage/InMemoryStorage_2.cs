@@ -6,12 +6,16 @@ using Microsoft.Extensions.DependencyInjection;
 namespace RepositoryFramework.InMemory
 {
     internal class InMemoryStorage<T, TKey> : IRepository<T, TKey>,
-        IServiceWithOptions<RepositoryBehaviorSettings<T, TKey>>
+        IServiceForFactoryWithOptions<RepositoryBehaviorSettings<T, TKey>>
         where TKey : notnull
     {
         public void SetOptions(RepositoryBehaviorSettings<T, TKey> options)
         {
             Options = options;
+        }
+        public void SetFactoryName(string name)
+        {
+            return;
         }
         public RepositoryBehaviorSettings<T, TKey>? Options { get; set; }
         private readonly ConcurrentDictionary<string, Entity<T, TKey>> _values = new();

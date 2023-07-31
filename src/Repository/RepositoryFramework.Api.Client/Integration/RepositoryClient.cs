@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Api.Client
 {
-    internal sealed class RepositoryClient<T, TKey> : IRepository<T, TKey>, IServiceWithOptions<ApiClientSettings<T, TKey>>
+    internal sealed class RepositoryClient<T, TKey> : IRepository<T, TKey>, IServiceForFactoryWithOptions<ApiClientSettings<T, TKey>>
         where TKey : notnull
     {
         private readonly HttpClient _httpClient;
@@ -182,6 +182,11 @@ namespace RepositoryFramework.Api.Client
             var response = await client.PostAsJsonAsync(_options!.BatchPath, operations, cancellationToken).NoContext();
             response.EnsureSuccessStatusCode();
             return (await response.Content.ReadFromJsonAsync<BatchResults<T, TKey>>(cancellationToken: cancellationToken).NoContext())!;
+        }
+
+        public void SetFactoryName(string name)
+        {
+            return;
         }
     }
 }

@@ -17,7 +17,7 @@
             Action<TOptions> createOptions,
             string? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
-            where TService : class, IServiceWithOptions<TOptions>
+            where TService : class, IServiceForFactoryWithOptions<TOptions>
             where TOptions : class, new()
         {
             var check = true;
@@ -29,7 +29,7 @@
             Action<TOptions> createOptions,
             string? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
-            where TService : class, IServiceWithOptions<TBuiltOptions>
+            where TService : class, IServiceForFactoryWithOptions<TBuiltOptions>
             where TOptions : class, IOptionsBuilder<TBuiltOptions>, new()
             where TBuiltOptions : class
         {
@@ -43,7 +43,7 @@
             Action<TOptions> createOptions,
             string? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
-            where TService : class, IServiceWithOptions<TBuiltOptions>
+            where TService : class, IServiceForFactoryWithOptions<TBuiltOptions>
             where TOptions : class, IOptionsBuilderAsync<TBuiltOptions>, new()
             where TBuiltOptions : class
         {

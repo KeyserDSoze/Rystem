@@ -159,12 +159,12 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                                 services.
                                     AddRepository<CalamityUniverseUser, string>(settings =>
                                     {
-                                        settings.WithDataverse(x =>
+                                        settings.WithDataverse(builder =>
                                         {
-                                            x.Prefix = "repo_";
-                                            x.SolutionName = "TestAlessandro";
+                                            builder.Settings.Prefix = "repo_";
+                                            builder.Settings.SolutionName = "TestAlessandro";
                                             if (configuration != null)
-                                                x.SetConnection(configuration["ConnectionString:Dataverse:Environment"],
+                                                builder.Settings.SetConnection(configuration["ConnectionString:Dataverse:Environment"],
                                                     new(configuration["ConnectionString:Dataverse:ClientId"],
                                                  configuration["ConnectionString:Dataverse:ClientSecret"]));
                                         });

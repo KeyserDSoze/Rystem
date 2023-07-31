@@ -11,7 +11,7 @@
                 Func<IServiceProvider, TService>? implementationFactory,
                 Action? whenExists)
                 where TService : class
-                where TImplementation : class, TService, IServiceWithOptions<TOptions>
+                where TImplementation : class, TService, IServiceForFactoryWithOptions<TOptions>
                 where TOptions : class, new()
         {
             var options = new TOptions();
@@ -36,7 +36,7 @@
             Func<IServiceProvider, TService>? implementationFactory,
             Action? whenExists)
                where TService : class
-               where TImplementation : class, TService, IServiceWithOptions<TBuiltOptions>
+               where TImplementation : class, TService, IServiceForFactoryWithOptions<TBuiltOptions>
                where TOptions : class, IOptionsBuilder<TBuiltOptions>, new()
                where TBuiltOptions : class
         {
@@ -61,7 +61,7 @@
             Func<IServiceProvider, TService>? implementationFactory,
             Action? whenExists)
                 where TService : class
-                where TImplementation : class, TService, IServiceWithOptions<TBuiltOptions>
+                where TImplementation : class, TService, IServiceForFactoryWithOptions<TBuiltOptions>
                 where TOptions : class, IOptionsBuilderAsync<TBuiltOptions>, new()
                 where TBuiltOptions : class
         {

@@ -15,7 +15,7 @@
             string? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
-            where TImplementation : class, TService, IServiceWithOptions<TOptions>
+            where TImplementation : class, TService, IServiceForFactoryWithOptions<TOptions>
             where TOptions : class, new()
             => services.AddFactory<TService, TImplementation, TOptions>(createOptions, name, lifetime, null, implementationFactory, () => SendInError<TService, TImplementation>(name ?? string.Empty));
         public static IServiceCollection AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
@@ -24,7 +24,7 @@
             string? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
-            where TImplementation : class, TService, IServiceWithOptions<TBuiltOptions>
+            where TImplementation : class, TService, IServiceForFactoryWithOptions<TBuiltOptions>
             where TOptions : class, IOptionsBuilder<TBuiltOptions>, new()
             where TBuiltOptions : class
             => services.AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, lifetime, null, implementationFactory, () => SendInError<TService, TImplementation>(name ?? string.Empty));
@@ -34,7 +34,7 @@
             string? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
-            where TImplementation : class, TService, IServiceWithOptions<TBuiltOptions>
+            where TImplementation : class, TService, IServiceForFactoryWithOptions<TBuiltOptions>
             where TOptions : class, IOptionsBuilderAsync<TBuiltOptions>, new()
             where TBuiltOptions : class
             => services.AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, lifetime, null, implementationFactory, () => SendInError<TService, TImplementation>(name ?? string.Empty));

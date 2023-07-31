@@ -1,6 +1,5 @@
 ﻿using System.Reflection;
 using System.Text.Json;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Rest;
 using Microsoft.Xrm.Sdk;
@@ -10,7 +9,7 @@ using Microsoft.Xrm.Sdk.Query;
 
 namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
 {
-    public sealed class DataverseOptions<T, TKey> : IOptionsBuilder<DataverseClientWrapper>
+    public sealed class DataverseOptions<T, TKey>
     {
         public string Environment { get; set; } = null!;
         private string _prefix = "new_";
@@ -41,7 +40,6 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
         public string LogicalPrimaryKey => $"{Prefix}{PrimaryKey.ToLower()}";
         public string PrimaryKeyWithPrefix => $"{Prefix}{PrimaryKey}";
         internal List<PropertyHelper<T>> Properties { get; } = new();
-        internal static DataverseOptions<T, TKey> Instance { get; private set; } = null!;
         public ColumnSet ColumnSet { get; private set; }
         public DataverseOptions()
         {
@@ -55,7 +53,6 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
                 });
             }
             ColumnSet = new ColumnSet(Properties.Select(x => x.LogicalName).Concat(new List<string> { LogicalPrimaryKey }).ToArray());
-            Instance = this;
         }
         public void SetDataverseEntity(Microsoft.Xrm.Sdk.Entity dataverseEntity, T entity, TKey key)
         {
@@ -121,13 +118,6 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
                     property.Prefix ??= string.Empty;
             }
         }
-        private ServiceClient GetClient() => new($"Url=https://{Environment}.dynamics.com;AuthType=ClientSecret;ClientId={ApplicationIdentity!.ClientId};ClientSecret={ApplicationIdentity!.ClientSecret};RequireNewInstance=true");
-        public Func<IServiceProvider, DataverseClientWrapper> Build()
-            =>
-            (serviceProvider) => new()
-            {
-                Client = GetClient()
-            };
-
+        internal ServiceClient GetClient() => new($"Url=https://{Environment}.dynamics.com;AuthType=ClientSecret;ClientId={ApplicationIdentity!.ClientId};ClientSecret={ApplicationIdentity!.ClientSecret};RequireNewInstance=true");
     }
 }

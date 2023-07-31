@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
 {
-    internal sealed class CosmosSqlRepository<T, TKey> : IRepository<T, TKey>, IServiceWithOptions<CosmosSqlClient>
+    internal sealed class CosmosSqlRepository<T, TKey> : IRepository<T, TKey>, IServiceForFactoryWithOptions<CosmosSqlClient>
         where TKey : notnull
     {
         public void SetOptions(CosmosSqlClient options)
@@ -132,6 +132,11 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
                 }
             }
             return results;
+        }
+
+        public void SetFactoryName(string name)
+        {
+            return;
         }
     }
 }

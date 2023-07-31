@@ -133,11 +133,11 @@ namespace Microsoft.Extensions.DependencyInjection
             Func<IServiceProvider, TOptions>? optionsCreator)
              where TOptions : class
         {
-            if (service is IServiceWithOptions<TOptions> serviceWithOptions)
+            if (service is IServiceForFactoryWithOptions<TOptions> serviceWithOptions)
             {
                 serviceWithOptions.SetOptions(optionsCreator?.Invoke(serviceProvider)!);
             }
-            else if (service is IServiceWithOptions serviceWithCustomOptions)
+            else if (service is IServiceForFactoryWithOptions serviceWithCustomOptions)
             {
                 var dynamicServiceWithCustomOptions = (dynamic)serviceWithCustomOptions;
                 dynamicServiceWithCustomOptions

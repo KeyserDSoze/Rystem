@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.MsSql
 {
-    internal sealed class SqlRepository<T, TKey> : IRepository<T, TKey>, IAsyncDisposable, IDisposable, IServiceWithOptions<MsSqlOptions<T, TKey>>
+    internal sealed class SqlRepository<T, TKey> : IRepository<T, TKey>, IAsyncDisposable, IDisposable, IServiceForFactoryWithOptions<MsSqlOptions<T, TKey>>
         where TKey : notnull
     {
         public void SetOptions(MsSqlOptions<T, TKey> options)
@@ -177,6 +177,11 @@ namespace RepositoryFramework.Infrastructure.MsSql
         public void Dispose()
         {
             _ = DisposeAsync();
+        }
+
+        public void SetFactoryName(string name)
+        {
+            return;
         }
     }
 }
