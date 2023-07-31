@@ -88,7 +88,7 @@ builder.Services.AddRepository<BigAnimal, int>(
     {
         settings.WithBlobStorage(x =>
         {
-            x.ConnectionString = builder.Configuration["ConnectionString:Storage"];
+            x.Settings.ConnectionString = builder.Configuration["ConnectionString:Storage"];
         });
     }
     );

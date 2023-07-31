@@ -11,24 +11,23 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="T">Model used for your repository</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
-        /// <param name="connectionSettings">Settings for your blob storage.</param>
-        /// <returns>IRepositoryBlobStorageBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static async Task<IRepositoryBlobStorageBuilder<T, TKey>> WithBlobStorageAsync<T, TKey>(
+        /// <param name="blobStorageBuilder">Settings for your blob storage.</param>
+        /// <param name="name">Factory name</param>
+        /// <returns>IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static async Task<IRepositoryBuilder<T, TKey>> WithBlobStorageAsync<T, TKey>(
             this IRepositoryBuilder<T, TKey> builder,
-            Action<BlobStorageConnectionSettings> connectionSettings,
+            Action<IBlobStorageRepositoryBuilder<T, TKey>> blobStorageBuilder,
             string? name = null)
             where TKey : notnull
         {
-            await builder.SetStorageAndBuildOptionsAsync<BlobStorageRepository<T, TKey>, BlobStorageConnectionSettings, BlobContainerClientWrapper>(
-                options =>
-                {
-                    connectionSettings.Invoke(options);
-                    options.ModelType = typeof(T);
-                },
+            await builder.SetStorageAndBuildOptionsAsync<BlobStorageRepository<T, TKey>,
+                BlobStorageRepositoryBuilder<T, TKey>,
+                BlobContainerClientWrapper>(
+                blobStorageBuilder,
                 name,
                 ServiceLifetime.Singleton)
                 .NoContext();
-            return new RepositoryBlobStorageBuilder<T, TKey>(builder.Services);
+            return builder;
         }
         /// <summary>
         /// Add a default blob storage service for your command pattern.
@@ -36,24 +35,23 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="T">Model used for your repository</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">ICommandBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
-        /// <param name="connectionSettings">Settings for your blob storage.</param>
-        /// <returns>IRepositoryBlobStorageBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static async Task<IRepositoryBlobStorageBuilder<T, TKey>> WithBlobStorageAsync<T, TKey>(
+        /// <param name="blobStorageBuilder">Settings for your blob storage.</param>
+        /// <param name="name">Factory name</param>
+        /// <returns>ICommandBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static async Task<ICommandBuilder<T, TKey>> WithBlobStorageAsync<T, TKey>(
             this ICommandBuilder<T, TKey> builder,
-            Action<BlobStorageConnectionSettings> connectionSettings,
+            Action<IBlobStorageRepositoryBuilder<T, TKey>> blobStorageBuilder,
             string? name = null)
             where TKey : notnull
         {
-            await builder.SetStorageAndBuildOptionsAsync<BlobStorageRepository<T, TKey>, BlobStorageConnectionSettings, BlobContainerClientWrapper>(
-                options =>
-                {
-                    connectionSettings.Invoke(options);
-                    options.ModelType = typeof(T);
-                },
-                name,
-                ServiceLifetime.Singleton)
-                .NoContext();
-            return new RepositoryBlobStorageBuilder<T, TKey>(builder.Services);
+            await builder.SetStorageAndBuildOptionsAsync<BlobStorageRepository<T, TKey>,
+               BlobStorageRepositoryBuilder<T, TKey>,
+               BlobContainerClientWrapper>(
+               blobStorageBuilder,
+               name,
+               ServiceLifetime.Singleton)
+               .NoContext();
+            return builder;
         }
         /// <summary>
         /// Add a default blob storage service for your query pattern.
@@ -61,24 +59,23 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <typeparam name="T">Model used for your repository</typeparam>
         /// <typeparam name="TKey">Key to manage your data from repository</typeparam>
         /// <param name="builder">IQueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></param>
-        /// <param name="connectionSettings">Settings for your blob storage.</param>
-        /// <returns>IRepositoryBlobStorageBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
-        public static async Task<IRepositoryBlobStorageBuilder<T, TKey>> WithBlobStorageAsync<T, TKey>(
+        /// <param name="blobStorageBuilder">Settings for your blob storage.</param>
+        /// <param name="name">Factory name</param>
+        /// <returns>IQueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static async Task<IQueryBuilder<T, TKey>> WithBlobStorageAsync<T, TKey>(
             this IQueryBuilder<T, TKey> builder,
-            Action<BlobStorageConnectionSettings> connectionSettings,
+            Action<IBlobStorageRepositoryBuilder<T, TKey>> blobStorageBuilder,
             string? name = null)
             where TKey : notnull
         {
-            await builder.SetStorageAndBuildOptionsAsync<BlobStorageRepository<T, TKey>, BlobStorageConnectionSettings, BlobContainerClientWrapper>(
-                options =>
-                {
-                    connectionSettings.Invoke(options);
-                    options.ModelType = typeof(T);
-                },
-                name,
-                ServiceLifetime.Singleton)
-                .NoContext();
-            return new RepositoryBlobStorageBuilder<T, TKey>(builder.Services);
+            await builder.SetStorageAndBuildOptionsAsync<BlobStorageRepository<T, TKey>,
+               BlobStorageRepositoryBuilder<T, TKey>,
+               BlobContainerClientWrapper>(
+               blobStorageBuilder,
+               name,
+               ServiceLifetime.Singleton)
+               .NoContext();
+            return builder;
         }
     }
 }

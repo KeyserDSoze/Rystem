@@ -113,10 +113,10 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                                 services
                                     .AddRepository<Car, Guid>(settings =>
                                     {
-                                        settings.WithBlobStorage(x =>
+                                        settings.WithBlobStorage(builder =>
                                         {
-                                            x.ConnectionString = configuration["ConnectionString:Storage"];
-                                            x.Prefix = "MyFolder/";
+                                            builder.Settings.ConnectionString = configuration["ConnectionString:Storage"];
+                                            builder.Settings.Prefix = "MyFolder/";
                                         });
                                     });
                                 services

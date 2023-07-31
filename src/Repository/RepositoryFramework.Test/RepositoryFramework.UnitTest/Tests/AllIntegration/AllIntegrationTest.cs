@@ -42,7 +42,7 @@ namespace RepositoryFramework.UnitTest.Repository
                         .AddRepositoryAsync<AppUser, AppUserKey>(async settings =>
                         {
                             await settings
-                                .WithBlobStorageAsync(x => x.ConnectionString = configuration["ConnectionString:Storage"])
+                                .WithBlobStorageAsync(x => x.Settings.ConnectionString = configuration["ConnectionString:Storage"])
                                 .NoContext();
                         }).ToResult();
                     break;
