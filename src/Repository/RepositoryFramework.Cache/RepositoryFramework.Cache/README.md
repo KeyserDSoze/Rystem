@@ -70,12 +70,41 @@ You need to add the cache
 
 then you add the IDistributedCache implementation to your repository patterns or CQRS.
 
-    builder.Services.
-        AddRepository<User, string>(settings => {
-            settings
-                .WithInMemory()
-                .WithDistributedCache();
-        });
+    .AddRepository<Country, CountryKey>(builder =>
+    {
+        builder
+            .WithInMemory(inMemoryBuilder =>
+            {
+                inMemoryBuilder
+                    .PopulateWithRandomData(NumberOfEntries, NumberOfEntries);
+            });
+        builder
+            .WithDistributedCache(distributedCacheBuilder =>
+            {
+                distributedCacheBuilder.ExpiringTime = TimeSpan.FromSeconds(10);
+            });
+    });
+
+or a mix of them
+
+    .AddRepository<Country, CountryKey>(builder =>
+    {
+        builder
+            .WithInMemory(inMemoryBuilder =>
+            {
+                inMemoryBuilder
+                    .PopulateWithRandomData(NumberOfEntries, NumberOfEntries);
+            });
+        builder
+            .WithInMemoryCache(inMemoryCacheBuilder =>
+            {
+                inMemoryCacheBuilder.ExpiringTime = TimeSpan.FromSeconds(10);
+            })
+            .WithDistributedCache(distributedCacheBuilder =>
+            {
+                distributedCacheBuilder.ExpiringTime = TimeSpan.FromSeconds(10);
+            });
+    });
 
 and as always you will use the standard interface that is automatically integrated in the repository flow.
     

@@ -2,21 +2,30 @@
 
 ## Cache example
 
-    builder.Services
-        .AddRepository<User, string>(settings => {
-            settings
-                .WithInMemory();
-                .WithInMemoryCache(x =>
-                {
-                    x.RefreshTime = TimeSpan.FromSeconds(20);
-                    x.Methods = RepositoryMethod.All;
-                })
-                .WithBlobStorageCache(builder.Configuration["ConnectionString:Storage"], settings: x =>
-                {
-                    x.RefreshTime = TimeSpan.FromSeconds(120);
-                    x.Methods = RepositoryMethod.All;
-                });
+    .AddRepository<User, string>(repositoryBuilder =>
+    {
+        repositoryBuilder
+        .WithBlobStorage(storageBuilder =>
+        {
+            storageBuilder.Settings.ConnectionString = builder.Configuration["ConnectionString:Storage"];
         });
+        repositoryBuilder
+        .WithInMemoryCache(x =>
+        {
+            x.ExpiringTime = TimeSpan.FromSeconds(60);
+            x.Methods = RepositoryMethods.Get | RepositoryMethods.Insert | RepositoryMethods.Update | RepositoryMethods.Delete;
+        })
+        .WithBlobStorageCache(
+            x =>
+            {
+                x.Settings.ConnectionString = builder.Configuration["ConnectionString:Storage"];
+            }
+            , x =>
+            {
+                x.ExpiringTime = TimeSpan.FromSeconds(120);
+                x.Methods = RepositoryMethods.All;
+            });
+    });
 
 ### Usage
 You always will find the same interface. For instance

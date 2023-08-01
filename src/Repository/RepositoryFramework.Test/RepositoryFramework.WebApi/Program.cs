@@ -98,36 +98,31 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.Configuration = builder.Configuration["ConnectionString:Redis"];
     options.InstanceName = "SampleInstance";
 });
-//builder.Services
-//    .AddRepository<User, string>(x =>
-//    {
-//        x
-//        .WithBlobStorage(settings =>
-//        {
-//            settings.ConnectionString = builder.Configuration["ConnectionString:Storage"];
-//        });
-//        x
-//        .WithInMemoryCache(x =>
-//        {
-//            x.ExpiringTime = TimeSpan.FromSeconds(60);
-//            x.Methods = RepositoryMethods.Get | RepositoryMethods.Insert | RepositoryMethods.Update | RepositoryMethods.Delete;
-//        })
-//        .WithDistributedCache(x =>
-//        {
-//            x.ExpiringTime = TimeSpan.FromSeconds(120);
-//            x.Methods = RepositoryMethods.All;
-//        });
-//        //.WithBlobStorageCache(
-//        //    x =>
-//        //    {
-//        //        x.ConnectionString = builder.Configuration["ConnectionString:Storage"];
-//        //    }
-//        //    , x =>
-//        //    {
-//        //        x.ExpiringTime = TimeSpan.FromSeconds(120);
-//        //        x.Methods = RepositoryMethods.All;
-//        //    });
-//    });
+builder.Services
+    .AddRepository<User, string>(repositoryBuilder =>
+    {
+        repositoryBuilder
+        .WithBlobStorage(storageBuilder =>
+        {
+            storageBuilder.Settings.ConnectionString = builder.Configuration["ConnectionString:Storage"];
+        });
+        repositoryBuilder
+        .WithInMemoryCache(x =>
+        {
+            x.ExpiringTime = TimeSpan.FromSeconds(60);
+            x.Methods = RepositoryMethods.Get | RepositoryMethods.Insert | RepositoryMethods.Update | RepositoryMethods.Delete;
+        })
+        .WithBlobStorageCache(
+            x =>
+            {
+                x.Settings.ConnectionString = builder.Configuration["ConnectionString:Storage"];
+            }
+            , x =>
+            {
+                x.ExpiringTime = TimeSpan.FromSeconds(120);
+                x.Methods = RepositoryMethods.All;
+            });
+    });
 
 builder.Services
     .AddRepository<CreativeUser, string>(settings =>
