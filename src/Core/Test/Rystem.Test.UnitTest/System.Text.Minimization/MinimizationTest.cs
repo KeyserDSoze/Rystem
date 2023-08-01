@@ -23,12 +23,12 @@ namespace Rystem.Test.UnitTest.Minimization
             public string X { get; set; }
             public int Y { get; set; }
         }
-        private static readonly List<CsvModel> _models = new();
+        private static readonly List<CsvModel> s_models = new();
         static MinimizationTest()
         {
-            for (int i = 0; i < 100; i++)
+            for (var i = 0; i < 100; i++)
             {
-                _models.Add(new CsvModel
+                s_models.Add(new CsvModel
                 {
                     X = i.ToString(),
                     Id = i,
@@ -42,7 +42,7 @@ namespace Rystem.Test.UnitTest.Minimization
             List<CsvInnerModel> Get(int i)
             {
                 List<CsvInnerModel> inners = new();
-                for (int x = 0; x < i; x++)
+                for (var x = 0; x < i; x++)
                 {
                     inners.Add(new CsvInnerModel
                     {
@@ -56,18 +56,18 @@ namespace Rystem.Test.UnitTest.Minimization
         [Fact]
         public void Test1()
         {
-            var value = _models.ToMinimize('&');
-            Assert.True(value.Length < _models.ToJson().Length);
+            var value = s_models.ToMinimize('&');
+            Assert.True(value.Length < s_models.ToJson().Length);
             var models2 = value.FromMinimization<List<CsvModel>>('&');
-            Assert.Equal(_models.Count, models2.Count);
+            Assert.Equal(s_models.Count, models2.Count);
         }
         [Fact]
         public void Test2()
         {
-            var value = _models.ToMinimize();
-            Assert.True(value.Length < _models.ToJson().Length);
+            var value = s_models.ToMinimize();
+            Assert.True(value.Length < s_models.ToJson().Length);
             var models2 = value.FromMinimization<List<CsvModel>>();
-            Assert.Equal(_models.Count, models2.Count);
+            Assert.Equal(s_models.Count, models2.Count);
         }
     }
 }

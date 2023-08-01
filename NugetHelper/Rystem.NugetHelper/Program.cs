@@ -10,12 +10,12 @@ namespace Rystem.Nuget
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1118:Utility classes should not have public constructors", Justification = "Test purpose.")]
     public class Program
     {
-        private static readonly Regex regexForVersion = new("<Version>[^<]*</Version>");
-        private static readonly Dictionary<string, string> newVersionOfLibraries = new();
-        private static VersionType Type = VersionType.Patch;
+        private static readonly Regex s_regexForVersion = new("<Version>[^<]*</Version>");
+        private static readonly Dictionary<string, string> s_newVersionOfLibraries = new();
+        private static VersionType s_type = VersionType.Patch;
         private static readonly Regex s_packageReference = new("<PackageReference[^>]*>");
         private static readonly Regex s_include = new("Include=");
-        private static readonly Regex VersionRegex = new(@"Version=\""[^\""]*\""");
+        private static readonly Regex s_versionRegex = new(@"Version=\""[^\""]*\""");
         private static readonly Regex s_repo = new(@"\\repos\\");
         const int AddingValueForVersion = 1;
         public static async Task Main()
@@ -32,7 +32,7 @@ namespace Rystem.Nuget
                 specificVersion = Console.ReadLine();
                 if (specificVersion != null && !specificVersion.ContainsAtLeast(2, '.'))
                     throw new ArgumentException("You set a wrong version");
-                Type = VersionType.Specific;
+                s_type = VersionType.Specific;
             }
             var checkIfGoAhead = line == "4";
             var isDebug = line == "5";
@@ -71,28 +71,28 @@ namespace Rystem.Nuget
                 if (file.Name.EndsWith(".csproj") && update.Libraries.Any(x => $"{x.NormalizedName}.csproj" == file.Name))
                 {
                     var library = update.Libraries.First(x => $"{x.NormalizedName}.csproj" == file.Name);
-                    if (!newVersionOfLibraries.ContainsKey(library.LibraryName!))
+                    if (!s_newVersionOfLibraries.ContainsKey(library.LibraryName!))
                     {
                         var streamReader = new StreamReader(file.OpenRead());
                         var content = await streamReader.ReadToEndAsync();
                         streamReader.Dispose();
-                        if (regexForVersion.IsMatch(content))
+                        if (s_regexForVersion.IsMatch(content))
                         {
-                            var currentVersion = regexForVersion.Match(content).Value;
-                            var version = new NugetHelper.Version(regexForVersion.Match(content).Value.Split('>').Skip(1).First().Split('<').First());
-                            if (Type != VersionType.Specific)
-                                version.NextVersion(Type, AddingValueForVersion);
+                            var currentVersion = s_regexForVersion.Match(content).Value;
+                            var version = new NugetHelper.Version(s_regexForVersion.Match(content).Value.Split('>').Skip(1).First().Split('<').First());
+                            if (s_type != VersionType.Specific)
+                                version.NextVersion(s_type, AddingValueForVersion);
                             else
-                                version.SetVersion(Type, specificVersion);
+                                version.SetVersion(s_type, specificVersion);
                             Console.WriteLine($"{file.Name} from {currentVersion} to {version.V}");
                             content = content.Replace(currentVersion, $"<Version>{version.V}</Version>");
-                            newVersionOfLibraries.Add(library.LibraryName!, version.V);
+                            s_newVersionOfLibraries.Add(library.LibraryName!, version.V);
                             foreach (var reference in s_packageReference.Matches(content).Select(x => x.Value))
                             {
                                 var include = s_include.Split(reference).Skip(1).First().Trim('"').Split('"').First();
-                                if (newVersionOfLibraries.TryGetValue(include, out var value) && VersionRegex.IsMatch(reference))
+                                if (s_newVersionOfLibraries.TryGetValue(include, out var value) && s_versionRegex.IsMatch(reference))
                                 {
-                                    var newReference = reference.Replace(VersionRegex.Match(reference).Value, $"Version=\"{value}\"");
+                                    var newReference = reference.Replace(s_versionRegex.Match(reference).Value, $"Version=\"{value}\"");
                                     content = content.Replace(reference, newReference);
                                 }
                             }
