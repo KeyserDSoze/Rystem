@@ -24,7 +24,9 @@ namespace RepositoryFramework.Cache
                 _query = QueryFactory.CreateWithoutDecoration(name);
             else if (RepositoryFactory != null && RepositoryFactory.Exists(name))
                 _query = RepositoryFactory.CreateWithoutDecoration(name);
+            _factoryName = name;
         }
+        private string _factoryName = string.Empty;
         public CachedQuery(IDecoratedService<IQuery<T, TKey>>? query = null,
             IDecoratedService<IRepository<T, TKey>>? repository = null,
             IFactory<IQuery<T, TKey>>? queryFactory = null,
@@ -46,8 +48,8 @@ namespace RepositoryFramework.Cache
         private string GetKeyAsString(RepositoryMethods method, TKey key)
         {
             if (key is IKey customKey)
-                return $"{method}_{_cacheName}_{customKey.AsString()}";
-            return $"{method}_{_cacheName}_{key}";
+                return $"{method}_{_cacheName}_{_factoryName}_{customKey.AsString()}";
+            return $"{method}_{_cacheName}_{_factoryName}_{key}";
         }
         private protected Task RemoveExistAndGetCacheAsync(TKey key, bool inMemory, bool inDistributed, CancellationToken cancellationToken = default)
         {
