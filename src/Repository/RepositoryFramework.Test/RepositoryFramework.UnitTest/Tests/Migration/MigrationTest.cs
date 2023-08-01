@@ -36,6 +36,7 @@ namespace RepositoryFramework.UnitTest.Migration
                     {
                         settings.SourceFactoryName = "source";
                         settings.DestinationFactoryName = "target";
+                        settings.NumberOfConcurrentInserts = 10;
                     })
                 .Finalize(out s_serviceProvider)
                 .WarmUpAsync()
