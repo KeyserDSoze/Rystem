@@ -160,5 +160,24 @@ app
 //.With("Other")
 //.And()
 //.Finalize();
-
+//app.UseEndpoints(endpoints =>
+//{
+//    endpoints.MapHealthChecks("/healthz");
+//    endpoints.UseApiFromRepository<SuperUser>()
+//        .SetPolicyForCommand()
+//        .With("SuperAdmin")
+//        .Build();
+//    endpoints.UseApiFromRepositoryFramework()
+//        .SetPolicyForAll()
+//        .With("NormalUser")
+//        .And()
+//        .SetPolicy(RepositoryMethods.Insert)
+//        .With("SuperAdmin")
+//        .And()
+//        .SetPolicy(RepositoryMethods.Update)
+//        .With("SuperAdmin")
+//        .Build();
+//    endpoints
+//        .MapControllers();
+//});
 app.Run();

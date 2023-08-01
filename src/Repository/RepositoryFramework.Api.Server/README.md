@@ -26,13 +26,40 @@ You may add api for each service by
         string startingPath = "api")
 
 ### Startup example
-In the example below you may find the DI for repository with string key for User model, populated with random data in memory, swagger to test the solution, the population method just after the build and the configuration of your API based on repository framework.
+In the example below you may find the setup of three populated repositories, two of them are of the same kind (SuperUser).
+The SuperiorUser will be added to the app but will be not exposed as Api cause the SetNotExposable() method.
 Futhermore, we are adding a configuration for AAD to implement authentication on api.
 
     var builder = WebApplication.CreateBuilder(args);
     builder.Services
-        .AddRepositoryInMemoryStorage<User>()
-        .PopulateWithRandomData(x => x.Email!, 120, 5);
+    .AddRepository<SuperUser, string>(settins =>
+    {
+        settins.WithInMemory(builder =>
+        {
+            builder
+                .PopulateWithRandomData(120, 5)
+                .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
+        });
+        settins.WithInMemory(builder =>
+        {
+            builder
+                .PopulateWithRandomData(2, 5)
+                .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
+        }, "inmemory");
+    });
+
+    builder.Services.AddRepository<SuperiorUser, string>(settings =>
+    {
+        settings.WithInMemory(builder =>
+        {
+            builder
+                .PopulateWithRandomData(120, 5)
+                .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com")
+                .WithPattern(x => x.Value!.Port, @"[1-9]{3,4}");
+        });
+        settings.SetNotExposable();
+    });
+        
     builder.Services.AddApiFromRepositoryFramework()
         .WithDescriptiveName("Repository Api")
         .WithPath(Path)
@@ -53,8 +80,33 @@ Futhermore, we are adding a configuration for AAD to implement authentication on
 
     var builder = WebApplication.CreateBuilder(args);
     builder.Services
-        .AddRepositoryInMemoryStorage<User>()
-        .PopulateWithRandomData(x => x.Email!, 120, 5);
+    .AddRepository<SuperUser, string>(settins =>
+    {
+        settins.WithInMemory(builder =>
+        {
+            builder
+                .PopulateWithRandomData(120, 5)
+                .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
+        });
+        settins.WithInMemory(builder =>
+        {
+            builder
+                .PopulateWithRandomData(2, 5)
+                .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
+        }, "inmemory");
+    });
+
+    builder.Services.AddRepository<SuperiorUser, string>(settings =>
+    {
+        settings.WithInMemory(builder =>
+        {
+            builder
+                .PopulateWithRandomData(120, 5)
+                .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com")
+                .WithPattern(x => x.Value!.Port, @"[1-9]{3,4}");
+        });
+        settings.SetNotExposable();
+    });
     builder.Services.AddApiFromRepositoryFramework()
         .WithDescriptiveName("Repository Api")
         .WithPath(Path)
@@ -80,12 +132,47 @@ You may configure the scoper for each method of your repository and for each rep
 
     var builder = WebApplication.CreateBuilder(args);
     builder.Services
-        .AddRepository<User, string>(settings => {
-            settings
-                .WithInMemory()
-                .PopulateWithRandomData(120, 5);
+    .AddRepository<SuperUser, string>(settins =>
+    {
+        settins.WithInMemory(builder =>
+        {
+            builder
+                .PopulateWithRandomData(120, 5)
+                .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
         });
-        
+        settins.WithInMemory(builder =>
+        {
+            builder
+                .PopulateWithRandomData(2, 5)
+                .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
+        }, "inmemory");
+    });
+
+    builder.Services.AddRepository<SuperiorUser, string>(settings =>
+    {
+        settings.WithInMemory(builder =>
+        {
+            builder
+                .PopulateWithRandomData(120, 5)
+                .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com")
+                .WithPattern(x => x.Value!.Port, @"[1-9]{3,4}");
+        });
+        settings.SetNotExposable();
+    });
+    
+    builder.Services.AddAuthorization(
+        options =>
+        {
+            options.AddPolicy("NormalUser", x =>
+            {
+                x.RequireClaim(ClaimTypes.Name);
+            });
+            options.AddPolicy("SuperAdmin", x =>
+            {
+                x.RequireRole("SuperAdmin");
+            });
+        });
+
     builder.Services.AddApiFromRepositoryFramework()
         .WithDescriptiveName("Repository Api")
         .WithPath(Path)
@@ -102,22 +189,31 @@ You may configure the scoper for each method of your repository and for each rep
         app.UseSwaggerUI();
     }
     app.UseHttpsRedirection();
-    app.UseApiForRepositoryFramework()
-        .SetPolicyForAll()
-        .With("Normal User")
-        .And()
-        .SetPolicy(RepositoryMethod.Insert)
-        .With("Admin")
-        .And()
-        .SetPolicy(RepositoryMethod.Update)
-        .With("Admin")
-        .And()
-        .Finalize();
 
+    app.UseEndpoints(endpoints =>
+    {
+        endpoints.MapHealthChecks("/healthz");
+        endpoints.UseApiFromRepository<SuperUser>()
+            .SetPolicyForCommand()
+            .With("SuperAdmin")
+            .Build();
+        endpoints.UseApiFromRepositoryFramework()
+            .SetPolicyForAll()
+            .With("NormalUser")
+            .And()
+            .SetPolicy(RepositoryMethods.Insert)
+            .With("SuperAdmin")
+            .And()
+            .SetPolicy(RepositoryMethods.Update)
+            .With("SuperAdmin")
+            .Build();
+        endpoints
+            .MapControllers();
+    });
     app.Run();
 
-In this example, I'm configuring a policy named "Normal User" for all methods and all repositories, and a policy named "Admin" for the methods Insert and Update for all repositories.
-You can customize it repository for repository, using AddApiForRepository<T>() method.
+In this example, I'm configuring a policy named "NormalUser" for all methods and all repositories, and a policy named "SuperAdmin" for the methods Insert and Update for all repositories and for the command (Insert, Updated and Delete) of SuperUser repository.
+You can customize it repository for repository, using UseApiFromRepository<T>() method.
 
 ### Sample of filter usage when you use the api directly
 All the requests are basic requests, the strangest request is only the query and you must use the Linq query.

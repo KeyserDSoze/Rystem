@@ -334,3 +334,42 @@ The animal business to inject will be the following one.
     }
 
 You have to create the class as public to allow the dependency injection to instastiate it. It's added directly to DI.
+
+## Factory
+Integration with factory from rystem is hidden in the framework, and it's ready to be used.
+For instance here i'm installing two different repositories for the same model and key.
+
+    var builder = WebApplication.CreateBuilder(args);
+    builder.Services
+    .AddRepository<SuperUser, string>(settins =>
+    {
+        settins.WithInMemory(builder =>
+        {
+            builder
+                .PopulateWithRandomData(120, 5)
+                .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
+        });
+        settins.WithInMemory(builder =>
+        {
+            builder
+                .PopulateWithRandomData(2, 5)
+                .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
+        }, "inmemory");
+    });
+
+Usage
+
+    var serviceProvider = ....;
+    IFactory<IRepository<SuperUser, string>> superUserFactory = serviceProvider.GetRequiredService<IFactory<IRepository<SuperUser, string>>>();
+    var firstIntegration = superUserFactory.Create();
+    var secondIntegration = superUserFactory.Create("inmemory");
+
+By default is injected directly the last one repository integration installed.
+
+    var serviceProvider = ....;
+    IRepository<SuperUser, string> secondIntegration = serviceProvider.GetRequiredService<IRepository<SuperUser, string>>();
+
+Here you find the "inmemory" integration.
+[You can use the decorator pattern offered by Rystem](https://github.com/KeyserDSoze/Rystem/tree/master/src/Core/Rystem)
+for your integration to decorate an IRepository<T, TKey> or ICommand<T, TKey> or IQuery<T, TKey>.
+

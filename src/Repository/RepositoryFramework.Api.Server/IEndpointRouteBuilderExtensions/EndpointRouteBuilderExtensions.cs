@@ -387,7 +387,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     }
                 })
                 .WithName($"{nameof(RepositoryMethods.Query)}{factoryName}{name}")
-                .WithTags(name)
+                .WithTags(string.IsNullOrWhiteSpace(factoryName) ? name : $"{name}/factoryName:{factoryName}")
               .AddAuthorization(authorization, RepositoryMethods.Query, apiMap);
 
             _ = app.MapPost($"{apiMap.Uri}/Stream", (HttpRequest request,
@@ -409,7 +409,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     }
                 )
                 .WithName($"{nameof(RepositoryMethods.Query)}{factoryName}{name}Stream")
-                .WithTags(name)
+                .WithTags(string.IsNullOrWhiteSpace(factoryName) ? name : $"{name}/factoryName:{factoryName}")
               .AddAuthorization(authorization, RepositoryMethods.Query, apiMap);
         }
         private static void AddOperation<T, TKey, TService>(IEndpointRouteBuilder app,
@@ -464,7 +464,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     }
                 })
                 .WithName($"{nameof(RepositoryMethods.Operation)}{factoryName}{name}")
-                .WithTags(name)
+                .WithTags(string.IsNullOrWhiteSpace(factoryName) ? name : $"{name}/factoryName:{factoryName}")
               .AddAuthorization(authorization, RepositoryMethods.Operation, apiMap);
         }
         private static ValueTask<TProperty> GetResultFromOperation<T, TKey, TProperty>(
@@ -642,7 +642,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
             })
             .WithName($"{nameof(RepositoryMethods.Batch)}{factoryName}{name}")
-            .WithTags(name)
+            .WithTags(string.IsNullOrWhiteSpace(factoryName) ? name : $"{name}/factoryName:{factoryName}")
             .AddAuthorization(authorization, RepositoryMethods.Batch, apiMap);
         }
         private static void AddApi<T, TKey, TService>(this IEndpointRouteBuilder app,
@@ -688,7 +688,7 @@ namespace Microsoft.Extensions.DependencyInjection
             }
             _ = apiMapped!
                     .WithName($"{method}{factoryName}{name}")
-                    .WithTags(name)
+                    .WithTags(string.IsNullOrWhiteSpace(factoryName) ? name : $"{name}/factoryName:{factoryName}")
                     .AddAuthorization(authorization, method, singleApi);
 
         }
