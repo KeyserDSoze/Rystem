@@ -517,3 +517,4 @@ Usage
 
     var decoratorFactory = provider.GetRequiredService<IFactory<ITestService>>();
     var decorator = decoratorFactory.Create(factoryName);
+    var previousService = decoratorFactory.CreateWithoutDecoration(factoryName);

@@ -66,19 +66,19 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                             {
                                 services.AddHealthChecks();
                                 services.AddControllers();
-                                services.AddRepository<IperUser, string>(settings =>
+                                services.AddRepository<IperUser, string>(repositoryBuilder =>
                                 {
-                                    settings
-                                        .WithInMemory(builder =>
+                                    repositoryBuilder
+                                        .WithInMemory(inMemoryBuilder =>
                                         {
-                                            builder
+                                            inMemoryBuilder
                                                 .PopulateWithRandomData(120, 5)
                                                 .WithPattern(x => x.Value.Email, @"[a-z]{5,10}@gmail\.com");
                                         });
-                                    settings
+                                    repositoryBuilder
                                         .AddBusiness()
                                             .AddBusinessBeforeInsert<IperRepositoryBeforeInsertBusiness>();
-                                    settings
+                                    repositoryBuilder
                                         .Translate<IperUser>();
                                 });
                                 services

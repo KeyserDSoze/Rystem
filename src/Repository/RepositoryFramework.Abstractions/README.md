@@ -151,33 +151,40 @@ You may choose to extend IRepository, but when you inject you have to use IRepos
     }
 
 ### How to use it
-In DI you install the service
+In DI you install the service. Here an example on how to set a custom storage,
+prepare a translation (to translate name of your properties for query during filtering),
+and AddBusiness for your integration. Furthermore you may use the factory integration from Rystem.
 
-    services.AddRepository<User, string, UserRepository>();
+    var factoryName = "storage";
+     services.AddRepository<AppUser, AppUserKey>(builder =>
+    {
+        builder.SetStorage<AppUserStorage>(factoryName);
+        builder.Translate<User>()
+            .With(x => x.Id, x => x.Identificativo)
+            .With(x => x.Username, x => x.Nome)
+            .With(x => x.Email, x => x.IndirizzoElettronico);
+        builder
+            .AddBusiness()
+                .AddBusinessBeforeInsert<AppUserBeforeInsertBusiness>()
+                .AddBusinessBeforeInsert<AppUserBeforeInsertBusiness2>();
+    });
 
 And you may inject the object
 ## Please, use IRepository and not IRepositoryPattern
     
-    IRepository<User, string> repository
+    IRepository<AppUser, AppUserKey> repository
 
 ### Query and Command
 In DI you install the services
 
-    services.AddCommand<User, string, UserWriter>();
-    services.AddQuery<User, string, UserReader>();
+    services.AddCommand<AppUser, AppUserKey>(...);
+    services.AddQuery<AppUser, AppUserKey>(...);
 
 And you may inject the objects
 ## Please, use ICommand, IQuery and not ICommandPattern, IQueryPattern
 
-    ICommand<User, string> command
-    IQuery<User, string> command
-
-### Twice or more configurations for the same repository service
-Pay attention during the DI, you may install the same repository two or more times for the same model. If you want to be sure, you may start the DI with a method that checks for you.
-When can it happen? For instance, when you use at the same time InMemory integration with a custom integration.
-
-    services.ThrowExceptionIfARepositoryServiceIsAddedTwoOrMoreTimes();
-
+    ICommand<AppUser, AppUserKey> command
+    IQuery<AppUser, AppUserKey> query
 
 ### TKey when it's not a primitive
 You can use a class or record. 
@@ -192,7 +199,7 @@ My key:
 
 the DI
     
-    services.AddRepository<User, MyKey, UserRepository>();
+    services.AddRepository<User, MyKey>(...);
 
 and you may inject (for ICommand and IQuery is the same)
 
@@ -232,17 +239,17 @@ and you may inject (for ICommand and IQuery is the same)
 ### Translation
 In some cases you need to "translate" your query for your database context query, for example in case of EF integration.
 
-    .AddDbContext<SampleContext>(options =>
+    services.AddDbContext<SampleContext>(options =>
     {
         options.UseSqlServer(configuration["ConnectionString:Database"]);
-    }, ServiceLifetime.Scoped)
-    .AddRepository<AppUser, AppUserKey, AppUserStorage>(settings => 
+    }, ServiceLifetime.Scoped);
+    services.AddRepository<AppUser, AppUserKey>(repositoryBuilder =>
     {
-        settings
-            .Translate<User>()
-                .With(x => x.Id, x => x.Identificativo)
-                .With(x => x.Username, x => x.Nome)
-                .With(x => x.Email, x => x.IndirizzoElettronico);
+        repositoryBuilder.SetStorage<AppUserStorage>();
+        repositoryBuilder.Translate<User>()
+            .With(x => x.Id, x => x.Identificativo)
+            .With(x => x.Username, x => x.Nome)
+            .With(x => x.Email, x => x.IndirizzoElettronico);
     });
     
 
@@ -256,20 +263,21 @@ You may use Filter for queryable, FilterAsEnumerable for Enumerable and FilterAs
 
 You can add more translations for the same model
 
-    .AddDbContext<SampleContext>(options =>
+    services.AddDbContext<SampleContext>(options =>
     {
         options.UseSqlServer(configuration["ConnectionString:Database"]);
-    }, ServiceLifetime.Scoped)
-    .AddRepository<AppUser, AppUserKey, AppUserStorage>(settings => {
-        settings
-            .Translate<User>()
-                .With(x => x.Id, x => x.Identificativo)
-                .With(x => x.Username, x => x.Nome)
-                .With(x => x.Email, x => x.IndirizzoElettronico)
-            .AndTranslate<AnotherUser>()
-                .With(x => x.Id, x => x.Identificativo)
-                .With(x => x.Username, x => x.Nome)
-                .With(x => x.Email, x => x.IndirizzoElettronico)
+    }, ServiceLifetime.Scoped);
+    services.AddRepository<AppUser, AppUserKey>(repositoryBuilder =>
+    {
+        repositoryBuilder.SetStorage<AppUserStorage>();
+        repositoryBuilder.Translate<User>()
+            .With(x => x.Id, x => x.Identificativo)
+            .With(x => x.Username, x => x.Nome)
+            .With(x => x.Email, x => x.IndirizzoElettronico);
+        repositoryBuilder
+            .AddBusiness()
+                .AddBusinessBeforeInsert<AppUserBeforeInsertBusiness>()
+                .AddBusinessBeforeInsert<AppUserBeforeInsertBusiness2>();
     });
 
 ### Entity framework examples
@@ -284,8 +292,10 @@ For instance, you have to check before an update or insert the value of an entit
 ### Example
 In this example BeforeInsertAsync runs before InsertAsync of IRepository/ICommand and AfterInsertAsync runs after InsertAsync of IRepository/ICommand.
 
-    .AddRepositoryInMemoryStorage<Animal, long>(settings => {
-        settings
+    .AddRepository<Animal, long>(builder => {
+        builder.
+            WithInMemory();
+        builder
             .AddBusiness()
                 .AddBusinessAfterInsert<AnimalBusiness>()
                 .AddBusinessBeforeInsert<AnimalBusiness>();
@@ -294,8 +304,8 @@ In this example BeforeInsertAsync runs before InsertAsync of IRepository/IComman
 
 more interesting usage comes to move business in another project, you can add to your infrastructure in the following way
 
-    .AddBusinessForRepository<Animal, long>(settings => {
-        settings
+    .AddBusinessForRepository<Animal, long>(builder => {
+        builder
             .AddBusiness()
                 .AddBusinessAfterInsert<AnimalBusiness>()
                 .AddBusinessBeforeInsert<AnimalBusiness>();
