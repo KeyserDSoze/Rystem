@@ -32,7 +32,6 @@
 		<PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="7.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.1" />
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.3" />
-		<PackageReference Include="Rystem.Concurrency" Version="5.0.0" />
 		<PackageReference Include="xunit" Version="2.5.0" />
 		<PackageReference Include="Xunit.DependencyInjection" Version="8.7.2" />
 		<PackageReference Include="xunit.runner.visualstudio" Version="2.5.0">
@@ -50,6 +49,9 @@
 			<PackagePath>\</PackagePath>
 		</None>
 		<None Include="README.md" Pack="true" PackagePath="\" />
+	</ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\..\Concurrency\Rystem.Concurrency\Rystem.Concurrency.csproj" />
 	</ItemGroup>
 
     <Choose>
