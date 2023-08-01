@@ -125,6 +125,7 @@ namespace Rystem.Test.UnitTest.DependencyInjection
 
             var factory = serviceProvider.GetRequiredService<IFactory<ITestService>>();
             var serviceFromFactoryFromDi = serviceProvider.GetRequiredService<ITestService>();
+
             Assert.NotNull(serviceFromFactoryFromDi.FactoryName);
             Assert.NotNull(((dynamic)serviceFromFactoryFromDi).Test);
             var serviceFromFactory = factory.Create(name);

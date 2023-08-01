@@ -465,3 +465,55 @@ and use them in this way
     Assert.NotEqual(scoped3FromFactory, scoped3FromFactory2);
     Assert.NotEqual(scoped3_2FromFactory, scoped3_2FromFactory2);
     Assert.NotEqual(scoped4FromFactory, scoped4FromFactory2);
+
+## Decorator
+You may add a decoration for your services, based on the abstract factory integration.
+The decorator service replaces the previous version and receives it during the injection.
+
+Setup
+
+    services
+        .AddService<ITestWithoutFactoryService, TestWithoutFactoryService>(lifetime);
+    services
+        .AddDecoration<ITestWithoutFactoryService, TestWithoutFactoryServiceDecorator>(null, lifetime);
+
+Usage
+
+    var decorator = provider.GetRequiredService<ITestWithoutFactoryService>();
+    var previousService = provider.GetRequiredService<IDecoratedService<ITestWithoutFactoryService>>();
+
+In decorator you may find the previousService in the method SetDecoratedService which runs in injection
+
+    public class TestWithoutFactoryServiceDecorator : ITestWithoutFactoryService, IDecoratorService<ITestWithoutFactoryService>
+    {
+        public string Id { get; } = Guid.NewGuid().ToString();
+        public ITestWithoutFactoryService Test { get; private set; }
+        public void SetDecoratedService(ITestWithoutFactoryService service)
+        {
+            Test = service;
+        }
+
+        public void SetFactoryName(string name)
+        {
+            return;
+        }
+    }
+
+### Decorator with Abstract Factory integration
+You may add a decoration only for one service of your factory integration.
+
+Setup
+
+    services.AddFactory<ITestService, TestService, TestOptions>(x =>
+    {
+        x.ClassicName = classicName;
+    },
+    factoryName,
+    lifetime);
+    services
+        .AddDecoration<ITestService, DecoratorTestService>(factoryName, lifetime);
+
+Usage
+
+    var decoratorFactory = provider.GetRequiredService<IFactory<ITestService>>();
+    var decorator = decoratorFactory.Create(factoryName);

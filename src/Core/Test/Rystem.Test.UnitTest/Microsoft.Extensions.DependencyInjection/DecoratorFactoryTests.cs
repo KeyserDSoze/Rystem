@@ -34,7 +34,7 @@ namespace Rystem.Test.UnitTest.DependencyInjection
 
             var providerWithoutScope = services.BuildServiceProvider();
             var provider = providerWithoutScope.CreateScope().ServiceProvider;
-
+            
             var decorator = provider.GetService<IRepository<ToSave>>();
             Assert.Null(decorator.Get());
             decorator.Format = "Alzo";
