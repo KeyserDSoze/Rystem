@@ -3,24 +3,24 @@
 ## Integration with MsSql and Repository Framework
 Example from unit test with a business integration too.
 
-     services
-        .AddRepository<Cat, Guid>(settings =>
+     services.
+        AddRepository<Cat, Guid>(settings =>
         {
             settings
-            .WithMsSql(x =>
+            .WithMsSql(builder =>
             {
-                x.Schema = "repo";
-                x.ConnectionString = configuration["ConnectionString:Database"];
-            })
-                .WithPrimaryKey(x => x.Id, x =>
-                {
-                    x.ColumnName = "Key";
-                })
+                builder.Schema = "repo";
+                builder.ConnectionString = configuration["ConnectionString:Database"];
+                builder.WithPrimaryKey(x => x.Id, x =>
+                    {
+                        x.ColumnName = "Key";
+                    })
                 .WithColumn(x => x.Paws, x =>
                 {
                     x.ColumnName = "Zampe";
                     x.IsNullable = true;
                 });
+            });
         });
 
 You found the IRepository<Cat, Guid> in DI to play with it.
@@ -45,5 +45,5 @@ You need only to add the AddApiFromRepositoryFramework and UseApiForRepositoryFr
 
     var app = builder.Build();
 
-    app.UseApiForRepositoryFramework()
+    app.UseApiFromRepositoryFramework()
         .WithNoAuthorization();

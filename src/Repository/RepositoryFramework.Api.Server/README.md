@@ -72,7 +72,7 @@ Futhermore, we are adding a configuration for AAD to implement authentication on
     await app.Services.WarmUpAsync();
     
     app.UseHttpsRedirection();
-    app.UseApiForRepositoryFramework()
+    app.UseApiFromRepositoryFramework()
         .WithDefaultAuthorization();
     app.Run();
 
@@ -123,7 +123,7 @@ Futhermore, we are adding a configuration for AAD to implement authentication on
         app.UseSwaggerUI();
     }
     app.UseHttpsRedirection();
-    app.UseApiForRepositoryFramework()
+    app.UseApiFromRepositoryFramework()
         .WithNoAuthorization();
     app.Run();
 

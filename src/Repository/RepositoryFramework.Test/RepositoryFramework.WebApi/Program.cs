@@ -180,4 +180,6 @@ app
 //    endpoints
 //        .MapControllers();
 //});
+app.UseApiFromRepositoryFramework()
+        .WithNoAuthorization();
 app.Run();

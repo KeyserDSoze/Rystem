@@ -3,19 +3,19 @@
 ## Integration with Dataverse (Dynamics) and Repository Framework
 Example from unit test with a business integration too.
 
-     services
-        .AddRepository<CalamityUniverseUser, string>(settings =>
+     services.
+        AddRepository<CalamityUniverseUser, string>(builder =>
         {
-            settings.WithDataverse(x =>
+            builder.WithDataverse(dataverserBuilder =>
             {
-                x.Prefix = "repo_";
-                x.SolutionName = "TestAlessandro";
+                dataverserBuilder.Settings.Prefix = "repo_";
+                dataverserBuilder.Settings.SolutionName = "TestAlessandro";
                 if (configuration != null)
-                    x.SetConnection(configuration["ConnectionString:Dataverse:Environment"],
+                    dataverserBuilder.Settings.SetConnection(configuration["ConnectionString:Dataverse:Environment"],
                         new(configuration["ConnectionString:Dataverse:ClientId"],
                         configuration["ConnectionString:Dataverse:ClientSecret"]));
             });
-            settings
+            builder
                 .AddBusiness()
                 .AddBusinessBeforeInsert<CalamityUniverseUserBeforeInsertBusiness>()
                 .AddBusinessBeforeInsert<CalamityUniverseUserBeforeInsertBusiness2>();
@@ -43,5 +43,5 @@ You need only to add the AddApiFromRepositoryFramework and UseApiForRepositoryFr
 
     var app = builder.Build();
 
-    app.UseApiForRepositoryFramework()
+    app.UseApiFromRepositoryFramework()
         .WithNoAuthorization();

@@ -162,18 +162,18 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                                 services
                                     .AddUserRepositoryWithDatabaseSqlAndEntityFramework(configuration);
                                 services.
-                                    AddRepository<CalamityUniverseUser, string>(settings =>
+                                    AddRepository<CalamityUniverseUser, string>(builder =>
                                     {
-                                        settings.WithDataverse(builder =>
+                                        builder.WithDataverse(dataverserBuilder =>
                                         {
-                                            builder.Settings.Prefix = "repo_";
-                                            builder.Settings.SolutionName = "TestAlessandro";
+                                            dataverserBuilder.Settings.Prefix = "repo_";
+                                            dataverserBuilder.Settings.SolutionName = "TestAlessandro";
                                             if (configuration != null)
-                                                builder.Settings.SetConnection(configuration["ConnectionString:Dataverse:Environment"],
+                                                dataverserBuilder.Settings.SetConnection(configuration["ConnectionString:Dataverse:Environment"],
                                                     new(configuration["ConnectionString:Dataverse:ClientId"],
                                                  configuration["ConnectionString:Dataverse:ClientSecret"]));
                                         });
-                                        settings
+                                        builder
                                             .AddBusiness()
                                             .AddBusinessBeforeInsert<CalamityUniverseUserBeforeInsertBusiness>()
                                             .AddBusinessBeforeInsert<CalamityUniverseUserBeforeInsertBusiness2>();

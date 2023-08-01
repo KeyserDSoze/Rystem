@@ -30,22 +30,22 @@ namespace Microsoft.Extensions.DependencyInjection
                 });
 
             services
-                .AddRepository<MappingUser, int>(x =>
+                .AddRepository<MappingUser, int>(builder =>
                 {
-                    x.WithEntityFramework<MappingUser, int, User, SampleContext>(
+                    builder.WithEntityFramework<MappingUser, int, User, SampleContext>(
                         t =>
                         {
                             t.DbSet = x => x.Users;
                             t.References = x => x.Include(x => x.IdGruppos);
                         });
-                    x.Translate<User>()
+                    builder.Translate<User>()
                         .With(x => x.Username, x => x.Nome)
                         .With(x => x.Username, x => x.Cognome)
                         .With(x => x.Email, x => x.IndirizzoElettronico)
                         .With(x => x.Groups, x => x.IdGruppos)
                         .With(x => x.Id, x => x.Identificativo)
                         .WithKey(x => x, x => x.Identificativo);
-                    x
+                    builder
                         .AddBusiness()
                             .AddBusinessBeforeInsert<MappingUserBeforeInsertBusiness>()
                             .AddBusinessBeforeInsert<MappingUserBeforeInsertBusiness2>();

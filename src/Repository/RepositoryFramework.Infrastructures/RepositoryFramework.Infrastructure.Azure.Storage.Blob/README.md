@@ -3,14 +3,14 @@
 ## Integration with Azure BlobStorage and Repository Framework
 Example from unit test with a business integration too.
 
-     services
-        .AddRepository<Car, Guid>(settings =>
+    services
+        .AddRepository<Car, Guid>(builder =>
         {
-             settings.WithBlobStorage(x =>
-                        {
-                            x.ConnectionString = configuration["ConnectionString:Storage"];
-                            x.Prefix = "MyFolder/";  //If you want to add a prefix for all blobs in your container
-                        });
+            builder.WithBlobStorage(builder =>
+            {
+                builder.Settings.ConnectionString = configuration["ConnectionString:Storage"];
+                builder.Settings.Prefix = "MyFolder/";
+            });
         });
     services
         .AddBusinessForRepository<Car, Guid>()
@@ -33,5 +33,5 @@ You need only to add the AddApiFromRepositoryFramework and UseApiForRepositoryFr
 
     var app = builder.Build();
 
-    app.UseApiForRepositoryFramework()
+    app.UseApiFromRepositoryFramework()
         .WithNoAuthorization();

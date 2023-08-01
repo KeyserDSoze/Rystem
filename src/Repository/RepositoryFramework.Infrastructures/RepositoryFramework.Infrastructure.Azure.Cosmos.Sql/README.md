@@ -3,23 +3,22 @@
 ## Integration with Azure Cosmos Sql and Repository Framework
 Example from unit test with a business integration too.
 
-    services
-        .AddRepository<SuperUser, string>(
-        settings =>
-        {
-            settings.WithCosmosSql(x =>
+     await services
+        .AddRepositoryAsync<AppUser, AppUserKey>(async builder =>
             {
-                x.ConnectionString = configuration["ConnectionString:CosmosSql"];
-                x.DatabaseName = "BigDatabase";
-            })
-                .WithId(x => x.Email!);
-            settings
+                await builder.WithCosmosSqlAsync(x =>
+                {
+                    x.Settings.ConnectionString = configuration["ConnectionString:CosmosSql"];
+                    x.Settings.DatabaseName = "unittestdatabase";
+                    x.WithId(x => new AppUserKey(x.Id));
+                }).NoContext();
+            builder
                 .AddBusiness()
-                .AddBusinessBeforeInsert<SuperUserBeforeInsertBusiness>()
-                .AddBusinessBeforeInsert<SuperUserBeforeInsertBusiness2>();
-        });
+                .AddBusinessBeforeInsert<AppUserBeforeInsertBusiness>()
+                .AddBusinessBeforeInsert<AppUserBeforeInsertBusiness2>();
+        }).NoContext();
 
-You found the IRepository<SuperUser, string> in DI to play with it.
+You found the IRepository<AppUser, AppUserKey> in DI to play with it.
 
 ### Automated api with Rystem.RepositoryFramework.Api.Server package
 With automated api, you may have the api implemented with your cosmos sql integration.
@@ -35,5 +34,5 @@ You need only to add the AddApiFromRepositoryFramework and UseApiForRepositoryFr
 
     var app = builder.Build();
 
-    app.UseApiForRepositoryFramework()
+    app.UseApiFromRepositoryFramework()
         .WithNoAuthorization();

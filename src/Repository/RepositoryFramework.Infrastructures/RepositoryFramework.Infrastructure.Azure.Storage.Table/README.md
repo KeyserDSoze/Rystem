@@ -2,21 +2,23 @@
 
 ## Integration with Azure TableStorage and Repository Framework
 Example from unit test with a business integration too.
+Here you may find the chance to use ToResult() in services to avoid the async method.
 
     services
-    .AddRepository<SuperCar, Guid>(settings =>
-    {
-        settings
-            .WithTableStorage(x => x.ConnectionString = configuration["ConnectionString:Storage"])
-            .WithPartitionKey(x => x.Id, x => x)
-            .WithRowKey(x => x.Name)
-            .WithTimestamp(x => x.Time)
-            .WithTableStorageKeyReader<Car2KeyStorageReader>();
-        settings
-        .AddBusiness()
-        .AddBusinessBeforeInsert<SuperCarBeforeInsertBusiness>()
-        .AddBusinessBeforeInsert<SuperCarBeforeInsertBusiness2>();
-    });
+        .AddRepositoryAsync<AppUser, AppUserKey>(async builder =>
+        {
+            await builder
+                .WithTableStorageAsync(tableStorageBuilder =>
+                {
+                    tableStorageBuilder
+                        .Settings.ConnectionString = configuration["ConnectionString:Storage"];
+                    tableStorageBuilder
+                        .WithTableStorageKeyReader<TableStorageKeyReader>()
+                        .WithPartitionKey(x => x.Id, x => x.Id)
+                        .WithRowKey(x => x.Username)
+                        .WithTimestamp(x => x.CreationTime);
+                });
+        }).ToResult();
 
 You found the IRepository<SuperCar, Guid> in DI to play with it.
 
@@ -34,5 +36,5 @@ You need only to add the AddApiFromRepositoryFramework and UseApiForRepositoryFr
 
     var app = builder.Build();
 
-    app.UseApiForRepositoryFramework()
+    app.UseApiFromRepositoryFramework()
         .WithNoAuthorization();
