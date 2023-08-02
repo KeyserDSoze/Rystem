@@ -86,6 +86,8 @@ namespace Rystem.Content.Infrastructure.Storage
             var fileClient = await GetFileClientAsync(path, true);
             if (!await fileClient.ExistsAsync(cancellationToken).NoContext())
                 await fileClient.CreateAsync(data.Length, cancellationToken: cancellationToken).NoContext();
+            else
+                await fileClient.SetHttpHeadersAsync(data.Length, cancellationToken: cancellationToken).NoContext();
             var response = await fileClient.UploadAsync(data.ToStream(), cancellationToken: cancellationToken).NoContext();
             var result = response.Value != null;
             if (result)
