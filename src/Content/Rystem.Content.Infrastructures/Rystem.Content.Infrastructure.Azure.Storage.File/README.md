@@ -6,7 +6,7 @@
         .AddContentRepository()
         .WithFileStorageIntegrationAsync(x =>
         {
-            x.ContainerName = "supertest";
+            x.ShareName = "supertest";
             x.Prefix = "site/";
             x.ConnectionString = configuration["ConnectionString:Storage"];
         },

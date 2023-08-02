@@ -22,8 +22,9 @@ namespace Rystem.Content.Infrastructure.Storage
         public int LengthOfPrefix => _lenghtOfPrefix ??= Options?.Prefix?.Length ?? 0;
         private async Task<ShareFileClient> GetFileClientAsync(string path, bool createIfNotExists)
         {
-            var fileName = path.Split('/').Last();
-            var directory = Client.GetDirectoryClient($"{path}");
+            var pathSplitted = path.Split('/');
+            var fileName = pathSplitted.Last();
+            var directory = Client.GetDirectoryClient(string.Join('/', pathSplitted.SkipLast(1)));
             if (createIfNotExists)
                 await directory.CreateIfNotExistsAsync().NoContext();
             var file = directory.GetFileClient(fileName);
@@ -61,6 +62,8 @@ namespace Rystem.Content.Infrastructure.Storage
         public async ValueTask<bool> UploadAsync(string path, byte[] data, ContentRepositoryOptions? options = default, bool overwrite = true, CancellationToken cancellationToken = default)
         {
             var fileClient = await GetFileClientAsync(path, true);
+            if (!await fileClient.ExistsAsync(cancellationToken).NoContext())
+                await fileClient.CreateAsync(data.Length, cancellationToken: cancellationToken).NoContext();
             var response = await fileClient.UploadAsync(data.ToStream(), cancellationToken: cancellationToken).NoContext();
             var result = response.Value != null;
             if (result)
@@ -76,8 +79,9 @@ namespace Rystem.Content.Infrastructure.Storage
             ContentInformationType informationRetrieve = ContentInformationType.None,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var client = Client.GetDirectoryClient(Options.Prefix) ?? Client.GetRootDirectoryClient();
-            await client.CreateIfNotExistsAsync().NoContext();
+            var client = !string.IsNullOrWhiteSpace(Options?.Prefix) ?
+                Client.GetDirectoryClient(Options.Prefix) : Client.GetRootDirectoryClient();
+            await client.CreateIfNotExistsAsync(cancellationToken: cancellationToken).NoContext();
             await foreach (var fileOrDirectory in client.GetFilesAndDirectoriesAsync(
                 new Azure.Storage.Files.Shares.Models.ShareDirectoryGetFilesAndDirectoriesOptions()
                 {
@@ -147,9 +151,9 @@ namespace Rystem.Content.Infrastructure.Storage
                 {
                     CacheControl = properties.Value.CacheControl,
                     ContentDisposition = properties.Value.ContentDisposition,
-                    ContentEncoding = string.Join(",", properties.Value.ContentEncoding),
+                    ContentEncoding = properties.Value.ContentEncoding != null ? string.Join(",", properties.Value.ContentEncoding) : null,
                     ContentHash = properties.Value.ContentHash,
-                    ContentLanguage = string.Join(",", properties.Value.ContentLanguage),
+                    ContentLanguage = properties.Value.ContentLanguage != null ? string.Join(",", properties.Value.ContentLanguage) : null,
                     ContentType = properties.Value.ContentType,
                 };
                 metadata = properties.Value.Metadata.ToDictionary(x => x.Key, x => x.Value);

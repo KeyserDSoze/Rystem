@@ -20,11 +20,11 @@ namespace File.UnitTest
             _contentMigration = contentMigration;
         }
         [Theory]
-        [InlineData("blobstorage")]
-        [InlineData("inmemory")]
-        [InlineData("sharepoint")]
-        [InlineData("filestorage")]
-        public async Task ExecuteAsync(string integrationName)
+        [InlineData("blobstorage", true)]
+        [InlineData("inmemory", true)]
+        [InlineData("sharepoint", true)]
+        [InlineData("filestorage", false)]
+        public async Task ExecuteAsync(string integrationName, bool hasTagIntegration)
         {
             var contentRepository = _contentRepositoryFactory.Create(integrationName);
             var file = await _utility.GetFileAsync();
@@ -65,10 +65,11 @@ namespace File.UnitTest
             {
                 Assert.Equal(x.Value, options.Options.Metadata[x.Key]);
             }
-            foreach (var x in tags)
-            {
-                Assert.Equal(x.Value, options.Options.Tags[x.Key]);
-            }
+            if (hasTagIntegration)
+                foreach (var x in tags)
+                {
+                    Assert.Equal(x.Value, options.Options.Tags[x.Key]);
+                }
             Assert.Equal(contentType, options.Options.HttpHeaders.ContentType);
             metadata.Add("ale2", "single");
             response = await contentRepository.SetPropertiesAsync(name, new ContentRepositoryOptions
@@ -92,6 +93,7 @@ namespace File.UnitTest
         [InlineData("blobstorage")]
         [InlineData("inmemory")]
         [InlineData("sharepoint")]
+        [InlineData("filestorage")]
         public async Task ExecuteListAsync(string integrationName)
         {
             var contentRepository = _contentRepositoryFactory.Create(integrationName);
@@ -104,6 +106,7 @@ namespace File.UnitTest
         [InlineData("blobstorage")]
         [InlineData("inmemory")]
         [InlineData("sharepoint")]
+        [InlineData("filestorage")]
         public async Task ExecuteOnlyListAsync(string integrationName)
         {
             var contentRepository = _contentRepositoryFactory.Create(integrationName);
@@ -113,9 +116,11 @@ namespace File.UnitTest
             }
         }
         [Theory]
-        [InlineData("blobstorage", "inmemory", "path34")]
-        [InlineData("inmemory", "sharepoint", "path67")]
-        [InlineData("sharepoint", "blobstorage", "path89")]
+        [InlineData("blobstorage", "inmemory", "path01")]
+        [InlineData("inmemory", "sharepoint", "path02")]
+        [InlineData("sharepoint", "blobstorage", "path03")]
+        [InlineData("filestorage", "blobstorage", "path04")]
+        [InlineData("inmemory", "filestorage", "path05")]
         public async Task MigrateAsync(string integrationNameFrom, string integrationNameTo, string dispath)
         {
             var contentRepository = _contentRepositoryFactory.Create(integrationNameFrom);
