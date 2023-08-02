@@ -1,8 +1,8 @@
 ﻿namespace RepositoryFramework.Test.Infrastructure.EntityFramework.Models.Internal
 {
-    public partial class User
+    public partial class ReinforcedUser
     {
-        public User()
+        public ReinforcedUser()
         {
             IdGruppos = new HashSet<Group>();
         }

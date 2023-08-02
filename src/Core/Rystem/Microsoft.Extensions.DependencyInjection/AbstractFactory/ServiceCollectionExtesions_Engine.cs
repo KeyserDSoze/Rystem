@@ -5,14 +5,26 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static partial class ServiceCollectionExtesions
     {
-        private static void SendInError<TService, TImplementation>(string name)
+        private static void SendInError<TService, TImplementation>(this IServiceCollection services, string name)
         {
-            throw new ArgumentException($"Service {typeof(TImplementation).Name} with name: {name} for your factory {typeof(TService).Name} already exists.");
+            name = name.GetIntegrationName<TService>();
+            var map = services.TryAddSingletonAndGetService<FactoryServices<TService>>();
+            var descriptor = map.Services[name].Descriptor;
+            throw new ArgumentException($"Service {typeof(TImplementation).FullName} with name: '{name.Replace($"{typeof(TService).FullName}_", string.Empty)}' for your factory {typeof(TService).FullName} already exists in the form of {descriptor.ImplementationType?.FullName ?? descriptor.ImplementationInstance?.GetType().FullName ?? descriptor.ServiceType.FullName}");
         }
         private static void InformThatItsAlreadyInstalled(ref bool check)
         {
             check = false;
         }
+        internal static string GetIntegrationName<TService>(this string? name)
+        {
+            //var fullName = typeof(TService).FullName!;
+            //if (name?.StartsWith(fullName) == true)
+            //    return name;
+            //return $"{fullName}_{name}";
+            return name ?? string.Empty;
+        }
+
         private static IServiceCollection AddEngineFactoryWithoutGenerics(this IServiceCollection services,
             Type serviceType,
             Type implementationType,
@@ -40,7 +52,7 @@ namespace Microsoft.Extensions.DependencyInjection
             where TService : class
             where TImplementation : class, TService
         {
-            name ??= string.Empty;
+            name = name.GetIntegrationName<TService>();
             var serviceType = typeof(TService);
             var implementationType = typeof(TImplementation);
             services.TryAddTransient<IFactory<TService>, Factory<TService>>();

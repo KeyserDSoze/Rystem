@@ -99,7 +99,7 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.InstanceName = "SampleInstance";
 });
 builder.Services
-    .AddRepository<User, string>(repositoryBuilder =>
+    .AddRepository<ReinforcedUser, string>(repositoryBuilder =>
     {
         repositoryBuilder
         .WithBlobStorage(storageBuilder =>

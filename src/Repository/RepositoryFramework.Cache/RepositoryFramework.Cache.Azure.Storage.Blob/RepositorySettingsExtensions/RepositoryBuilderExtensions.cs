@@ -19,14 +19,19 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns>IRepositoryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public static IRepositoryBuilder<T, TKey> WithBlobStorageCache<T, TKey>(
            this IRepositoryBuilder<T, TKey> builder,
-                Action<IBlobStorageRepositoryBuilder<T, TKey>> blobStorageBuilder,
+                Action<IBlobStorageRepositoryBuilder<BlobStorageCacheModel, string>> blobStorageBuilder,
                 Action<DistributedCacheOptions<T, TKey>>? cacheOptions = null,
                 string? name = null)
             where TKey : notnull
         {
-            builder
-                .WithBlobStorageAsync(blobStorageBuilder, name)
-                .ToResult();
+            var map = builder.Services.TryAddSingletonAndGetService<FactoryServices<IRepository<BlobStorageCacheModel, string>>>();
+            if (!map.Services.ContainsKey($"{typeof(IRepository<BlobStorageCacheModel, string>).FullName}_"))
+                builder.Services.AddRepository<BlobStorageCacheModel, string>(repositoryBuilder =>
+                {
+                    repositoryBuilder
+                        .WithBlobStorageAsync(blobStorageBuilder, name)
+                        .ToResult();
+                });
             return builder
                 .WithDistributedCache<T, TKey, BlobStorageCache<T, TKey>>(cacheOptions, name, ServiceLifetime.Singleton);
         }
@@ -42,14 +47,19 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns>ICommandBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public static ICommandBuilder<T, TKey> WithBlobStorageCache<T, TKey>(
            this ICommandBuilder<T, TKey> builder,
-                Action<IBlobStorageRepositoryBuilder<T, TKey>> blobStorageBuilder,
+                Action<IBlobStorageRepositoryBuilder<BlobStorageCacheModel, string>> blobStorageBuilder,
                 Action<DistributedCacheOptions<T, TKey>>? cacheOptions = null,
                 string? name = null)
             where TKey : notnull
         {
-            builder
-                .WithBlobStorageAsync(blobStorageBuilder, name)
-                .ToResult();
+            var map = builder.Services.TryAddSingletonAndGetService<FactoryServices<IRepository<BlobStorageCacheModel, string>>>();
+            if (!map.Services.ContainsKey($"{typeof(IRepository<BlobStorageCacheModel, string>).FullName}_"))
+                builder.Services.AddRepository<BlobStorageCacheModel, string>(repositoryBuilder =>
+                {
+                    repositoryBuilder
+                        .WithBlobStorageAsync(blobStorageBuilder, name)
+                        .ToResult();
+                });
             return builder
                 .WithDistributedCache<T, TKey, BlobStorageCache<T, TKey>>(cacheOptions, name, ServiceLifetime.Singleton);
         }
@@ -65,14 +75,19 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns>IQueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public static IQueryBuilder<T, TKey> WithBlobStorageCache<T, TKey>(
            this IQueryBuilder<T, TKey> builder,
-                Action<IBlobStorageRepositoryBuilder<T, TKey>> blobStorageBuilder,
+                Action<IBlobStorageRepositoryBuilder<BlobStorageCacheModel, string>> blobStorageBuilder,
                 Action<DistributedCacheOptions<T, TKey>>? cacheOptions = null,
                 string? name = null)
             where TKey : notnull
         {
-            builder
-                .WithBlobStorageAsync(blobStorageBuilder, name)
-                .ToResult();
+            var map = builder.Services.TryAddSingletonAndGetService<FactoryServices<IRepository<BlobStorageCacheModel, string>>>();
+            if (!map.Services.ContainsKey($"{typeof(IRepository<BlobStorageCacheModel, string>).FullName}_"))
+                builder.Services.AddRepository<BlobStorageCacheModel, string>(repositoryBuilder =>
+                {
+                    repositoryBuilder
+                        .WithBlobStorageAsync(blobStorageBuilder, name)
+                        .ToResult();
+                });
             return builder
                 .WithDistributedCache<T, TKey, BlobStorageCache<T, TKey>>(cacheOptions, name, ServiceLifetime.Singleton);
         }

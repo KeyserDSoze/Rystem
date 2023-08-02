@@ -19,7 +19,7 @@
            where TService : class
            where TImplementation : class, TService, IDecoratorService<TService>
         {
-            name ??= string.Empty;
+            name = name.GetIntegrationName<TService>();
             var serviceType = typeof(TService);
             var implementationType = typeof(TImplementation);
             var map = services.TryAddSingletonAndGetService<FactoryServices<TService>>();
