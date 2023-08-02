@@ -23,6 +23,7 @@ namespace File.UnitTest
         [InlineData("blobstorage")]
         [InlineData("inmemory")]
         [InlineData("sharepoint")]
+        [InlineData("filestorage")]
         public async Task ExecuteAsync(string integrationName)
         {
             var contentRepository = _contentRepositoryFactory.Create(integrationName);

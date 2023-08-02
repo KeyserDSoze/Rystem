@@ -25,5 +25,20 @@ namespace Microsoft.Extensions.DependencyInjection
                 .NoContext();
             return builder;
         }
+        /// <summary>
+        /// Add a sharepoint storage integration to content repository.
+        /// Please use an App Registration with Permission Type: Application and Permissions: Files.ReadWrite.All or Sites.ReadWrite.All.
+        /// </summary>
+        /// <param name="builder"></param>
+        /// <param name="connectionSettings"></param>
+        /// <param name="name"></param>
+        /// <param name="serviceLifetime"></param>
+        /// <returns>IContentRepositoryBuilder</returns>
+        public static IContentRepositoryBuilder WithSharepointIntegration(
+          this IContentRepositoryBuilder builder,
+          Action<SharepointConnectionSettings> connectionSettings,
+          string? name = null,
+          ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
+            => builder.WithSharepointIntegrationAsync(connectionSettings, name, serviceLifetime).ToResult();
     }
 }

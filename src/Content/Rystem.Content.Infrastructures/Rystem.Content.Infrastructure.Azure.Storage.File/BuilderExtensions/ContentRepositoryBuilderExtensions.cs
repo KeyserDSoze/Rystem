@@ -6,37 +6,37 @@ namespace Microsoft.Extensions.DependencyInjection
     public static partial class ContentRepositoryBuilderExtensions
     {
         /// <summary>
-        /// Add a blob storage integration to content repository.
+        /// Add a file storage integration to content repository.
         /// </summary>
         /// <param name="builder"></param>
         /// <param name="connectionSettings"></param>
         /// <param name="name"></param>
         /// <param name="serviceLifetime"></param>
         /// <returns>IContentRepositoryBuilder</returns>
-        public static async Task<IContentRepositoryBuilder> WithBlobStorageIntegrationAsync(
+        public static async Task<IContentRepositoryBuilder> WithFileStorageIntegrationAsync(
           this IContentRepositoryBuilder builder,
-          Action<BlobStorageConnectionSettings> connectionSettings,
+          Action<FileStorageConnectionSettings> connectionSettings,
           string? name = null,
           ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
         {
             await builder
-               .WithIntegrationAsync<BlobStorageRepository, BlobStorageConnectionSettings, BlobServiceClientWrapper>(connectionSettings, name, serviceLifetime)
+               .WithIntegrationAsync<FileStorageRepository, FileStorageConnectionSettings, FileServiceClientWrapper>(connectionSettings, name, serviceLifetime)
                .NoContext();
             return builder;
         }
         /// <summary>
-        /// Add a blob storage integration to content repository.
+        /// Add a file storage integration to content repository.
         /// </summary>
         /// <param name="builder"></param>
         /// <param name="connectionSettings"></param>
         /// <param name="name"></param>
         /// <param name="serviceLifetime"></param>
         /// <returns>IContentRepositoryBuilder</returns>
-        public static IContentRepositoryBuilder WithBlobStorageIntegration(
+        public static IContentRepositoryBuilder WithFileStorageIntegration(
           this IContentRepositoryBuilder builder,
-          Action<BlobStorageConnectionSettings> connectionSettings,
+          Action<FileStorageConnectionSettings> connectionSettings,
           string? name = null,
-          ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
-            => builder.WithBlobStorageIntegrationAsync(connectionSettings, name, serviceLifetime).ToResult();
+          ServiceLifetime serviceLifetime = ServiceLifetime.Transient) 
+            => builder.WithFileStorageIntegrationAsync(connectionSettings, name, serviceLifetime).ToResult();
     }
 }

@@ -4,11 +4,6 @@
     {
         public static string ToUpperCaseFirst(this string value)
             => string.IsNullOrWhiteSpace(value) ? value : $"{value.FirstOrDefault().ToString().ToUpper()}{value[1..].ToLower()}";
-        public static Stream ToStream(this byte[] bytes)
-            => new MemoryStream(bytes)
-            {
-                Position = 0
-            };
         public static Task<string> ConvertToStringAsync(this Stream entity)
         {
             if (entity.CanSeek)
@@ -76,8 +71,8 @@
         }
         public static bool ContainsAtLeast(this string value, int count, char contained)
         {
-            int counter = 0;
-            foreach (char c in value)
+            var counter = 0;
+            foreach (var c in value)
             {
                 if (contained == c)
                     counter++;

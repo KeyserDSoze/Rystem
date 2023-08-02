@@ -35,7 +35,15 @@ namespace File.UnitTest
                     //x.MapWithRootSiteAndDocumentLibraryName("Foglione");
                     //x.MapWithSiteIdAndDocumentLibraryId(configuration["Sharepoint:SiteId"],
                     //    configuration["Sharepoint:DocumentLibraryId"]);
-                }, "sharepoint").ToResult();
+                }, "sharepoint").ToResult()
+                .WithFileStorageIntegrationAsync(x =>
+                {
+                    x.ShareName = "supertest";
+                    x.Prefix = "site/";
+                    x.ConnectionString = configuration["ConnectionString:Storage"];
+                },
+                "filestorage")
+                .ToResult();
         }
     }
 }

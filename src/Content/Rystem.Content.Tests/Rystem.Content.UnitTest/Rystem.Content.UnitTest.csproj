@@ -26,6 +26,7 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\Rystem.Content.Infrastructures\Rystem.Content.Infrastructure.Azure.Storage.Blob\Rystem.Content.Infrastructure.Azure.Storage.Blob.csproj" />
+        <ProjectReference Include="..\..\Rystem.Content.Infrastructures\Rystem.Content.Infrastructure.Azure.Storage.File\Rystem.Content.Infrastructure.Azure.Storage.File.csproj" />
         <ProjectReference Include="..\..\Rystem.Content.Infrastructures\Rystem.Content.Infrastructure.InMemory\Rystem.Content.Infrastructure.InMemory.csproj" />
         <ProjectReference Include="..\..\Rystem.Content.Infrastructures\Rystem.Content.Infrastructure.M365.Sharepoint\Rystem.Content.Infrastructure.M365.Sharepoint.csproj" />
     </ItemGroup>

@@ -11,7 +11,7 @@ namespace Rystem.Content.Infrastructure.Storage
         {
             Options = options;
         }
-        private BlobContainerClient Client => Options?.ContainerClient ?? throw new ArgumentException("Client for F not installed correctly");
+        private BlobContainerClient Client => Options?.ContainerClient ?? throw new ArgumentException($"Client for Blob storage repository and factory {_factoryName} not installed correctly");
         public BlobServiceClientWrapper? Options { get; set; }
         public BlobStorageRepository(BlobServiceClientWrapper? options = null)
         {
@@ -165,10 +165,10 @@ namespace Rystem.Content.Infrastructure.Storage
             }
             return true;
         }
-
+        private string _factoryName;
         public void SetFactoryName(string name)
         {
-            return;
+            _factoryName = name;
         }
     }
 }
