@@ -1,8 +1,7 @@
-﻿using System.IO;
+﻿using System.Text;
 using Azure.Core;
 using Azure.Identity;
 using Azure.Storage.Files.Shares;
-using Azure.Storage.Files.Shares.Models;
 
 namespace Rystem.Content.Infrastructure.Storage
 {
@@ -32,8 +31,15 @@ namespace Rystem.Content.Infrastructure.Storage
             await shareClient.SetAccessPolicyAsync(settings.Permissions, settings.Conditions).NoContext();
             if (!string.IsNullOrWhiteSpace(settings.Prefix))
             {
-                var directoryClient = shareClient.GetDirectoryClient(settings.Prefix);
-                await directoryClient.CreateIfNotExistsAsync().NoContext();
+                StringBuilder pathBuilder = new();
+                foreach (var directory in settings.Prefix.Split('/'))
+                {
+                    if (string.IsNullOrWhiteSpace(directory))
+                        continue;
+                    pathBuilder.Append($"{directory}/");
+                    var directoryClient = shareClient.GetDirectoryClient(pathBuilder.ToString());
+                    await directoryClient.CreateIfNotExistsAsync().NoContext();
+                }
             }
             return (serviceProvider) => new FileServiceClientWrapper
             {

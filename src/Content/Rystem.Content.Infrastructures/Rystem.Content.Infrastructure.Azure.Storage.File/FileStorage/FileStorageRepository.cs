@@ -1,4 +1,6 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.IO;
+using System.Runtime.CompilerServices;
+using System.Text;
 using Azure.Storage.Files.Shares;
 using Azure.Storage.Files.Shares.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,14 +22,34 @@ namespace Rystem.Content.Infrastructure.Storage
         }
         private int? _lenghtOfPrefix;
         public int LengthOfPrefix => _lenghtOfPrefix ??= Options?.Prefix?.Length ?? 0;
-        private async Task<ShareFileClient> GetFileClientAsync(string path, bool createIfNotExists)
+        private async Task<(ShareDirectoryClient Client, string LastPath)> GetDirectoryClientAsync(string? path, bool createIfNotExists)
         {
+            path ??= string.Empty;
             var pathSplitted = path.Split('/');
             var fileName = pathSplitted.Last();
-            var directory = Client.GetDirectoryClient(string.Join('/', pathSplitted.SkipLast(1)));
+            var directoryClient = Client.GetRootDirectoryClient();
             if (createIfNotExists)
-                await directory.CreateIfNotExistsAsync().NoContext();
-            var file = directory.GetFileClient(fileName);
+            {
+                StringBuilder pathBuilder = new();
+                if (!string.IsNullOrWhiteSpace(Options?.Prefix))
+                    pathBuilder.Append(Options.Prefix);
+                foreach (var directory in pathSplitted.SkipLast(1))
+                {
+                    pathBuilder.Append($"{directory}/");
+                    directoryClient = Client.GetDirectoryClient(pathBuilder.ToString());
+                    await directoryClient.CreateIfNotExistsAsync().NoContext();
+                }
+            }
+            else if (pathSplitted.Length > 1)
+            {
+                directoryClient = Client.GetDirectoryClient($"{Options?.Prefix}{string.Join('/', pathSplitted.SkipLast(1))}");
+            }
+            return (directoryClient, fileName);
+        }
+        private async Task<ShareFileClient> GetFileClientAsync(string path, bool createIfNotExists)
+        {
+            (var directoryClient, var fileName) = await GetDirectoryClientAsync(path, createIfNotExists).NoContext();
+            var file = directoryClient.GetFileClient(fileName);
             return file;
         }
 
@@ -79,25 +101,25 @@ namespace Rystem.Content.Infrastructure.Storage
             ContentInformationType informationRetrieve = ContentInformationType.None,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var client = !string.IsNullOrWhiteSpace(Options?.Prefix) ?
-                Client.GetDirectoryClient(Options.Prefix) : Client.GetRootDirectoryClient();
-            await client.CreateIfNotExistsAsync(cancellationToken: cancellationToken).NoContext();
-            await foreach (var fileOrDirectory in client.GetFilesAndDirectoriesAsync(
-                new Azure.Storage.Files.Shares.Models.ShareDirectoryGetFilesAndDirectoriesOptions()
+            (var directoryClient, var finalPrefix) = await GetDirectoryClientAsync(prefix, false).NoContext();
+            await foreach (var fileOrDirectory in directoryClient.GetFilesAndDirectoriesAsync(
+                new ShareDirectoryGetFilesAndDirectoriesOptions()
                 {
                     IncludeExtendedInfo = true,
-                    Prefix = prefix,
-                    Traits = Azure.Storage.Files.Shares.Models.ShareFileTraits.None
+                    Prefix = finalPrefix,
+                    Traits = ShareFileTraits.None
                 }, cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var path = $"{prefix}{fileOrDirectory.Name}";
-                var fileClient = await GetFileClientAsync($"{prefix}{fileOrDirectory.Name}", false).NoContext();
                 if (fileOrDirectory.IsDirectory)
                     continue;
+                var path = $"{directoryClient.Path}/{fileOrDirectory.Name}";
+                if (Options?.Prefix != null)
+                    path = path[LengthOfPrefix..];
+                var fileClient = await GetFileClientAsync(path, false).NoContext();
                 if (downloadContent)
                 {
-                    var file = await DownloadAsync($"{prefix}{fileOrDirectory.Name}", informationRetrieve, cancellationToken).NoContext();
+                    var file = await DownloadAsync(path, informationRetrieve, cancellationToken).NoContext();
                     if (file == null)
                         continue;
                     yield return file;
@@ -112,7 +134,7 @@ namespace Rystem.Content.Infrastructure.Storage
                     yield return new ContentRepositoryDownloadResult
                     {
                         Uri = fileClient.Uri.ToString(),
-                        Path = fileClient.Path,
+                        Path = path,
                         Options = propertyResult?.Options
                     };
                 }

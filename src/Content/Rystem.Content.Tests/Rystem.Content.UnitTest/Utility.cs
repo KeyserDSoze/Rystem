@@ -13,5 +13,14 @@ namespace File.UnitTest
             await readableStream.CopyToAsync(editableFile);
             return editableFile;
         }
+        public async Task<MemoryStream> GetBiggerFileAsync()
+        {
+            var location = Assembly.GetExecutingAssembly().Location;
+            location = string.Join('\\', location.Split('\\').Take(location.Split('\\').Length - 1));
+            using var readableStream = System.IO.File.OpenRead($"{location}\\Files\\monnalisa.jpg");
+            var editableFile = new MemoryStream();
+            await readableStream.CopyToAsync(editableFile);
+            return editableFile;
+        }
     }
 }

@@ -107,6 +107,23 @@ namespace File.UnitTest
         [InlineData("inmemory")]
         [InlineData("sharepoint")]
         [InlineData("filestorage")]
+        public async Task OverrideAsync(string integrationName)
+        {
+            var contentRepository = _contentRepositoryFactory.Create(integrationName);
+            var file = await _utility.GetFileAsync();
+            var biggerFile = await _utility.GetBiggerFileAsync();
+            var uploadResult = await contentRepository.UploadAsync("file", file.ToArray(), overwrite: true).NoContext();
+            Assert.True(uploadResult);
+            uploadResult = await contentRepository.UploadAsync("file", biggerFile.ToArray(), overwrite: true).NoContext();
+            Assert.True(uploadResult);
+            var deleteResult = await contentRepository.DeleteAsync("file").NoContext();
+            Assert.True(deleteResult);
+        }
+        [Theory]
+        [InlineData("blobstorage")]
+        [InlineData("inmemory")]
+        [InlineData("sharepoint")]
+        [InlineData("filestorage")]
         public async Task ExecuteOnlyListAsync(string integrationName)
         {
             var contentRepository = _contentRepositoryFactory.Create(integrationName);
