@@ -65,7 +65,7 @@ namespace Rystem.Nuget
         }
         static async Task ReadInDeepAsync(DirectoryInfo directoryInfo, LibraryContext context, Update update, bool isDebug, string? specificVersion)
         {
-            bool fileFound = false;
+            var fileFound = false;
             foreach (var file in directoryInfo!.GetFiles())
             {
                 if (file.Name.EndsWith(".csproj") && update.Libraries.Any(x => $"{x.NormalizedName}.csproj" == file.Name))
@@ -104,7 +104,7 @@ namespace Rystem.Nuget
                             Console.WriteLine(content);
                             Console.WriteLine("------------------------");
                             Console.WriteLine("------------------------");
-                            string path = @$"{s_repo.Split(file.FullName).First()}\repos\{s_repo.Split(file.FullName).Last().Split('\\').First()}";
+                            var path = @$"{s_repo.Split(file.FullName).First()}\repos\{s_repo.Split(file.FullName).Last().Split('\\').First()}";
                             if (!context.RepoToUpdate.Contains(path))
                                 context.RepoToUpdate.Add(path);
                             if (!isDebug)
