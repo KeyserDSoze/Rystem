@@ -19,7 +19,7 @@
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.EntityFramework</RepositoryUrl>
 		<PackageId>Rystem.RepositoryFramework.Infrastructure.EntityFramework</PackageId>
-		<Version>5.0.1</Version>
+		<Version>5.0.2</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	</PropertyGroup>
@@ -32,7 +32,7 @@
 		</When>
 		<When Condition=" '$(Configuration)'!='Debug' ">
 			<ItemGroup>
-				<PackageReference Include="Rystem.RepositoryFramework.Abstractions" Version="5.0.1" />
+				<PackageReference Include="Rystem.RepositoryFramework.Abstractions" Version="5.0.2" />
 			</ItemGroup>
 		</When>
 	</Choose>
