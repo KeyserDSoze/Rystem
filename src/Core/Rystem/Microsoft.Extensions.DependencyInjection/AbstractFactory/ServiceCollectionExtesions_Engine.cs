@@ -156,6 +156,26 @@ namespace Microsoft.Extensions.DependencyInjection
 
             return services;
         }
+        public static bool HasFactory<TService>(
+            this IServiceCollection services,
+            string? name)
+            where TService : class
+        {
+            name = name.GetIntegrationName<TService>();
+            var map = services.TryAddSingletonAndGetService<FactoryServices<TService>>();
+            return map.Services.ContainsKey(name);
+        }
+        public static bool HasFactory<TService>(
+            this IServiceCollection services,
+            Type serviceType,
+            string? name)
+            where TService : class
+        {
+            name = name.GetIntegrationName<TService>();
+            var factoryServicesType = typeof(FactoryServices<>).MakeGenericType(serviceType);
+            var map = (dynamic)services.TryAddSingletonAndGetService(factoryServicesType);
+            return map.Services.ContainsKey(name);
+        }
         private static TService AddOptionsToFactory<TService, TOptions>(
             IServiceProvider serviceProvider,
             TService service,
