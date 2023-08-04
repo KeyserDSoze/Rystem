@@ -11,7 +11,7 @@ namespace Rystem.Test.UnitTest.DependencyInjection
         string Id { get; }
         string FactoryName { get; }
     }
-    public class TestService : ITestService, IServiceForFactory, IDecoratorService<ITestService>, IServiceForFactoryWithOptions<TestOptions>
+    public class TestService : ITestService, IDecoratorService<ITestService>, IServiceForFactoryWithOptions<TestOptions>
     {
         public string Id => Options.ClassicName;
         public string FactoryName { get; private set; }
