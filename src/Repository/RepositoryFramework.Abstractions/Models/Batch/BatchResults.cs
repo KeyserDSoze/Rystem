@@ -1,9 +1,12 @@
-﻿namespace RepositoryFramework
+﻿using System.Text.Json.Serialization;
+
+namespace RepositoryFramework
 {
     public sealed class BatchResults<T, TKey>
         where TKey : notnull
     {
         public static BatchResults<T, TKey> Empty => new();
+        [JsonPropertyName("r")]
         public List<BatchResult<T, TKey>> Results { get; } = new();
         public BatchResults<T, TKey> AddInsert(TKey key, State<T, TKey> state)
         {

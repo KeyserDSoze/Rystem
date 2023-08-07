@@ -5,9 +5,13 @@ namespace RepositoryFramework
     public class State<T, TKey>
         where TKey : notnull
     {
+        [JsonPropertyName("isOk")]
         public bool IsOk { get; set; }
+        [JsonPropertyName("e")]
         public Entity<T, TKey>? Entity { get; set; }
+        [JsonPropertyName("c")]
         public int? Code { get; set; }
+        [JsonPropertyName("m")]
         public string? Message { get; set; }
         [JsonIgnore]
         public bool HasEntity => Entity?.HasValue == true;
