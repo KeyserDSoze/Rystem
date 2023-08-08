@@ -18,7 +18,8 @@ jobs:
           node-version: '14.x'
           registry-url: 'https://registry.npmjs.org'
       - run: cd src/Repository/repositoryframework.api.client.typescript/src/rystem/
-      - run: npm ci
+      - run: npm install
+      - run: npm run build --if-present
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
