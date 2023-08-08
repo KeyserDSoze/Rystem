@@ -1,0 +1,24 @@
+name: Api.Client.Typescript.Npm
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - src/Repository/repositoryframework.api.client.typescript/src/rystem/package.json
+jobs:
+  publish:
+    name: build, pack & publish
+    runs-on: ubuntu-latest
+    environment: Rystem.Nuget
+    
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
+          registry-url: 'https://registry.npmjs.org'
+      - run: cd src/Repository/repositoryframework.api.client.typescript/src/rystem/
+      - run: npm ci
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
