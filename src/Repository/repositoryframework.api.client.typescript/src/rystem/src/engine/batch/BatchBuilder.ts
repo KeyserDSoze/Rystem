@@ -2,6 +2,7 @@
 import { Batch } from "./Batch";
 import { BatchResults } from "./BatchResults";
 import { Repository } from "../Repository";
+import { RepositoryEndpoint } from "../../models/RepositoryEndpoint";
 
 
 export class BatchBuilder<T, TKey> {
@@ -38,8 +39,9 @@ export class BatchBuilder<T, TKey> {
         return this;
     }
     execute(): Promise<BatchResults<T, TKey>> {
-        return this.repository.makeRequest<BatchResults<T, TKey>>(`Batch`, 'POST',
-            JSON.stringify(this.batch),
+        return this.repository.makeRequest<BatchResults<T, TKey>>(RepositoryEndpoint.Batch,
+            `Batch`, 'POST',
+            this.batch,
             {
                 'content-type': 'application/json;charset=UTF-8',
             });

@@ -27,6 +27,59 @@ RepositoryServices
     });
 ```
 
+You can also add Command or Query for your CQRS pattern with
+
+```
+RepositoryServices
+    .Create("https://localhost:7058/api/")
+    .addCommand<IperUser, string>(x => {
+        x.name = "test";
+        x.path = "SuperUser";
+    })
+    .addQuery<SuperUser, string>(x => {
+        x.name = "test2"
+        x.uri = "https://localhost:9090/api/SuperUser/inmemory/"
+    });
+```
+
+### Add Custom Headers to each request
+For instance when you need to add a token from your authentication flow you can use this implementation.
+
+```
+RepositoryServices
+        .Create("http://localhost:5000/api/")
+        .addRepository<IperUser, string>(x => {
+            x.name = "test";
+            x.path = "SuperUser";
+            x.addHeadersEnricher((...args) => {
+                return {
+                    "Authorization-UI": "Bearer dsjadjalsdjalsdjalsda"
+                }
+            });
+            x.addHeadersEnricher((endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any) => {
+                return {
+                    "Authorization-UI2": "Bearer dsjadjalsdjalsdjalsda"
+                }
+            })
+        })
+```
+
+### Add Custom Error Handlers
+For instance when you need to capture a not authorized error to request a new authentication flow before a new request.
+Returning true you can retry automatically the request, with false the request chain will be stopped.
+
+```
+RepositoryServices
+        .Create("http://localhost:5000/api/")
+        .addRepository<IperUser, string>(x => {
+            x.name = "test";
+            x.path = "SuperUser";
+            x.addErrorHandler((endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any) => {
+                return (err as string).startsWith("big error");
+            });
+        })
+```
+
 ## Usage
 Always with RepositoryServices class you can retrieve with
 the correct name the integration you setup during your startup.
@@ -34,6 +87,15 @@ the correct name the integration you setup during your startup.
 ```
 const repository = RepositoryServices
     .Repository<IperUser, string>("test");
+```
+
+You can also retrieve CQRS interfaces.
+
+```
+const command = RepositoryServices
+    .Command<IperUser, string>("test");
+const query = RepositoryServices
+    .Query<IperUser, string>("test2");
 ```
 
 ## Methods

@@ -1,4 +1,5 @@
 import { Entity } from "../../models/Entity";
+import { RepositoryEndpoint } from "../../models/RepositoryEndpoint";
 import { Repository } from "../Repository";
 import { WhereBuilder } from "./filter/WhereBuilder";
 import { FilterOperationAsString } from "./FilterOperationAsString";
@@ -67,8 +68,9 @@ export class QueryBuilder<T, TKey> {
         return this;
     }
     execute(): Promise<Array<Entity<T, TKey>>> {
-        return this.repository.makeRequest<Array<Entity<T, TKey>>>(`Query`, 'POST',
-            JSON.stringify(this.filters),
+        return this.repository.makeRequest<Array<Entity<T, TKey>>>(RepositoryEndpoint.Query,
+            `Query`, 'POST',
+            this.filters,
             {
                 'content-type': 'application/json;charset=UTF-8',
             });
@@ -105,8 +107,9 @@ export class QueryBuilder<T, TKey> {
         return this.executeOperation("Sum", "decimal");
     }
     private executeOperation(operation: string, returnType: string): Promise<number> {
-        return this.repository.makeRequest<number>(`Operation?op=${operation}&returnType=${returnType}`, 'POST',
-            JSON.stringify(this.filters),
+        return this.repository.makeRequest<number>(RepositoryEndpoint.Operation,
+            `Operation?op=${operation}&returnType=${returnType}`, 'POST',
+            this.filters,
             {
                 'content-type': 'application/json;charset=UTF-8',
             });

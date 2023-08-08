@@ -1,5 +1,6 @@
 import { IRepository } from "../interfaces/IRepository";
 import { Entity } from "../models/Entity";
+import { RepositoryEndpoint } from "../models/RepositoryEndpoint";
 import { State } from "../models/State";
 import { RepositorySettings } from "../servicecollection/RepositorySettings";
 import { BatchBuilder } from "./batch/BatchBuilder";
@@ -18,25 +19,27 @@ export class Repository<T, TKey> implements IRepository<T, TKey>
         this.settings = settings;
     }
     async makeRequest<TResponse>(
+        endpoint: RepositoryEndpoint,
         path: string,
         method: string,
-        body: BodyInit | null = null,
+        body: any | null = null,
         headers: HeadersInit = {} as HeadersInit): Promise<TResponse> {
         let retry: boolean = true;
         let response: TResponse = null!;
+        const uri: string = `${this.baseUri}/${path}`;
         while (retry) {
-            response = await fetch(`${this.baseUri}/${path}`,
+            response = await fetch(uri,
                 {
                     method: method,
-                    headers: this.settings.enrichHeaders(headers),
-                    body: body
+                    headers: this.settings.enrichHeaders(endpoint, uri, method, headers, body),
+                    body: body == null ? null : JSON.stringify(body)
                 })
                 .then(res => {
                     const json = res.json();
                     return json;
                 })
                 .catch((err) => {
-                    retry = this.settings.manageError(err);
+                    retry = this.settings.manageError(endpoint, uri, method, headers, body, err);
                     return null;
                 })
                 .then(res => {
@@ -50,11 +53,11 @@ export class Repository<T, TKey> implements IRepository<T, TKey>
     }
     get(key: TKey): Promise<T> {
         if (!this.settings.complexKey) {
-            return this.makeRequest<T>(
+            return this.makeRequest<T>(RepositoryEndpoint.Get,
                 `Get?key=${key}`, 'GET');
         } else {
-            return this.makeRequest<T>(`Get`, 'POST',
-                JSON.stringify(key),
+            return this.makeRequest<T>(RepositoryEndpoint.Get, `Get`, 'POST',
+                key,
                 {
                     'content-type': 'application/json;charset=UTF-8',
                 });
@@ -62,17 +65,17 @@ export class Repository<T, TKey> implements IRepository<T, TKey>
     }
     insert(key: TKey, value: T): Promise<State<T, TKey>> {
         if (!this.settings.complexKey) {
-            return this.makeRequest<State<T, TKey>>(`Insert?key=${key}`, 'POST',
-                JSON.stringify(value),
+            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Insert, `Insert?key=${key}`, 'POST',
+                value,
                 {
                     'content-type': 'application/json;charset=UTF-8',
                 });
         } else {
-            return this.makeRequest<State<T, TKey>>(`Insert`, 'POST',
-                JSON.stringify({
+            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Insert, `Insert`, 'POST',
+                {
                     value: value,
                     key: key
-                } as Entity<T, TKey>),
+                } as Entity<T, TKey>,
                 {
                     'content-type': 'application/json;charset=UTF-8',
                 });
@@ -80,17 +83,19 @@ export class Repository<T, TKey> implements IRepository<T, TKey>
     }
     update(key: TKey, value: T): Promise<State<T, TKey>> {
         if (!this.settings.complexKey) {
-            return this.makeRequest<State<T, TKey>>(`Update?key=${key}`, 'POST',
-                JSON.stringify(value),
+            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Update,
+                `Update?key=${key}`, 'POST',
+                value,
                 {
                     'content-type': 'application/json;charset=UTF-8',
                 });
         } else {
-            return this.makeRequest<State<T, TKey>>(`Update`, 'POST',
-                JSON.stringify({
+            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Update,
+                `Update`, 'POST',
+                {
                     value: value,
                     key: key
-                } as Entity<T, TKey>),
+                } as Entity<T, TKey>,
                 {
                     'content-type': 'application/json;charset=UTF-8',
                 });
@@ -98,10 +103,12 @@ export class Repository<T, TKey> implements IRepository<T, TKey>
     }
     exist(key: TKey): Promise<State<T, TKey>> {
         if (!this.settings.complexKey) {
-            return this.makeRequest<State<T, TKey>>(`Exist?key=${key}`, 'GET');
+            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Exist,
+                `Exist?key=${key}`, 'GET');
         } else {
-            return this.makeRequest<State<T, TKey>>(`Exist`, 'POST',
-                JSON.stringify(key),
+            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Exist,
+                `Exist`, 'POST',
+                key,
                 {
                     'content-type': 'application/json;charset=UTF-8',
                 });
@@ -109,10 +116,12 @@ export class Repository<T, TKey> implements IRepository<T, TKey>
     }
     delete(key: TKey): Promise<State<T, TKey>> {
         if (!this.settings.complexKey) {
-            return this.makeRequest<State<T, TKey>>(`Delete?key=${key}`, 'GET');
+            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Delete,
+                `Delete?key=${key}`, 'GET');
         } else {
-            return this.makeRequest<State<T, TKey>>(`Delete`, 'POST',
-                JSON.stringify(key),
+            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Delete,
+                `Delete`, 'POST',
+                key,
                 {
                     'content-type': 'application/json;charset=UTF-8',
                 });
