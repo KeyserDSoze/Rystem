@@ -1,10 +1,8 @@
-import { BatchResults } from "./engine/batch/BatchResults";
-import { ICommand } from "./interfaces/ICommand";
-import { IQuery } from "./interfaces/IQuery";
-import { IRepository } from "./interfaces/IRepository";
-import { Entity } from "./models/Entity";
-import { State } from "./models/State";
-import { RepositoryServices } from "./servicecollection/RepositoryServices";
+export type { BatchResults } from "./engine/batch/BatchResults";
+export type { ICommand } from "./interfaces/ICommand";
+export type { IQuery } from "./interfaces/IQuery";
+export type { IRepository } from "./interfaces/IRepository";
+export type { Entity } from "./models/Entity";
+export type { State } from "./models/State";
 
-export { RepositoryServices };
-export type { IRepository, ICommand, IQuery, State, BatchResults, Entity };
+export { RepositoryServices } from "./servicecollection/RepositoryServices";

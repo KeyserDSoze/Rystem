@@ -7,12 +7,12 @@ import { SerializableFilter } from "./SerializableFilter";
 
 export class QueryBuilder<T, TKey> {
     private filters: SerializableFilter;
-    private baseUri: string | null;
-    constructor(baseUri: string | null) {
+    private repository: Repository<T, TKey>;
+    constructor(repository: Repository<T, TKey>) {
         this.filters = {
             o: [] as Array<FilterOperationAsString>
         } as SerializableFilter;
-        this.baseUri = baseUri;
+        this.repository = repository;
     }
     where(): WhereBuilder<T, TKey> {
         return new WhereBuilder<T, TKey>(this);
@@ -62,29 +62,16 @@ export class QueryBuilder<T, TKey> {
     thenByDescending(predicate: (value: T) => any): QueryBuilder<T, TKey> {
         this.filters.o.push({
             q: FilterOperations.ThenByDescending,
-            v: `_rystem => ${ Repository.predicateAsString<T>(predicate) }`
+            v: `_rystem => ${Repository.predicateAsString<T>(predicate)}`
         } as FilterOperationAsString);
         return this;
     }
     execute(): Promise<Array<Entity<T, TKey>>> {
-        return fetch(`${this.baseUri}/Query`,
+        return this.repository.makeRequest<Array<Entity<T, TKey>>>(`Query`, 'POST',
+            JSON.stringify(this.filters),
             {
-                method: 'POST',
-                headers: {
-                    'content-type': 'application/json;charset=UTF-8',
-                },
-                body: JSON.stringify(this.filters),
-            })
-            .then(res => {
-                const json = res.json();
-                return json;
-            })
-            .catch((err) => {
-                return {} as Array<Entity<T, TKey>>;
-            })
-            .then(res => {
-                return res as Array<Entity<T, TKey>>;
-            })
+                'content-type': 'application/json;charset=UTF-8',
+            });
     }
     count(): Promise<number> {
         return this.executeOperation("Count", "long");
@@ -118,23 +105,10 @@ export class QueryBuilder<T, TKey> {
         return this.executeOperation("Sum", "decimal");
     }
     private executeOperation(operation: string, returnType: string): Promise<number> {
-        return fetch(`${this.baseUri}/Operation?op=${operation}&returnType=${returnType}`,
+        return this.repository.makeRequest<number>(`Operation?op=${operation}&returnType=${returnType}`, 'POST',
+            JSON.stringify(this.filters),
             {
-                method: 'POST',
-                headers: {
-                    'content-type': 'application/json;charset=UTF-8',
-                },
-                body: JSON.stringify(this.filters),
-            })
-            .then(res => {
-                const json = res.json();
-                return json;
-            })
-            .catch((err) => {
-                throw new Error(err);
-            })
-            .then(res => {
-                return res as number;
-            })
+                'content-type': 'application/json;charset=UTF-8',
+            });
     }
 }
