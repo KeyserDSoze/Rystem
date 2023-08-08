@@ -1,7 +1,7 @@
 import './App.css';
 import logo from './logo.svg';
 import { IperUser } from './Models/IperUser';
-import { IRepository } from './rystem';
+import { IRepository } from './rystem/src';
 import { Runner, Setup } from './Tester/Runner';
 
 function App() {

@@ -1,6 +1,6 @@
 import { IperUser } from "../Models/IperUser";
 import { SuperUser } from "../Models/SuperUser";
-import { BatchResults, IRepository, RepositoryServices, State } from "../rystem";
+import { BatchResults, IRepository, RepositoryServices, State } from "../rystem/src";
 
 export function Setup() {
     RepositoryServices
