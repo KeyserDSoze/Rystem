@@ -1,0 +1,11 @@
+{
+  "name": "rystem.repository.client",
+  "version": "0.0.1",
+  "author": "Alessandro Rapiti <alessandro.rapiti44@gmail.com>",
+  "description": "It can simplify the integration with rystem repository server.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "/dist"
+  ]
+}
