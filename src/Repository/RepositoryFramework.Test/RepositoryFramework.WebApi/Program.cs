@@ -64,83 +64,83 @@ builder.Services.AddRepository<SuperiorUser, string>(settings =>
     settings.SetNotExposable();
 });
 
-builder.Services.AddRepository<Animal, AnimalKey>(settings => settings.WithInMemory());
-builder.Services.AddRepository<Car, Guid>(settings => settings.WithInMemory());
-builder.Services.AddRepository<Car2, Range>(settings => settings.WithInMemory());
-builder.Services
-    .AddUserRepositoryWithDatabaseSqlAndEntityFramework(builder.Configuration);
+//builder.Services.AddRepository<Animal, AnimalKey>(settings => settings.WithInMemory());
+//builder.Services.AddRepository<Car, Guid>(settings => settings.WithInMemory());
+//builder.Services.AddRepository<Car2, Range>(settings => settings.WithInMemory());
+//builder.Services
+//    .AddUserRepositoryWithDatabaseSqlAndEntityFramework(builder.Configuration);
 builder.Services.AddApiFromRepositoryFramework()
     .WithDescriptiveName("Repository Api")
     .WithSwagger()
     .WithMapApi()
     .WithDocumentation()
     .WithDefaultCorsWithAllOrigins();
-//.ConfigureAzureActiveDirectory(builder.Configuration);
+////.ConfigureAzureActiveDirectory(builder.Configuration);
 
-builder.Services
-    .AddAuthorization()
-    .AddServerSideBlazor(opts => opts.DetailedErrors = true)
-    .AddMicrosoftIdentityConsentHandler();
 //builder.Services
-//    .AddRepositoryInTableStorage<User, string>(builder.Configuration["ConnectionString:Storage"]);
-builder.Services.AddRepository<BigAnimal, int>(
-    settings =>
-    {
-        settings.WithBlobStorage(x =>
-        {
-            x.Settings.ConnectionString = builder.Configuration["ConnectionString:Storage"];
-        });
-    }
-    );
+//    .AddAuthorization()
+//    .AddServerSideBlazor(opts => opts.DetailedErrors = true)
+//    .AddMicrosoftIdentityConsentHandler();
+////builder.Services
+////    .AddRepositoryInTableStorage<User, string>(builder.Configuration["ConnectionString:Storage"]);
+//builder.Services.AddRepository<BigAnimal, int>(
+//    settings =>
+//    {
+//        settings.WithBlobStorage(x =>
+//        {
+//            x.Settings.ConnectionString = builder.Configuration["ConnectionString:Storage"];
+//        });
+//    }
+//    );
 
-builder.Services.AddStackExchangeRedisCache(options =>
-{
-    options.Configuration = builder.Configuration["ConnectionString:Redis"];
-    options.InstanceName = "SampleInstance";
-});
-builder.Services
-    .AddRepository<ReinforcedUser, string>(repositoryBuilder =>
-    {
-        repositoryBuilder
-        .WithBlobStorage(storageBuilder =>
-        {
-            storageBuilder.Settings.ConnectionString = builder.Configuration["ConnectionString:Storage"];
-        });
-        repositoryBuilder
-        .WithInMemoryCache(x =>
-        {
-            x.ExpiringTime = TimeSpan.FromSeconds(60);
-            x.Methods = RepositoryMethods.Get | RepositoryMethods.Insert | RepositoryMethods.Update | RepositoryMethods.Delete;
-        })
-        .WithBlobStorageCache(
-            x =>
-            {
-                x.Settings.ConnectionString = builder.Configuration["ConnectionString:Storage"];
-            }
-            , x =>
-            {
-                x.ExpiringTime = TimeSpan.FromSeconds(120);
-                x.Methods = RepositoryMethods.All;
-            });
-    });
+//builder.Services.AddStackExchangeRedisCache(options =>
+//{
+//    options.Configuration = builder.Configuration["ConnectionString:Redis"];
+//    options.InstanceName = "SampleInstance";
+//});
+//builder.Services
+//    .AddRepository<ReinforcedUser, string>(repositoryBuilder =>
+//    {
+//        repositoryBuilder
+//        .WithBlobStorage(storageBuilder =>
+//        {
+//            storageBuilder.Settings.ConnectionString = builder.Configuration["ConnectionString:Storage"];
+//        });
+//        repositoryBuilder
+//        .WithInMemoryCache(x =>
+//        {
+//            x.ExpiringTime = TimeSpan.FromSeconds(60);
+//            x.Methods = RepositoryMethods.Get | RepositoryMethods.Insert | RepositoryMethods.Update | RepositoryMethods.Delete;
+//        })
+//        .WithBlobStorageCache(
+//            x =>
+//            {
+//                x.Settings.ConnectionString = builder.Configuration["ConnectionString:Storage"];
+//            }
+//            , x =>
+//            {
+//                x.ExpiringTime = TimeSpan.FromSeconds(120);
+//                x.Methods = RepositoryMethods.All;
+//            });
+//    });
 
-builder.Services
-    .AddRepository<CreativeUser, string>(settings =>
-    {
-        settings.WithCosmosSql(x =>
-        {
-            x.Settings.ConnectionString = builder.Configuration["ConnectionString:CosmosSql"];
-            x.Settings.DatabaseName = "BigDatabase";
-            x.WithId(x => x.Email!);
-        });
-    });
+//builder.Services
+//    .AddRepository<CreativeUser, string>(settings =>
+//    {
+//        settings.WithCosmosSql(x =>
+//        {
+//            x.Settings.ConnectionString = builder.Configuration["ConnectionString:CosmosSql"];
+//            x.Settings.DatabaseName = "BigDatabase";
+//            x.WithId(x => x.Email!);
+//        });
+//    });
 
 #pragma warning restore S125 // Sections of code should not be commented out
 
 var app = builder.Build();
 await app.Services.WarmUpAsync();
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 app
     .UseApiFromRepositoryFramework()
     .WithNoAuthorization();
