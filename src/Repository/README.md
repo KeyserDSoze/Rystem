@@ -90,3 +90,6 @@ You may find the documentation at [this link](https://github.com/KeyserDSoze/Rys
 
 ### Web UI for dashboard
 You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Web/RepositoryFramework.Web.Components)
+
+### Client Api for Typescript/Javascript solutions
+You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/repositoryframework.api.client.typescript/src/rystem)
