@@ -10,6 +10,9 @@ jobs:
     name: build, pack & publish
     runs-on: ubuntu-latest
     environment: Rystem.Nuget
+    defaults:
+        run:
+            working-directory: "src/Repository/repositoryframework.api.client.typescript/src/rystem"
     
     steps:
       - uses: actions/checkout@v3
@@ -17,7 +20,6 @@ jobs:
         with:
           node-version: '14.x'
           registry-url: 'https://registry.npmjs.org'
-      - run: cd "src/Repository/repositoryframework.api.client.typescript/src/rystem"
       - run: ls
       - run: npm install
       - run: npm run build --if-present
