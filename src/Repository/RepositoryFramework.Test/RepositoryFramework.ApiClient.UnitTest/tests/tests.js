@@ -1,11 +1,17 @@
-var assert = require('assert');
-describe('Test Suite 1', function () {
-    it('Test 1', function () {
-        assert.ok(true, "This shouldn't fail");
-    });
-    it('Test 2', function () {
-        assert.ok(1 === 1, "This shouldn't fail");
-        assert.ok(false, "This should fail");
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const index_1 = require("../../../repositoryframework.api.client.typescript/src/rystem/src/index");
+const Setup_1 = require("./setup/Setup");
+const assert = require('assert');
+describe('Test setup', function () {
+    it("Test all names", function () {
+        (0, Setup_1.Setup)();
+        const arrayOfNames = ["test", "test2"];
+        for (let name of arrayOfNames) {
+            const repository = index_1.RepositoryServices
+                .Repository(name);
+            assert.ok(repository != null, "Setup is not working.");
+        }
     });
 });
 //# sourceMappingURL=tests.js.map

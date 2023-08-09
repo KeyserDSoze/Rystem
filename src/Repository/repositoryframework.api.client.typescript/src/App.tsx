@@ -1,6 +1,7 @@
 import './App.css';
 import logo from './logo.svg';
-import { Runner, Setup } from './Tester/Runner';
+import { Runner } from './Tester/Runner';
+import { Setup } from "./Tester/Setup";
 
 function App() {
     Setup();

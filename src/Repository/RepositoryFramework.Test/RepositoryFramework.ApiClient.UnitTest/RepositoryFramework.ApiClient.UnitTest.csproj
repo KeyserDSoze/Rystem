@@ -10,6 +10,12 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <TypeScriptCompile Remove="tests\models\IperUser.ts" />
+      <TypeScriptCompile Remove="tests\models\SuperUser.ts" />
+      <TypeScriptCompile Remove="tests\setup\Setup.ts" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="Microsoft.JavaScript.UnitTest" Version="1.5.10610.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -18,6 +24,12 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Include="tests\models\IperUser.ts" />
+      <None Include="tests\models\SuperUser.ts" />
+      <None Include="tests\setup\Setup.ts" />
     </ItemGroup>
 
 </Project>

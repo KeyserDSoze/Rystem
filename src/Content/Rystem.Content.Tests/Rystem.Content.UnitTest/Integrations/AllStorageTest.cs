@@ -138,6 +138,7 @@ namespace File.UnitTest
         [InlineData("sharepoint", "blobstorage", "path03")]
         [InlineData("filestorage", "blobstorage", "path04")]
         [InlineData("inmemory", "filestorage", "path05")]
+        [InlineData("filestorage", "blobstorage", "path06")]
         public async Task MigrateAsync(string integrationNameFrom, string integrationNameTo, string dispath)
         {
             var contentRepository = _contentRepositoryFactory.Create(integrationNameFrom);

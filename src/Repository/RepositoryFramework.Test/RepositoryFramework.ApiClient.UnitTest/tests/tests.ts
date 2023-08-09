@@ -1,12 +1,17 @@
-var assert = require('assert');
+import { RepositoryServices } from "../../../repositoryframework.api.client.typescript/src/rystem/src/index";
+import { IperUser } from "./models/IperUser";
+import { Setup } from "./setup/Setup";
+const assert = require('assert');
 
-describe('Test Suite 1', function () {
-    it('Test 1', function () {
-        assert.ok(true, "This shouldn't fail");
-    })
 
-    it('Test 2', function () {
-        assert.ok(1 === 1, "This shouldn't fail");
-        assert.ok(false, "This should fail");
+describe('Test setup', function () {
+    it("Test all names", function () {
+        Setup();
+        const arrayOfNames = ["test", "test2"];
+        for (let name of arrayOfNames) {
+            const repository = RepositoryServices
+                .Repository<IperUser, string>(name);
+            assert.ok(repository != null, "Setup is not working.");
+        }
     })
 })
