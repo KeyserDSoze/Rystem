@@ -177,6 +177,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Content.Infrastructu
 EndProject
 Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "repositoryframework.api.client.typescript", "src\Repository\repositoryframework.api.client.typescript\repositoryframework.api.client.typescript.esproj", "{76129054-E88E-49DD-9557-0E610B31BA15}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RepositoryFramework.ApiClient.UnitTest", "src\Repository\RepositoryFramework.Test\RepositoryFramework.ApiClient.UnitTest\RepositoryFramework.ApiClient.UnitTest.csproj", "{0479AB8C-A858-4AB2-9C51-F4748CCF5381}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -365,6 +367,10 @@ Global
 		{76129054-E88E-49DD-9557-0E610B31BA15}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{76129054-E88E-49DD-9557-0E610B31BA15}.Release|Any CPU.Build.0 = Release|Any CPU
 		{76129054-E88E-49DD-9557-0E610B31BA15}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{0479AB8C-A858-4AB2-9C51-F4748CCF5381}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0479AB8C-A858-4AB2-9C51-F4748CCF5381}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0479AB8C-A858-4AB2-9C51-F4748CCF5381}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0479AB8C-A858-4AB2-9C51-F4748CCF5381}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -434,6 +440,7 @@ Global
 		{19B3E513-80E6-4DB1-8D32-A6ACCE8BBEA6} = {C2D49427-A12A-4608-A1DD-41340456EC82}
 		{CEDEDE73-CAB0-495D-B38F-203D396C9C80} = {C2D49427-A12A-4608-A1DD-41340456EC82}
 		{76129054-E88E-49DD-9557-0E610B31BA15} = {2B79D3F0-8FBE-4F69-996D-51933E5756FD}
+		{0479AB8C-A858-4AB2-9C51-F4748CCF5381} = {CE9D708E-E4B7-42E4-AC76-9C936272E6D5}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {35C6ADE0-7E70-48ED-A810-A71B2BC94F57}

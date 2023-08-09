@@ -1,0 +1,6 @@
+{
+  "devDependencies": {
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^20.4.9"
+  }
+}
