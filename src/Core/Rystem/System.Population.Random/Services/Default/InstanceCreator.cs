@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
+﻿using System.Reflection;
 
 namespace System.Population.Random
 {
@@ -20,7 +18,17 @@ namespace System.Population.Random
                 .OrderBy(x => x.GetParameters().Length)
                 .FirstOrDefault();
             if (constructor == null)
-                return null;
+            {
+                try
+                {
+                    return options.PopulationService.Construct(settings, options.Type,
+                     options.NumberOfEntities, options.TreeName, string.Empty);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
             else if (constructor.GetParameters().Length == 0)
                 return Activator.CreateInstance(options.Type, args);
             else

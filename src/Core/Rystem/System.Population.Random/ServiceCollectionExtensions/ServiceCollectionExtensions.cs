@@ -24,6 +24,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddSingleton<IRandomPopulationService, ObjectPopulationService>();
             services.AddSingleton<IRandomPopulationService, DictionaryPopulationService>();
             services.AddSingleton<IRandomPopulationService, EnumerablePopulationService>();
+            services.AddSingleton<IRandomPopulationService, AsyncEnumerablePopulationService>();
             services.AddSingleton<IRandomPopulationService, GuidPopulationService>();
             services.AddSingleton<IRandomPopulationService, NumberPopulationService>();
             services.AddSingleton<IRandomPopulationService, RangePopulationService>();
