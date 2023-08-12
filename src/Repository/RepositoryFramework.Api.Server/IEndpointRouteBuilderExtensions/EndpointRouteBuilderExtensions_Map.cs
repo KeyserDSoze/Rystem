@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using RepositoryFramework;
 using RepositoryFramework.Abstractions;
+using static System.Net.WebRequestMethods;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -141,17 +142,23 @@ namespace Microsoft.Extensions.DependencyInjection
             where TKey : notnull
         {
             var firstProperty = apiMap.Model!.GetType().GetProperties().First(x => x.PropertyType.IsPrimitive());
-            var operation = (dynamic)typeof(OperationType<>).MakeGenericType(firstProperty.PropertyType).GetProperty("Count", BindingFlags.Public | BindingFlags.Static);
-
+            var value = firstProperty.GetValue(apiMap.Model!, null);
+            var filter = new SerializableFilter();
+            filter.Operations.Add(new FilterOperationAsString(
+                FilterOperations.Where,
+                $"x => x.{firstProperty.Name} == {(firstProperty.PropertyType.IsNumeric() ? value.ToString() : $"\"{value}\"")}"));
             request.Sample.RequestQuery = new Dictionary<string, string>
             {
-                {"op" , operation.Name},
+                {"op" , "Count"},
                 {"returnType", GetPrimitiveNameOrAssemblyQualifiedName()}
             };
+            request.Sample.RequestBody = filter;
+
+            request.Sample.Response = 1;
 
             string? GetPrimitiveNameOrAssemblyQualifiedName()
             {
-                var name = operation.Type.AssemblyQualifiedName;
+                var name = firstProperty.PropertyType.AssemblyQualifiedName;
                 if (name == null)
                     return null;
                 if (PrimitiveMapper.Instance.FromAssemblyQualifiedNameToName.ContainsKey(name))
@@ -270,7 +277,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 Try.WithDefaultOnCatch(() =>
                 {
                     app
-                        .MapGet("Repository/Map/All", () => s_mapAsJson ??= s_map.ToJson())
+                        .MapGet("Repository/Map/All", () => Results.Text(s_mapAsJson ??= s_map.ToJson(), contentType: "application/json"))
                         .WithTags("_RepositoryMap");
                 });
             }
