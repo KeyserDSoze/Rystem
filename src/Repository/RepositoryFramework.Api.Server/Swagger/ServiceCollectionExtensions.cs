@@ -1,9 +1,6 @@
-﻿using System.Reflection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
-using Microsoft.OpenApi.Models;
+﻿using Microsoft.OpenApi.Models;
 using RepositoryFramework;
-using Swashbuckle.AspNetCore.Filters;
+using RepositoryFramework.Api.Server.Examples;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -15,7 +12,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen(c =>
             {
-                c.ExampleFilters();
+                c.OperationFilter<ExampleProvider>();
                 c.SwaggerDoc(settings.Version ?? "v1", new OpenApiInfo { Title = settings.DescriptiveName, Version = settings.Version ?? "v1" });
                 if (settings.HasOpenIdAuthentication)
                 {

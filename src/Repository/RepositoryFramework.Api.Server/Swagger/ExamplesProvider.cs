@@ -1,5 +1,4 @@
 ﻿using System.Population.Random;
-using Swashbuckle.AspNetCore.Filters;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -10,6 +9,14 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             _value = populationService.Populate(1, 1).First();
         }
+        public ExamplesProvider(T value)
+        {
+            _value = value;
+        }
         public T GetExamples() => _value;
+    }
+    public interface IExamplesProvider<out T>
+    {
+        T GetExamples();
     }
 }

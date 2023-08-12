@@ -4,9 +4,9 @@ namespace System.Text.Json
 {
     public static class JsonExtensions
     {
+        private static readonly MethodInfo s_fromJsonMethod = typeof(JsonExtensions).GetMethods().First(x => x.Name == nameof(FromJson) && x.GetParameters().First().ParameterType == typeof(string));
         public static string ToJson<T>(this T entity, JsonSerializerOptions? options = default)
             => JsonSerializer.Serialize(entity, options);
-        private static readonly MethodInfo s_fromJsonMethod = typeof(JsonExtensions).GetMethods().First(x => x.Name == nameof(FromJson) && x.GetParameters().First().ParameterType == typeof(string));
         public static T FromJson<T>(this string entity, JsonSerializerOptions? options = default)
             => JsonSerializer.Deserialize<T>(entity, options)!;
         public static T FromJson<T>(this byte[] entity, JsonSerializerOptions? options = default)

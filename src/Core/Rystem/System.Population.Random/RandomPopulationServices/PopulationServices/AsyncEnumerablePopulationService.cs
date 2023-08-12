@@ -17,9 +17,8 @@ namespace System.Population.Random
                     options.NumberOfEntities, options.TreeName, string.Empty);
                 entity!.Add(newValue);
             }
-            var enumerable = typeof(AsyncEnumerable<>)
-                .MakeGenericType(valueType)
-                .CreateInstance(entity!);
+            var enumerable = Activator.CreateInstance(typeof(InternalAsyncEnumerable<>)
+                .MakeGenericType(valueType), new object[1] { entity! })!;
             return enumerable;
         }
 
@@ -33,17 +32,17 @@ namespace System.Population.Random
             }
             return false;
         }
-        private sealed class AsyncEnumerable<T> : IAsyncEnumerable<T>
+        private sealed class InternalAsyncEnumerable<T> : IAsyncEnumerable<T>
         {
-            private readonly List<T> _list;
-            public AsyncEnumerable(List<T> list)
+            public List<T> Items { get; }
+            public InternalAsyncEnumerable(List<T> list)
             {
-                _list = list;
+                Items = list;
             }
             public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
             {
                 await Task.CompletedTask;
-                foreach (var item in _list)
+                foreach (var item in Items)
                 {
                     yield return item;
                 }

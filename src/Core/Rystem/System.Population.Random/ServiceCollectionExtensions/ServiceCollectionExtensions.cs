@@ -1,5 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection.Extensions;
-using System.Population.Random;
+﻿using System.Population.Random;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -14,7 +14,6 @@ namespace Microsoft.Extensions.DependencyInjection
           this IServiceCollection services)
         {
             services.AddSingleton<IPopulationService, PopulationService>();
-            services.AddSingleton<IInstanceCreator, InstanceCreator>();
             services.AddSingleton<IRegexService, RegexService>();
             services.AddSingleton<IRandomPopulationService, AbstractPopulationService>();
             services.AddSingleton<IRandomPopulationService, ArrayPopulationService>();
@@ -79,16 +78,6 @@ namespace Microsoft.Extensions.DependencyInjection
           this IServiceCollection services)
           where TService : class, IPopulationStrategy<T>
           => services.AddSingleton<IPopulationStrategy<T>, TService>();
-        /// <summary>
-        /// Override the default instance creator for you population service.
-        /// </summary>
-        /// <typeparam name="T">your IInstanceCreator</typeparam>
-        /// <param name="services">IServiceCollection</param>
-        /// <returns>IServiceCollection</returns>
-        public static IServiceCollection AddInstanceCreatorServiceForPopulation<T>(
-            this IServiceCollection services)
-            where T : class, IInstanceCreator
-            => services.AddSingleton<IInstanceCreator, T>();
         /// <summary>
         /// Override the default regular expression service for you population service.
         /// </summary>

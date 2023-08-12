@@ -7,7 +7,6 @@ namespace System.Population.Random
     /// </summary>
     public interface IPopulationService
     {
-        IInstanceCreator InstanceCreator { get; }
         dynamic? Construct(PopulationSettings settings, Type type, int numberOfEntities, string treeName, string name);
     }
 }

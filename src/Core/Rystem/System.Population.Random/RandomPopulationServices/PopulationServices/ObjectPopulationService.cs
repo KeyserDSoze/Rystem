@@ -4,29 +4,52 @@
     {
         public int Priority => 0;
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S108:Nested blocks of code should not be left empty", Justification = "I need this behavior because I don't want to stop the creation of a random object for one not allowed strange type.")]
         public dynamic GetValue(PopulationSettings settings, RandomPopulationOptions options)
         {
             if (!options.Type.IsInterface && !options.Type.IsAbstract)
             {
-                var entity = options.PopulationService.InstanceCreator
-                    .CreateInstance(settings, options);
-                var properties = options.Type.GetProperties();
-                foreach (var property in properties.Where(x => x.SetMethod != null))
+                object? entity = null;
+                var constructor = options.Type.GetConstructors()
+                .OrderByDescending(x => x.GetParameters().Length)
+                .FirstOrDefault();
+                if (constructor == null)
+                {
                     try
                     {
-                        var value = options.PopulationService
-                                .Construct(settings,
-                                           property.PropertyType,
-                                           options.NumberOfEntities,
-                                           options.TreeName,
-                                           property.Name);
-                        property
-                            .SetValue(entity, value);
+                        entity = options.PopulationService.Construct(settings, options.Type,
+                         options.NumberOfEntities, options.TreeName, string.Empty);
                     }
                     catch
                     {
+                        entity = null;
                     }
+                }
+                else if (constructor.GetParameters().Length == 0)
+                    entity = constructor.Invoke(Array.Empty<object>());
+                else
+                {
+                    List<object> instances = new();
+                    foreach (var x in constructor.GetParameters())
+                        instances.Add(options.PopulationService.Construct(settings, x.ParameterType,
+                            options.NumberOfEntities, options.TreeName, $"{x.Name![0..1].ToUpper()}{x.Name[1..]}"));
+                    entity = constructor.Invoke(instances.ToArray());
+                }
+                if (entity != null)
+                {
+                    var properties = options.Type.GetProperties();
+                    foreach (var property in properties.Where(x => x.SetMethod != null))
+                        _ = Try.WithDefaultOnCatch(() =>
+                        {
+                            var value = options.PopulationService
+                                    .Construct(settings,
+                                               property.PropertyType,
+                                               options.NumberOfEntities,
+                                               options.TreeName,
+                                               property.Name);
+                            property
+                                .SetValue(entity, value);
+                        });
+                }
                 return entity!;
             }
             return default!;

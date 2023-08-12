@@ -1,7 +1,4 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace System.Population.Random
 {
@@ -10,17 +7,14 @@ namespace System.Population.Random
         private readonly IServiceProvider _serviceProvider;
         private readonly IEnumerable<IRandomPopulationService> _randomPopulationServices;
         private readonly IRegexService _regexService;
-        public IInstanceCreator InstanceCreator { get; }
         public PopulationService(
             IServiceProvider serviceProvider,
             IEnumerable<IRandomPopulationService> randomPopulationServices,
-            IRegexService regexService,
-            IInstanceCreator instanceCreator)
+            IRegexService regexService)
         {
             _serviceProvider = serviceProvider;
             _randomPopulationServices = randomPopulationServices;
             _regexService = regexService;
-            InstanceCreator = instanceCreator;
         }
 
         public dynamic? Construct(PopulationSettings settings, Type type, int numberOfEntities, string treeName, string name)
