@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http;
 
 namespace RepositoryFramework
 {
@@ -29,7 +30,7 @@ namespace RepositoryFramework
     internal sealed class RequestApiMap
     {
         [JsonPropertyName("httpMethod")]
-        public string? HttpMethod { get; set; }
+        public string? HttpMethod => Sample.RequestBody == null ? HttpMethods.Get.ToString() : HttpMethods.Post.ToString();
         [JsonPropertyName("isAuthenticated")]
         public bool IsAuthenticated { get; set; }
         [JsonPropertyName("isAuthorized")]
@@ -40,13 +41,21 @@ namespace RepositoryFramework
         public string RepositoryMethod { get; set; }
         [JsonPropertyName("uri")]
         public string Uri { get; set; }
-        [JsonPropertyName("requestBody")]
-        public object? RequestBody { get; set; }
-        [JsonPropertyName("requestQuery")]
-        public object? RequestQuery { get; set; }
-        [JsonPropertyName("response")]
-        public object? Response { get; set; }
         [JsonPropertyName("hasStream")]
         public bool HasStream { get; set; }
+        public SampleRequestApiMap Sample { get; set; }
+    }
+    public class SampleRequestApiMap
+    {
+        [JsonPropertyName("baseUri")]
+        public string BaseUri { get; set; }
+        [JsonPropertyName("sampleUri")]
+        public string Url => $"{BaseUri}{(RequestQuery != null ? $"?{string.Join('&', RequestQuery.Select(x => $"{x.Key}={x.Value}"))}" : string.Empty)}";
+        [JsonPropertyName("requestQuery")]
+        public Dictionary<string, string>? RequestQuery { get; set; }
+        [JsonPropertyName("requestBody")]
+        public object? RequestBody { get; set; }
+        [JsonPropertyName("response")]
+        public object? Response { get; set; }
     }
 }
