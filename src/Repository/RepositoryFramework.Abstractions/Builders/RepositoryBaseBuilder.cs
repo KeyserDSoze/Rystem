@@ -1,6 +1,7 @@
 ﻿using System.Data.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using RepositoryFramework.Abstractions;
 
 namespace RepositoryFramework
 {
@@ -112,6 +113,17 @@ namespace RepositoryFramework
         {
             var service = SetService();
             service.IsNotExposable = true;
+        }
+        public void SetExposable()
+        {
+            var service = SetService();
+            service.IsNotExposable = false;
+        }
+        public void SetExamples(T entity, TKey key)
+        {
+            Services
+                .AddOrOverrideSingleton<IRepositoryExamples<T, TKey>>(
+                    new RepositoryExamples<T, TKey>(entity, key));
         }
     }
 }

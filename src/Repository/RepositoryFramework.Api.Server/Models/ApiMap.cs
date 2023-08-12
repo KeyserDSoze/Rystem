@@ -23,6 +23,8 @@ namespace RepositoryFramework
         public string? PatternType { get; set; }
         [JsonPropertyName("requests")]
         public List<RequestApiMap> Requests { get; set; } = new();
+        [JsonPropertyName("keyIsJsonable")]
+        public bool KeyIsJsonable { get; set; }
     }
     internal sealed class RequestApiMap
     {
@@ -33,15 +35,15 @@ namespace RepositoryFramework
         [JsonPropertyName("isAuthorized")]
         public bool IsAuthorized { get; set; }
         [JsonPropertyName("policies")]
-        public List<string> Policies { get; set; } = new();
+        public string[]? Policies { get; set; }
         [JsonPropertyName("repositoryMethod")]
         public string RepositoryMethod { get; set; }
-        [JsonPropertyName("keyIsJsonable")]
-        public bool KeyIsJsonable { get; set; }
         [JsonPropertyName("uri")]
         public string Uri { get; set; }
-        [JsonPropertyName("responseWith")]
-        public string ResponseWith { get; set; }
+        [JsonPropertyName("requestBody")]
+        public object? RequestBody { get; set; }
+        [JsonPropertyName("requestQuery")]
+        public object? RequestQuery { get; set; }
         [JsonPropertyName("response")]
         public object? Response { get; set; }
         [JsonPropertyName("hasStream")]

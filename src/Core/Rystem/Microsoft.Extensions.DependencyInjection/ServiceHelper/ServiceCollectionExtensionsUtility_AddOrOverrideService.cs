@@ -47,5 +47,20 @@
             => services
                 .RemoveService(typeof(TService))
                 .AddService(implementationFactory, lifetime);
+        public static IServiceCollection AddOrOverrideSingleton<TService, TImplementation>(
+            this IServiceCollection services,
+            TImplementation implementation)
+           where TService : class
+            where TImplementation : class, TService
+            => services
+                .RemoveService(typeof(TService))
+                .AddSingleton<TService>(implementation);
+        public static IServiceCollection AddOrOverrideSingleton<TService>(
+            this IServiceCollection services,
+            TService implementation)
+           where TService : class
+            => services
+                .RemoveService(typeof(TService))
+                .AddSingleton(implementation);
     }
 }

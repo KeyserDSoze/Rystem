@@ -1,11 +1,6 @@
 ﻿using System.Linq.Dynamic.Core;
-using System.Population.Random;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using RepositoryFramework;
 
@@ -77,22 +72,6 @@ namespace Microsoft.Extensions.DependencyInjection
                         continue;
                     Dictionary<string, bool> configuredMethods = new();
                     s_setupRepositories.Add(service.Key, true);
-                    object? defaultKey = null;
-                    object? defaultValue = null;
-                    if (settings.HasMapApi && !s_map.Apis.Any(x => x.FullName == service.Key))
-                    {
-                        defaultKey = app.ServiceProvider.PopulateRandomObject(service.KeyType);
-                        defaultValue = app.ServiceProvider.PopulateRandomObject(modelType);
-                        s_map.Apis.Add(new()
-                        {
-                            FullName = service.Key,
-                            FactoryName = service.FactoryName,
-                            Name = currentName,
-                            Key = defaultKey,
-                            Model = defaultValue,
-                            PatternType = service.Type.ToString(),
-                        });
-                    }
                     foreach (var method in service.ImplementationType.GetMethods(BindingFlags.Public | BindingFlags.Instance))
                     {
                         var currentMethod = s_possibleMethods[service.Type].FirstOrDefault(x => x.Name == $"Add{method.Name.Replace("Async", string.Empty)}");
@@ -106,24 +85,13 @@ namespace Microsoft.Extensions.DependencyInjection
                             });
                             if (isNotImplemented)
                                 continue;
-
-                            var singleApi = new RequestApiMap()
-                            {
-                                IsAuthenticated = authorization != null,
-                                IsAuthorized = authorization != null,
-                                Uri = $"{settings.StartingPath}/{currentName}/{(string.IsNullOrWhiteSpace(service.FactoryName) ? string.Empty : $"{service.FactoryName}/")}{currentMethod.Method}",
-                                KeyIsJsonable = false,
-                                HttpMethod = currentMethod.DefaultHttpMethod,
-                                RepositoryMethod = currentMethod.Method.ToString()
-                            };
-
+                            var uri = $"{settings.StartingPath}/{currentName}/{(string.IsNullOrWhiteSpace(service.FactoryName) ? string.Empty : $"{service.FactoryName}/")}{currentMethod.Method}";
                             _ = typeof(EndpointRouteBuilderExtensions).GetMethod(currentMethod.Name, BindingFlags.NonPublic | BindingFlags.Static)!
                                .MakeGenericMethod(modelType, service.KeyType, service.InterfaceType)
-                               .Invoke(null, new object[] { app, singleApi, currentName, service.FactoryName, defaultKey!, defaultValue!, authorization! });
+                               .Invoke(null, new object[] { app, uri, currentName, service.FactoryName, authorization! });
                             configuredMethods.Add(currentMethod.Name, true);
-
                             if (settings.HasMapApi)
-                                s_map.Apis.First(x => x.FullName == service.Key).Requests.Add(singleApi);
+                                app.AddMap(uri, modelType, service.KeyType, currentMethod.Method, currentName, service, authorization);
                         }
                     }
                 }
