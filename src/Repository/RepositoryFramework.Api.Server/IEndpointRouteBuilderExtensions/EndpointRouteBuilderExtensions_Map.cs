@@ -1,21 +1,17 @@
-﻿using System.IO;
-using System.Linq.Dynamic.Core;
+﻿using System.Linq.Dynamic.Core;
 using System.Population.Random;
 using System.Reflection;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using RepositoryFramework;
 using RepositoryFramework.Abstractions;
-using static System.Net.WebRequestMethods;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
     public static partial class EndpointRouteBuilderExtensions
     {
-        private static readonly ApisMap s_map = new();
         private static IEndpointRouteBuilder AddMap(this IEndpointRouteBuilder app,
             string uri,
             Type model,
@@ -39,7 +35,7 @@ namespace Microsoft.Extensions.DependencyInjection
             ApiAuthorization authorization)
             where TKey : notnull
         {
-            var api = s_map.Apis.FirstOrDefault(x => x.Name == currentName && x.FactoryName == service.FactoryName);
+            var api = EndpointRouteMap.ApiMap.Apis.FirstOrDefault(x => x.Name == currentName && x.FactoryName == service.FactoryName);
             if (api == null)
             {
                 api = new ApiMap
@@ -51,7 +47,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     KeyIsJsonable = KeySettings<TKey>.Instance.IsJsonable,
                     Requests = new()
                 };
-                s_map.Apis.Add(api);
+                EndpointRouteMap.ApiMap.Apis.Add(api);
             }
             if (api.Key == null || api.Model == null)
             {
@@ -69,7 +65,6 @@ namespace Microsoft.Extensions.DependencyInjection
             }
             var request = new RequestApiMap
             {
-                HasStream = false,
                 IsAuthenticated = authorization?.GetPolicy(method) != null,
                 Policies = authorization?.GetPolicy(method),
                 IsAuthorized = authorization?.GetPolicy(method) != null,
@@ -169,6 +164,7 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void MapQuery<T, TKey>(ApiMap apiMap, RequestApiMap request)
           where TKey : notnull
         {
+            request.StreamUri = $"{request.Uri}/Stream";
             var entity = new Entity<T, TKey>((T)apiMap.Model!, (TKey)apiMap.Key!);
             var filter = new SerializableFilter();
             var firstProperty = apiMap.Model!.GetType().GetProperties().First(x => x.PropertyType.IsPrimitive());
@@ -265,7 +261,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 serviceProviderForPopulation = serviceCollection.BuildServiceProvider().CreateScope().ServiceProvider;
             }
             var populationService = serviceProviderForPopulation.GetService<IPopulation<T>>()!;
-            return populationService.Populate(1, 1).First();
+            return populationService.Populate(1, 1)[0];
         }
         private static string? s_mapAsJson;
         private static bool s_mapAlreadyAdded = false;
@@ -277,7 +273,11 @@ namespace Microsoft.Extensions.DependencyInjection
                 Try.WithDefaultOnCatch(() =>
                 {
                     app
-                        .MapGet("Repository/Map/All", () => Results.Text(s_mapAsJson ??= s_map.ToJson(), contentType: "application/json"))
+                        .MapGet("Repository/Map/All", () =>
+                        {
+                            s_mapAsJson ??= EndpointRouteMap.ApiMap.ToJson();
+                            return Results.Text(s_mapAsJson, contentType: "application/json");
+                        })
                         .WithTags("_RepositoryMap");
                 });
             }

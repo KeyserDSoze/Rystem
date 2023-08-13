@@ -1,161 +1,78 @@
-﻿using System.Reflection;
-using Microsoft.Extensions.Options;
+﻿using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
-using Swashbuckle.AspNetCore.Swagger;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace RepositoryFramework.Api.Server.Examples
 {
-    /// <inheritdoc />
-    /// <summary>
-    /// Adds example requests to your controller endpoints.
-    /// See: https://github.com/mattfrear/Swashbuckle.AspNetCore.Examples
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-    public class SwaggerExampleAttribute : Attribute
-    {
-        /// <inheritdoc />
-        /// <summary>
-        /// Add example data for a request
-        /// </summary>
-        /// <param name="request">The type passed to the request</param>
-        /// <param name="response">A type that inherits from IExamplesProvider</param>
-        public SwaggerExampleAttribute(Type request, Type response)
-        {
-            Request = request;
-            Response = response;
-        }
-        public Type Request { get; }
-        public Type Response { get; }
-    }
     internal sealed class ExampleProvider : IOperationFilter
     {
-        private readonly IServiceProvider _serviceProvider;
-        private readonly IOptions<SwaggerOptions> _options;
-        public ExampleProvider(IServiceProvider serviceProvider, IOptions<SwaggerOptions> options)
-        {
-            _serviceProvider = serviceProvider;
-            _options = options;
-        }
-
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
-            var actionAttributes = GetControllerAndActionAttributes(context);
-
-            foreach (var attr in actionAttributes)
+            var relativePath = context.ApiDescription.RelativePath;
+            var request = EndpointRouteMap.ApiMap.Apis.SelectMany(x => x.Requests).FirstOrDefault(x => x.Uri == relativePath || x.StreamUri == relativePath);
+            if (request != null)
             {
-                //var example = default(attr.ExamplesProviderType);
-
-                //SetRequestBodyExampleForOperation(
-                //    operation,
-                //    context.SchemaRepository,
-                //    attr.RequestType,
-                //    example);
+                SetRequestBodyExampleForOperation(operation, request);
+                SetResponseBodyExampleForOperation(operation, request);
             }
         }
-        public static IEnumerable<object> GetControllerAndActionAttributes(OperationFilterContext context)
-        {
-            var tt = context.MethodInfo.ReflectedType;
-            var aa = context.MethodInfo.ReturnType;
-            var aa2 = context.MethodInfo.GetParameters();
-            var q = context.MethodInfo.ReflectedType?.GetTypeInfo();
-            var uu = context.ApiDescription.ActionDescriptor.EndpointMetadata;
-            var controllerAttributes = context.MethodInfo.ReflectedType?.GetTypeInfo().GetCustomAttributes<SwaggerExampleAttribute>();
-            
-            //if (context.MethodInfo != null)
-            //{
-            //    var controllerAttributes = context.MethodInfo.ReflectedType?.GetTypeInfo().GetCustomAttributes<T>();
-            //    var actionAttributes = context.MethodInfo.GetCustomAttributes<T>();
 
-            //    var result = new List<T>(actionAttributes);
-            //    if (controllerAttributes != null)
-            //    {
-            //        result.AddRange(controllerAttributes);
-            //    }
-
-            //    return result;
-            //}
-
-            //if (context.ApiDescription.ActionDescriptor.EndpointMetadata != null)
-            //{
-            //    var endpointAttributes = context.ApiDescription.ActionDescriptor.EndpointMetadata.OfType<T>();
-
-            //    var result = new List<T>(endpointAttributes);
-            //    return result;
-            //}
-            return Enumerable.Empty<object>();
-        }
         public void SetRequestBodyExampleForOperation(
             OpenApiOperation operation,
-            SchemaRepository schemaRepository,
-            Type requestType,
-            object example)
+            RequestApiMap request)
         {
-            //if (example == null)
-            //{
-            //    return;
-            //}
+            var firstOpenApiExample = new OpenApiString(request.Sample.RequestBody.ToJson(), false);
+            var jsonExample = new Lazy<IOpenApiAny>(() => firstOpenApiExample);
 
-            //if (operation.RequestBody == null || operation.RequestBody.Content == null)
-            //{
-            //    return;
-            //}
-
-            //var examplesConverter = new ExamplesConverter(mvcOutputFormatter);
-
-            //IOpenApiAny firstOpenApiExample;
-            //var multiple = example as IEnumerable<ISwaggerExample<object>>;
-            //if (multiple == null)
-            //{
-            //    firstOpenApiExample = SetSingleRequestExampleForOperation(operation, example, examplesConverter);
-            //}
-            //else
-            //{
-            //    firstOpenApiExample = SetMultipleRequestExamplesForOperation(operation, multiple, examplesConverter);
-            //}
-
-            //if (swaggerOptions.SerializeAsV2)
-            //{
-            //    // Swagger v2 doesn't have a request example on the path
-            //    // Fallback to setting it on the object in the "definitions"
-
-            //    string schemaDefinitionName = requestType.SchemaDefinitionName();
-            //    if (schemaRepository.Schemas.ContainsKey(schemaDefinitionName))
-            //    {
-            //        var schemaDefinition = schemaRepository.Schemas[schemaDefinitionName];
-            //        if (schemaDefinition.Example == null)
-            //        {
-            //            schemaDefinition.Example = firstOpenApiExample;
-            //        }
-            //    }
-            //}
+            if (request.Sample.RequestQuery != null)
+                foreach (var parameter in request.Sample.RequestQuery)
+                {
+                    var queryParameter = new OpenApiString(parameter.Value);
+                    var oldParameter = operation.Parameters.FirstOrDefault(x => x.Name == parameter.Key);
+                    if (oldParameter != null)
+                        oldParameter.Example = queryParameter;
+                    else
+                    {
+                        operation.Parameters.Add(new()
+                        {
+                            AllowEmptyValue = false,
+                            Description = parameter.Key,
+                            Example = queryParameter
+                        });
+                    }
+                }
+            if (operation.RequestBody?.Content != null)
+                foreach (var content in operation.RequestBody.Content)
+                {
+                    content.Value.Example = jsonExample.Value;
+                }
         }
+        public void SetResponseBodyExampleForOperation(
+            OpenApiOperation operation,
+            RequestApiMap request)
+        {
+            var key = "200";
+            var response = operation.Responses.FirstOrDefault(r => r.Key == key);
 
-        /// <summary>
-        /// Sets an example on the operation for all of the operation's content types
-        /// </summary>
-        /// <returns>The first example so that it can be reused on the definition for V2</returns>
-        //private IOpenApiAny SetSingleRequestExampleForOperation(
-        //    OpenApiOperation operation,
-        //    object example,
-        //    ExamplesConverter examplesConverter)
-        //{
-        //    var jsonExample = new Lazy<IOpenApiAny>(() => examplesConverter.SerializeExampleJson(example));
-        //    var xmlExample = new Lazy<IOpenApiAny>(() => examplesConverter.SerializeExampleXml(example));
-
-        //    foreach (var content in operation.RequestBody.Content)
-        //    {
-        //        if (content.Key.Contains("xml"))
-        //        {
-        //            content.Value.Example = xmlExample.Value;
-        //        }
-        //        else
-        //        {
-        //            content.Value.Example = jsonExample.Value;
-        //        }
-        //    }
-
-        //    return operation.RequestBody.Content.FirstOrDefault().Value?.Example;
-        //}
+            if (response.Equals(default(KeyValuePair<string, OpenApiResponse>)) || response.Value == null)
+            {
+                return;
+            }
+            var firstOpenApiExample = new OpenApiString(request.Sample.Response.ToJson(), false);
+            var jsonExample = new Lazy<IOpenApiAny>(() => firstOpenApiExample);
+            var mediaType = new OpenApiMediaType()
+            {
+                Example = jsonExample.Value,
+            };
+            if (response.Value.Content.Count == 0)
+                response.Value.Content.Add(key, mediaType);
+            else
+                foreach (var content in response.Value.Content)
+                {
+                    content.Value.Example = jsonExample.Value;
+                }
+        }
     }
 }
