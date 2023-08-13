@@ -9,7 +9,8 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IServiceCollection AddSwaggerConfigurations(this IServiceCollection services,
             ApiSettings settings)
         {
-            services.AddEndpointsApiExplorer();
+            services
+                .AddEndpointsApiExplorer();
             services.AddSwaggerGen(c =>
             {
                 c.OperationFilter<ExampleProvider>();

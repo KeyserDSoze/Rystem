@@ -15,8 +15,6 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             services
                 .AddPopulationService();
-            services.TryAddSingleton(typeof(IExamplesProvider<>), typeof(ExamplesProvider<>));
-
             return new ApiBuilder(services);
         }
         /// <summary>

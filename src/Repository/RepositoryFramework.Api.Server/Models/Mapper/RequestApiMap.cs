@@ -11,6 +11,8 @@ namespace RepositoryFramework
         public bool IsAuthenticated { get; set; }
         [JsonPropertyName("isAuthorized")]
         public bool IsAuthorized { get; set; }
+        [JsonPropertyName("description")]
+        public string Description { get; set; }
         [JsonPropertyName("policies")]
         public string[]? Policies { get; set; }
         [JsonPropertyName("repositoryMethod")]

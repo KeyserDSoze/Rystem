@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using System.Reflection;
 
 namespace System.Population.Random
 {
@@ -17,8 +16,10 @@ namespace System.Population.Random
                     options.NumberOfEntities, options.TreeName, string.Empty);
                 entity!.Add(newValue);
             }
+
+            var args = new object[1] { entity! };
             var enumerable = Activator.CreateInstance(typeof(InternalAsyncEnumerable<>)
-                .MakeGenericType(valueType), new object[1] { entity! })!;
+                .MakeGenericType(valueType), args)!;
             return enumerable;
         }
 

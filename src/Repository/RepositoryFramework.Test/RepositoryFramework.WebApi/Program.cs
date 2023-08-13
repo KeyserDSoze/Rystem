@@ -34,22 +34,48 @@ builder.Services.AddQuery<IperUser, string>(x =>
             x.ExpiringTime = TimeSpan.FromMilliseconds(100_000);
         });
 });
-
-builder.Services
-    .AddRepository<SuperUser, string>(settins =>
+builder.Services.AddRepository<NonPlusSuperUser, NonPlusSuperUserKey>(repositoryBuilder =>
+{
+    repositoryBuilder.WithInMemory(builder =>
     {
-        settins.WithInMemory(builder =>
+        builder
+            .PopulateWithRandomData(120, 5)
+            .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
+    });
+});
+builder.Services.AddRepository<NonPlusSuperUser, PlusSuperUserKey>(repositoryBuilder =>
+{
+    repositoryBuilder.WithInMemory(builder =>
+    {
+        builder
+            .PopulateWithRandomData(120, 5)
+            .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
+    }, "something");
+});
+builder.Services
+    .AddRepository<SuperUser, string>(repositoryBuilder =>
+    {
+        repositoryBuilder.WithInMemory(builder =>
         {
             builder
                 .PopulateWithRandomData(120, 5)
                 .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
         });
-        settins.WithInMemory(builder =>
+        repositoryBuilder.WithInMemory(builder =>
         {
             builder
                 .PopulateWithRandomData(2, 5)
                 .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
         }, "inmemory");
+        var id = Guid.NewGuid().ToString();
+        repositoryBuilder.SetExamples(new SuperUser("alisandro@gmail.com")
+        {
+            GroupId = Guid.NewGuid(),
+            Id = id,
+            IsAdmin = true,
+            Name = "Test",
+            Port = 123
+        }, id);
     });
 
 builder.Services.AddRepository<SuperiorUser, string>(settings =>

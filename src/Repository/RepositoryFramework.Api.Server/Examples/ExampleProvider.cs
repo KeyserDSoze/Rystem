@@ -14,18 +14,16 @@ namespace RepositoryFramework.Api.Server.Examples
             var request = EndpointRouteMap.ApiMap.Apis.SelectMany(x => x.Requests).FirstOrDefault(x => x.Uri == relativePath || x.StreamUri == relativePath);
             if (request != null)
             {
+                operation.Description = request.Description;
                 SetRequestBodyExampleForOperation(operation, request);
                 SetResponseBodyExampleForOperation(operation, request);
             }
         }
-
-        public void SetRequestBodyExampleForOperation(
+        private static void SetRequestBodyExampleForOperation(
             OpenApiOperation operation,
             RequestApiMap request)
         {
             var firstOpenApiExample = new OpenApiString(request.Sample.RequestBody.ToJson(), false);
-            var jsonExample = new Lazy<IOpenApiAny>(() => firstOpenApiExample);
-
             if (request.Sample.RequestQuery != null)
                 foreach (var parameter in request.Sample.RequestQuery)
                 {
@@ -46,32 +44,26 @@ namespace RepositoryFramework.Api.Server.Examples
             if (operation.RequestBody?.Content != null)
                 foreach (var content in operation.RequestBody.Content)
                 {
-                    content.Value.Example = jsonExample.Value;
+                    content.Value.Example = firstOpenApiExample;
                 }
         }
-        public void SetResponseBodyExampleForOperation(
+        private static void SetResponseBodyExampleForOperation(
             OpenApiOperation operation,
             RequestApiMap request)
         {
             var key = "200";
             var response = operation.Responses.FirstOrDefault(r => r.Key == key);
-
-            if (response.Equals(default(KeyValuePair<string, OpenApiResponse>)) || response.Value == null)
-            {
-                return;
-            }
             var firstOpenApiExample = new OpenApiString(request.Sample.Response.ToJson(), false);
-            var jsonExample = new Lazy<IOpenApiAny>(() => firstOpenApiExample);
             var mediaType = new OpenApiMediaType()
             {
-                Example = jsonExample.Value,
+                Example = firstOpenApiExample,
             };
             if (response.Value.Content.Count == 0)
                 response.Value.Content.Add(key, mediaType);
             else
                 foreach (var content in response.Value.Content)
                 {
-                    content.Value.Example = jsonExample.Value;
+                    content.Value.Example = firstOpenApiExample;
                 }
         }
     }

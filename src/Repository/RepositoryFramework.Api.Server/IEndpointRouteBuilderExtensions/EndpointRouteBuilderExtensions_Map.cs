@@ -90,10 +90,10 @@ namespace Microsoft.Extensions.DependencyInjection
                     MapOperation<T, TKey>(api, request);
                     break;
                 case RepositoryMethods.Insert:
-                    MapInsertOrUpdate<T, TKey>(api, request);
+                    MapInsertOrUpdate<T, TKey>(api, request, true);
                     break;
                 case RepositoryMethods.Update:
-                    MapInsertOrUpdate<T, TKey>(api, request);
+                    MapInsertOrUpdate<T, TKey>(api, request, false);
                     break;
                 case RepositoryMethods.Delete:
                     MapDelete<T, TKey>(api, request);
@@ -108,6 +108,7 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void MapExists<T, TKey>(ApiMap apiMap, RequestApiMap request)
             where TKey : notnull
         {
+            request.Description = $"Retrieve information if a {typeof(T).Name} exists based on a key {typeof(TKey).Name}.";
             if (apiMap.KeyIsJsonable)
             {
                 request.Sample.RequestBody = apiMap.Key;
@@ -122,6 +123,7 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void MapGet<T, TKey>(ApiMap apiMap, RequestApiMap request)
             where TKey : notnull
         {
+            request.Description = $"Retrieve a {typeof(T).Name} entity based on a key {typeof(TKey).Name}.";
             if (apiMap.KeyIsJsonable)
             {
                 request.Sample.RequestBody = apiMap.Key;
@@ -136,6 +138,7 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void MapOperation<T, TKey>(ApiMap apiMap, RequestApiMap request)
             where TKey : notnull
         {
+            request.Description = $"Make an operation like Count, Average, Maximum, Minimum or Sum of a series of {typeof(T).Name} entities based on several filters.";
             var firstProperty = apiMap.Model!.GetType().GetProperties().First(x => x.PropertyType.IsPrimitive());
             var value = firstProperty.GetValue(apiMap.Model!, null);
             var filter = new SerializableFilter();
@@ -164,15 +167,19 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void MapQuery<T, TKey>(ApiMap apiMap, RequestApiMap request)
           where TKey : notnull
         {
+            request.Description = $"Retrieve a series of {typeof(T).Name} entities based on several filters. In body request 'o' stands for operations and you may choose between 'q' filters: 1. Select, 2. Where, 4. Top, 8. Skip, 16. OrderBy, 32. OrderByDescending, 64. ThenBy, 128. ThenByDescending, 256. GroupBy; Operation order is important, for instance you can OrderBy something and only then you may use ThenBy for another field to improve your ordering.";
             request.StreamUri = $"{request.Uri}/Stream";
             var entity = new Entity<T, TKey>((T)apiMap.Model!, (TKey)apiMap.Key!);
             var filter = new SerializableFilter();
             var firstProperty = apiMap.Model!.GetType().GetProperties().First(x => x.PropertyType.IsPrimitive());
             var secondProperty = apiMap.Model!.GetType().GetProperties().Where(x => x.PropertyType.IsPrimitive()).Skip(1).FirstOrDefault();
             var value = firstProperty.GetValue(apiMap.Model!, null);
+            var query = $"x.{firstProperty.Name} == {(firstProperty.PropertyType.IsNumeric() ? value!.ToString() : $"\"{value}\"")}";
+            var queryForLesser = $"x.{firstProperty.Name} <= {(firstProperty.PropertyType.IsNumeric() ? value!.ToString() + "1" : $"\"{value}1\"")}";
+            var queryForLesser2 = $"x.{firstProperty.Name} <= {(firstProperty.PropertyType.IsNumeric() ? value!.ToString() + "2" : $"\"{value}2\"")}";
             filter.Operations.Add(new FilterOperationAsString(
                 FilterOperations.Where,
-                $"x => x.{firstProperty.Name} == {(firstProperty.PropertyType.IsNumeric() ? value.ToString() : $"\"{value}\"")}"));
+                $"x => {query} && ({queryForLesser} || {queryForLesser2})"));
             filter.Operations.Add(new FilterOperationAsString(
                 FilterOperations.OrderBy,
                 $"x => x.{firstProperty.Name}"));
@@ -183,9 +190,10 @@ namespace Microsoft.Extensions.DependencyInjection
             request.Sample.RequestBody = filter;
             request.Sample.Response = new List<Entity<T, TKey>>() { entity };
         }
-        private static void MapInsertOrUpdate<T, TKey>(ApiMap apiMap, RequestApiMap request)
+        private static void MapInsertOrUpdate<T, TKey>(ApiMap apiMap, RequestApiMap request, bool isInsert)
             where TKey : notnull
         {
+            request.Description = $"{(isInsert ? "Insert" : "Update")} a {typeof(T).Name} entity based on a key {typeof(TKey).Name}";
             var entity = new Entity<T, TKey>((T)apiMap.Model!, (TKey)apiMap.Key!);
             request.Sample.RequestBody = entity;
             request.Sample.Response = new State<T, TKey>(true, entity, 200, "You may return a possible message and a code.");
@@ -193,6 +201,7 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void MapDelete<T, TKey>(ApiMap apiMap, RequestApiMap request)
             where TKey : notnull
         {
+            request.Description = $"Delete a {typeof(T).Name} entity based on a key {typeof(TKey).Name}.";
             if (apiMap.KeyIsJsonable)
                 request.Sample.RequestBody = apiMap.Key;
             else
@@ -205,6 +214,7 @@ namespace Microsoft.Extensions.DependencyInjection
         private static void MapBatch<T, TKey>(ApiMap apiMap, RequestApiMap request)
             where TKey : notnull
         {
+            request.Description = $"Make a series of operations: Insert, Update and/or Delete for any type of {typeof(T).Name} entities, each entity based on a key {typeof(TKey).Name}.";
             var key = (TKey)apiMap.Key!;
             var entity = new Entity<T, TKey>((T)apiMap.Model!, key);
             var operations = new BatchOperations<T, TKey>();
@@ -251,16 +261,16 @@ namespace Microsoft.Extensions.DependencyInjection
             request.Sample.RequestBody = operations;
             request.Sample.Response = response;
         }
-        private static IServiceProvider? serviceProviderForPopulation = null;
+        private static IServiceProvider? s_serviceProviderForPopulation = null;
         private static T PopulateRandom<T>()
         {
-            if (serviceProviderForPopulation == null)
+            if (s_serviceProviderForPopulation == null)
             {
                 var serviceCollection = new ServiceCollection();
                 serviceCollection.AddPopulationService();
-                serviceProviderForPopulation = serviceCollection.BuildServiceProvider().CreateScope().ServiceProvider;
+                s_serviceProviderForPopulation = serviceCollection.BuildServiceProvider().CreateScope().ServiceProvider;
             }
-            var populationService = serviceProviderForPopulation.GetService<IPopulation<T>>()!;
+            var populationService = s_serviceProviderForPopulation.GetService<IPopulation<T>>()!;
             return populationService.Populate(1, 1)[0];
         }
         private static string? s_mapAsJson;
