@@ -2,9 +2,10 @@
     Get = 1,
     Exist = 2,
     Query = 3,
-    Operation = 4,
-    Insert = 5,
-    Update = 6,
-    Delete = 7,
-    Batch = 8
+    QueryStream = 4,
+    Operation = 5,
+    Insert = 6,
+    Update = 7,
+    Delete = 8,
+    Batch = 9
 }

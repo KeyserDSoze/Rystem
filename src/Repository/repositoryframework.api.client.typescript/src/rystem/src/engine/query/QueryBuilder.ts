@@ -68,8 +68,19 @@ export class QueryBuilder<T, TKey> {
         return this;
     }
     execute(): Promise<Array<Entity<T, TKey>>> {
-        return this.repository.makeRequest<Array<Entity<T, TKey>>>(RepositoryEndpoint.Query,
+        return this.repository.makeRequest<Array<Entity<T, TKey>>>(
+            RepositoryEndpoint.Query,
             `Query`, 'POST',
+            this.filters,
+            {
+                'content-type': 'application/json;charset=UTF-8',
+            });
+    }
+    executeAsStream(entityReader: (entity: Entity<T, TKey>) => void): Promise<Array<Entity<T, TKey>>> {
+        return this.repository.makeRequestAsStream<Entity<T, TKey>>(
+            RepositoryEndpoint.QueryStream,
+            `Query`, 'POST',
+            entityReader,
             this.filters,
             {
                 'content-type': 'application/json;charset=UTF-8',

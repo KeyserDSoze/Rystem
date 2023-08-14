@@ -135,6 +135,9 @@ export class WhereBuilder<T, TKey> {
     execute(): Promise<Array<Entity<T, TKey>>> {
         return this.build().execute();
     }
+    count(): Promise<number> {
+        return this.build().count();
+    }
 }
 
 enum Operators {

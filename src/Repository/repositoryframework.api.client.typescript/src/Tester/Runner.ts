@@ -47,7 +47,7 @@ export async function Runner() {
     }
     const batchResults: BatchResults<IperUser, string> = await batcher.execute();
     console.log(batchResults);
-    let queryResults = await repository.query().execute();
+    let queryResults = await repository.query().executeAsStream(x => console.log(x));
     console.log(queryResults);
     queryResults = await repository.query().filter(`x => x.id == "${id}"`).execute();
     console.log(queryResults);

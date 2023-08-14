@@ -51,6 +51,47 @@ export class Repository<T, TKey> implements IRepository<T, TKey>
         }
         return response;
     }
+    async makeRequestAsStream<TResponse>(
+        endpoint: RepositoryEndpoint,
+        path: string,
+        method: string,
+        reader: (entity: TResponse) => void,
+        body: any | null = null,
+        headers: HeadersInit = {} as HeadersInit): Promise<Array<TResponse>> {
+        const uri: string = `${this.baseUri}/${path}/Stream`;
+        let response: Array<TResponse> = [];
+        await fetch(uri,
+            {
+                method: method,
+                headers: this.settings.enrichHeaders(endpoint, uri, method, headers, body),
+                body: body == null ? null : JSON.stringify(body)
+            })
+            .then(async res => {
+                const bodyReader = res.body?.getReader();
+                const decoder = new JsonStreamDecoder();
+                if (bodyReader != undefined) {
+                    while (true) {
+                        const { done, value } = await bodyReader.read();
+                        if (done)
+                            break;
+                        if (!value)
+                            continue;
+                        decoder.decodeChunk<TResponse>(value, entity => {
+                            response.push(entity);
+                            reader(entity);
+                        });
+                    }
+                    bodyReader.releaseLock();
+                }
+            })
+            .catch(async (err) => {
+                console.log(err);
+                console.log("in errordalsjdlasjdlasjdlas");
+                this.settings.manageError(endpoint, uri, method, headers, body, err);
+                return null;
+            })
+        return response;
+    }
     get(key: TKey): Promise<T> {
         if (!this.settings.complexKey) {
             return this.makeRequest<T>(RepositoryEndpoint.Get,
@@ -139,3 +180,43 @@ export class Repository<T, TKey> implements IRepository<T, TKey>
         return `_rystem.${variableName}`;
     }
 }
+
+class JsonStreamDecoder {
+    private level = 0;
+    private partialItem = '';
+
+    private decoder = new TextDecoder();
+
+    public decodeChunk<T>(
+        value: Uint8Array,
+        decodedItemCallback: (item: T) => void
+    ): void {
+        const chunk = this.decoder.decode(value);
+        let itemStart = 0;
+
+        for (let i = 0; i < chunk.length; i++) {
+            if (chunk[i] === JTOKEN_START_OBJECT) {
+                if (this.level === 0) {
+                    itemStart = i;
+                }
+                this.level++;
+            }
+            if (chunk[i] === JTOKEN_END_OBJECT) {
+                this.level--;
+                if (this.level === 0) {
+                    let item = chunk.substring(itemStart, i + 1);
+                    if (this.partialItem) {
+                        item = this.partialItem + item;
+                        this.partialItem = '';
+                    }
+                    decodedItemCallback(JSON.parse(item));
+                }
+            }
+        }
+        if (this.level !== 0) {
+            this.partialItem = chunk.substring(itemStart);
+        }
+    }
+}
+const JTOKEN_START_OBJECT = '{';
+const JTOKEN_END_OBJECT = '}';
