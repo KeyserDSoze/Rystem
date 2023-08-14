@@ -89,21 +89,13 @@ namespace Microsoft.Extensions.DependencyInjection
                     .AddAuthorization(authorization, RepositoryMethods.Query);
 
             _ = app.MapPost($"{uri}/Stream", (HttpRequest request,
-                    [FromBody] SerializableFilter? serializableFilter, [FromServices] IFactory<TService> factoryService, CancellationToken cancellationToken)
-                =>
+                    [FromBody] SerializableFilter? serializableFilter,
+                    [FromServices] IFactory<TService> factoryService,
+                    CancellationToken cancellationToken) =>
                     {
-                        return QueryAsStreamAsync(serializableFilter, factoryService.Create(factoryName), cancellationToken);
-
-                        static async IAsyncEnumerable<Entity<T, TKey>> QueryAsStreamAsync(
-                            SerializableFilter? serializableFilter, TService service, [EnumeratorCancellation] CancellationToken cancellationToken)
-                        {
-                            var filter = (serializableFilter ?? SerializableFilter.Empty).Deserialize<T>();
-                            var queryService = service as IQueryPattern<T, TKey>;
-                            await foreach (var entity in queryService!.QueryAsync(filter, cancellationToken))
-                            {
-                                yield return entity;
-                            }
-                        }
+                        var filter = (serializableFilter ?? SerializableFilter.Empty).Deserialize<T>();
+                        var queryService = factoryService.Create(factoryName) as IQueryPattern<T, TKey>;
+                        return queryService!.QueryAsync(filter, cancellationToken);
                     }
                 )
                 .WithName($"{nameof(RepositoryMethods.Query)}{factoryName}{name}Stream")

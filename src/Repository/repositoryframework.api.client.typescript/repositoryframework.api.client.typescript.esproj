@@ -1,14 +1,14 @@
-<Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/0.5.74-alpha">
-  <PropertyGroup>
-    <StartupCommand>set BROWSER=none&amp;&amp;npm start</StartupCommand>
-    <JavaScriptTestRoot>src\</JavaScriptTestRoot>
-    <JavaScriptTestFramework>Jest</JavaScriptTestFramework>
-    <!-- Command to run on project build -->
-    <BuildCommand>
-    </BuildCommand>
-    <!-- Command to create an optimized build of the project that's ready for publishing -->
-    <ProductionBuildCommand>npm run build</ProductionBuildCommand>
-    <!-- Folder where production build objects will be placed -->
-    <BuildOutputFolder>$(MSBuildProjectDirectory)\build</BuildOutputFolder>
-  </PropertyGroup>
+﻿<Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/0.5.74-alpha">
+    <PropertyGroup>
+        <StartupCommand>tsc --build --clean&amp;&amp;set BROWSER=none&amp;&amp;npm start</StartupCommand>
+        <JavaScriptTestRoot>src\</JavaScriptTestRoot>
+        <JavaScriptTestFramework>Jest</JavaScriptTestFramework>
+        <!-- Command to run on project build -->
+        <BuildCommand>
+        </BuildCommand>
+        <!-- Command to create an optimized build of the project that's ready for publishing -->
+        <ProductionBuildCommand>tsc --build --clean&amp;&amp;npm run build</ProductionBuildCommand>
+        <!-- Folder where production build objects will be placed -->
+        <BuildOutputFolder>$(MSBuildProjectDirectory)\build</BuildOutputFolder>
+    </PropertyGroup>
 </Project>
