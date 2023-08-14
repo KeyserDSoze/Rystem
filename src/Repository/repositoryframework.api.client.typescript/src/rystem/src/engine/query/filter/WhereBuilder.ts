@@ -1,3 +1,4 @@
+import { CancellationToken } from "typescript";
 import { Entity } from "../../../models/Entity";
 import { Repository } from "../../Repository";
 import { QueryBuilder } from "../QueryBuilder";
@@ -12,11 +13,11 @@ export class WhereBuilder<T, TKey> {
         this.queryBuilder.push("_rystem => ");
         this.query = query;
     }
-    select(predicate: (value: T) => any): WhereBuilder<T, TKey> {
+    select(predicate: (value: T) => any): this {
         this.queryBuilder.push(Repository.predicateAsString<T>(predicate));
         return this;
     }
-    private operator(operation: Operators, value: any | null): WhereBuilder<T, TKey> {
+    private operator(operation: Operators, value: any): this {
         switch (operation) {
             case Operators.Equal:
                 this.queryBuilder.push(" == ");
@@ -60,7 +61,7 @@ export class WhereBuilder<T, TKey> {
         }
         return this;
     }
-    private valueAsString(v: any | null): string {
+    private valueAsString(v: any): string {
         if (v != null) {
             if (typeof v == 'number') {
                 return v.toString();
@@ -71,56 +72,56 @@ export class WhereBuilder<T, TKey> {
         else
             return "null";
     }
-    equal(value: any | null): WhereBuilder<T, TKey> {
+    equal(value: any): this {
         return this
             .operator(Operators.Equal, value);
     }
-    notEqual(value: any | null): WhereBuilder<T, TKey> {
+    notEqual(value: any): this {
         return this
             .operator(Operators.NotEqual, value);
     }
-    greaterThan(value: any | null): WhereBuilder<T, TKey> {
+    greaterThan(value: any): this {
         return this
             .operator(Operators.GreaterThan, value);
     }
-    greaterThanOrEqual(value: any | null): WhereBuilder<T, TKey> {
+    greaterThanOrEqual(value: any): this {
         return this
             .operator(Operators.GreaterThanOrEqual, value);
     }
-    lesserThan(value: any | null): WhereBuilder<T, TKey> {
+    lesserThan(value: any): this {
         return this
             .operator(Operators.LesserThan, value);
     }
-    lesserThanOrEqual(value: any | null): WhereBuilder<T, TKey> {
+    lesserThanOrEqual(value: any): this {
         return this
             .operator(Operators.LesserThanOrEqual, value);
     }
-    startsWith(value: any | null): WhereBuilder<T, TKey> {
+    startsWith(value: any): this {
         return this
             .operator(Operators.StartsWith, value);
     }
-    endsWith(value: any | null): WhereBuilder<T, TKey> {
+    endsWith(value: any): this {
         return this
             .operator(Operators.EndsWith, value);
     }
-    contains(value: any | null): WhereBuilder<T, TKey> {
+    contains(value: any): this {
         return this
             .operator(Operators.Contains, value);
     }
-    and(): WhereBuilder<T, TKey> {
+    and(): this {
         this.queryBuilder.push(" && ");
         return this;
     }
-    or(): WhereBuilder<T, TKey> {
+    or(): this {
         this.queryBuilder.push(" || ");
         return this;
     }
-    openRoundBracket(): WhereBuilder<T, TKey> {
+    openRoundBracket(): this {
         this.queryBuilder.push("(");
         this.roundBracketsCount++;
         return this;
     }
-    closeRoundBracket(): WhereBuilder<T, TKey> {
+    closeRoundBracket(): this {
         this.queryBuilder.push(")");
         this.roundBracketsCount--;
         return this;
@@ -135,8 +136,24 @@ export class WhereBuilder<T, TKey> {
     execute(): Promise<Array<Entity<T, TKey>>> {
         return this.build().execute();
     }
+    executeAsStream(entityReader: (entity: Entity<T, TKey>) => void,
+        cancellationToken: CancellationToken | null = null): Promise<Array<Entity<T, TKey>>> {
+        return this.build().executeAsStream(entityReader, cancellationToken);
+    }
     count(): Promise<number> {
         return this.build().count();
+    }
+    max(predicate: (value: T) => any): Promise<number> {
+        return this.build().max(predicate);
+    }
+    min(predicate: (value: T) => any): Promise<number> {
+        return this.build().min(predicate);
+    }
+    average(predicate: (value: T) => any): Promise<number> {
+        return this.build().average(predicate);
+    }
+    sum(predicate: (value: T) => any): Promise<number> {
+        return this.build().sum(predicate);
     }
 }
 

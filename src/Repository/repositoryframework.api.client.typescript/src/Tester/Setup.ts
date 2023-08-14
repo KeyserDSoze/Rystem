@@ -5,7 +5,8 @@ import { RepositoryEndpoint, RepositoryServices } from "../rystem/src";
 
 export function Setup() {
     RepositoryServices
-        .Create("https://localhost:7058/api/")
+        //.Create("https://localhost:7058/api/")
+        .Create("http://localhost:5000/api/")
         .addRepository<IperUser, string>(x => {
             x.name = "test";
             x.path = "SuperUser";

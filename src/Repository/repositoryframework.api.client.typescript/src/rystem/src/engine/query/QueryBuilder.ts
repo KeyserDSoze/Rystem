@@ -1,3 +1,4 @@
+import { CancellationToken } from "typescript";
 import { Entity } from "../../models/Entity";
 import { RepositoryEndpoint } from "../../models/RepositoryEndpoint";
 import { Repository } from "../Repository";
@@ -18,49 +19,49 @@ export class QueryBuilder<T, TKey> {
     where(): WhereBuilder<T, TKey> {
         return new WhereBuilder<T, TKey>(this);
     }
-    filter(predicate: string): QueryBuilder<T, TKey> {
+    filter(predicate: string): this {
         this.filters.o.push({
             q: FilterOperations.Where,
             v: predicate
         } as FilterOperationAsString);
         return this;
     }
-    top(value: number): QueryBuilder<T, TKey> {
+    top(value: number): this {
         this.filters.o.push({
             q: FilterOperations.Top,
             v: value.toString()
         } as FilterOperationAsString);
         return this;
     }
-    skip(value: number): QueryBuilder<T, TKey> {
+    skip(value: number): this {
         this.filters.o.push({
             q: FilterOperations.Skip,
             v: value.toString()
         } as FilterOperationAsString);
         return this;
     }
-    orderBy(predicate: (value: T) => any): QueryBuilder<T, TKey> {
+    orderBy(predicate: (value: T) => any): this {
         this.filters.o.push({
             q: FilterOperations.OrderBy,
             v: `_rystem => ${Repository.predicateAsString<T>(predicate)}`
         } as FilterOperationAsString);
         return this;
     }
-    orderByDescending(predicate: (value: T) => any): QueryBuilder<T, TKey> {
+    orderByDescending(predicate: (value: T) => any): this {
         this.filters.o.push({
             q: FilterOperations.OrderByDescending,
             v: `_rystem => ${Repository.predicateAsString<T>(predicate)}`
         } as FilterOperationAsString);
         return this;
     }
-    thenBy(predicate: (value: T) => any): QueryBuilder<T, TKey> {
+    thenBy(predicate: (value: T) => any): this {
         this.filters.o.push({
             q: FilterOperations.ThenBy,
             v: `_rystem => ${Repository.predicateAsString<T>(predicate)}`
         } as FilterOperationAsString);
         return this;
     }
-    thenByDescending(predicate: (value: T) => any): QueryBuilder<T, TKey> {
+    thenByDescending(predicate: (value: T) => any): this {
         this.filters.o.push({
             q: FilterOperations.ThenByDescending,
             v: `_rystem => ${Repository.predicateAsString<T>(predicate)}`
@@ -76,7 +77,8 @@ export class QueryBuilder<T, TKey> {
                 'content-type': 'application/json;charset=UTF-8',
             });
     }
-    executeAsStream(entityReader: (entity: Entity<T, TKey>) => void): Promise<Array<Entity<T, TKey>>> {
+    executeAsStream(entityReader: (entity: Entity<T, TKey>) => void,
+        cancellationToken: CancellationToken | null = null): Promise<Array<Entity<T, TKey>>> {
         return this.repository.makeRequestAsStream<Entity<T, TKey>>(
             RepositoryEndpoint.QueryStream,
             `Query`, 'POST',
@@ -84,7 +86,7 @@ export class QueryBuilder<T, TKey> {
             this.filters,
             {
                 'content-type': 'application/json;charset=UTF-8',
-            });
+            }, cancellationToken);
     }
     count(): Promise<number> {
         return this.executeOperation("Count", "long");
