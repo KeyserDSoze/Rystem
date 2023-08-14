@@ -94,7 +94,10 @@ namespace RepositoryFramework
             var entity = Entity.Default(value, key);
             var result = entity.ToOkState();
 
-            foreach (var business in _beforeInserted.OrderBy(x => x.Priority))
+            foreach (var business in _beforeInserted
+                .OrderBy(x => x.Priority)
+                .GroupBy(x => x.Priority)
+                .Select(x => x.First()))
             {
                 result = await business.BeforeInsertAsync(result.Entity!, cancellationToken);
                 if (!result.HasEntity)
@@ -106,7 +109,10 @@ namespace RepositoryFramework
             result = await command.InsertAsync(result.Entity!.Key!, result.Entity!.Value!, cancellationToken);
             entity = result.Entity;
 
-            foreach (var business in _afterInserted.OrderBy(x => x.Priority))
+            foreach (var business in _afterInserted
+                .OrderBy(x => x.Priority)
+                .GroupBy(x => x.Priority)
+                .Select(x => x.First()))
             {
                 result = await business.AfterInsertAsync(result, result.Entity!, cancellationToken);
                 if (!result.HasEntity)
@@ -120,7 +126,10 @@ namespace RepositoryFramework
             var entity = Entity.Default(value, key);
             var result = entity.ToOkState();
 
-            foreach (var business in _beforeUpdated.OrderBy(x => x.Priority))
+            foreach (var business in _beforeUpdated
+                .OrderBy(x => x.Priority)
+                .GroupBy(x => x.Priority)
+                .Select(x => x.First()))
             {
                 result = await business.BeforeUpdateAsync(result.Entity!, cancellationToken);
                 if (!result.HasEntity)
@@ -132,7 +141,10 @@ namespace RepositoryFramework
             result = await command.UpdateAsync(result.Entity!.Key!, result.Entity!.Value!, cancellationToken);
             entity = result.Entity!;
 
-            foreach (var business in _afterUpdated.OrderBy(x => x.Priority))
+            foreach (var business in _afterUpdated
+                .OrderBy(x => x.Priority)
+                .GroupBy(x => x.Priority)
+                .Select(x => x.First()))
             {
                 result = await business.AfterUpdateAsync(result, result.Entity!, cancellationToken);
                 if (!result.HasEntity)
@@ -146,7 +158,10 @@ namespace RepositoryFramework
             var entity = Entity.Default(default(T)!, key);
             var result = entity.ToOkState();
 
-            foreach (var business in _beforeDeleted.OrderBy(x => x.Priority))
+            foreach (var business in _beforeDeleted
+                .OrderBy(x => x.Priority)
+                .GroupBy(x => x.Priority)
+                .Select(x => x.First()))
             {
                 result = await business.BeforeDeleteAsync(result.Entity!.Key!, cancellationToken);
                 if (!result.IsOk)
@@ -155,36 +170,47 @@ namespace RepositoryFramework
 
             result = await command.DeleteAsync(result.Entity!.Key!, cancellationToken);
 
-            foreach (var business in _afterDeleted.OrderBy(x => x.Priority))
+            foreach (var business in _afterDeleted
+                .OrderBy(x => x.Priority)
+                .GroupBy(x => x.Priority)
+                .Select(x => x.First()))
                 result = await business.AfterDeleteAsync(result, result.Entity!.Key!, cancellationToken);
 
             return result;
         }
-        public async Task<BatchResults<T, TKey>> BatchAsync(ICommandPattern<T, TKey> command, BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<BatchResult<T, TKey>> BatchAsync(
+            ICommandPattern<T, TKey> command,
+            BatchOperations<T, TKey> operations,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var results = BatchResults<T, TKey>.Empty;
-
-            foreach (var business in _beforeBatched.OrderBy(x => x.Priority))
+            foreach (var business in _beforeBatched
+                .OrderBy(x => x.Priority)
+                .GroupBy(x => x.Priority)
+                .Select(x => x.First()))
             {
-                results = await business.BeforeBatchAsync(operations, cancellationToken);
-                foreach (var result in results.Results)
-                    if (!result.State.IsOk)
-                    {
-                        results.Results.Add(result);
-                        operations.Values.Remove(operations.Values.First(x => x.Key.Equals(result.Key)));
-                    }
+                operations = await business.BeforeBatchAsync(operations, cancellationToken).NoContext();
             }
 
-            if (operations.Values.Count > 0)
+            if (operations.Values.Count > 0 && HasBusinessAfterBatch)
             {
-                var response = await command.BatchAsync(operations, cancellationToken);
-                results.Results.AddRange(response.Results);
+                var afterBatchList = _afterBatched
+                    .OrderBy(x => x.Priority)
+                    .GroupBy(x => x.Priority)
+                    .Select(x => x.First())
+                    .ToList();
+                await foreach (var result in command.BatchAsync(operations, cancellationToken))
+                {
+                    var itemResult = result;
+                    foreach (var afterBatch in afterBatchList)
+                        itemResult = await afterBatch.AfterBatchAsync(itemResult, operations, cancellationToken).NoContext();
+                    yield return itemResult;
+                }
             }
-
-            foreach (var business in _afterBatched.OrderBy(x => x.Priority))
-                results = await business.AfterBatchAsync(results, operations, cancellationToken);
-
-            return results;
+            else
+            {
+                await foreach (var result in command.BatchAsync(operations, cancellationToken))
+                    yield return result;
+            }
         }
 
         public async Task<State<T, TKey>> ExistAsync(IQueryPattern<T, TKey> query, TKey key, CancellationToken cancellationToken = default)
@@ -192,7 +218,10 @@ namespace RepositoryFramework
             var entity = Entity.Default(default(T)!, key);
             var result = entity.ToOkState();
 
-            foreach (var business in _beforeExisted.OrderBy(x => x.Priority))
+            foreach (var business in _beforeExisted
+                .OrderBy(x => x.Priority)
+                .GroupBy(x => x.Priority)
+                .Select(x => x.First()))
             {
                 result = await business.BeforeExistAsync(result.Entity!.Key!, cancellationToken);
                 if (!result.IsOk)
@@ -201,7 +230,10 @@ namespace RepositoryFramework
 
             var response = await query.ExistAsync(result.Entity!.Key!, cancellationToken);
 
-            foreach (var business in _afterExisted.OrderBy(x => x.Priority))
+            foreach (var business in _afterExisted
+                .OrderBy(x => x.Priority)
+                .GroupBy(x => x.Priority)
+                .Select(x => x.First()))
                 response = await business.AfterExistAsync(response, result.Entity!.Key!, cancellationToken);
 
             return response;
@@ -212,7 +244,10 @@ namespace RepositoryFramework
             var entity = Entity.Default(default(T)!, key);
             var result = entity.ToOkState();
 
-            foreach (var business in _beforeGotten.OrderBy(x => x.Priority))
+            foreach (var business in _beforeGotten
+                .OrderBy(x => x.Priority)
+                .GroupBy(x => x.Priority)
+                .Select(x => x.First()))
             {
                 result = await business.BeforeGetAsync(result.Entity!.Key!, cancellationToken);
                 if (result.HasEntity && result.Entity!.HasValue)
@@ -223,7 +258,10 @@ namespace RepositoryFramework
 
             var response = await query.GetAsync(result.Entity!.Key!, cancellationToken);
 
-            foreach (var business in _afterGotten.OrderBy(x => x.Priority))
+            foreach (var business in _afterGotten
+                .OrderBy(x => x.Priority)
+                .GroupBy(x => x.Priority)
+                .Select(x => x.First()))
                 response = await business.AfterGetAsync(response, result.Entity!.Key!, cancellationToken);
 
             return response;
@@ -231,17 +269,27 @@ namespace RepositoryFramework
 
         public async IAsyncEnumerable<Entity<T, TKey>> QueryAsync(IQueryPattern<T, TKey> queryPattern, IFilterExpression filter, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            foreach (var business in _beforeQueried.OrderBy(x => x.Priority))
+            foreach (var business in _beforeQueried
+                .OrderBy(x => x.Priority)
+                .GroupBy(x => x.Priority)
+                .Select(x => x.First()))
                 filter = await business.BeforeQueryAsync(filter, cancellationToken);
 
             if (HasBusinessAfterQuery)
             {
-                var items = await queryPattern.QueryAsync(filter, cancellationToken).ToListAsync().NoContext();
-                foreach (var business in _afterQueried.OrderBy(x => x.Priority))
-                    items = await business.AfterQueryAsync(items, filter, cancellationToken);
+                var afterBusiness = _afterQueried
+                            .OrderBy(x => x.Priority)
+                            .GroupBy(x => x.Priority)
+                            .Select(x => x.First())
+                            .ToList();
 
-                foreach (var item in items)
-                    yield return item;
+                await foreach (var item in queryPattern.QueryAsync(filter, cancellationToken))
+                {
+                    var entity = item;
+                    foreach (var business in afterBusiness)
+                        entity = await business.AfterQueryAsync(entity, filter, cancellationToken).NoContext();
+                    yield return entity;
+                }
             }
             else
             {
@@ -254,12 +302,18 @@ namespace RepositoryFramework
         {
             (OperationType<TProperty> Operation, IFilterExpression Filter) operationFilter = (operation, filter);
 
-            foreach (var business in _beforeOperation.OrderBy(x => x.Priority))
+            foreach (var business in _beforeOperation
+                        .OrderBy(x => x.Priority)
+                        .GroupBy(x => x.Priority)
+                        .Select(x => x.First()))
                 operationFilter = await business.BeforeOperationAsync(operationFilter.Operation, operationFilter.Filter, cancellationToken);
 
             var response = await queryPattern.OperationAsync(operationFilter.Operation, operationFilter.Filter, cancellationToken);
 
-            foreach (var business in _afterOperation.OrderBy(x => x.Priority))
+            foreach (var business in _afterOperation
+                        .OrderBy(x => x.Priority)
+                        .GroupBy(x => x.Priority)
+                        .Select(x => x.First()))
                 response = await business.AfterOperationAsync(response, operationFilter.Operation, operationFilter.Filter, cancellationToken);
 
             return response;

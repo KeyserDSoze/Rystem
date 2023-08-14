@@ -17,5 +17,11 @@ namespace RepositoryFramework
             Key = key;
             State = state;
         }
+        public static BatchResult<T, TKey> CreateInsert(TKey key, State<T, TKey> state)
+            => new(CommandType.Insert, key, state);
+        public static BatchResult<T, TKey> CreateUpdate(TKey key, State<T, TKey> state)
+            => new(CommandType.Update, key, state);
+        public static BatchResult<T, TKey> CreateDelete(TKey key, State<T, TKey> state)
+            => new(CommandType.Delete, key, state);
     }
 }

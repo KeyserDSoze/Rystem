@@ -1,5 +1,4 @@
-﻿using System.Data.Common;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using RepositoryFramework.Abstractions;
 
@@ -17,7 +16,7 @@ namespace RepositoryFramework
         private string _currentName = string.Empty;
         private PatternType _currentPatternType = PatternType.Repository;
         private ServiceLifetime _serviceLifetime = ServiceLifetime.Scoped;
-        public RepositoryBaseBuilder(IServiceCollection services)
+        private protected RepositoryBaseBuilder(IServiceCollection services)
             => Services = services;
         public Func<Task>? AfterBuildAsync { get; set; }
         public Action? AfterBuild { get; set; }

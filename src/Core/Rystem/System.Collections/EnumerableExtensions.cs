@@ -8,7 +8,7 @@
                 return list[index];
             else
             {
-                int counter = 0;
+                var counter = 0;
                 foreach (var entity in entities)
                 {
                     if (counter == index)

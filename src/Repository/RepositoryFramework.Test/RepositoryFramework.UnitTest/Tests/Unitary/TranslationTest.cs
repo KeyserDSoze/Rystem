@@ -71,7 +71,7 @@ namespace RepositoryFramework.UnitTest.Unitary
     {
         private readonly List<ToTranslateSomething> _toTranslateSomething = new();
         private readonly List<ToTranslateSomethingElse> _toTranslateSomethingElse = new();
-        public Task<BatchResults<Translatable, string>> BatchAsync(BatchOperations<Translatable, string> operations, CancellationToken cancellationToken = default)
+        public IAsyncEnumerable<BatchResult<Translatable, string>> BatchAsync(BatchOperations<Translatable, string> operations, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }

@@ -7,7 +7,7 @@ namespace RepositoryFramework.Test.Repository
 {
     public class ExtremelyRareUserRepositoryStorage : IRepository<ExtremelyRareUser, string>
     {
-        public Task<BatchResults<ExtremelyRareUser, string>> BatchAsync(BatchOperations<ExtremelyRareUser, string> operations, CancellationToken cancellationToken = default)
+        public IAsyncEnumerable<BatchResult<ExtremelyRareUser, string>> BatchAsync(BatchOperations<ExtremelyRareUser, string> operations, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }

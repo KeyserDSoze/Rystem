@@ -7,7 +7,14 @@
         <JavaScriptTestRoot>tests\</JavaScriptTestRoot>
         <JavaScriptTestFramework>Mocha</JavaScriptTestFramework>
         <GenerateProgramFile>false</GenerateProgramFile>
+        <BuildCommand>
+            npm install&amp;&amp;tsc --build --clean
+        </BuildCommand>
     </PropertyGroup>
+
+    <ItemGroup>
+      <TypeScriptCompile Remove="node_modules\**" />
+    </ItemGroup>
 
     <ItemGroup>
       <TypeScriptCompile Remove="tests\models\IperUser.ts" />

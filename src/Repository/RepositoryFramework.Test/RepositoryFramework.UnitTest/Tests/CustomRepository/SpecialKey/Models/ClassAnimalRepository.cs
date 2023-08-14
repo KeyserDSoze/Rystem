@@ -9,7 +9,7 @@ namespace RepositoryFramework.UnitTest.CustomRepository.SpecialKeys.Models
     public class ClassAnimalRepository : IRepository<ClassAnimal, ClassAnimalKey>
     {
         private static readonly Dictionary<string, Dictionary<int, Dictionary<Guid, ClassAnimal>>> s_dic = new();
-        public Task<BatchResults<ClassAnimal, ClassAnimalKey>> BatchAsync(BatchOperations<ClassAnimal, ClassAnimalKey> operations, CancellationToken cancellationToken = default)
+        public IAsyncEnumerable<BatchResult<ClassAnimal, ClassAnimalKey>> BatchAsync(BatchOperations<ClassAnimal, ClassAnimalKey> operations, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }

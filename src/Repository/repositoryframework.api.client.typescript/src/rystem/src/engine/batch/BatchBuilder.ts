@@ -1,8 +1,9 @@
 ﻿import { BatchElement } from "./BatchElement";
 import { Batch } from "./Batch";
-import { BatchResults } from "./BatchResults";
 import { Repository } from "../Repository";
 import { RepositoryEndpoint } from "../../models/RepositoryEndpoint";
+import { BatchResult } from "./BatchResult";
+import { CancellationToken } from "typescript";
 
 
 export class BatchBuilder<T, TKey> {
@@ -38,12 +39,23 @@ export class BatchBuilder<T, TKey> {
         } as BatchElement<T, TKey>);
         return this;
     }
-    execute(): Promise<BatchResults<T, TKey>> {
-        return this.repository.makeRequest<BatchResults<T, TKey>>(RepositoryEndpoint.Batch,
+    execute(): Promise<Array<BatchResult<T, TKey>>> {
+        return this.repository.makeRequest<Array<BatchResult<T, TKey>>>(RepositoryEndpoint.Batch,
             `Batch`, 'POST',
             this.batch,
             {
                 'content-type': 'application/json;charset=UTF-8',
             });
+    }
+    executeAsStream(entityReader: (entity: BatchResult<T, TKey>) => void,
+        cancellationToken: CancellationToken | null = null): Promise<Array<BatchResult<T, TKey>>> {
+        return this.repository.makeRequestAsStream<BatchResult<T, TKey>>(
+            RepositoryEndpoint.BatchStream,
+            `Batch`, 'POST',
+            entityReader,
+            this.batch,
+            {
+                'content-type': 'application/json;charset=UTF-8',
+            }, cancellationToken);
     }
 }

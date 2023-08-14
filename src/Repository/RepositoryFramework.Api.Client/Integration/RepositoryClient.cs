@@ -132,7 +132,7 @@ namespace RepositoryFramework.Api.Client
             };
             var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).NoContext();
             await EnsureSuccessStatusCodeAsync(response, cancellationToken).NoContext();
-            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).NoContext();
             var items = JsonSerializer.DeserializeAsyncEnumerable<Entity<T, TKey>>(stream, RepositoryOptions.JsonSerializerOptions, cancellationToken);
             if (items != null)
                 await foreach (var item in items)
@@ -176,17 +176,30 @@ namespace RepositoryFramework.Api.Client
             else
                 return (await PostAsJson<T, State<T, TKey>>(client, GetCorrectUriWithKey(_options!.UpdatePath, key), value, cancellationToken).NoContext())!;
         }
-        public async Task<BatchResults<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<BatchResult<T, TKey>> BatchAsync(
+            BatchOperations<T, TKey> operations,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             var client = await EnrichedClientAsync(RepositoryMethods.Batch).NoContext();
-            var response = await client.PostAsJsonAsync(_options!.BatchPath, operations, cancellationToken).NoContext();
-            response.EnsureSuccessStatusCode();
-            return (await response.Content.ReadFromJsonAsync<BatchResults<T, TKey>>(cancellationToken: cancellationToken).NoContext())!;
+            var request = new HttpRequestMessage(HttpMethod.Post, _options!.BatchPath)
+            {
+                Content = new StringContent(operations.ToJson(), Encoding.UTF8, "application/json")
+            };
+            var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).NoContext();
+            await EnsureSuccessStatusCodeAsync(response, cancellationToken).NoContext();
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).NoContext();
+            var items = JsonSerializer.DeserializeAsyncEnumerable<BatchResult<T, TKey>>(stream, RepositoryOptions.JsonSerializerOptions, cancellationToken);
+            if (items != null)
+                await foreach (var item in items)
+                {
+                    if (item != null)
+                        yield return item;
+                }
         }
-
+        public string? FactoryName { get; private set; }
         public void SetFactoryName(string name)
         {
-            return;
+            FactoryName = name;
         }
     }
 }

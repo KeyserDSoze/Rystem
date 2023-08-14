@@ -10,7 +10,7 @@ Based on CQRS we could split our repository pattern in two main interfaces, one 
         Task<State<T, TKey>> InsertAsync(TKey key, T value, CancellationToken cancellationToken = default);
         Task<State<T, TKey>> UpdateAsync(TKey key, T value, CancellationToken cancellationToken = default);
         Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default);
-        Task<BatchResults<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<BatchResult<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default);
     }
 
 #### Query (Read)
@@ -32,7 +32,7 @@ Repository pattern is a sum of CQRS interfaces.
         Task<State<T, TKey>> InsertAsync(TKey key, T value, CancellationToken cancellationToken = default);
         Task<State<T, TKey>> UpdateAsync(TKey key, T value, CancellationToken cancellationToken = default);
         Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default);
-        Task<BatchResults<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<BatchResult<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default);
         Task<State<T, TKey>> ExistAsync(TKey key, CancellationToken cancellationToken = default);
         Task<T?> GetAsync(TKey key, CancellationToken cancellationToken = default);
         IAsyncEnumerable<IEntity<T, TKey>> QueryAsync(IFilterExpression filter, CancellationToken cancellationToken = default);

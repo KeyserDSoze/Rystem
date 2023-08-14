@@ -112,7 +112,7 @@ namespace RepositoryFramework.UnitTest.Repository
             var batchOperation = repository.CreateBatchOperation();
             for (var i = 1; i <= 10; i++)
                 batchOperation.AddInsert(new AppUserKey(i), new AppUser(i, $"User {i}", $"Email {i}", new(), DateTime.UtcNow));
-            await batchOperation.ExecuteAsync();
+            await batchOperation.ExecuteAsync().ToListAsync();
 
             items = await repository.Where(x => x.Id > 0).ToListAsync();
             Assert.Equal(10, items.Count);
@@ -124,7 +124,7 @@ namespace RepositoryFramework.UnitTest.Repository
             batchOperation = repository.CreateBatchOperation();
             await foreach (var appUser in repository.QueryAsync())
                 batchOperation.AddUpdate(new AppUserKey(appUser.Value!.Id), new AppUser(appUser.Value.Id, $"User Updated {appUser.Value.Id}", $"Email Updated {appUser.Value.Id}", new(), DateTime.UtcNow));
-            await batchOperation.ExecuteAsync();
+            await batchOperation.ExecuteAsync().ToListAsync();
 
             items = await repository.Where(x => x.Id > 0).ToListAsync();
             Assert.Equal(10, items.Count);
@@ -144,7 +144,7 @@ namespace RepositoryFramework.UnitTest.Repository
             batchOperation = repository.CreateBatchOperation();
             foreach (var appUser in await repository.QueryAsync().ToListAsync())
                 batchOperation.AddDelete(new AppUserKey(appUser.Value!.Id));
-            await batchOperation.ExecuteAsync();
+            await batchOperation.ExecuteAsync().ToListAsync();
 
             items = await repository.Where(x => x.Id > 0).QueryAsync().ToListAsync();
             Assert.Empty(items);

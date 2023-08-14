@@ -116,7 +116,9 @@ Welcome to your new app.
             .AddUpdate(id, new IperUser("dsadasd") { Id = "b" })
             .AddInsert(Guid.NewGuid().ToString(), new IperUser("dsadasd323") { Id = "c" })
             .AddDelete(id)
-            .ExecuteAsync().NoContext();
+            .ExecuteAsync()
+            .ToListAsync()
+            .NoContext();
         Users4 = await UserClient3.OrderBy(x => x.Name!).PageAsync(7, 20).NoContext();
     }
 }

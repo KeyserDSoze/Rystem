@@ -215,14 +215,15 @@ namespace Microsoft.Extensions.DependencyInjection
             where TKey : notnull
         {
             request.Description = $"Make a series of operations: Insert, Update and/or Delete for any type of {typeof(T).Name} entities, each entity based on a key {typeof(TKey).Name}.";
+            request.StreamUri = $"{request.Uri}/Stream";
             var key = (TKey)apiMap.Key!;
             var entity = new Entity<T, TKey>((T)apiMap.Model!, key);
             var operations = new BatchOperations<T, TKey>();
             operations.AddInsert(key, entity.Value!);
             operations.AddUpdate(key, entity.Value!);
             operations.AddDelete(key);
-            var response = new BatchResults<T, TKey>();
-            response.Results.Add(
+            var response = new List<BatchResult<T, TKey>>
+            {
                 new BatchResult<T, TKey>(
                     CommandType.Insert,
                     key,
@@ -232,9 +233,7 @@ namespace Microsoft.Extensions.DependencyInjection
                         200,
                         "You may return a possible message and a code."
                     )
-                )
-            );
-            response.Results.Add(
+                ),
                 new BatchResult<T, TKey>(
                     CommandType.Update,
                     key,
@@ -244,9 +243,7 @@ namespace Microsoft.Extensions.DependencyInjection
                         200,
                         "You may return a possible message and a code."
                     )
-                )
-            );
-            response.Results.Add(
+                ),
                 new BatchResult<T, TKey>(
                     CommandType.Delete,
                     key,
@@ -257,7 +254,7 @@ namespace Microsoft.Extensions.DependencyInjection
                         "You may return a possible message and a code."
                     )
                 )
-            );
+            };
             request.Sample.RequestBody = operations;
             request.Sample.Response = response;
         }

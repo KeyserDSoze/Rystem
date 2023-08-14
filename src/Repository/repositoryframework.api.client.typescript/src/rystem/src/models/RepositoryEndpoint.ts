@@ -7,5 +7,6 @@
     Insert = 6,
     Update = 7,
     Delete = 8,
-    Batch = 9
+    Batch = 9,
+    BatchStream = 10
 }

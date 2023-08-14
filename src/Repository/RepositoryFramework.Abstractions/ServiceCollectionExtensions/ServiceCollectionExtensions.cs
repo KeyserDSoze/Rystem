@@ -1,4 +1,5 @@
-﻿using RepositoryFramework;
+﻿using System.Reflection;
+using RepositoryFramework;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -68,5 +69,46 @@ namespace Microsoft.Extensions.DependencyInjection
         public static RepositoryBusinessBuilder<T, TKey> AddBusinessForRepository<T, TKey>(this IServiceCollection services)
             where TKey : notnull
             => new(services, null);
+        /// <summary>
+        /// Add all business classes to your repository or CQRS pattern.
+        /// </summary>
+        /// <param name="services">IServiceCollection.</param>
+        /// <returns>IServiceCollection</returns>
+        public static IServiceCollection ScanBusiness(this IServiceCollection services,
+            params Assembly[] assemblies)
+        {
+            var types = new List<Type>()
+            {
+                typeof(IRepositoryBusinessBeforeBatch<,>),
+                typeof(IRepositoryBusinessBeforeInsert<,>),
+                typeof(IRepositoryBusinessBeforeUpdate<,>),
+                typeof(IRepositoryBusinessBeforeExist<,>),
+                typeof(IRepositoryBusinessBeforeGet<,>),
+                typeof(IRepositoryBusinessBeforeDelete<,>),
+                typeof(IRepositoryBusinessBeforeOperation<,>),
+                typeof(IRepositoryBusinessBeforeQuery<,>),
+                typeof(IRepositoryBusinessAfterBatch<,>),
+                typeof(IRepositoryBusinessAfterInsert<,>),
+                typeof(IRepositoryBusinessAfterUpdate<,>),
+                typeof(IRepositoryBusinessAfterExist<,>),
+                typeof(IRepositoryBusinessAfterGet<,>),
+                typeof(IRepositoryBusinessAfterDelete<,>),
+                typeof(IRepositoryBusinessAfterOperation<,>),
+                typeof(IRepositoryBusinessAfterQuery<,>),
+            };
+            var registry = services
+                .TryAddSingletonAndGetService<RepositoryFrameworkRegistry>();
+            foreach (var service in registry.Services.Select(x => x.Value))
+            {
+                var genericArguments = service.InterfaceType.GetGenericArguments();
+                foreach (var type in types)
+                {
+                    var serviceType = type.MakeGenericType(genericArguments);
+                    services
+                        .Scan(serviceType, service.ServiceLifetime, assemblies);
+                }
+            }
+            return services;
+        }
     }
 }

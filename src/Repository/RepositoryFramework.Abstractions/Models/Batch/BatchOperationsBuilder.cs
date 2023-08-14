@@ -1,4 +1,7 @@
-﻿namespace RepositoryFramework
+﻿using System.Collection.Generics;
+using System.Runtime.CompilerServices;
+
+namespace RepositoryFramework
 {
     public sealed class BatchOperationsBuilder<T, TKey>
         where TKey : notnull
@@ -24,12 +27,12 @@
             _batchOperations.AddDelete(key);
             return this;
         }
-        public Task<BatchResults<T, TKey>> ExecuteAsync(CancellationToken cancellationToken = default)
+        public IAsyncEnumerable<BatchResult<T, TKey>> ExecuteAsync(
+            CancellationToken cancellationToken = default)
         {
             if (_batchOperations.Values.Count > 0 && _command != null)
                 return _command.BatchAsync(_batchOperations, cancellationToken);
-            else
-                return Task.FromResult(BatchResults<T, TKey>.Empty);
+            return AsyncEnumerable<BatchResult<T, TKey>>.Empty;
         }
     }
 }

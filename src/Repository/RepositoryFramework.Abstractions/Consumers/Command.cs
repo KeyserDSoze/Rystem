@@ -32,7 +32,7 @@ namespace RepositoryFramework
         public Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default)
            => _businessManager?.HasBusinessBeforeDelete == true || _businessManager?.HasBusinessAfterDelete == true ?
                _businessManager.DeleteAsync(_command, key, cancellationToken) : _command.DeleteAsync(key, cancellationToken);
-        public Task<BatchResults<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default)
+        public IAsyncEnumerable<BatchResult<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default)
             => _businessManager?.HasBusinessBeforeBatch == true || _businessManager?.HasBusinessAfterBatch == true ?
                 _businessManager.BatchAsync(_command, operations, cancellationToken) : _command.BatchAsync(operations, cancellationToken);
     }

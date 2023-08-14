@@ -738,7 +738,7 @@ namespace RepositoryFramework.UnitTest.Tests.Api
             var batchOperation = repository.CreateBatchOperation();
             foreach (var element in elements)
                 batchOperation.AddInsert(element.Key!, element.Value!);
-            await batchOperation.ExecuteAsync();
+            await batchOperation.ExecuteAsync().ToListAsync();
             users = await repository.ToListAsync();
             Assert.Equal(elements.Count, users.Count);
             users = await repository.Where(ok).ToListAsync();
@@ -750,7 +750,7 @@ namespace RepositoryFramework.UnitTest.Tests.Api
             batchOperation = repository.CreateBatchOperation();
             foreach (var element in elements)
                 batchOperation.AddUpdate(element.Key!, element.Value!);
-            await batchOperation.ExecuteAsync();
+            await batchOperation.ExecuteAsync().ToListAsync();
             users = await repository.ToListAsync();
             Assert.Equal(elements.Count, users.Count);
 
@@ -770,7 +770,7 @@ namespace RepositoryFramework.UnitTest.Tests.Api
             batchOperation = repository.CreateBatchOperation();
             foreach (var element in elements)
                 batchOperation.AddDelete(element.Key!);
-            await batchOperation.ExecuteAsync();
+            await batchOperation.ExecuteAsync().ToListAsync();
             users = await repository.ToListAsync();
             Assert.Empty(users);
         }

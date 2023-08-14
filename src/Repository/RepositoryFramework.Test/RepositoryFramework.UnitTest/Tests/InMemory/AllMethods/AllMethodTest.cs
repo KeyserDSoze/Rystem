@@ -75,7 +75,7 @@ namespace RepositoryFramework.UnitTest.AllMethods
             var batchOperation = _animal.CreateBatchOperation();
             for (var i = 0; i < 10; i++)
                 batchOperation.AddInsert(i, new Animal { Id = i, Name = i.ToString() });
-            await batchOperation.ExecuteAsync();
+            await batchOperation.ExecuteAsync().ToListAsync();
 
             items = await _animal.Where(x => x.Id >= 0).QueryAsync().ToListAsync();
             Assert.Equal(10, items.Count);
@@ -87,7 +87,7 @@ namespace RepositoryFramework.UnitTest.AllMethods
             batchOperation = _animal.CreateBatchOperation();
             for (var i = 0; i < 10; i++)
                 batchOperation.AddUpdate(i, new Animal { Id = i, Name = $"Animal {i}" });
-            await batchOperation.ExecuteAsync();
+            await batchOperation.ExecuteAsync().ToListAsync();
 
             items = await _animal.Where(x => x.Id >= 0).OrderBy(x => x.Id).QueryAsync().ToListAsync();
             Assert.Equal(10, items.Count);
@@ -96,7 +96,7 @@ namespace RepositoryFramework.UnitTest.AllMethods
             batchOperation = _animal.CreateBatchOperation();
             for (var i = 0; i < 10; i++)
                 batchOperation.AddDelete(i);
-            await batchOperation.ExecuteAsync();
+            await batchOperation.ExecuteAsync().ToListAsync();
             items = await _animal.Where(x => x.Id > 0).QueryAsync().ToListAsync();
             Assert.Empty(items);
 
@@ -144,7 +144,7 @@ namespace RepositoryFramework.UnitTest.AllMethods
             var batchOperation = _strangeKeyRepository.CreateBatchOperation();
             for (var i = 0; i < 10; i++)
                 batchOperation.AddInsert(new(i), new Animal { Id = i, Name = i.ToString() });
-            await batchOperation.ExecuteAsync();
+            await batchOperation.ExecuteAsync().ToListAsync();
 
             items = await _strangeKeyRepository.Where(x => x.Id >= 0).QueryAsync().ToListAsync();
             Assert.Equal(10, items.Count);
@@ -156,7 +156,7 @@ namespace RepositoryFramework.UnitTest.AllMethods
             batchOperation = _strangeKeyRepository.CreateBatchOperation();
             for (var i = 0; i < 10; i++)
                 batchOperation.AddUpdate(new(i), new Animal { Id = i, Name = $"Animal {i}" });
-            await batchOperation.ExecuteAsync();
+            await batchOperation.ExecuteAsync().ToListAsync();
 
             items = await _strangeKeyRepository.Where(x => x.Id >= 0).OrderBy(x => x.Id).QueryAsync().ToListAsync();
             Assert.Equal(10, items.Count);
@@ -165,7 +165,7 @@ namespace RepositoryFramework.UnitTest.AllMethods
             batchOperation = _strangeKeyRepository.CreateBatchOperation();
             for (var i = 0; i < 10; i++)
                 batchOperation.AddDelete(new(i));
-            await batchOperation.ExecuteAsync();
+            await batchOperation.ExecuteAsync().ToListAsync();
             items = await _strangeKeyRepository.Where(x => x.Id > 0).QueryAsync().ToListAsync();
             Assert.Empty(items);
         }

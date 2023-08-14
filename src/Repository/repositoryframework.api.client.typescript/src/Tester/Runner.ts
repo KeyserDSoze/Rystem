@@ -1,5 +1,5 @@
 import { IperUser } from "../Models/IperUser";
-import { BatchResults, RepositoryServices, State } from "../rystem/src";
+import { BatchResult, RepositoryServices, State } from "../rystem/src";
 
 export async function Runner() {
     const repository = RepositoryServices
@@ -45,7 +45,9 @@ export async function Runner() {
             .addUpdate(id1, iperUser1)
             .addDelete(id1);
     }
-    const batchResults: BatchResults<IperUser, string> = await batcher.execute();
+    let batchResults: Array<BatchResult<IperUser, string>> = await batcher.execute();
+    console.log(batchResults);
+    batchResults = await batcher.executeAsStream(x => console.log(x));
     console.log(batchResults);
     let queryResults = await repository.query().executeAsStream(x => console.log(x));
     console.log(queryResults);

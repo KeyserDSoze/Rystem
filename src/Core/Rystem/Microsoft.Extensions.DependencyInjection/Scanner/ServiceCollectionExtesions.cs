@@ -18,7 +18,7 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             foreach (var assembly in assemblies)
             {
-                foreach (var type in assembly.GetTypes())
+                foreach (var type in assembly.GetTypes().Where(x => !x.IsInterface && !x.IsAbstract))
                 {
                     services.AddScannedType(serviceType, type, lifetime);
                 }
@@ -33,7 +33,7 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             foreach (var assembly in assemblies)
             {
-                foreach (var type in assembly.GetTypes())
+                foreach (var type in assembly.GetTypes().Where(x => !x.IsInterface && !x.IsAbstract))
                 {
                     if (type.HasInterface(typeof(IScannable)))
                     {
@@ -61,11 +61,25 @@ namespace Microsoft.Extensions.DependencyInjection
                     lifetime = ServiceLifetime.Scoped;
                 else if (implementationType.HasInterface(typeof(ISingletonScannable)))
                     lifetime = ServiceLifetime.Singleton;
+
                 if (serviceType == implementationType)
-                    services.AddService(serviceType, lifetime);
+                {
+                    if (!services.Any(x => x.ServiceType == serviceType))
+                    {
+                        services.AddService(serviceType, lifetime);
+                        scannedTypes.TryAdd(implementationType, true);
+                    }
+                }
                 else
-                    services.AddService(serviceType, implementationType, lifetime);
-                scannedTypes.TryAdd(implementationType, true);
+                {
+                    if (!services.Any(x => x.ServiceType == serviceType
+                        && (x.ImplementationType == implementationType
+                        || x.ImplementationInstance?.GetType() == implementationType)))
+                    {
+                        services.AddService(serviceType, implementationType, lifetime);
+                        scannedTypes.TryAdd(implementationType, true);
+                    }
+                }
             }
         }
         private static readonly Type s_objectType = typeof(object);

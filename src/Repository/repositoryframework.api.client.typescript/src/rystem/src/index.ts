@@ -1,4 +1,4 @@
-export type { BatchResults } from "./engine/batch/BatchResults";
+export type { BatchResult } from "./engine/batch/BatchResult";
 export type { ICommand } from "./interfaces/ICommand";
 export type { IQuery } from "./interfaces/IQuery";
 export type { IRepository } from "./interfaces/IRepository";

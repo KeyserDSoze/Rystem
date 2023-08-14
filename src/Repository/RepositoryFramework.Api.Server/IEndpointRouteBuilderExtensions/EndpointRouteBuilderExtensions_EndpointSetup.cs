@@ -238,14 +238,19 @@ namespace Microsoft.Extensions.DependencyInjection
             where TKey : notnull
         {
             _ = app.MapPost(uri,
-                async ([FromBody] BatchOperations<T, TKey> operations, [FromServices] IFactory<TService> factoryService, CancellationToken cancellationToken) =>
+                async ([FromBody] BatchOperations<T, TKey> operations,
+                [FromServices] IFactory<TService> factoryService,
+                CancellationToken cancellationToken) =>
             {
                 try
                 {
-                    var response = await Try.WithDefaultOnCatchAsync(() =>
+                    var response = await Try.WithDefaultOnCatchAsync(async () =>
                     {
                         var commandService = factoryService.Create(factoryName) as ICommandPattern<T, TKey>;
-                        return commandService!.BatchAsync(operations, cancellationToken);
+                        return await commandService!
+                            .BatchAsync(operations, cancellationToken)
+                            .ToListAsync()
+                            .NoContext();
                     });
                     if (response.Exception != null)
                         return Results.Problem(response.Exception.Message, string.Empty, StatusCodes.Status500InternalServerError);
@@ -259,6 +264,18 @@ namespace Microsoft.Extensions.DependencyInjection
             .WithName($"{nameof(RepositoryMethods.Batch)}{factoryName}{name}")
             .WithTags(string.IsNullOrWhiteSpace(factoryName) ? name : $"{name}/factoryName:{factoryName}")
             .AddAuthorization(authorization, RepositoryMethods.Batch);
+
+            _ = app.MapPost($"{uri}/Stream",
+                ([FromBody] BatchOperations<T, TKey> operations,
+                [FromServices] IFactory<TService> factoryService,
+                CancellationToken cancellationToken) =>
+                {
+                    var commandService = factoryService.Create(factoryName) as ICommandPattern<T, TKey>;
+                    return commandService!.BatchAsync(operations, cancellationToken);
+                })
+                .WithName($"{nameof(RepositoryMethods.Batch)}{factoryName}{name}Stream")
+                .WithTags(string.IsNullOrWhiteSpace(factoryName) ? name : $"{name}/factoryName:{factoryName}")
+              .AddAuthorization(authorization, RepositoryMethods.Batch);
         }
         private static void AddApi<T, TKey, TService>(this IEndpointRouteBuilder app,
             string uri,

@@ -22,7 +22,7 @@ namespace RepositoryFramework.WebApi
     }
     public class IperRepositoryStorage : IRepository<IperUser, string>
     {
-        public Task<BatchResults<IperUser, string>> BatchAsync(BatchOperations<IperUser, string> operations, CancellationToken cancellationToken = default)
+        public IAsyncEnumerable<BatchResult<IperUser, string>> BatchAsync(BatchOperations<IperUser, string> operations, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }

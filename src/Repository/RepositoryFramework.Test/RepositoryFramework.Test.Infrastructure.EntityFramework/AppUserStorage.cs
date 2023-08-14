@@ -15,25 +15,24 @@ namespace RepositoryFramework.Test.Infrastructure.EntityFramework
             _context = context;
         }
 
-        public async Task<BatchResults<AppUser, AppUserKey>> BatchAsync(BatchOperations<AppUser, AppUserKey> operations, CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<BatchResult<AppUser, AppUserKey>> BatchAsync(BatchOperations<AppUser, AppUserKey> operations,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            BatchResults<AppUser, AppUserKey> results = new();
             foreach (var operation in operations.Values)
             {
                 switch (operation.Command)
                 {
                     case CommandType.Delete:
-                        results.AddDelete(operation.Key, await DeleteAsync(operation.Key, cancellationToken).NoContext());
+                        yield return BatchResult<AppUser, AppUserKey>.CreateDelete(operation.Key, await DeleteAsync(operation.Key, cancellationToken).NoContext());
                         break;
                     case CommandType.Insert:
-                        results.AddInsert(operation.Key, await InsertAsync(operation.Key, operation.Value!, cancellationToken).NoContext());
+                        yield return BatchResult<AppUser, AppUserKey>.CreateInsert(operation.Key, await InsertAsync(operation.Key, operation.Value!, cancellationToken).NoContext());
                         break;
                     case CommandType.Update:
-                        results.AddUpdate(operation.Key, await UpdateAsync(operation.Key, operation.Value!, cancellationToken).NoContext());
+                        yield return BatchResult<AppUser, AppUserKey>.CreateUpdate(operation.Key, await UpdateAsync(operation.Key, operation.Value!, cancellationToken).NoContext());
                         break;
                 }
             }
-            return results;
         }
 
         public async ValueTask<TProperty> OperationAsync<TProperty>(

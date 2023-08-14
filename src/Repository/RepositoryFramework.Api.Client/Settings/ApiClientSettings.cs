@@ -44,7 +44,7 @@
                 UpdatePath = $"{basePath}{nameof(RepositoryMethods.Update)}";
             else
                 UpdatePath = $"{basePath}{nameof(RepositoryMethods.Update)}?key={{0}}";
-            BatchPath = $"{basePath}{nameof(RepositoryMethods.Batch)}";
+            BatchPath = $"{basePath}{nameof(RepositoryMethods.Batch)}/Stream";
         }
     }
 }

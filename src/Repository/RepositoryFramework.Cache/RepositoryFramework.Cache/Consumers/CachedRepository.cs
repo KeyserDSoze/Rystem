@@ -51,10 +51,9 @@ namespace RepositoryFramework.Cache
             _commandFactory = commandFactory;
         }
 
-        public async Task<BatchResults<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<BatchResult<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default)
         {
-            var results = await (_repository ?? _command!).BatchAsync(operations, cancellationToken).NoContext();
-            foreach (var result in results.Results)
+            await foreach (var result in (_repository ?? _command!).BatchAsync(operations, cancellationToken))
             {
                 if (result.State.IsOk)
                 {
@@ -79,8 +78,8 @@ namespace RepositoryFramework.Cache
                         }
                     }
                 }
+                yield return result;
             }
-            return results;
         }
 
         public async Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default)

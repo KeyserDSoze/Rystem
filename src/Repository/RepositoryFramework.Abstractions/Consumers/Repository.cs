@@ -42,7 +42,7 @@ namespace RepositoryFramework
             => _command.Value.UpdateAsync(key, value, cancellationToken);
         public Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default)
            => _command.Value.DeleteAsync(key, cancellationToken);
-        public Task<BatchResults<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default)
+        public IAsyncEnumerable<BatchResult<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations, CancellationToken cancellationToken = default)
             => _command.Value.BatchAsync(operations, cancellationToken);
 
 
