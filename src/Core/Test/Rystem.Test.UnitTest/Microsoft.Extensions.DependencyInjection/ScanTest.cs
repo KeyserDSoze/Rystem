@@ -14,7 +14,7 @@ namespace Rystem.Test.UnitTest.DependencyInjection
             serviceCollection.ScanDependencyContext(ServiceLifetime.Scoped);
             var actualService = serviceCollection.Last();
             Assert.Equal(ServiceLifetime.Singleton, actualService.Lifetime);
-            Assert.Equal(1, serviceCollection.Count);
+            Assert.Single(serviceCollection);
         }
     }
 }
