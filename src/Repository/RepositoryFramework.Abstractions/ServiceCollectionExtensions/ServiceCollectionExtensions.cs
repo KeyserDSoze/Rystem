@@ -74,7 +74,8 @@ namespace Microsoft.Extensions.DependencyInjection
         /// </summary>
         /// <param name="services">IServiceCollection.</param>
         /// <returns>IServiceCollection</returns>
-        public static IServiceCollection ScanBusiness(this IServiceCollection services,
+        public static IServiceCollection ScanBusinessForRepositoryFramework(
+            this IServiceCollection services,
             params Assembly[] assemblies)
         {
             var types = new List<Type>()
@@ -104,11 +105,24 @@ namespace Microsoft.Extensions.DependencyInjection
                 foreach (var type in types)
                 {
                     var serviceType = type.MakeGenericType(genericArguments);
-                    services
-                        .Scan(serviceType, service.ServiceLifetime, assemblies);
+                    if (services
+                        .Scan(serviceType, service.ServiceLifetime, assemblies) > 0)
+                    {
+                        var repositoryBusinessManagerInterface = typeof(IRepositoryBusinessManager<,>).MakeGenericType(genericArguments);
+                        var repositoryBusinessManagerImplementation = typeof(RepositoryBusinessManager<,>).MakeGenericType(genericArguments);
+                        services
+                            .TryAddService(repositoryBusinessManagerInterface, repositoryBusinessManagerImplementation, ServiceLifetime.Transient); ;
+                    }
                 }
             }
             return services;
         }
+        /// <summary>
+        /// Add all business classes to your repository or CQRS pattern from current domain.
+        /// </summary>
+        /// <param name="services">IServiceCollection.</param>
+        /// <returns>IServiceCollection</returns>
+        public static IServiceCollection ScanBusinessForRepositoryFramework(this IServiceCollection services)
+            => services.ScanBusinessForRepositoryFramework(AppDomain.CurrentDomain.GetAssemblies());
     }
 }

@@ -10,6 +10,14 @@ namespace RepositoryFramework.WebApi.Models
         public Task<Entity<NonPlusSuperUser, PlusSuperUserKey>> AfterQueryAsync(Entity<NonPlusSuperUser, PlusSuperUserKey>? entity, IFilterExpression filter, CancellationToken cancellationToken = default) 
             => Task.FromResult(entity);
     }
+    public class PlusSuperUserKeyAfterInsert2 : IRepositoryBusinessAfterInsert<NonPlusSuperUser, NonPlusSuperUserKey>, IRepositoryBusinessAfterQuery<NonPlusSuperUser, NonPlusSuperUserKey>
+    {
+        public int Priority => 3;
+        public Task<State<NonPlusSuperUser, NonPlusSuperUserKey>> AfterInsertAsync(State<NonPlusSuperUser, NonPlusSuperUserKey> state, Entity<NonPlusSuperUser, NonPlusSuperUserKey> entity, CancellationToken cancellationToken = default)
+            => Task.FromResult(state);
+        public Task<Entity<NonPlusSuperUser, NonPlusSuperUserKey>> AfterQueryAsync(Entity<NonPlusSuperUser, NonPlusSuperUserKey>? entity, IFilterExpression filter, CancellationToken cancellationToken = default)
+            => Task.FromResult(entity);
+    }
     public class SuperiorUser : CreativeUser
     {
         public SuperiorUser(string email) : base(email)

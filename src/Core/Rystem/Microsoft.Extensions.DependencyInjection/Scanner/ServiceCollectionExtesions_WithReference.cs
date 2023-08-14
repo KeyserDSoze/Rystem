@@ -4,18 +4,18 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static partial class ServiceCollectionExtesions
     {
-        public static IServiceCollection ScanWithReferences<T>(
+        public static int ScanWithReferences<T>(
             this IServiceCollection services,
             ServiceLifetime lifetime,
             params Assembly[] assemblies)
             => services.Scan(typeof(T), lifetime, AddReferencedAssemblies(assemblies));
-        public static IServiceCollection ScanWithReferences(
+        public static int ScanWithReferences(
             this IServiceCollection services,
             Type serviceType,
             ServiceLifetime lifetime,
             params Assembly[] assemblies)
             => services.Scan(serviceType, lifetime, AddReferencedAssemblies(assemblies));
-        public static IServiceCollection ScanWithReferences(
+        public static int ScanWithReferences(
            this IServiceCollection services,
            ServiceLifetime lifetime,
             params Assembly[] assemblies)

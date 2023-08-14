@@ -5,32 +5,40 @@ namespace Microsoft.Extensions.DependencyInjection
     public static partial class ServiceCollectionExtesions
     {
         internal static Dictionary<Type, Dictionary<Type, bool>> ScannedTypes { get; } = new();
-        public static IServiceCollection Scan<T>(
+        public static int Scan<T>(
             this IServiceCollection services,
             ServiceLifetime lifetime,
             params Assembly[] assemblies)
             => services.Scan(typeof(T), lifetime, assemblies);
-        public static IServiceCollection Scan(
+        public static int Scan(
             this IServiceCollection services,
             Type serviceType,
             ServiceLifetime lifetime,
             params Assembly[] assemblies)
         {
+            var count = 0;
             foreach (var assembly in assemblies)
             {
-                foreach (var type in assembly.GetTypes().Where(x => !x.IsInterface && !x.IsAbstract))
+                foreach (var type in assembly.GetTypes()
+                    .Where(x => !x.IsInterface
+                        && !x.IsAbstract))
                 {
-                    services.AddScannedType(serviceType, type, lifetime);
+                    if ((!serviceType.IsInterface && type.IsTheSameTypeOrAFather(serviceType))
+                        || (serviceType.IsInterface && type.HasInterface(serviceType)))
+                    {
+                        if (services.AddScannedType(serviceType, type, lifetime))
+                            count++;
+                    }
                 }
             }
-            return
-                services;
+            return count;
         }
-        public static IServiceCollection Scan(
+        public static int Scan(
            this IServiceCollection services,
            ServiceLifetime lifetime,
             params Assembly[] assemblies)
         {
+            var count = 0;
             foreach (var assembly in assemblies)
             {
                 foreach (var type in assembly.GetTypes().Where(x => !x.IsInterface && !x.IsAbstract))
@@ -38,15 +46,16 @@ namespace Microsoft.Extensions.DependencyInjection
                     if (type.HasInterface(typeof(IScannable)))
                     {
                         var whatKindOfType = GetScannableInterfaceImplementation(type);
-                        if (whatKindOfType != null)
-                            services.AddScannedType(whatKindOfType, type, lifetime);
+                        if (whatKindOfType != null
+                            && services.AddScannedType(whatKindOfType, type, lifetime))
+                            count++;
                     }
                 }
             }
             return
-                services;
+                count;
         }
-        private static void AddScannedType(this IServiceCollection services, Type serviceType, Type implementationType, ServiceLifetime lifetime)
+        private static bool AddScannedType(this IServiceCollection services, Type serviceType, Type implementationType, ServiceLifetime lifetime)
         {
             if (!ScannedTypes.ContainsKey(serviceType))
                 ScannedTypes.TryAdd(serviceType, new());
@@ -68,6 +77,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     {
                         services.AddService(serviceType, lifetime);
                         scannedTypes.TryAdd(implementationType, true);
+                        return true;
                     }
                 }
                 else
@@ -78,9 +88,11 @@ namespace Microsoft.Extensions.DependencyInjection
                     {
                         services.AddService(serviceType, implementationType, lifetime);
                         scannedTypes.TryAdd(implementationType, true);
+                        return true;
                     }
                 }
             }
+            return false;
         }
         private static readonly Type s_objectType = typeof(object);
         private static Type? GetScannableInterfaceImplementation(Type? type)

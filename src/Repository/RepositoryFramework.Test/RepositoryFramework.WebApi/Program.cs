@@ -160,7 +160,7 @@ builder.Services.AddApiFromRepositoryFramework()
 //            x.WithId(x => x.Email!);
 //        });
 //    });
-
+builder.Services.ScanBusinessForRepositoryFramework();
 #pragma warning restore S125 // Sections of code should not be commented out
 
 var app = builder.Build();

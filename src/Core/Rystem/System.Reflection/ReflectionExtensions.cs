@@ -78,7 +78,12 @@ namespace System.Reflection
         /// <param name="toCompare">Type to compare.</param>
         /// <returns>bool</returns>
         public static bool IsTheSameTypeOrAFather(this Type type, Type toCompare)
-            => toCompare.IsTheSameTypeOrASon(type);
+        {
+            if (type == s_objectType)
+                return type == toCompare;
+            return toCompare.IsTheSameTypeOrASon(type);
+        }
+
         /// <summary>
         /// Check if type is the same type or a father of toCompare.
         /// </summary>
