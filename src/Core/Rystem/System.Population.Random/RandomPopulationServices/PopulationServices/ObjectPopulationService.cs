@@ -38,6 +38,7 @@
                 {
                     var properties = options.Type.GetProperties();
                     foreach (var property in properties.Where(x => x.SetMethod != null))
+                    {
                         _ = Try.WithDefaultOnCatch(() =>
                         {
                             var value = options.PopulationService
@@ -49,6 +50,7 @@
                             property
                                 .SetValue(entity, value);
                         });
+                    }
                 }
                 return entity!;
             }
