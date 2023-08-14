@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Concurrent;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace System.Reflection
 {
@@ -13,6 +14,25 @@ namespace System.Reflection
 
         private static readonly object s_semaphore = new();
         private static readonly Type s_objectType = typeof(object);
+        /// <summary>
+        /// Check if type has that interface.
+        /// </summary>
+        /// <param name="type">Type to check.</param>
+        /// <param name="interfaceType">Type of interface to find.</param>
+        /// <returns>bool</returns>
+        public static bool HasInterface(this Type type, Type interfaceType)
+        {
+            if (type == s_objectType)
+                return false;
+            while (type != null && type != s_objectType)
+            {
+                var actualInterface = type.GetInterfaces().FirstOrDefault(x => x == interfaceType);
+                if (actualInterface != null)
+                    return true;
+                type = type.BaseType!;
+            }
+            return false;
+        }
         /// <summary>
         /// Check if type is the same type or a son of toCompare.
         /// </summary>
