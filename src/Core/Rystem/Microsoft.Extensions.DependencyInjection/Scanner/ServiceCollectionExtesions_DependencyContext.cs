@@ -26,7 +26,7 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             predicate ??= x => true;
             return DependencyContext.Default!.GetDefaultAssemblyNames()
-                .Select(x => Assembly.Load(x.Name!))
+                .Select(x => Assembly.Load(x))
                 .Where(predicate)
                 .ToArray();
         }
