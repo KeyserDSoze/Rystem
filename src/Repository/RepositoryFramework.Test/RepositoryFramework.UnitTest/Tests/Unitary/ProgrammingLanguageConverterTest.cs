@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Text.Json.Serialization;
-using RepositoryFramework;
+using RepositoryFramework.ProgrammingLanguage;
 using Xunit;
 
-namespace Rystem.Test.UnitTest.Reflection
+namespace RepositoryFramework.UnitTest.Unitary
 {
     public class ProgrammingLanguageConverterTest
     {
@@ -20,6 +20,14 @@ namespace Rystem.Test.UnitTest.Reflection
         {
             [JsonPropertyName("baccano")]
             public string Bacca { get; set; }
+            [JsonPropertyName("dalk")]
+            public Solis Dalk { get; set; }
+        }
+        public enum Solis
+        {
+            Alk = 3,
+            Mold = 4,
+            Salut = 56
         }
         public class SomethingNew2
         {
@@ -29,8 +37,8 @@ namespace Rystem.Test.UnitTest.Reflection
         [Fact]
         public void Test1()
         {
-            //var response = typeof(InModel).ConvertAs(ProgrammingLanguage.Typescript);
-            //Assert.NotNull(response);
+            var response = typeof(InModel).ConvertAs(ProgrammingLanguageType.Typescript);
+            Assert.NotNull(response);
         }
     }
 }

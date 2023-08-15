@@ -1,6 +1,6 @@
-﻿namespace RepositoryFramework
+﻿namespace RepositoryFramework.ProgrammingLanguage
 {
-    public enum ProgrammingLanguage
+    public enum ProgrammingLanguageType
     {
         Typescript,
     }

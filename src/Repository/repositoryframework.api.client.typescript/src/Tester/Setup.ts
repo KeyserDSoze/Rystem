@@ -2,7 +2,6 @@
 import { SuperUser } from "../Models/SuperUser";
 import { RepositoryEndpoint, RepositoryServices } from "../rystem/src";
 
-
 export function Setup() {
     RepositoryServices
         //.Create("https://localhost:7058/api/")

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using RepositoryFramework;
+using RepositoryFramework.ProgrammingLanguage;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -16,13 +17,13 @@ namespace Microsoft.Extensions.DependencyInjection
             if (!s_modelsAlreadyMapped)
             {
                 s_modelsAlreadyMapped = true;
-                var languages = new List<ProgrammingLanguage>() { ProgrammingLanguage.Typescript };
+                var languages = new List<ProgrammingLanguageType>() { ProgrammingLanguageType.Typescript };
                 var registry = app.ServiceProvider.GetService<RepositoryFrameworkRegistry>();
                 var typeList = registry!.Services.Select(x => x.Value.ModelType).Where(x => !x.IsPrimitive()).ToList();
                 typeList.AddRange(registry.Services.Select(x => x.Value.KeyType).Where(x => !x.IsPrimitive()));
                 foreach (var language in languages)
                 {
-                    var converted = typeList.ConvertAs(ProgrammingLanguage.Typescript);
+                    var converted = typeList.ConvertAs(language);
                     Try.WithDefaultOnCatch(() =>
                     {
                         app

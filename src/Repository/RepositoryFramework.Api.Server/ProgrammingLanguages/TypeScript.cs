@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 using System.Text;
 
-namespace RepositoryFramework
+namespace RepositoryFramework.ProgrammingLanguage
 {
     internal sealed class TypeScript : IProgrammingLanguage
     {
@@ -21,8 +21,10 @@ namespace RepositoryFramework
                 return "number";
             else if (type.IsDateTime())
                 return "Date";
-            else if(type.IsBoolean())
+            else if (type.IsBoolean())
                 return "boolean";
+            else if (type.IsEnum)
+                return type.Name;
             else
                 return "string";
         }
@@ -66,9 +68,25 @@ namespace RepositoryFramework
                 builder.Append(type.Name);
             }
         }
-        public string Start(string name)
+        public string Start(Type type, string name)
         {
             return $"export type {name} = {{";
+        }
+
+        public string ConvertEnum(string name, Type type)
+        {
+            var stringBuilder = new StringBuilder();
+            stringBuilder.AppendLine($"export enum {name} {{");
+            var enumUnderlyingType = Enum.GetUnderlyingType(type);
+            var values = Enum.GetValues(type);
+            for (var i = 0; i < values.Length; i++)
+            {
+                var value = values.GetValue(i)!;
+                var underlyingValue = Convert.ChangeType(value, enumUnderlyingType);
+                stringBuilder.AppendLine($"{value} = {underlyingValue},");
+            }
+            stringBuilder.AppendLine("}");
+            return stringBuilder.ToString();
         }
     }
 }

@@ -1,6 +1,6 @@
-﻿namespace RepositoryFramework
+﻿namespace RepositoryFramework.ProgrammingLanguage
 {
-    internal sealed class ProgrammingLanguangeResponse
+    public sealed class ProgrammingLanguangeResponse
     {
         public string Text { get; set; }
         public string MimeType { get; set; }

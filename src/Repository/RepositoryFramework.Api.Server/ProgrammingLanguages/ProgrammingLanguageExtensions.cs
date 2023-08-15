@@ -2,11 +2,11 @@
 using System.Text;
 using System.Text.Json.Serialization;
 
-namespace RepositoryFramework
+namespace RepositoryFramework.ProgrammingLanguage
 {
-    internal static class ProgrammingLanguageExtensions
+    public static class ProgrammingLanguageExtensions
     {
-        public static ProgrammingLanguangeResponse ConvertAs(this IEnumerable<Type> types, ProgrammingLanguage programmingLanguage)
+        public static ProgrammingLanguangeResponse ConvertAs(this IEnumerable<Type> types, ProgrammingLanguageType programmingLanguage)
         {
             IProgrammingLanguage programming = new TypeScript();
             switch (programmingLanguage)
@@ -27,7 +27,7 @@ namespace RepositoryFramework
                 MimeType = programming.GetMimeType()
             };
         }
-        public static ProgrammingLanguangeResponse ConvertAs(this Type type, ProgrammingLanguage programmingLanguage, string? name = null)
+        public static ProgrammingLanguangeResponse ConvertAs(this Type type, ProgrammingLanguageType programmingLanguage, string? name = null)
         {
             IProgrammingLanguage programming = new TypeScript();
             switch (programmingLanguage)
@@ -53,36 +53,49 @@ namespace RepositoryFramework
                 }
                 else
                     namesAlreadyAdded.Add(name, 2);
-                var stringBuilder = new StringBuilder();
-                stringBuilder.AppendLine(programmingLanguage.Start(name));
-                var properties = type.GetProperties();
-                var complexObject = new List<string>();
-                foreach (var property in properties)
+                if (!type.IsEnum)
                 {
-                    var propertyName = GetName(property);
-                    if (property.PropertyType.IsPrimitive())
+                    var stringBuilder = new StringBuilder();
+                    AppendLine(programmingLanguage.Start(type, name));
+                    var properties = type.GetProperties();
+                    var complexObject = new List<string>();
+                    foreach (var property in properties)
                     {
-                        stringBuilder.AppendLine(
-                            programmingLanguage
-                                .SetProperty(propertyName,
-                                    programmingLanguage.GetPrimitiveType(property.PropertyType)));
+                        var propertyName = GetName(property);
+                        if (property.PropertyType.IsPrimitive() && !property.PropertyType.IsEnum)
+                        {
+                            AppendLine(
+                                programmingLanguage
+                                    .SetProperty(propertyName,
+                                        programmingLanguage.GetPrimitiveType(property.PropertyType)));
+                        }
+                        else
+                        {
+                            AppendLine(
+                                programmingLanguage
+                                    .SetProperty(propertyName,
+                                        programmingLanguage.GetNonPrimitiveType(property.PropertyType)));
+                            foreach (var interpretation in GetFurtherTypes(property.PropertyType))
+                                complexObject.Add(Transform(interpretation.Name, interpretation, programmingLanguage, typesAlreadyAdded, namesAlreadyAdded));
+                        }
                     }
-                    else
+                    AppendLine(programmingLanguage.End());
+                    foreach (var finalization in complexObject)
                     {
-                        stringBuilder.AppendLine(
-                            programmingLanguage
-                                .SetProperty(propertyName,
-                                    programmingLanguage.GetNonPrimitiveType(property.PropertyType)));
-                        foreach (var interpretation in GetFurtherTypes(property.PropertyType))
-                            complexObject.Add(Transform(interpretation.Name, interpretation, programmingLanguage, typesAlreadyAdded, namesAlreadyAdded));
+                        AppendLine(finalization);
+                    }
+                    return stringBuilder.ToString();
+
+                    void AppendLine(string line)
+                    {
+                        if (!string.IsNullOrWhiteSpace(line))
+                            stringBuilder.AppendLine(line);
                     }
                 }
-                stringBuilder.AppendLine(programmingLanguage.End());
-                foreach (var finalization in complexObject)
+                else
                 {
-                    stringBuilder.AppendLine(finalization);
+                    return programmingLanguage.ConvertEnum(name, type);
                 }
-                return stringBuilder.ToString();
             }
             return string.Empty;
         }
