@@ -147,8 +147,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 $"x => x.{firstProperty.Name} == {(firstProperty.PropertyType.IsNumeric() ? value.ToString() : $"\"{value}\"")}"));
             request.Sample.RequestQuery = new Dictionary<string, string>
             {
-                {"op" , "Count"},
-                {"returnType", GetPrimitiveNameOrAssemblyQualifiedName()}
+                { "op" , "Count" },
+                { "returnType", GetPrimitiveNameOrAssemblyQualifiedName() ?? string.Empty }
             };
             request.Sample.RequestBody = filter;
 
@@ -159,8 +159,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 var name = firstProperty.PropertyType.AssemblyQualifiedName;
                 if (name == null)
                     return null;
-                if (PrimitiveMapper.Instance.FromAssemblyQualifiedNameToName.ContainsKey(name))
-                    return PrimitiveMapper.Instance.FromAssemblyQualifiedNameToName[name];
+                if (PrimitiveMapper.Instance.FromAssemblyQualifiedNameToName.TryGetValue(name, out var value))
+                    return value;
                 return name;
             }
         }
