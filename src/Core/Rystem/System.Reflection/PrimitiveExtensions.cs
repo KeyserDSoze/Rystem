@@ -25,5 +25,9 @@
                 || type == typeof(nint) || type == typeof(nint?) || type == typeof(nuint) || type == typeof(nuint?)
                 || type == typeof(float) || type == typeof(float?) || type == typeof(double) || type == typeof(double?)
                 || type == typeof(decimal) || type == typeof(decimal?);
+        public static bool IsEnumerable(this Type type)
+            => type.GetInterfaces().Any(x => x.Name.StartsWith("IEnumerable"));
+        public static bool IsDictionary(this Type type)
+            => type.GetInterfaces().Any(x => x.Name.StartsWith("IDictionary"));
     }
 }
