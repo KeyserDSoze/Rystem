@@ -25,6 +25,11 @@
                 || type == typeof(nint) || type == typeof(nint?) || type == typeof(nuint) || type == typeof(nuint?)
                 || type == typeof(float) || type == typeof(float?) || type == typeof(double) || type == typeof(double?)
                 || type == typeof(decimal) || type == typeof(decimal?);
+        public static bool IsBoolean(this Type type)
+            => type == typeof(bool) || type == typeof(bool?);
+        public static bool IsDateTime(this Type type)
+            => type == typeof(DateTime) || type == typeof(DateTime?)
+                || type == typeof(DateTimeOffset) || type == typeof(DateTimeOffset?);
         public static bool IsEnumerable(this Type type)
             => type.GetInterfaces().Any(x => x.Name.StartsWith("IEnumerable"));
         public static bool IsDictionary(this Type type)

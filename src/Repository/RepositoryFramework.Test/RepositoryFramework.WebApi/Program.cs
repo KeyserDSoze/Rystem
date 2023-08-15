@@ -99,6 +99,7 @@ builder.Services.AddApiFromRepositoryFramework()
     .WithDescriptiveName("Repository Api")
     .WithSwagger()
     .WithMapApi()
+    .WithModelsApi()
     .WithDocumentation()
     .WithDefaultCorsWithAllOrigins();
 ////.ConfigureAzureActiveDirectory(builder.Configuration);

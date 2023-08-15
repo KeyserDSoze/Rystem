@@ -53,6 +53,11 @@ namespace RepositoryFramework
                 .AddPopulationService();
             return this;
         }
+        public IApiBuilder WithModelsApi()
+        {
+            ApiSettings.Instance.HasModelsApi = true;
+            return this;
+        }
         public IApiBuilder WithSwagger()
         {
             ApiSettings.Instance.HasSwagger = true;

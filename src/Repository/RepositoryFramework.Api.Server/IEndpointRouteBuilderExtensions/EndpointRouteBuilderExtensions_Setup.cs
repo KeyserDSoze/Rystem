@@ -46,6 +46,9 @@ namespace Microsoft.Extensions.DependencyInjection
             if (settings.HasMapApi)
                 app
                     .AddApiMap();
+            if (settings.HasModelsApi)
+                app
+                    .AddApiModels();
             var registry = app.ServiceProvider.GetService<RepositoryFrameworkRegistry>();
             var services = registry!.GetByModel(modelType);
             var currentName = modelType.Name;
