@@ -86,7 +86,7 @@ namespace RepositoryFramework.ProgrammingLanguage
                 stringBuilder.AppendLine($"{value} = {underlyingValue},");
             }
             stringBuilder.AppendLine("}");
-            return stringBuilder.ToString();
+            return stringBuilder.ToString().Trim();
         }
     }
 }

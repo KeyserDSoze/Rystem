@@ -19,7 +19,9 @@ namespace RepositoryFramework.ProgrammingLanguage
             var namesAlreadyAdded = new Dictionary<string, int>();
             foreach (var type in types)
             {
-                stringBuilder.AppendLine(Transform(type.Name, type, programming, typesAlreadyAdded, namesAlreadyAdded));
+                var transformedType = Transform(type.Name, type, programming, typesAlreadyAdded, namesAlreadyAdded);
+                if (!string.IsNullOrWhiteSpace(transformedType))
+                    stringBuilder.AppendLine(transformedType);
             }
             return new()
             {
@@ -84,12 +86,12 @@ namespace RepositoryFramework.ProgrammingLanguage
                     {
                         AppendLine(finalization);
                     }
-                    return stringBuilder.ToString();
+                    return stringBuilder.ToString().Trim();
 
                     void AppendLine(string line)
                     {
                         if (!string.IsNullOrWhiteSpace(line))
-                            stringBuilder.AppendLine(line);
+                            stringBuilder.AppendLine(line.Trim());
                     }
                 }
                 else
