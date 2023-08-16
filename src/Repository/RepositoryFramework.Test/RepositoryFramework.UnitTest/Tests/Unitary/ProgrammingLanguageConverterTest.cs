@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using RepositoryFramework.ProgrammingLanguage;
 using Xunit;
@@ -26,6 +27,8 @@ namespace RepositoryFramework.UnitTest.Unitary
             public Solis Dalk { get; set; }
             [JsonPropertyName("rudo")]
             public Dictionary<string, List<SomethingNew>> Formi { get; set; }
+            [JsonPropertyName("concia")]
+            public DateTime TheDate { get; set; }
         }
         public enum Solis
         {
@@ -52,6 +55,7 @@ namespace RepositoryFramework.UnitTest.Unitary
                 baccano: string;
                 dalk: Solis;
                 rudo: Map<string, Array<SomethingNew>>;
+                concia: Date;
                 }
                 export enum Solis {
                 Alk = 3,
