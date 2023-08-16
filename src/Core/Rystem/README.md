@@ -518,3 +518,86 @@ Usage
     var decoratorFactory = provider.GetRequiredService<IFactory<ITestService>>();
     var decorator = decoratorFactory.Create(factoryName);
     var previousService = decoratorFactory.CreateWithoutDecoration(factoryName);
+
+## Scan dependency injection
+You may scan your assemblies in search of types you need to add to dependency injection.
+For instance I have an interface IAnything and I need to add all classes which implements it.
+
+    public interface IAnything
+    {
+    }
+    internal class ScanModels : IAnything
+    {
+    }
+
+and in service collection I can add it.
+
+    serviceCollection
+        .Scan<IAnything>(ServiceLifetime.Scoped, typeof(IAnything).Assembly);
+
+I can add to my class the interface IScannable of T to scan automatically. 
+For instance.
+
+    public interface IAnything
+    {
+    }
+    internal class ScanModels : IAnything, IScannable<IAnything>
+    {
+    }
+
+and in service collection I could add it in this way
+
+    serviceCollection
+        .Scan(ServiceLifetime.Scoped, typeof(IAnything).Assembly);
+
+Furthermore with ISingletonScannable, IScopedScannable and ITransientScannable I can override the service lifetime.
+For instance.
+
+    public interface IAnything
+    {
+    }
+    internal class ScanModels : IAnything, IScannable<IAnything>, ISingletonScannable
+    {
+    }
+
+    serviceCollection
+        .Scan(ServiceLifetime.Scoped, typeof(IAnything).Assembly);
+
+ScanModels will be installed as a Singleton service, overwriting the service lifetime from Scan method.
+
+You also automatically use different assembly sources.
+
+    serviceCollection
+        .ScanDependencyContext(ServiceLifetime.Scoped);
+
+or
+
+    serviceCollection
+        .ScanCallingAssembly(ServiceLifetime.Scoped);
+
+or
+
+    serviceCollection
+        .ScanCurrentDomain(ServiceLifetime.Scoped);
+
+or
+
+    serviceCollection
+        .ScanEntryAssembly(ServiceLifetime.Scoped);
+
+or
+
+    serviceCollection
+        .ScanExecutingAssembly(ServiceLifetime.Scoped);
+
+or
+
+    serviceCollection
+        .ScanFromType<T>(ServiceLifetime.Scoped);
+
+or
+
+    serviceCollection
+        .ScanFromTypes<T1, T2>(ServiceLifetime.Scoped);
+
+Finally with ScanWithReferences you may call all the assemblies you want plus all referenced assemblies by them.

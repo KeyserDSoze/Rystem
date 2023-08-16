@@ -208,6 +208,8 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                                             .WithPath(Path)
                                             .WithSwagger()
                                             .WithVersion(Version)
+                                            .WithMapApi()
+                                            .WithModelsApi()
                                             .WithDocumentation()
                                             .WithDefaultCors("http://example.com");
                             });
