@@ -171,7 +171,6 @@ const count = await repository
     .where()
     .select(x => x.id)
     .equal(id)
-    .build()
     .count();
 ```
 - build a filter and sum a column of all elements
@@ -181,7 +180,6 @@ const sum = await repository
     .where()
     .select(x => x.id)
     .equal(id)
-    .build()
     .sum(x => x.port);
 ```
 - build a filter with greaterThanOrEqual for instance
@@ -192,7 +190,6 @@ const portGreaterThanZero = await repository
     .openRoundBracket()
     .select(x => x.port)
     .greaterThanOrEqual(0)
-    .build()
     .count();
 ```
 - same of previous but ordered by a column

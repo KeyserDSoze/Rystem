@@ -68,7 +68,6 @@ export async function Runner() {
         .openRoundBracket()
         .select(x => x.id)
         .equal(id)
-        .build()
         .count();
     console.log(count);
     const sum = await repository
@@ -77,7 +76,6 @@ export async function Runner() {
         .openRoundBracket()
         .select(x => x.id)
         .equal(id)
-        .build()
         .sum(x => x.port);
     console.log(sum);
     const portGreaterThanZero = await repository
@@ -86,7 +84,6 @@ export async function Runner() {
         .openRoundBracket()
         .select(x => x.port)
         .greaterThanOrEqual(0)
-        .build()
         .count();
     console.log(portGreaterThanZero);
     const portGreaterThanZeroOrderedByName = await repository
