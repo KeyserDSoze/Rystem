@@ -1,6 +1,6 @@
 {
   "name": "rystem.repository.client",
-  "version": "0.0.8",
+  "version": "0.1.0",
   "author": "Alessandro Rapiti <alessandro.rapiti44@gmail.com>",
   "license": "MIT",
   "description": "It can simplify the integration with rystem repository server.",
