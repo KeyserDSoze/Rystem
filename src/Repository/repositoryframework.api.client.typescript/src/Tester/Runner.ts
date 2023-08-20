@@ -1,9 +1,8 @@
 import { IperUser } from "../Models/IperUser";
-import { BatchResult, RepositoryServices, State } from "../rystem/src";
+import { BatchResult, State, useRepository } from "../rystem/src";
 
 export async function Runner() {
-    const repository = RepositoryServices
-        .Repository<IperUser, string>("test");
+    const repository = useRepository<IperUser, string>("test");
     const x = Math.floor(Math.random() * (30000 - 0 + 1)) + 0;
     const id = `${x}_Key_4942b090-f6a0-45a4-a188-286807f6bb9c`;
     const iperUser = {

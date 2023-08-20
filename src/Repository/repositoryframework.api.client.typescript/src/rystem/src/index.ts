@@ -6,3 +6,4 @@ export type { Entity } from "./models/Entity";
 export type { State } from "./models/State";
 export { RepositoryEndpoint } from "./models/RepositoryEndpoint";
 export { RepositoryServices } from "./servicecollection/RepositoryServices";
+export { useRepository, useCommand, useQuery } from "./hooks/hooks";
