@@ -5,6 +5,7 @@ on:
       - master
     paths:
       - src/Extensions/Queue/Rystem.Queue/Rystem.Queue.csproj
+      - reload.txt
 jobs:
   publish:
     name: build, pack & publish

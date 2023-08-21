@@ -5,6 +5,7 @@ on:
       - master
     paths:
       - src/Content/Rystem.Content.Infrastructures/Rystem.Content.Infrastructure.Azure.Storage.Blob/Rystem.Content.Infrastructure.Azure.Storage.Blob.csproj
+      - reload.txt
 jobs:
   publish:
     name: build, pack & publish

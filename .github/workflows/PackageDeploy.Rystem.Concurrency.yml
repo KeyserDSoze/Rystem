@@ -5,6 +5,7 @@ on:
       - master
     paths:
       - src/Extensions/Concurrency/Rystem.Concurrency/Rystem.Concurrency.csproj
+      - reload.txt
 jobs:
   publish:
     name: build, pack & publish

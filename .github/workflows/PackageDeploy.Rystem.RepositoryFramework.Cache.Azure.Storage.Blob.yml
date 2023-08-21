@@ -5,6 +5,7 @@ on:
       - master
     paths:
       - src/Repository/RepositoryFramework.Cache/RepositoryFramework.Cache.Azure.Storage.Blob/RepositoryFramework.Cache.Azure.Storage.Blob.csproj
+      - reload.txt
 jobs:
   publish:
     name: build, pack & publish

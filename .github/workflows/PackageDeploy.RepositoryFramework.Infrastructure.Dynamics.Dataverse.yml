@@ -5,6 +5,7 @@ on:
       - master
     paths:
       - src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Dynamics.Dataverse/RepositoryFramework.Infrastructure.Dynamics.Dataverse.csproj
+      - reload.txt
 jobs:
   publish:
     name: build, pack & publish

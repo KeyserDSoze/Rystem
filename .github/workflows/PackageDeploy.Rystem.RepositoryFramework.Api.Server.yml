@@ -5,6 +5,7 @@ on:
       - master
     paths:
       - src/Repository/RepositoryFramework.Api.Server/RepositoryFramework.Api.Server.csproj
+      - reload.txt
 jobs:
   publish:
     name: build, pack & publish

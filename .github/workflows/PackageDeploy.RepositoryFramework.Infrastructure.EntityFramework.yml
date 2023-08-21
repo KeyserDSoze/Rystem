@@ -5,6 +5,7 @@ on:
       - master
     paths:
       - src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.EntityFramework/RepositoryFramework.Infrastructure.EntityFramework.csproj
+      - reload.txt
 jobs:
   publish:
     name: build, pack & publish

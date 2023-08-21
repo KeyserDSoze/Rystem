@@ -5,6 +5,7 @@ on:
       - master
     paths:
       - src/Content/Rystem.Content.Abstractions/Rystem.Content.Abstractions.csproj
+      - reload.txt
 jobs:
   publish:
     name: build, pack & publish

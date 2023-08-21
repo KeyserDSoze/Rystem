@@ -5,6 +5,7 @@ on:
       - master
     paths:
       - src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Cosmos.Sql/RepositoryFramework.Infrastructure.Azure.Cosmos.Sql.csproj
+      - reload.txt
 jobs:
   publish:
     name: build, pack & publish

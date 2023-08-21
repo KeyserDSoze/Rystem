@@ -5,6 +5,7 @@ on:
       - master
     paths:
       - src/Repository/RepositoryFramework.Cache/RepositoryFramework.Cache/RepositoryFramework.Cache.csproj
+      - reload.txt
 jobs:
   publish:
     name: build, pack & publish
