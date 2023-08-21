@@ -23,7 +23,6 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	</PropertyGroup>
-
 	<Choose>
 		<When Condition=" '$(Configuration)'=='Debug' ">
 			<ItemGroup>
