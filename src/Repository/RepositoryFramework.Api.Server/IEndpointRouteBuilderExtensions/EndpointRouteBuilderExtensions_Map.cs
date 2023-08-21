@@ -159,7 +159,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
             string? GetPrimitiveNameOrAssemblyQualifiedName()
             {
-                var name = firstProperty.PropertyType.AssemblyQualifiedName;
+                var name = firstProperty?.PropertyType.AssemblyQualifiedName;
                 if (name == null)
                     return null;
                 if (PrimitiveMapper.Instance.FromAssemblyQualifiedNameToName.TryGetValue(name, out var value))
