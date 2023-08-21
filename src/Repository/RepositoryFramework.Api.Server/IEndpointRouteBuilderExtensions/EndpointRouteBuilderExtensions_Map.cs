@@ -139,12 +139,15 @@ namespace Microsoft.Extensions.DependencyInjection
             where TKey : notnull
         {
             request.Description = $"Make an operation like Count, Average, Maximum, Minimum or Sum of a series of {typeof(T).Name} entities based on several filters.";
-            var firstProperty = apiMap.Model!.GetType().GetProperties().First(x => x.PropertyType.IsPrimitive());
-            var value = firstProperty.GetValue(apiMap.Model!, null);
             var filter = new SerializableFilter();
-            filter.Operations.Add(new FilterOperationAsString(
-                FilterOperations.Where,
-                $"x => x.{firstProperty.Name} == {(firstProperty.PropertyType.IsNumeric() ? value.ToString() : $"\"{value}\"")}"));
+            var firstProperty = apiMap.Model!.GetType().GetProperties().FirstOrDefault(x => x.PropertyType.IsPrimitive());
+            if (firstProperty != null)
+            {
+                var value = firstProperty.GetValue(apiMap.Model!, null);
+                filter.Operations.Add(new FilterOperationAsString(
+                    FilterOperations.Where,
+                    $"x => x.{firstProperty.Name} == {(firstProperty.PropertyType.IsNumeric() ? value.ToString() : $"\"{value}\"")}"));
+            }
             request.Sample.RequestQuery = new Dictionary<string, string>
             {
                 { "op" , "Count" },
@@ -171,22 +174,27 @@ namespace Microsoft.Extensions.DependencyInjection
             request.StreamUri = $"{request.Uri}/Stream";
             var entity = new Entity<T, TKey>((T)apiMap.Model!, (TKey)apiMap.Key!);
             var filter = new SerializableFilter();
-            var firstProperty = apiMap.Model!.GetType().GetProperties().First(x => x.PropertyType.IsPrimitive());
-            var secondProperty = apiMap.Model!.GetType().GetProperties().Where(x => x.PropertyType.IsPrimitive()).Skip(1).FirstOrDefault();
-            var value = firstProperty.GetValue(apiMap.Model!, null);
-            var query = $"x.{firstProperty.Name} == {(firstProperty.PropertyType.IsNumeric() ? value!.ToString() : $"\"{value}\"")}";
-            var queryForLesser = $"x.{firstProperty.Name} <= {(firstProperty.PropertyType.IsNumeric() ? value!.ToString() + "1" : $"\"{value}1\"")}";
-            var queryForLesser2 = $"x.{firstProperty.Name} <= {(firstProperty.PropertyType.IsNumeric() ? value!.ToString() + "2" : $"\"{value}2\"")}";
-            filter.Operations.Add(new FilterOperationAsString(
-                FilterOperations.Where,
-                $"x => {query} && ({queryForLesser} || {queryForLesser2})"));
-            filter.Operations.Add(new FilterOperationAsString(
-                FilterOperations.OrderBy,
-                $"x => x.{firstProperty.Name}"));
-            if (secondProperty != null)
+            var firstProperty = apiMap.Model!.GetType().GetProperties().FirstOrDefault(x => x.PropertyType.IsPrimitive());
+            if (firstProperty != null)
+            {
+                var value = firstProperty.GetValue(apiMap.Model!, null);
+                var query = $"x.{firstProperty.Name} == {(firstProperty.PropertyType.IsNumeric() ? value!.ToString() : $"\"{value}\"")}";
+                var queryForLesser = $"x.{firstProperty.Name} <= {(firstProperty.PropertyType.IsNumeric() ? value!.ToString() + "1" : $"\"{value}1\"")}";
+                var queryForLesser2 = $"x.{firstProperty.Name} <= {(firstProperty.PropertyType.IsNumeric() ? value!.ToString() + "2" : $"\"{value}2\"")}";
                 filter.Operations.Add(new FilterOperationAsString(
-                    FilterOperations.ThenBy,
-                    $"x => x.{secondProperty.Name}"));
+                    FilterOperations.Where,
+                    $"x => {query} && ({queryForLesser} || {queryForLesser2})"));
+                filter.Operations.Add(new FilterOperationAsString(
+                    FilterOperations.OrderBy,
+                    $"x => x.{firstProperty.Name}"));
+                var secondProperty = apiMap.Model!.GetType().GetProperties().Where(x => x.PropertyType.IsPrimitive()).Skip(1).FirstOrDefault();
+                if (secondProperty != null)
+                {
+                    filter.Operations.Add(new FilterOperationAsString(
+                        FilterOperations.ThenBy,
+                        $"x => x.{secondProperty.Name}"));
+                }
+            }
             request.Sample.RequestBody = filter;
             request.Sample.Response = new List<Entity<T, TKey>>() { entity };
         }
