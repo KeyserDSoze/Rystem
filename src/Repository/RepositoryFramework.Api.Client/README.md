@@ -106,14 +106,6 @@ You may use the default interceptor to deal with the identity manager in .Net DI
 
     builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient();
 
-This line of code inject an interceptor that works with ITokenAcquisition, injected by the framework during OpenId integration (for example AAD integration).
-Automatically it adds the token to each request.
+with package Rystem.RepositoryFramework.Api.Client.Authorization.App 
+or if you need to use in Wasm blazor use with Rystem.RepositoryFramework.Api.Client.Authorization.Wasm
 
-You may use the default identity interceptor not on all repositories, you can specificy them with
-
-    builder.Services.AddRepository(builder => {
-        builder
-            .WithApiClient()
-            .WithHttpClient("localhost:7058")
-            .AddCustomAuthorizationInterceptorForApiHttpClient<T, TKey>();
-    });

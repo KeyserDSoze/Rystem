@@ -13,15 +13,16 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="services">IServiceCollection</param>
         /// <param name="serviceLifetime">Service Lifetime</param>
         /// <returns>IServiceCollection</returns>
-        public static IServiceCollection AddDefaultAuthorizationInterceptorForApiHttpClient(
+        public static IServiceCollection AddDefaultAuthorizationInterceptorForApiHttpClient<TTokenManager>(
             this IServiceCollection services,
-            Action<AuthenticatorSettings>? settings = null,
+            Action<AuthenticatorSettings>? authenticatorSettings = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
+            where TTokenManager : class, ITokenManager
         {
             var options = new AuthenticatorSettings();
-            settings?.Invoke(options);
+            authenticatorSettings?.Invoke(options);
             services.TryAddSingleton(options);
-            services.TryAddScoped<ITokenManager, TokenManager>();
+            services.TryAddService<ITokenManager, TTokenManager>(serviceLifetime);
             return services.TryAddService<IRepositoryClientInterceptor, BearerAuthenticator>(serviceLifetime);
         }
         /// <summary>
@@ -31,15 +32,16 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="authenticatorSettings">Settings.</param>
         /// <param name="serviceLifetime">Service Lifetime.</param>
         /// <returns>IServiceCollection</returns>
-        public static IServiceCollection AddCustomAuthorizationInterceptorForApiHttpClient<T>(
+        public static IServiceCollection AddDefaultAuthorizationInterceptorForApiHttpClient<T, TTokenManager>(
             this IServiceCollection services,
             Action<AuthenticatorSettings<T>>? authenticatorSettings = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
+            where TTokenManager : class, ITokenManager
         {
             var options = new AuthenticatorSettings<T>();
             authenticatorSettings?.Invoke(options);
             services.TryAddSingleton(options);
-            services.TryAddScoped<ITokenManager, TokenManager>();
+            services.TryAddService<ITokenManager, TTokenManager>(serviceLifetime);
             return services
                 .TryAddService<IRepositoryClientInterceptor<T>, BearerAuthenticator<T>>(serviceLifetime);
         }
@@ -51,16 +53,17 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <param name="authenticatorSettings">Settings.</param>
         /// <param name="serviceLifetime">Service Lifetime.</param>
         /// <returns>IServiceCollection</returns>
-        public static IServiceCollection AddCustomAuthorizationInterceptorForApiHttpClient<T, TKey>(
+        public static IServiceCollection AddDefaultAuthorizationInterceptorForApiHttpClient<T, TKey, TTokenManager>(
             this IServiceCollection services,
             Action<AuthenticatorSettings<T, TKey>>? authenticatorSettings = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
+            where TTokenManager : class, ITokenManager
             where TKey : notnull
         {
             var options = new AuthenticatorSettings<T, TKey>();
             authenticatorSettings?.Invoke(options);
             services.TryAddSingleton(options);
-            services.TryAddScoped<ITokenManager, TokenManager>();
+            services.TryAddService<ITokenManager, TTokenManager>(serviceLifetime);
             return services
                 .TryAddService<IRepositoryClientInterceptor<T, TKey>, BearerAuthenticator<T, TKey>>(serviceLifetime);
         }

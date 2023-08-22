@@ -18,7 +18,7 @@
 		<PackageIcon>rystem.repositoryframework.api.client.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Api.Client</RepositoryUrl>
-		<PackageId>Rystem.RepositoryFramework.Api.Client</PackageId>
+		<PackageId>Rystem.RepositoryFramework.Api.Client.Authorization.Wasm</PackageId>
 		<Version>5.0.6</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
@@ -33,20 +33,18 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Extensions.Http" Version="7.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Http.Polly" Version="7.0.10" />
-		<PackageReference Include="Polly" Version="7.2.4" />
+	  <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="7.0.10" />
 	</ItemGroup>
 	
 	<Choose>
 		<When Condition=" '$(Configuration)'=='Debug' ">
 			<ItemGroup>
-				<ProjectReference Include="..\RepositoryFramework.Abstractions\RepositoryFramework.Abstractions.csproj" />
+				<ProjectReference Include="..\RepositoryFramework.Api.Client\RepositoryFramework.Api.Client.csproj" />
 			</ItemGroup>
 		</When>
 		<When Condition=" '$(Configuration)'!='Debug' ">
 			<ItemGroup>
-				<PackageReference Include="Rystem.RepositoryFramework.Abstractions" Version="5.0.6" />
+				<PackageReference Include="Rystem.RepositoryFramework.Api.Client" Version="5.0.6" />
 			</ItemGroup>
 		</When>
 	</Choose>
