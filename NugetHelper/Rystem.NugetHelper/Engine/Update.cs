@@ -36,7 +36,7 @@
             .CreateSon()
             .AddProject("Rystem.Queue", "Rystem.RepositoryFramework.Cache.Azure.Storage.Blob",
                          "Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer",
-                         "Rystem.RepositoryFramework.Api.Client.Authentication.Wasm");
+                         "Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm");
 
             OnlyRepositoryTree = new Update()
             .AddProject("Rystem.RepositoryFramework.Abstractions");
