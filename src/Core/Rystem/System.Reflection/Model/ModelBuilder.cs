@@ -10,7 +10,7 @@ namespace System.Reflection
             => _name = name;
 
         private readonly List<MockedProperty> _properties = new();
-        public ModelBuilder AddProperty<T>(string name) 
+        public ModelBuilder AddProperty<T>(string name)
             => AddProperty(name, typeof(T));
         public ModelBuilder AddProperty(string name, Type type)
         {
@@ -23,7 +23,7 @@ namespace System.Reflection
             _parentType = parentType;
             return this;
         }
-        public ModelBuilder AddParent<T>() 
+        public ModelBuilder AddParent<T>()
             => AddParent(typeof(T));
         public Type Build()
         {

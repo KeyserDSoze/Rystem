@@ -55,8 +55,8 @@ namespace Microsoft.Extensions.DependencyInjection
                     var counter = 1;
                     foreach (var parameterType in constructor!.GetParameters().Select(x => x.ParameterType))
                     {
-                        var parameterBuilder = constructorBuilder.DefineParameter(counter, ParameterAttributes.HasDefault, parameterType.Name);
-                        SetCustomAttribute(parameterType.GetCustomAttributesData(), parameterBuilder.SetCustomAttribute);
+                        //var parameterBuilder = constructorBuilder.DefineParameter(counter, ParameterAttributes.HasDefault, parameterType.Name);
+                        //SetCustomAttribute(parameterType.GetCustomAttributesData(), parameterBuilder.SetCustomAttribute);
                         if (implementationType.IsPublic)
                             constructorGenerator.Emit(OpCodes.Ldarg, counter++);
                         else
@@ -85,14 +85,11 @@ namespace Microsoft.Extensions.DependencyInjection
                         constructorGenerator.Emit(OpCodes.Stfld, fieldType);
                     }
                     constructorGenerator.Emit(OpCodes.Ret);
-                    SetCustomAttribute(constructor.GetCustomAttributesData(), constructorBuilder.SetCustomAttribute);
+                    //SetCustomAttribute(constructor.GetCustomAttributesData(), constructorBuilder.SetCustomAttribute);
                 }
-                SetCustomAttribute(implementationType.GetCustomAttributesData(), typeBuilder.SetCustomAttribute);
+                //SetCustomAttribute(implementationType.GetCustomAttributesData(), typeBuilder.SetCustomAttribute);
             }
             var newType = typeBuilder.CreateType();
-            var attributes = newType.GetCustomAttributes().ToList();
-            var consAttributes = newType.GetConstructors().First().GetCustomAttributes().ToList();
-            var parametersAttributes = newType.GetConstructors().First().GetParameters().SelectMany(x => x.GetCustomAttributes()).ToList();
             services.Add(new ServiceDescriptor(newInterfaceType, newType, lifetime));
             return (newInterfaceType, newType);
         }

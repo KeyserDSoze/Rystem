@@ -1,5 +1,5 @@
 ﻿@page "/fetchdata"
-@inject IRepository<WeatherForecast, string> Repository
+@inject IServiceProvider ServiceProvider
 
 <PageTitle>Weather forecast</PageTitle>
 
@@ -41,6 +41,8 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        var Repository = ServiceProvider.GetRequiredService<IRepository<WeatherForecast, string>>();
+        var cod = await Repository.InsertAsync("dadasda", new WeatherForecast());
         forecasts = await Repository.ToListAsEntityAsync();
     }
 }
