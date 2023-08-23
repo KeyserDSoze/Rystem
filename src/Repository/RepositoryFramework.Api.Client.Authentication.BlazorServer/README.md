@@ -38,3 +38,6 @@ Remember to add
 
     builder.Services.AddServerSideBlazor()
     .AddMicrosoftIdentityConsentHandler();
+
+    builder.Services.AddControllersWithViews()
+    .AddMicrosoftIdentityUI();
