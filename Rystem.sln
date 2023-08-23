@@ -139,6 +139,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Miscellaneous", "Miscellane
 		CODE-OF-CONDUCT.md = CODE-OF-CONDUCT.md
 		LICENSE.txt = LICENSE.txt
 		README.md = README.md
+		reload.txt = reload.txt
 		icons\rystem.icons.psd = icons\rystem.icons.psd
 	EndProjectSection
 EndProject
