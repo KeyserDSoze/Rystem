@@ -179,9 +179,9 @@ Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "repositoryframework.api.cli
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RepositoryFramework.ApiClient.UnitTest", "src\Repository\RepositoryFramework.Test\RepositoryFramework.ApiClient.UnitTest\RepositoryFramework.ApiClient.UnitTest.csproj", "{0479AB8C-A858-4AB2-9C51-F4748CCF5381}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RepositoryFramework.Api.Client.Authorization.Wasm", "src\Repository\RepositoryFramework.Api.Client.Authorization.Wasm\RepositoryFramework.Api.Client.Authorization.Wasm.csproj", "{F3537A3D-534C-4E8D-86C7-5AB0D6A8BA8B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RepositoryFramework.Api.Client.Authentication.BlazorServer", "src\Repository\RepositoryFramework.Api.Client.Authentication.BlazorServer\RepositoryFramework.Api.Client.Authentication.BlazorServer.csproj", "{7CF12138-5452-453D-9401-ED21AEFA4370}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RepositoryFramework.Api.Client.Authorization.BlazorServer", "src\Repository\RepositoryFramework.Api.Client.Authorization.BlazorServer\RepositoryFramework.Api.Client.Authorization.BlazorServer.csproj", "{AEF5F5D5-ECA4-48B3-AF77-65E741C3941B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RepositoryFramework.Api.Client.Authentication.Wasm", "src\Repository\RepositoryFramework.Api.Client.Authentication.Wasm\RepositoryFramework.Api.Client.Authentication.Wasm.csproj", "{9F94737F-2BE0-46D6-9DB1-88A680D7175D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -375,14 +375,14 @@ Global
 		{0479AB8C-A858-4AB2-9C51-F4748CCF5381}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0479AB8C-A858-4AB2-9C51-F4748CCF5381}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0479AB8C-A858-4AB2-9C51-F4748CCF5381}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F3537A3D-534C-4E8D-86C7-5AB0D6A8BA8B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F3537A3D-534C-4E8D-86C7-5AB0D6A8BA8B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F3537A3D-534C-4E8D-86C7-5AB0D6A8BA8B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F3537A3D-534C-4E8D-86C7-5AB0D6A8BA8B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{AEF5F5D5-ECA4-48B3-AF77-65E741C3941B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AEF5F5D5-ECA4-48B3-AF77-65E741C3941B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AEF5F5D5-ECA4-48B3-AF77-65E741C3941B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AEF5F5D5-ECA4-48B3-AF77-65E741C3941B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7CF12138-5452-453D-9401-ED21AEFA4370}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7CF12138-5452-453D-9401-ED21AEFA4370}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7CF12138-5452-453D-9401-ED21AEFA4370}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7CF12138-5452-453D-9401-ED21AEFA4370}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9F94737F-2BE0-46D6-9DB1-88A680D7175D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9F94737F-2BE0-46D6-9DB1-88A680D7175D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9F94737F-2BE0-46D6-9DB1-88A680D7175D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9F94737F-2BE0-46D6-9DB1-88A680D7175D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -453,8 +453,8 @@ Global
 		{CEDEDE73-CAB0-495D-B38F-203D396C9C80} = {C2D49427-A12A-4608-A1DD-41340456EC82}
 		{76129054-E88E-49DD-9557-0E610B31BA15} = {2B79D3F0-8FBE-4F69-996D-51933E5756FD}
 		{0479AB8C-A858-4AB2-9C51-F4748CCF5381} = {CE9D708E-E4B7-42E4-AC76-9C936272E6D5}
-		{F3537A3D-534C-4E8D-86C7-5AB0D6A8BA8B} = {2B79D3F0-8FBE-4F69-996D-51933E5756FD}
-		{AEF5F5D5-ECA4-48B3-AF77-65E741C3941B} = {2B79D3F0-8FBE-4F69-996D-51933E5756FD}
+		{7CF12138-5452-453D-9401-ED21AEFA4370} = {2B79D3F0-8FBE-4F69-996D-51933E5756FD}
+		{9F94737F-2BE0-46D6-9DB1-88A680D7175D} = {2B79D3F0-8FBE-4F69-996D-51933E5756FD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {35C6ADE0-7E70-48ED-A810-A71B2BC94F57}

@@ -12,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\RepositoryFramework.Api.Client.Authorization.BlazorServer\RepositoryFramework.Api.Client.Authorization.BlazorServer.csproj" />
     <ProjectReference Include="..\..\RepositoryFramework.Api.Client\RepositoryFramework.Api.Client.csproj" />
     <ProjectReference Include="..\RepositoryFramework.Test.Infrastructure.EntityFramework\RepositoryFramework.Test.Infrastructure.EntityFramework.csproj" />
   </ItemGroup>

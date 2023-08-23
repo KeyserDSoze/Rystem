@@ -18,7 +18,7 @@
 		<PackageIcon>rystem.repositoryframework.api.client.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Api.Client</RepositoryUrl>
-		<PackageId>Rystem.RepositoryFramework.Api.Client.Authorization.BlazorServer</PackageId>
+		<PackageId>Rystem.RepositoryFramework.Api.Client.Authentication.Wasm</PackageId>
 		<Version>5.0.6</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
@@ -33,7 +33,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Identity.Web" Version="2.13.3" />
+	  <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="7.0.10" />
 	</ItemGroup>
 	
 	<Choose>

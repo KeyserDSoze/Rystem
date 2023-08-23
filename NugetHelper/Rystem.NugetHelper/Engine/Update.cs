@@ -19,6 +19,8 @@
             UpdateTree = new Update()
             .AddProject("Rystem");
             UpdateTree
+                .CreateSon()
+            .AddProject("Rystem.DependencyInjection")
             .CreateSon()
             .AddProject("Rystem.Concurrency", "Rystem.RepositoryFramework.Abstractions", "Rystem.Content.Abstractions")
             .CreateSon()
@@ -32,7 +34,9 @@
                         "Rystem.Content.Infrastructure.InMemory", "Rystem.Content.Infrastructure.M365.Sharepoint",
                         "Rystem.Content.Infrastructure.Azure.Storage.File")
             .CreateSon()
-            .AddProject("Rystem.Queue", "Rystem.RepositoryFramework.Cache.Azure.Storage.Blob");
+            .AddProject("Rystem.Queue", "Rystem.RepositoryFramework.Cache.Azure.Storage.Blob",
+                         "Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer",
+                         "Rystem.RepositoryFramework.Api.Client.Authentication.Wasm");
 
             OnlyRepositoryTree = new Update()
             .AddProject("Rystem.RepositoryFramework.Abstractions");

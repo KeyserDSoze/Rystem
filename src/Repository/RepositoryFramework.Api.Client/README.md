@@ -106,6 +106,6 @@ You may use the default interceptor to deal with the identity manager in .Net DI
 
     builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient();
 
-with package RepositoryFramework.Api.Client.Authorization.BlazorServer 
-or if you need to use in Wasm blazor use with Rystem.RepositoryFramework.Api.Client.Authorization.Wasm
+with package RepositoryFramework.Api.Client.Authentication.BlazorServer 
+or if you need to use in Wasm blazor use with Rystem.RepositoryFramework.Api.Client.Authentication.Wasm
 
