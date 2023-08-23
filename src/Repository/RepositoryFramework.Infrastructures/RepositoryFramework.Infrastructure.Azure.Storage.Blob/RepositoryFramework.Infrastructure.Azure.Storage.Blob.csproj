@@ -19,7 +19,7 @@
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Blob</RepositoryUrl>
 		<PackageId>Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob</PackageId>
-		<Version>5.0.6</Version>
+		<Version>5.0.7</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	</PropertyGroup>
@@ -37,7 +37,7 @@
 		</When>
 		<When Condition=" '$(Configuration)'!='Debug' ">
 			<ItemGroup>
-				<PackageReference Include="Rystem.RepositoryFramework.Abstractions" Version="5.0.6" />
+				<PackageReference Include="Rystem.RepositoryFramework.Abstractions" Version="5.0.7" />
 			</ItemGroup>
 		</When>
 	</Choose>
