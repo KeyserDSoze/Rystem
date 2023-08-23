@@ -4,7 +4,7 @@ on:
     branches:
       - master
     paths:
-      - src/Repository/Rystem.RepositoryFramework.Api.Client.Authentication.Wasm/Rystem.RepositoryFramework.Api.Client.Authentication.Wasm.csproj
+      - src/Repository/Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm/Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm.csproj
       - reload.txt
 jobs:
   publish:
@@ -17,5 +17,5 @@ jobs:
         uses: KeyserDSoze/DefaultAction/pushing_nuget_with_symbols@v1.0.1
         with:
           dotnet-version: "7.x"
-          path: src/Repository/Rystem.RepositoryFramework.Api.Client.Authentication.Wasm/Rystem.RepositoryFramework.Api.Client.Authentication.Wasm.csproj
+          path: src/Repository/Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm/Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm.csproj
           api-key: ${{ secrets.NUGET_API_KEY }}
