@@ -9,7 +9,7 @@
             var valueType = options.Type.GetElementType();
             for (var i = 0; i < options.NumberOfEntities; i++)
                 (entity as dynamic)![i] = options.PopulationService.Construct(settings, valueType!,
-                    options.NumberOfEntities, options.TreeName, string.Empty);
+                    options.NumberOfEntities, options.TreeName, string.Empty, options.NotAlreadyConstructedNonPrimitiveTypes);
             return entity!;
         }
         public bool IsValid(Type type)

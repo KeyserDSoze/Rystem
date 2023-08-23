@@ -15,7 +15,7 @@
             for (var i = 0; i < numberOfElements; i++)
             {
                 var entity = _populationService.Construct(settings, typeof(T),
-                        numberOfElementsWhenEnumerableIsFound, string.Empty, string.Empty);
+                        numberOfElementsWhenEnumerableIsFound, string.Empty, string.Empty, new());
                 var item = (T)entity!;
                 items.Add(item);
             }

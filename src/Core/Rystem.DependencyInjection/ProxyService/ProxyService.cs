@@ -55,8 +55,6 @@ namespace Microsoft.Extensions.DependencyInjection
                     var counter = 1;
                     foreach (var parameterType in constructor!.GetParameters().Select(x => x.ParameterType))
                     {
-                        //var parameterBuilder = constructorBuilder.DefineParameter(counter, ParameterAttributes.HasDefault, parameterType.Name);
-                        //SetCustomAttribute(parameterType.GetCustomAttributesData(), parameterBuilder.SetCustomAttribute);
                         if (implementationType.IsPublic)
                             constructorGenerator.Emit(OpCodes.Ldarg, counter++);
                         else
@@ -85,29 +83,11 @@ namespace Microsoft.Extensions.DependencyInjection
                         constructorGenerator.Emit(OpCodes.Stfld, fieldType);
                     }
                     constructorGenerator.Emit(OpCodes.Ret);
-                    //SetCustomAttribute(constructor.GetCustomAttributesData(), constructorBuilder.SetCustomAttribute);
                 }
-                //SetCustomAttribute(implementationType.GetCustomAttributesData(), typeBuilder.SetCustomAttribute);
             }
             var newType = typeBuilder.CreateType();
             services.Add(new ServiceDescriptor(newInterfaceType, newType, lifetime));
             return (newInterfaceType, newType);
-        }
-        private static void SetCustomAttribute(
-            IList<CustomAttributeData> attributes,
-            Action<CustomAttributeBuilder> setter)
-        {
-            foreach (var attribute in attributes)
-            {
-                List<object> values = new();
-                foreach (var attributeValue in attribute.ConstructorArguments)
-                {
-                    values.Add(attributeValue.Value!);
-                }
-                var attributeBuilder = new CustomAttributeBuilder(
-                            attribute.Constructor, values.ToArray());
-                setter(attributeBuilder);
-            }
         }
     }
 }

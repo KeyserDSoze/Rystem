@@ -1,4 +1,6 @@
-﻿namespace System.Population.Random
+﻿using System.Reflection;
+
+namespace System.Population.Random
 {
     internal class ObjectPopulationService : IRandomPopulationService
     {
@@ -17,7 +19,7 @@
                     try
                     {
                         entity = options.PopulationService.Construct(settings, options.Type,
-                         options.NumberOfEntities, options.TreeName, string.Empty);
+                         options.NumberOfEntities, options.TreeName, string.Empty, options.NotAlreadyConstructedNonPrimitiveTypes);
                     }
                     catch
                     {
@@ -29,9 +31,12 @@
                 else
                 {
                     List<object> instances = new();
-                    foreach (var x in constructor.GetParameters())
-                        instances.Add(options.PopulationService.Construct(settings, x.ParameterType,
-                            options.NumberOfEntities, options.TreeName, $"{x.Name![0..1].ToUpper()}{x.Name[1..]}"));
+                    foreach (var parameter in constructor.GetParameters())
+                    {
+                        instances.Add(options.PopulationService.Construct(settings, parameter.ParameterType,
+                            options.NumberOfEntities, options.TreeName, $"{parameter.Name![0..1].ToUpper()}{parameter.Name[1..]}",
+                            options.NotAlreadyConstructedNonPrimitiveTypes));
+                    }
                     entity = constructor.Invoke(instances.ToArray());
                 }
                 if (entity != null)
@@ -46,7 +51,8 @@
                                                property.PropertyType,
                                                options.NumberOfEntities,
                                                options.TreeName,
-                                               property.Name);
+                                               property.Name,
+                                               options.NotAlreadyConstructedNonPrimitiveTypes);
                             property
                                 .SetValue(entity, value);
                         });

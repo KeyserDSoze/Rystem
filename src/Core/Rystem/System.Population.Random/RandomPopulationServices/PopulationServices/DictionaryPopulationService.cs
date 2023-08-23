@@ -1,6 +1,4 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace System.Population.Random
 {
@@ -17,9 +15,9 @@ namespace System.Population.Random
             for (var i = 0; i < options.NumberOfEntities; i++)
             {
                 var newKey = options.PopulationService.Construct(settings, options.Type.GetGenericArguments().First(),
-                    options.NumberOfEntities, options.TreeName, "Key");
+                    options.NumberOfEntities, options.TreeName, "Key", options.NotAlreadyConstructedNonPrimitiveTypes);
                 var newValue = options.PopulationService.Construct(settings, options.Type.GetGenericArguments().Last(),
-                    options.NumberOfEntities, options.TreeName, "Value");
+                    options.NumberOfEntities, options.TreeName, "Value", options.NotAlreadyConstructedNonPrimitiveTypes);
                 entity!.Add(newKey, newValue);
             }
             return entity!;

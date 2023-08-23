@@ -59,8 +59,10 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
                 else
                 {
-                    api.Key = PopulateRandom<TKey>();
-                    api.Model = PopulateRandom<T>();
+                    var keyResponse = Try.WithDefaultOnCatch(() => PopulateRandom<TKey>());
+                    api.Key = keyResponse.Exception == null ? keyResponse.Entity : default;
+                    var modelResponse = Try.WithDefaultOnCatch(() => PopulateRandom<T>());
+                    api.Model = modelResponse.Exception == null ? modelResponse.Entity : default;
                 }
             }
             var request = new RequestApiMap

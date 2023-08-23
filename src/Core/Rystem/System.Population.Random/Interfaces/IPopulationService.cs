@@ -7,6 +7,6 @@ namespace System.Population.Random
     /// </summary>
     public interface IPopulationService
     {
-        dynamic? Construct(PopulationSettings settings, Type type, int numberOfEntities, string treeName, string name);
+        dynamic? Construct(PopulationSettings settings, Type type, int numberOfEntities, string treeName, string name, List<Type>? alreadyConstructedNonPrimitiveTypes);
     }
 }

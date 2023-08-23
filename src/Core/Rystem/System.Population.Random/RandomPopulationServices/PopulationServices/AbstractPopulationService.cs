@@ -11,7 +11,7 @@ namespace System.Population.Random
             try
             {
                 return options.PopulationService.Construct(settings, options.Type.Mock()!,
-                    options.NumberOfEntities, options.TreeName, string.Empty)!;
+                    options.NumberOfEntities, options.TreeName, string.Empty, options.NotAlreadyConstructedNonPrimitiveTypes)!;
             }
             catch
             {
