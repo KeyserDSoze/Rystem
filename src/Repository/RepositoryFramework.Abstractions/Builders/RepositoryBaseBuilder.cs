@@ -17,7 +17,9 @@ namespace RepositoryFramework
         private PatternType _currentPatternType = PatternType.Repository;
         private ServiceLifetime _serviceLifetime = ServiceLifetime.Scoped;
         private protected RepositoryBaseBuilder(IServiceCollection services)
-            => Services = services;
+        {
+            Services = services;
+        }
         public Func<Task>? AfterBuildAsync { get; set; }
         public Action? AfterBuild { get; set; }
         private void SetDefaultFrameworkBeforeStorage<TStorage>(

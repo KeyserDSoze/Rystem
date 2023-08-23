@@ -1,4 +1,6 @@
 ﻿@page "/counter"
+@using RepositoryFramework.Wasm.Services;
+@inject ISony Sony
 
 <PageTitle>Counter</PageTitle>
 
@@ -13,6 +15,7 @@
 
     private void IncrementCount()
     {
+        var x = Sony;
         currentCount++;
     }
 }

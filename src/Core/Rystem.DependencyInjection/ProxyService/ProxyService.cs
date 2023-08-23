@@ -55,6 +55,8 @@ namespace Microsoft.Extensions.DependencyInjection
                     var counter = 1;
                     foreach (var parameterType in constructor!.GetParameters().Select(x => x.ParameterType))
                     {
+                        var parameterBuilder = constructorBuilder.DefineParameter(counter, ParameterAttributes.HasDefault, parameterType.Name);
+                        SetCustomAttribute(parameterType.GetCustomAttributesData(), parameterBuilder.SetCustomAttribute);
                         if (implementationType.IsPublic)
                             constructorGenerator.Emit(OpCodes.Ldarg, counter++);
                         else
@@ -82,13 +84,33 @@ namespace Microsoft.Extensions.DependencyInjection
                         constructorGenerator.EmitWriteLine("call class [System.Runtime]System.Type [System.Runtime]System.Type::GetTypeFromHandle(valuetype [System.Runtime]System.RuntimeTypeHandle)");
                         constructorGenerator.Emit(OpCodes.Stfld, fieldType);
                     }
-
                     constructorGenerator.Emit(OpCodes.Ret);
+                    SetCustomAttribute(constructor.GetCustomAttributesData(), constructorBuilder.SetCustomAttribute);
                 }
+                SetCustomAttribute(implementationType.GetCustomAttributesData(), typeBuilder.SetCustomAttribute);
             }
             var newType = typeBuilder.CreateType();
+            var attributes = newType.GetCustomAttributes().ToList();
+            var consAttributes = newType.GetConstructors().First().GetCustomAttributes().ToList();
+            var parametersAttributes = newType.GetConstructors().First().GetParameters().SelectMany(x => x.GetCustomAttributes()).ToList();
             services.Add(new ServiceDescriptor(newInterfaceType, newType, lifetime));
             return (newInterfaceType, newType);
+        }
+        private static void SetCustomAttribute(
+            IList<CustomAttributeData> attributes,
+            Action<CustomAttributeBuilder> setter)
+        {
+            foreach (var attribute in attributes)
+            {
+                List<object> values = new();
+                foreach (var attributeValue in attribute.ConstructorArguments)
+                {
+                    values.Add(attributeValue.Value!);
+                }
+                var attributeBuilder = new CustomAttributeBuilder(
+                            attribute.Constructor, values.ToArray());
+                setter(attributeBuilder);
+            }
         }
     }
 }
