@@ -30,6 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Rystem.DependencyInjection\Rystem.DependencyInjection.csproj" />
     <ProjectReference Include="..\..\Rystem\Rystem.csproj" />
   </ItemGroup>
 

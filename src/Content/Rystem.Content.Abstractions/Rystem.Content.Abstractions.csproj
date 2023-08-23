@@ -27,12 +27,12 @@
     <Choose>
         <When Condition=" '$(Configuration)'=='Debug' ">
             <ItemGroup>
-                <ProjectReference Include="..\..\Core\Rystem\Rystem.csproj" />
+                <ProjectReference Include="..\..\Core\Rystem.DependencyInjection\Rystem.DependencyInjection.csproj" />
             </ItemGroup>
         </When>
         <When Condition=" '$(Configuration)'!='Debug' ">
             <ItemGroup>
-                <PackageReference Include="Rystem" Version="5.0.6" />
+                <PackageReference Include="Rystem.DependencyInjection" Version="5.0.6" />
             </ItemGroup>
         </When>
     </Choose>
