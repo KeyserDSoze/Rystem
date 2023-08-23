@@ -17,8 +17,8 @@
 		<Copyright>2023</Copyright>
 		<PackageIcon>rystem.repositoryframework.api.client.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Api.Client</RepositoryUrl>
-		<PackageId>Rystem.RepositoryFramework.Api.Client.Authentication.Wasm</PackageId>
+		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm</RepositoryUrl>
+		<PackageId>Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm</PackageId>
 		<Version>5.0.6</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>

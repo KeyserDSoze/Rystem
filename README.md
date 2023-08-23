@@ -13,6 +13,9 @@ Reach out us on [Discord](https://discord.gg/tkWvy4WPjt)
 ### Rystem (core library)
 You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Core/Rystem)
 
+### Rystem.DependencyInjection (core library)
+You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Core/Rystem.DependencyInjection)
+
 ### Concurrency (Deal with async Lock and Race Condition)
 You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/Concurrency/Rystem.Concurrency)
 
