@@ -14,7 +14,7 @@
 		<Product>Rystem</Product>
 		<Description>Rystem is a open-source framework to improve the System namespace in .Net</Description>
 		<Copyright>2023</Copyright>
-		<PackageIcon>rystem.png</PackageIcon>
+		<PackageIcon>rystem.dependencyinjection.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Core/Rystem</RepositoryUrl>
 		<PackageId>Rystem.DependencyInjection</PackageId>
@@ -41,7 +41,7 @@
         </When>
     </Choose>
 	<ItemGroup>
-		<None Update="rystem.png">
+		<None Update="rystem.dependencyinjection.png">
 			<Pack>True</Pack>
 			<PackagePath>\</PackagePath>
 		</None>

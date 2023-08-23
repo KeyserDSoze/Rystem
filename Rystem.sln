@@ -185,6 +185,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RepositoryFramework.Api.Cli
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.DependencyInjection", "src\Core\Rystem.DependencyInjection\Rystem.DependencyInjection.csproj", "{373F15D8-AFE4-42CD-B9BB-082F82CA6FCD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RepositoryFramework.Wasm", "src\Repository\RepositoryFramework.Test\RepositoryFramework.Wasm\RepositoryFramework.Wasm.csproj", "{09203D14-DD7F-441D-BE62-1C075448D733}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -389,6 +391,10 @@ Global
 		{373F15D8-AFE4-42CD-B9BB-082F82CA6FCD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{373F15D8-AFE4-42CD-B9BB-082F82CA6FCD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{373F15D8-AFE4-42CD-B9BB-082F82CA6FCD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{09203D14-DD7F-441D-BE62-1C075448D733}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09203D14-DD7F-441D-BE62-1C075448D733}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09203D14-DD7F-441D-BE62-1C075448D733}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09203D14-DD7F-441D-BE62-1C075448D733}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -462,6 +468,7 @@ Global
 		{7CF12138-5452-453D-9401-ED21AEFA4370} = {2B79D3F0-8FBE-4F69-996D-51933E5756FD}
 		{9F94737F-2BE0-46D6-9DB1-88A680D7175D} = {2B79D3F0-8FBE-4F69-996D-51933E5756FD}
 		{373F15D8-AFE4-42CD-B9BB-082F82CA6FCD} = {5AB07B65-AC2E-482D-B2AD-2AB7375941C4}
+		{09203D14-DD7F-441D-BE62-1C075448D733} = {CE9D708E-E4B7-42E4-AC76-9C936272E6D5}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {35C6ADE0-7E70-48ED-A810-A71B2BC94F57}
