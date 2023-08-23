@@ -28,3 +28,13 @@ You may use the default identity interceptor not on all repositories, you can sp
             .WithHttpClient("localhost:7058")
             .AddDefaultAuthorizationInterceptorForApiHttpClient<T, TKey>();
     });
+
+Remember to add
+
+    builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAdB2C or AzureAd"))
+     .EnableTokenAcquisitionToCallDownstreamApi(new string[] { "your_scope/access_as_user" })
+     .AddInMemoryTokenCaches();
+
+    builder.Services.AddServerSideBlazor()
+    .AddMicrosoftIdentityConsentHandler();
