@@ -18,7 +18,7 @@
 		<PackageIcon>rystem.repositoryframework.api.client.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Api.Client</RepositoryUrl>
-		<PackageId>Rystem.RepositoryFramework.Api.Client.Authorization.App</PackageId>
+		<PackageId>Rystem.RepositoryFramework.Api.Client.Authorization.BlazorServer</PackageId>
 		<Version>5.0.6</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
