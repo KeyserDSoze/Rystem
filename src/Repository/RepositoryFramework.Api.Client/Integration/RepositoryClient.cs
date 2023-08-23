@@ -38,7 +38,7 @@ namespace RepositoryFramework.Api.Client
         private bool _clientAlreadyEnriched = false;
         private Task<HttpClient> EnrichedClientAsync(RepositoryMethods api)
         {
-            if (_clientAlreadyEnriched)
+            if (!_clientAlreadyEnriched)
             {
                 return EnrichAsync();
             }

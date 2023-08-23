@@ -1,27 +1,27 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Identity.Abstractions;
 using Microsoft.Identity.Web;
+using Microsoft.Identity.Web.TokenCacheProviders;
 using RepositoryFramework.Api.Client.DefaultInterceptor;
 
 namespace RepositoryFramework.Api.Client.Authorization
 {
     internal sealed class TokenManager : ITokenManager
     {
-        private readonly ITokenAcquisition _tokenProvider;
         private readonly AuthenticatorSettings _settings;
-        private readonly AuthenticationStateProvider? _authenticationStateProvider;
-        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly MicrosoftIdentityConsentAndConditionalAccessHandler _consentHandler;
+        private readonly IAuthorizationHeaderProvider _authorizationHeaderProvider;
+
         public TokenManager(
-        ITokenAcquisition tokenProvider,
         AuthenticatorSettings settings,
-        IHttpContextAccessor httpContextAccessor,
-        AuthenticationStateProvider? authenticationStateProvider = null)
+        MicrosoftIdentityConsentAndConditionalAccessHandler consentHandler,
+        IAuthorizationHeaderProvider authorizationHeaderProvider)
         {
-            _tokenProvider = tokenProvider;
             _settings = settings;
-            _authenticationStateProvider = authenticationStateProvider;
-            _httpContextAccessor = httpContextAccessor;
+            _consentHandler = consentHandler;
+            _authorizationHeaderProvider = authorizationHeaderProvider;
         }
         public async Task EnrichWithAuthorizationAsync(HttpClient client)
         {
@@ -29,37 +29,25 @@ namespace RepositoryFramework.Api.Client.Authorization
             if (tokenResponse != null)
                 tokenResponse = await Try.WithDefaultOnCatchAsync(() => RefreshTokenAsync()).NoContext();
             if (tokenResponse?.Exception == null && tokenResponse?.Entity != null)
-                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResponse.Entity);
+            {
+                var splitted = tokenResponse.Entity.Split(' ');
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(splitted[0], splitted[1]);
+            }
         }
-        public async Task<string?> GetTokenAsync()
+        public Task<string?> GetTokenAsync()
         {
-            ClaimsPrincipal? authUser = null;
-            if (_httpContextAccessor?.HttpContext?.User?.Identity?.IsAuthenticated == true)
-                authUser = _httpContextAccessor.HttpContext.User;
-            else if (_authenticationStateProvider != null)
-            {
-                var authState = await _authenticationStateProvider.GetAuthenticationStateAsync().NoContext();
-                authUser = authState.User;
-            }
-            if (authUser != null)
-            {
-                var token = await _tokenProvider.GetAccessTokenForUserAsync(_settings.Scopes!, user: authUser).NoContext();
-                return token;
-            }
-            return null;
+            return RefreshTokenAsync();
         }
         public async Task<string?> RefreshTokenAsync()
         {
-            ClaimsPrincipal? authUser = null;
-            if (_authenticationStateProvider != null)
+            try
             {
-                var authState = await _authenticationStateProvider.GetAuthenticationStateAsync().NoContext();
-                authUser = authState.User;
-            }
-            if (authUser != null)
-            {
-                var token = await _tokenProvider.GetAccessTokenForUserAsync(_settings.Scopes!, user: authUser).NoContext();
+                var token = await _authorizationHeaderProvider.CreateAuthorizationHeaderForUserAsync(_settings.Scopes!);
                 return token;
+            }
+            catch (Exception ex)
+            {
+                _consentHandler.HandleException(ex);
             }
             return null;
         }

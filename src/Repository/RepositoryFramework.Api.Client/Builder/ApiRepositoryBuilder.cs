@@ -33,9 +33,11 @@ namespace RepositoryFramework
         }
         public HttpClientRepositoryBuilder<T, TKey> WithHttpClient(string domain)
         {
+            if (!domain.StartsWith("https://") && !domain.StartsWith("http://"))
+                domain = $"https://{domain}";
             var httpClientService = Services.AddHttpClient($"{typeof(T).Name}{Const.HttpClientName}", options =>
             {
-                options.BaseAddress = new Uri($"https://{domain}");
+                options.BaseAddress = new Uri(domain);
             });
             return new HttpClientRepositoryBuilder<T, TKey>(this, httpClientService);
         }
