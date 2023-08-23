@@ -74,7 +74,7 @@ namespace RepositoryFramework
         {
             Services
                 .AddService<TBusinessInterface, TBusiness>(ServiceLifetime)
-                .TryAddService<IRepositoryBusinessManager<T, TKey>, RepositoryBusinessManager<T, TKey>>(ServiceLifetime);
+                .TryAddService<IRepositoryBusinessManager<T, TKey>, RepositoryBusinessManager<T, TKey>>(ServiceLifetime.Transient);
             return this;
         }
     }
