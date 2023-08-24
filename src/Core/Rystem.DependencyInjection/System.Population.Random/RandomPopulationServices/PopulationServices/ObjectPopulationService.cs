@@ -46,15 +46,20 @@ namespace System.Population.Random
                     {
                         _ = Try.WithDefaultOnCatch(() =>
                         {
-                            var value = options.PopulationService
-                                    .Construct(settings,
-                                               property.PropertyType,
-                                               options.NumberOfEntities,
-                                               options.TreeName,
-                                               property.Name,
-                                               options.NotAlreadyConstructedNonPrimitiveTypes);
-                            property
-                                .SetValue(entity, value);
+                            var value = property.GetValue(entity, null);
+                            var defaultValue = property.PropertyType.IsValueType ? Activator.CreateInstance(property.PropertyType) : null;
+                            if (value == null || value.Cast(property.PropertyType).Equals(defaultValue.Cast(property.PropertyType)))
+                            {
+                                value = options.PopulationService
+                                        .Construct(settings,
+                                                   property.PropertyType,
+                                                   options.NumberOfEntities,
+                                                   options.TreeName,
+                                                   property.Name,
+                                                   options.NotAlreadyConstructedNonPrimitiveTypes);
+                                property
+                                    .SetValue(entity, value);
+                            }
                         });
                     }
                 }

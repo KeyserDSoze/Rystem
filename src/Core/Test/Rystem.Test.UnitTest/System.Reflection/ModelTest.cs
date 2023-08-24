@@ -16,11 +16,11 @@ namespace Rystem.Test.UnitTest.Reflection
             public string B { get; set; }
         }
         [Theory]
-        [InlineData(true, 6)]
-        [InlineData(false, 5)]
-        public void Test1(bool withParent, int numberOfParameters)
+        [InlineData(true, 6, "name1")]
+        [InlineData(false, 5, "name2")]
+        public void Test1(bool withParent, int numberOfParameters, string name)
         {
-            var modelName = "MyBestModel";
+            var modelName = $"MyBestModel{name}";
             var modelBuilder = Model
                 .Create(modelName)
                 .AddProperty("Primary", typeof(int))
