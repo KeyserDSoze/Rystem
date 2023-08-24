@@ -82,6 +82,8 @@ namespace RepositoryFramework.Api.Client
         {
             if (key is IKey keyAsIKey)
                 return string.Format(path, keyAsIKey.AsString());
+            else if (key is IDefaultKey defaultKey)
+                return string.Format(path, defaultKey.AsString());
             else
                 return string.Format(path, key.ToString());
         }

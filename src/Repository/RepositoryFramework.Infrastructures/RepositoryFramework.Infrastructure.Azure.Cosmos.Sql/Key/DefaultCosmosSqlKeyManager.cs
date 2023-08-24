@@ -8,11 +8,7 @@
             => _retrievable = retrievable;
 
         public string AsString(TKey key)
-        {
-            if (key is IKey customKey)
-                return customKey.AsString();
-            return key.ToString()!;
-        }
+            => KeySettings<TKey>.Instance.AsString(key);
         public TKey Read(T entity)
             => _retrievable.Invoke(entity);
     }

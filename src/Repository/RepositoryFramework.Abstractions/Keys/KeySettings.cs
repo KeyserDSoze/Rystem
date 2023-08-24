@@ -17,7 +17,8 @@ namespace RepositoryFramework
             Nint,
             Nuint,
             Jsonable,
-            IKey
+            IKey,
+            IDefaultKey
         }
         public static KeySettings<TKey> Instance { get; } = new();
         private KeySettings() { }
@@ -32,6 +33,11 @@ namespace RepositoryFramework
                 var method = type.GetMethod(nameof(IKey.Parse), BindingFlags.Static | BindingFlags.Public);
                 s_iKeyParser = (x) => (TKey)method!.Invoke(null, new object[1] { x })!;
                 return CurrentType.IKey;
+            }
+            else if (type.GetInterface(nameof(IDefaultKey)) != null)
+            {
+                s_iKeyParser = DefaultKeyExtensions.Parse<TKey>;
+                return CurrentType.IDefaultKey;
             }
             else if (type == typeof(string))
                 return CurrentType.String;
@@ -60,6 +66,8 @@ namespace RepositoryFramework
         {
             if (key is IKey iKey)
                 return iKey.AsString();
+            else if (key is IDefaultKey defaultKey)
+                return defaultKey.AsString();
             else if (IsJsonable)
                 return key.ToJson();
             else
@@ -68,6 +76,8 @@ namespace RepositoryFramework
         public TKey Parse(string key)
         {
             if (_type == CurrentType.IKey && s_iKeyParser != null)
+                return s_iKeyParser.Invoke(key);
+            else if (_type == CurrentType.IDefaultKey && s_iKeyParser != null)
                 return s_iKeyParser.Invoke(key);
             else if (_type == CurrentType.String)
                 return (dynamic)key;

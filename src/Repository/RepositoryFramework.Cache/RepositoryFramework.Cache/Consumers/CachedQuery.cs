@@ -46,11 +46,7 @@ namespace RepositoryFramework.Cache
             _cacheName = typeof(T).Name;
         }
         private string GetKeyAsString(RepositoryMethods method, TKey key)
-        {
-            if (key is IKey customKey)
-                return $"{method}_{_cacheName}_{_factoryName}_{customKey.AsString()}";
-            return $"{method}_{_cacheName}_{_factoryName}_{key}";
-        }
+            => $"{method}_{_cacheName}_{_factoryName}_{KeySettings<TKey>.Instance.AsString(key)}";
         private protected Task RemoveExistAndGetCacheAsync(TKey key, bool inMemory, bool inDistributed, CancellationToken cancellationToken = default)
         {
             var existKeyAsString = GetKeyAsString(RepositoryMethods.Exist, key);

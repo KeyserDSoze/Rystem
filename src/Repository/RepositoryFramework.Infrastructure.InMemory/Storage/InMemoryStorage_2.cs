@@ -23,12 +23,8 @@ namespace RepositoryFramework.InMemory
         {
             Options = options;
         }
-        public static string GetKeyAsString(TKey key)
-        {
-            if (key is IKey customKey)
-                return customKey.AsString();
-            return key.ToString()!;
-        }
+        public static string GetKeyAsString(TKey key) 
+            => KeySettings<TKey>.Instance.AsString(key);
 
         private static int GetRandomNumber(Range range)
         {

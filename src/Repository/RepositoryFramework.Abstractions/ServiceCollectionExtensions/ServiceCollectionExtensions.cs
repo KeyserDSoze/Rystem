@@ -6,6 +6,17 @@ namespace Microsoft.Extensions.DependencyInjection
     public static partial class ServiceCollectionExtensions
     {
         /// <summary>
+        /// By default the triple | ("|||") is used as separator for IDefaultKey parser. You may change it as you want.
+        /// </summary>
+        /// <param name="services"></param>
+        /// <param name="separator"></param>
+        /// <returns></returns>
+        public static IServiceCollection AddDefaultSeparatorForDefaultKeyInterface(this IServiceCollection services, string separator)
+        {
+            IDefaultKey.SetDefaultSeparator(separator);
+            return services;
+        }
+        /// <summary>
         /// Add repository framework
         /// </summary>
         /// <typeparam name="T">Model used for your repository.</typeparam>

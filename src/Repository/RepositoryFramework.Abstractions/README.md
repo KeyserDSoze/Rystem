@@ -205,6 +205,48 @@ and you may inject (for ICommand and IQuery is the same)
 
     IRepository<User, MyKey> repository
 
+### IKey interface
+You may implement the IKey interface to decide how to work with your key.
+Here an example with Parse and AsString method and custom implementation with separator $.
+
+    public class ClassicKey : IKey
+    {
+        public string A { get; set; }
+        public int B { get; set; }
+        public double C { get; set; }
+
+        public static IKey Parse(string keyAsString)
+        {
+            var splitted = keyAsString.Split('$');
+            return new ClassicKey { A = splitted[0], B = int.Parse(splitted[1]), C = double.Parse(splitted[2]) };
+        }
+
+        public string AsString()
+        {
+            return $"{A}${B}${C}";
+        }
+    }
+
+### IDefaultKey
+You may implement IDefaultKey if you want a simple key preconstructed parser.
+
+    public class DefaultKey : IDefaultKey
+    {
+        public string A { get; set; }
+        public int B { get; set; }
+        public double C { get; set; }
+    }
+
+Automatically you can call AsString to receive a string composed by all properties separated by triple |, for instance {A}|||{B}|||{C}.
+You can decide during startup the separator in two ways.
+One with ServiceCollectionExtensions
+
+    builder.Services.AddDefaultSeparatorForDefaultKeyInterface("$$$");
+
+the other one with a static method offered by IDefaultKey interface
+
+    IDefaultKey.SetDefaultSeparator("$$$");
+
 ### Default TKey record
 You may use the default record key in repository framework namespace.
 It's not really useful when used with no-primitive or no-struct objects (in terms of memory usage [Heap]).
