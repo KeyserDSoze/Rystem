@@ -12,7 +12,7 @@ namespace System.Reflection
         {
             var assemblyName = new AssemblyName($"Mock{Guid.NewGuid()}");
             assemblyName.SetPublicKey(Assembly.GetExecutingAssembly().GetName().GetPublicKey());
-            var assembly = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run); ;
+            var assembly = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
             Builder = assembly.DefineDynamicModule(assemblyName.Name!);
         }
         private static readonly Dictionary<Type, MockedType> s_types = new();
