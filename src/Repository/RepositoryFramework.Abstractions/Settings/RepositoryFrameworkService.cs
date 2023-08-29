@@ -11,7 +11,7 @@ namespace RepositoryFramework
         public Type ModelType { get; }
         public Type InterfaceType { get; internal set; } = null!;
         public Type ImplementationType { get; internal set; } = null!;
-        public bool IsNotExposable { get; internal set; }
+        public RepositoryMethods ExposedMethods { get; internal set; } = RepositoryMethods.All;
         public ServiceLifetime ServiceLifetime { get; internal set; }
         public PatternType Type { get; }
         public string FactoryName { get; }

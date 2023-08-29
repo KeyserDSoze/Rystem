@@ -113,12 +113,22 @@ namespace RepositoryFramework
         public void SetNotExposable()
         {
             var service = SetService();
-            service.IsNotExposable = true;
+            service.ExposedMethods = RepositoryMethods.None;
         }
-        public void SetExposable()
+        public void SetExposable(RepositoryMethods methods = RepositoryMethods.All)
         {
             var service = SetService();
-            service.IsNotExposable = false;
+            service.ExposedMethods = methods;
+        }
+        public void SetOnlyQueryExposable()
+        {
+            var service = SetService();
+            service.ExposedMethods = RepositoryMethods.Exist | RepositoryMethods.Get | RepositoryMethods.Query | RepositoryMethods.Operation;
+        }
+        public void SetOnlyCommandExposable()
+        {
+            var service = SetService();
+            service.ExposedMethods = RepositoryMethods.Insert | RepositoryMethods.Update | RepositoryMethods.Delete | RepositoryMethods.Batch;
         }
         public void SetExamples(T entity, TKey key)
         {

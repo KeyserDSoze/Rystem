@@ -69,7 +69,7 @@ namespace Microsoft.Extensions.DependencyInjection
             }
             foreach (var service in services)
             {
-                if (!service.IsNotExposable)
+                if (service.ExposedMethods != RepositoryMethods.None)
                 {
                     if (s_setupRepositories.ContainsKey(service.Key))
                         continue;
@@ -80,6 +80,8 @@ namespace Microsoft.Extensions.DependencyInjection
                         var currentMethod = s_possibleMethods[service.Type].FirstOrDefault(x => x.Name == $"Add{method.Name.Replace("Async", string.Empty)}");
                         if (currentMethod != null && !configuredMethods.ContainsKey(currentMethod.Name))
                         {
+                            if (!service.ExposedMethods.HasFlag(currentMethod.Method))
+                                continue;
                             var isNotImplemented = false;
                             Try.WithDefaultOnCatch(() =>
                             {
