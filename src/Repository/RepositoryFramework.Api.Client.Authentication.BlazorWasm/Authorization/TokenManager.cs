@@ -21,8 +21,6 @@ namespace RepositoryFramework.Api.Client.Authorization
         public async Task EnrichWithAuthorizationAsync(HttpClient client)
         {
             var tokenResponse = await Try.WithDefaultOnCatchAsync(() => GetTokenAsync()).NoContext();
-            if (tokenResponse != null)
-                tokenResponse = await Try.WithDefaultOnCatchAsync(() => RefreshTokenAsync()).NoContext();
             if (tokenResponse?.Exception == null && tokenResponse?.Entity != null)
                 client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResponse.Entity);
         }
