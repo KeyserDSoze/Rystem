@@ -11,7 +11,7 @@ namespace RepositoryFramework.WebApi.Models
             await Task.CompletedTask;
             return new AuthorizedRepositoryResponse
             {
-                Success = false,
+                Success = true,
                 Message = "Error for something"
             };
         }
