@@ -88,7 +88,7 @@ namespace RepositoryFramework
                 .AddFactory<TRepositoryPattern, TStorage>(_currentName, serviceLifetime);
             return Builder;
         }
-        private RepositoryFrameworkService SetService()
+        public RepositoryFrameworkService SetService()
         {
             var entityType = typeof(T);
             var serviceKey = RepositoryFrameworkRegistry.ToServiceKey(entityType, _currentPatternType, _currentName);

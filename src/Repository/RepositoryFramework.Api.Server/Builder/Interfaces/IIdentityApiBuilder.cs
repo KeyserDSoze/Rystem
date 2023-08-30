@@ -2,7 +2,7 @@
 
 namespace RepositoryFramework
 {
-    public interface IPolicyApiBuilder
+    public interface IIdentityApiBuilder
     {
         IApiBuilder Builder { get; }
         IApiBuilder WithAuthorization(Action<AuthorizationOptions> authorizationOptions);

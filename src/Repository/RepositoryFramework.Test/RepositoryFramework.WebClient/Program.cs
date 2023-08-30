@@ -31,7 +31,7 @@ builder.Services
                 apiBuilder
                 .WithHttpClient("localhost:7058")
                 .ClientBuilder
-            .AddPolicyHandler(retryPolicy);
+                    .AddPolicyHandler(retryPolicy);
             });
     })
     .AddRepository<SuperUser, string>(settings =>
@@ -91,7 +91,8 @@ builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient(settings =>
 builder.Services.AddAuthorization();
 builder.Services.AddControllersWithViews()
     .AddMicrosoftIdentityUI();
-
+builder.Services.AddServerSideBlazor()
+    .AddMicrosoftIdentityConsentHandler();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

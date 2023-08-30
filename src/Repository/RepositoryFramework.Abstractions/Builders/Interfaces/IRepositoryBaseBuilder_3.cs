@@ -14,5 +14,6 @@ namespace RepositoryFramework
         void SetOnlyQueryExposable();
         void SetOnlyCommandExposable();
         void SetExamples(T entity, TKey key);
+        RepositoryFrameworkService SetService();
     }
 }

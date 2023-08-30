@@ -17,7 +17,7 @@ namespace RepositoryFramework
         /// }
         /// </summary>
         /// <param name="configuration">IConfiguration instance.</param>
-        public static IPolicyApiBuilder ConfigureAzureActiveDirectory(this IApiBuilder apiBuilder,
+        public static IIdentityApiBuilder ConfigureAzureActiveDirectory(this IApiBuilder apiBuilder,
             IConfiguration configuration)
         => apiBuilder.WithOpenIdAuthentication(settings =>
             {

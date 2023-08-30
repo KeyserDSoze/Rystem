@@ -1,5 +1,4 @@
 ﻿using System.Reflection;
-using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -14,10 +13,11 @@ namespace Microsoft.Extensions.DependencyInjection
             string uri,
             string name,
             string factoryName,
-            ApiAuthorization? authorization)
+            ApiAuthorization? authorization,
+            List<string> furtherPolicies)
            where TKey : notnull
         {
-            app.AddApi<T, TKey, TService>(uri, name, factoryName, authorization,
+            app.AddApi<T, TKey, TService>(uri, name, factoryName, authorization, furtherPolicies,
                 RepositoryMethods.Get, null,
                 async (TKey key, TService service, CancellationToken cancellationToken) =>
                 {
@@ -37,10 +37,11 @@ namespace Microsoft.Extensions.DependencyInjection
             string uri,
             string name,
             string factoryName,
-            ApiAuthorization? authorization)
+            ApiAuthorization? authorization,
+            List<string> furtherPolicies)
            where TKey : notnull
         {
-            app.AddApi<T, TKey, TService>(uri, name, factoryName, authorization,
+            app.AddApi<T, TKey, TService>(uri, name, factoryName, authorization, furtherPolicies,
                 RepositoryMethods.Exist, null,
                 async (TKey key, TService service, CancellationToken cancellationToken) =>
                 {
@@ -60,7 +61,8 @@ namespace Microsoft.Extensions.DependencyInjection
             string uri,
             string name,
             string factoryName,
-            ApiAuthorization? authorization)
+            ApiAuthorization? authorization,
+            List<string> furtherPolicies)
             where TKey : notnull
         {
             _ = app.MapPost(uri,
@@ -86,7 +88,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 })
                 .WithName($"{nameof(RepositoryMethods.Query)}{factoryName}{name}")
                 .WithTags(string.IsNullOrWhiteSpace(factoryName) ? name : $"{name}/factoryName:{factoryName}")
-                    .AddAuthorization(authorization, RepositoryMethods.Query);
+                    .AddAuthorization(authorization, furtherPolicies, RepositoryMethods.Query);
 
             _ = app.MapPost($"{uri}/Stream", (HttpRequest request,
                     [FromBody] SerializableFilter? serializableFilter,
@@ -100,13 +102,14 @@ namespace Microsoft.Extensions.DependencyInjection
                 )
                 .WithName($"{nameof(RepositoryMethods.Query)}{factoryName}{name}Stream")
                 .WithTags(string.IsNullOrWhiteSpace(factoryName) ? name : $"{name}/factoryName:{factoryName}")
-              .AddAuthorization(authorization, RepositoryMethods.Query);
+              .AddAuthorization(authorization, furtherPolicies, RepositoryMethods.Query);
         }
         private static void AddOperation<T, TKey, TService>(IEndpointRouteBuilder app,
             string uri,
             string name,
             string factoryName,
-            ApiAuthorization? authorization)
+            ApiAuthorization? authorization,
+            List<string> furtherPolicies)
                 where TKey : notnull
         {
             _ = app.MapPost(uri,
@@ -149,7 +152,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 })
                 .WithName($"{nameof(RepositoryMethods.Operation)}{factoryName}{name}")
                 .WithTags(string.IsNullOrWhiteSpace(factoryName) ? name : $"{name}/factoryName:{factoryName}")
-              .AddAuthorization(authorization, RepositoryMethods.Operation);
+              .AddAuthorization(authorization, furtherPolicies, RepositoryMethods.Operation);
         }
         private static ValueTask<TProperty> GetResultFromOperation<T, TKey, TProperty>(
             IQueryPattern<T, TKey> queryService,
@@ -164,10 +167,11 @@ namespace Microsoft.Extensions.DependencyInjection
             string uri,
             string name,
             string factoryName,
-            ApiAuthorization? authorization)
+            ApiAuthorization? authorization,
+            List<string> furtherPolicies)
             where TKey : notnull
         {
-            app.AddApi(uri, name, factoryName, authorization,
+            app.AddApi(uri, name, factoryName, authorization, furtherPolicies,
                 RepositoryMethods.Insert,
                 async (T entity, TKey key, TService service, CancellationToken cancellationToken) =>
                 {
@@ -188,10 +192,11 @@ namespace Microsoft.Extensions.DependencyInjection
             string uri,
             string name,
             string factoryName,
-            ApiAuthorization? authorization)
+            ApiAuthorization? authorization,
+            List<string> furtherPolicies)
             where TKey : notnull
         {
-            app.AddApi(uri, name, factoryName, authorization,
+            app.AddApi(uri, name, factoryName, authorization, furtherPolicies,
                 RepositoryMethods.Update,
                 async (T entity, TKey key, TService service, CancellationToken cancellationToken) =>
                 {
@@ -212,10 +217,11 @@ namespace Microsoft.Extensions.DependencyInjection
             string uri,
             string name,
             string factoryName,
-            ApiAuthorization? authorization)
+            ApiAuthorization? authorization,
+            List<string> furtherPolicies)
             where TKey : notnull
         {
-            app.AddApi<T, TKey, TService>(uri, name, factoryName, authorization,
+            app.AddApi<T, TKey, TService>(uri, name, factoryName, authorization, furtherPolicies,
                 RepositoryMethods.Delete, null,
                 async (TKey key, TService service, CancellationToken cancellationToken) =>
                 {
@@ -234,7 +240,8 @@ namespace Microsoft.Extensions.DependencyInjection
             string uri,
             string name,
             string factoryName,
-            ApiAuthorization? authorization)
+            ApiAuthorization? authorization,
+            List<string> furtherPolicies)
             where TKey : notnull
         {
             _ = app.MapPost(uri,
@@ -263,7 +270,7 @@ namespace Microsoft.Extensions.DependencyInjection
             })
             .WithName($"{nameof(RepositoryMethods.Batch)}{factoryName}{name}")
             .WithTags(string.IsNullOrWhiteSpace(factoryName) ? name : $"{name}/factoryName:{factoryName}")
-            .AddAuthorization(authorization, RepositoryMethods.Batch);
+            .AddAuthorization(authorization, furtherPolicies, RepositoryMethods.Batch);
 
             _ = app.MapPost($"{uri}/Stream",
                 ([FromBody] BatchOperations<T, TKey> operations,
@@ -275,13 +282,14 @@ namespace Microsoft.Extensions.DependencyInjection
                 })
                 .WithName($"{nameof(RepositoryMethods.Batch)}{factoryName}{name}Stream")
                 .WithTags(string.IsNullOrWhiteSpace(factoryName) ? name : $"{name}/factoryName:{factoryName}")
-              .AddAuthorization(authorization, RepositoryMethods.Batch);
+              .AddAuthorization(authorization, furtherPolicies, RepositoryMethods.Batch);
         }
         private static void AddApi<T, TKey, TService>(this IEndpointRouteBuilder app,
             string uri,
             string name,
             string factoryName,
             ApiAuthorization? authorization,
+            List<string> furtherPolicies,
             RepositoryMethods method,
             Func<T, TKey, TService, CancellationToken, Task<IResult>>? action,
             Func<TKey, TService, CancellationToken, Task<IResult>>? actionWithNoEntity)
@@ -315,18 +323,25 @@ namespace Microsoft.Extensions.DependencyInjection
             _ = apiMapped!
                     .WithName($"{method}{factoryName}{name}")
                     .WithTags(string.IsNullOrWhiteSpace(factoryName) ? name : $"{name}/factoryName:{factoryName}")
-                    .AddAuthorization(authorization, method);
+                    .AddAuthorization(authorization, furtherPolicies, method);
 
         }
         private static RouteHandlerBuilder AddAuthorization(this RouteHandlerBuilder router,
             ApiAuthorization? authorization,
+            List<string> furtherPolicies,
             RepositoryMethods path)
         {
-            var policies = authorization?.GetPolicy(path);
-            if (policies != null)
+            List<string> policies = new();
+            policies.AddRange(furtherPolicies);
+            var authorizationPolicies = authorization?.GetPolicy(path);
+            if (authorizationPolicies != null)
+                policies.AddRange(authorizationPolicies);
+            if (policies.Any())
             {
-                router.RequireAuthorization(policies);
+                router.RequireAuthorization(policies.ToArray());
             }
+            else if (authorizationPolicies != null)
+                router.RequireAuthorization();
             return router;
         }
     }

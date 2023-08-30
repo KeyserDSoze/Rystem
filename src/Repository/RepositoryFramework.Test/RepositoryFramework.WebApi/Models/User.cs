@@ -1,7 +1,22 @@
 ﻿using System.ComponentModel;
+using Microsoft.AspNetCore.Authorization;
+using RepositoryFramework.Api.Server.Authorization;
 
 namespace RepositoryFramework.WebApi.Models
 {
+    public class PolicyHandlerForSuperUser : IRepositoryAuthorization<SuperUser, string>
+    {
+        public async Task<AuthorizedRepositoryResponse> HandleRequirementAsync(IHttpContextAccessor httpContextAccessor, AuthorizationHandlerContext context, RepositoryRequirement requirement, RepositoryMethods method, string? key, SuperUser? value)
+        {
+            await Task.CompletedTask;
+            return new AuthorizedRepositoryResponse
+            {
+                Success = false,
+                Message = "Error for something"
+            };
+        }
+    }
+
     public class PlusSuperUserKeyAfterInsert : IRepositoryBusinessAfterInsert<NonPlusSuperUser, PlusSuperUserKey>, IRepositoryBusinessAfterQuery<NonPlusSuperUser, PlusSuperUserKey>
     {
         public int Priority => 3;

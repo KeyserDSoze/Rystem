@@ -80,6 +80,7 @@ Welcome to your new app.
     protected override async Task OnParametersSetAsync()
     {
         var cancellationToken = new CancellationToken();
+        var user1 = await UserClient2.ExistAsync("aa");
         var user = new CreativeUser("@gmail.com");
         var users4 = await UserClient1.GetAsync(1, cancellationToken);
         Users1 = (await UserClient1.Where(x => x.Email != "").OrderByDescending(x => x.Name!).ToListAsync(cancellationToken).NoContext()).Select(x => x.Value);

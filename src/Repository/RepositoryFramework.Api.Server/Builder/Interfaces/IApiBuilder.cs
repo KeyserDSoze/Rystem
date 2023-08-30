@@ -14,7 +14,7 @@ namespace RepositoryFramework
         IApiBuilder WithMapApi();
         IApiBuilder WithModelsApi();
         IApiBuilder WithSwagger();
-        IPolicyApiBuilder WithOpenIdAuthentication(Action<ApiIdentitySettings> settings);
+        IIdentityApiBuilder WithOpenIdAuthentication(Action<ApiIdentitySettings> settings);
         IApiBuilder WithDefaultCorsWithAllOrigins();
         IApiBuilder WithDefaultCors(params string[] domains);
         IApiBuilder WithCors(Action<CorsOptions> options);

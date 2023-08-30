@@ -9,15 +9,6 @@ namespace Microsoft.Extensions.DependencyInjection
     public static partial class EndpointRouteBuilderExtensions
     {
         /// <summary>
-        /// Add repository or CQRS service injected as api for your <typeparamref name="T"/> model.
-        /// </summary>
-        /// <typeparam name="T">Model of your repository or CQRS that you want to add as api</typeparam>
-        /// <param name="app">IEndpointRouteBuilder</param>
-        /// <returns>ApiAuthorizationBuilder</returns>
-        public static IApiAuthorizationBuilder UseApiFromRepository<T>(this IEndpointRouteBuilder app)
-            => new ApiAuthorizationBuilder(authorization => app.UseApiFromRepository(typeof(T), ApiSettings.Instance, authorization));
-
-        /// <summary>
         /// Add all repository or CQRS services injected as api.
         /// </summary>
         /// <typeparam name="TEndpointRouteBuilder"></typeparam>
@@ -93,10 +84,10 @@ namespace Microsoft.Extensions.DependencyInjection
                             var uri = $"{settings.StartingPath}/{currentName}/{(string.IsNullOrWhiteSpace(service.FactoryName) ? string.Empty : $"{service.FactoryName}/")}{currentMethod.Method}";
                             _ = typeof(EndpointRouteBuilderExtensions).GetMethod(currentMethod.Name, BindingFlags.NonPublic | BindingFlags.Static)!
                                .MakeGenericMethod(modelType, service.KeyType, service.InterfaceType)
-                               .Invoke(null, new object[] { app, uri, currentName, service.FactoryName, authorization! });
+                               .Invoke(null, new object[] { app, uri, currentName, service.FactoryName, authorization!, service.Policies });
                             configuredMethods.Add(currentMethod.Name, true);
                             if (settings.HasMapApi)
-                                app.AddMap(uri, modelType, service.KeyType, currentMethod.Method, currentName, service, authorization);
+                                app.AddMap(uri, modelType, service.KeyType, currentMethod.Method, currentName, service, authorization, service.Policies);
                         }
                     }
                 }

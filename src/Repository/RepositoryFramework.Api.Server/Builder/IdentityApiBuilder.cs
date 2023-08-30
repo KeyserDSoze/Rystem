@@ -3,10 +3,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework
 {
-    internal sealed class PolicyApiBuilder : IPolicyApiBuilder
+    internal sealed class IdentityApiBuilder : IIdentityApiBuilder
     {
         public IApiBuilder Builder { get; }
-        public PolicyApiBuilder(IApiBuilder apiBuilder)
+        public IdentityApiBuilder(IApiBuilder apiBuilder)
             => Builder = apiBuilder;
 
         public IApiBuilder WithAuthorization(Action<AuthorizationOptions> authorizationOptions)

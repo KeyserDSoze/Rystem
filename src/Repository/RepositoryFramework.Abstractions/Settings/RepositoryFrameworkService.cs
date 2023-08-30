@@ -15,6 +15,7 @@ namespace RepositoryFramework
         public ServiceLifetime ServiceLifetime { get; internal set; }
         public PatternType Type { get; }
         public string FactoryName { get; }
+        public List<string> Policies { get; } = new();
         public string Key => $"{ModelType.Name}-{KeyType.Name}-{Type}-{FactoryName}";
         public RepositoryFrameworkService(Type keyType, Type modelType, PatternType type, string name)
         {

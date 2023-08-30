@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection.Extensions;
-using RepositoryFramework.Api.Client;
+﻿using Microsoft.Identity.Web;
 using RepositoryFramework.Api.Client.Authorization;
 using RepositoryFramework.Api.Client.DefaultInterceptor;
 
@@ -16,6 +15,8 @@ namespace Microsoft.Extensions.DependencyInjection
             this IServiceCollection services,
             Action<AuthenticatorSettings>? authenticatorSettings = null)
         {
+            services.AddServerSideBlazor()
+                .AddMicrosoftIdentityConsentHandler();
             return services.AddDefaultAuthorizationInterceptorForApiHttpClient<TokenManager>(
                 authenticatorSettings, ServiceLifetime.Scoped);
         }
@@ -29,6 +30,8 @@ namespace Microsoft.Extensions.DependencyInjection
             this IServiceCollection services,
             Action<AuthenticatorSettings<T>>? authenticatorSettings = null)
         {
+            services.AddServerSideBlazor()
+                .AddMicrosoftIdentityConsentHandler();
             return services.AddDefaultAuthorizationInterceptorForApiHttpClient<T, TokenManager>(
                 authenticatorSettings, ServiceLifetime.Scoped);
         }
@@ -44,6 +47,8 @@ namespace Microsoft.Extensions.DependencyInjection
             Action<AuthenticatorSettings<T, TKey>>? authenticatorSettings = null)
             where TKey : notnull
         {
+            services.AddServerSideBlazor()
+                .AddMicrosoftIdentityConsentHandler();
             return services.AddDefaultAuthorizationInterceptorForApiHttpClient<T, TKey, TokenManager>(
                 authenticatorSettings, ServiceLifetime.Scoped);
         }

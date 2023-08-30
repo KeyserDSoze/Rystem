@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web;
+using Microsoft.IdentityModel.Logging;
 using RepositoryFramework;
+using RepositoryFramework.Api.Server.Authorization;
 using RepositoryFramework.InMemory;
 using RepositoryFramework.Test.Domain;
 using RepositoryFramework.Test.Infrastructure.EntityFramework;
@@ -10,6 +12,7 @@ using RepositoryFramework.WebApi;
 using RepositoryFramework.WebApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+IdentityModelEventSource.ShowPII = true;
 #pragma warning disable S125
 //builder.Services.AddRepositoryInMemoryStorage<User>()
 //.PopulateWithRandomData(x => x.Email!, 120, 5)
@@ -61,6 +64,9 @@ builder.Services
                 .PopulateWithRandomData(120, 5)
                 .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
         });
+        repositoryBuilder
+           .ConfigureSpecificPolicies()
+           .WithAuthorizationHandler<PolicyHandlerForSuperUser>();
         repositoryBuilder.WithInMemory(builder =>
         {
             builder
@@ -76,6 +82,9 @@ builder.Services
             Name = "Test",
             Port = 123
         }, id);
+        //repositoryBuilder
+        //    .AddPolicies()
+        //    .WithHandler<PolicyHandlerForSuperUser>();
     });
 
 builder.Services.AddRepository<SuperiorUser, string>(settings =>
@@ -166,7 +175,8 @@ builder.Services.ScanBusinessForRepositoryFramework();
 
 var app = builder.Build();
 await app.Services.WarmUpAsync();
-
+app.UseAuthentication();
+app.UseAuthorization();
 //app.UseHttpsRedirection();
 app
     .UseApiFromRepositoryFramework()
@@ -204,4 +214,5 @@ app
 //});
 app.UseApiFromRepositoryFramework()
         .WithNoAuthorization();
+IdentityModelEventSource.ShowPII = true;
 app.Run();

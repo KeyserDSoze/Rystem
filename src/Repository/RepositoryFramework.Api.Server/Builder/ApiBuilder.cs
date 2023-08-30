@@ -10,12 +10,12 @@ namespace RepositoryFramework
         {
             Services = services;
         }
-        public IPolicyApiBuilder WithOpenIdAuthentication(Action<ApiIdentitySettings> settings)
+        public IIdentityApiBuilder WithOpenIdAuthentication(Action<ApiIdentitySettings> settings)
         {
             var options = new ApiIdentitySettings();
             settings.Invoke(options);
             ApiSettings.Instance.OpenIdIdentity = options;
-            return new PolicyApiBuilder(this);
+            return new IdentityApiBuilder(this);
         }
 
         public IApiBuilder WithDocumentation()

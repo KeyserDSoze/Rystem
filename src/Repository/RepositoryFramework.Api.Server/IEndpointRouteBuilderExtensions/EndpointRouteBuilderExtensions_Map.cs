@@ -19,12 +19,13 @@ namespace Microsoft.Extensions.DependencyInjection
             RepositoryMethods method,
             string currentName,
             RepositoryFrameworkService service,
-            ApiAuthorization? authorization)
+            ApiAuthorization? authorization,
+            List<string> furtherPolicies)
         {
             _ = typeof(EndpointRouteBuilderExtensions).GetMethod(nameof(AddMapAsGenerics),
                     BindingFlags.NonPublic | BindingFlags.Static)!
                         .MakeGenericMethod(model, key)
-                        .Invoke(null, new object[] { app, uri, method, currentName, service, authorization! });
+                        .Invoke(null, new object[] { app, uri, method, currentName, service, authorization!, furtherPolicies });
             return app;
         }
         private static IEndpointRouteBuilder AddMapAsGenerics<T, TKey>(this IEndpointRouteBuilder app,
@@ -32,7 +33,8 @@ namespace Microsoft.Extensions.DependencyInjection
             RepositoryMethods method,
             string currentName,
             RepositoryFrameworkService service,
-            ApiAuthorization authorization)
+            ApiAuthorization? authorization,
+            List<string> furtherPolicies)
             where TKey : notnull
         {
             var api = EndpointRouteMap.ApiMap.Apis.FirstOrDefault(x => x.Name == currentName && x.FactoryName == service.FactoryName);
@@ -65,11 +67,16 @@ namespace Microsoft.Extensions.DependencyInjection
                     api.Model = modelResponse.Exception == null ? modelResponse.Entity : default;
                 }
             }
+            List<string> policies = new();
+            policies.AddRange(furtherPolicies);
+            var authorizationPolicies = authorization?.GetPolicy(method);
+            if (authorizationPolicies != null)
+                policies.AddRange(authorizationPolicies);
             var request = new RequestApiMap
             {
-                IsAuthenticated = authorization?.GetPolicy(method) != null,
-                Policies = authorization?.GetPolicy(method),
-                IsAuthorized = authorization?.GetPolicy(method) != null,
+                IsAuthenticated = policies.Any() || authorizationPolicies != null,
+                Policies = policies.ToArray(),
+                IsAuthorized = policies.Any(),
                 RepositoryMethod = method.ToString(),
                 Uri = uri,
                 Sample = new()
