@@ -1,6 +1,5 @@
 ﻿using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.DependencyInjection;
 using RepositoryFramework;
 using RepositoryFramework.Api.Server.Authorization;
 
@@ -20,9 +19,9 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             var registry = services
                 .TryAddSingletonAndGetService<RepositoryFrameworkRegistry>();
-            foreach (var service in registry.Services.Select(x => x.Value))
+            foreach (var groupedService in registry.Services.Select(x => x.Value).GroupBy(x => new { x.ModelType, x.KeyType }))
             {
-                var genericArguments = service.InterfaceType.GetGenericArguments();
+                var genericArguments = groupedService.First().InterfaceType.GetGenericArguments();
                 var type = typeof(IRepositoryAuthorization<,>);
                 var serviceType = type.MakeGenericType(genericArguments);
                 var addedFromScan = services.Scan(serviceType, lifetime, assemblies);
@@ -32,8 +31,9 @@ namespace Microsoft.Extensions.DependencyInjection
                         services.AddTransient<IAuthorizationHandler, RepositoryRequirementHandler>();
                     foreach (var added in addedFromScan.Implementations)
                     {
-                        var policyName = $"{added.FullName}_{service.KeyType.FullName}_{service.ModelType.FullName}";
-                        service.Policies.Add(policyName);
+                        var policyName = $"{added.FullName}_{groupedService.Key.KeyType.FullName}_{groupedService.Key.ModelType.FullName}";
+                        foreach (var service in groupedService)
+                            service.Policies.Add(policyName);
                         var method = typeof(RepositoryPolicyBuilder<,>).MakeGenericType(genericArguments).GetMethod("ReadKeyValue", BindingFlags.Static | BindingFlags.NonPublic);
                         services.AddAuthorization(o =>
                         {
@@ -41,9 +41,9 @@ namespace Microsoft.Extensions.DependencyInjection
                                 p => p.AddRequirements(
                                     new RepositoryRequirement(
                                         policyName,
-                                        type,
-                                        service.KeyType,
-                                        service.ModelType,
+                                        serviceType,
+                                        groupedService.Key.KeyType,
+                                        groupedService.Key.ModelType,
                                         added,
                                         (httpContextAccessor) => method.Invoke(null, new object[1] { httpContextAccessor }) as Task<RepositoryRequirementReader>)));
                         });
