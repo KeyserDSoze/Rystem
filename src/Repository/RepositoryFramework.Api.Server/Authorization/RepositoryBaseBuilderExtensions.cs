@@ -1,4 +1,7 @@
-﻿namespace RepositoryFramework.Api.Server.Authorization
+﻿using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using System.Reflection.Metadata;
+
+namespace RepositoryFramework.Api.Server.Authorization
 {
     public static class RepositoryBaseBuilderExtensions
     {

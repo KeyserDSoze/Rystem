@@ -5,18 +5,18 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static partial class ServiceCollectionExtesions
     {
-        public static int ScanDependencyContext<T>(
+        public static ScanResult ScanDependencyContext<T>(
             this IServiceCollection services,
             ServiceLifetime lifetime,
             Func<Assembly, bool>? predicate = null)
             => services.Scan(typeof(T), lifetime, GetFromDependencyContext(predicate));
-        public static int ScanDependencyContext(
+        public static ScanResult ScanDependencyContext(
             this IServiceCollection services,
             Type serviceType,
             ServiceLifetime lifetime,
             Func<Assembly, bool>? predicate = null)
             => services.Scan(serviceType, lifetime, GetFromDependencyContext(predicate));
-        public static int ScanDependencyContext(
+        public static ScanResult ScanDependencyContext(
            this IServiceCollection services,
            ServiceLifetime lifetime,
             Func<Assembly, bool>? predicate = null)

@@ -5,18 +5,18 @@ namespace Microsoft.Extensions.DependencyInjection
     public static partial class ServiceCollectionExtesions
     {
         internal static Dictionary<Type, Dictionary<Type, bool>> ScannedTypes { get; } = new();
-        public static int Scan<T>(
+        public static ScanResult Scan<T>(
             this IServiceCollection services,
             ServiceLifetime lifetime,
             params Assembly[] assemblies)
             => services.Scan(typeof(T), lifetime, assemblies);
-        public static int Scan(
+        public static ScanResult Scan(
             this IServiceCollection services,
             Type serviceType,
             ServiceLifetime lifetime,
             params Assembly[] assemblies)
         {
-            var count = 0;
+            var result = new ScanResult { Implementations = new() };
             foreach (var assembly in assemblies)
             {
                 foreach (var type in assembly.GetTypes()
@@ -27,18 +27,20 @@ namespace Microsoft.Extensions.DependencyInjection
                         || (serviceType.IsInterface && type.HasInterface(serviceType)))
                     {
                         if (services.AddScannedType(serviceType, type, lifetime))
-                            count++;
+                        {
+                            result.Implementations.Add(type);
+                        }
                     }
                 }
             }
-            return count;
+            return result;
         }
-        public static int Scan(
+        public static ScanResult Scan(
            this IServiceCollection services,
            ServiceLifetime lifetime,
             params Assembly[] assemblies)
         {
-            var count = 0;
+            var result = new ScanResult { Implementations = new() };
             foreach (var assembly in assemblies)
             {
                 foreach (var type in assembly.GetTypes().Where(x => !x.IsInterface && !x.IsAbstract))
@@ -48,12 +50,12 @@ namespace Microsoft.Extensions.DependencyInjection
                         var whatKindOfType = GetScannableInterfaceImplementation(type);
                         if (whatKindOfType != null
                             && services.AddScannedType(whatKindOfType, type, lifetime))
-                            count++;
+                            result.Implementations.Add(type);
                     }
                 }
             }
             return
-                count;
+                result;
         }
         private static bool AddScannedType(this IServiceCollection services, Type serviceType, Type implementationType, ServiceLifetime lifetime)
         {

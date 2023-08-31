@@ -117,7 +117,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 {
                     var serviceType = type.MakeGenericType(genericArguments);
                     if (services
-                        .Scan(serviceType, service.ServiceLifetime, assemblies) > 0)
+                        .Scan(serviceType, service.ServiceLifetime, assemblies).Count > 0)
                     {
                         var repositoryBusinessManagerInterface = typeof(IRepositoryBusinessManager<,>).MakeGenericType(genericArguments);
                         var repositoryBusinessManagerImplementation = typeof(RepositoryBusinessManager<,>).MakeGenericType(genericArguments);

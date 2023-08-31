@@ -64,9 +64,9 @@ builder.Services
                 .PopulateWithRandomData(120, 5)
                 .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
         });
-        repositoryBuilder
-           .ConfigureSpecificPolicies()
-           .WithAuthorizationHandler<PolicyHandlerForSuperUser>();
+        //repositoryBuilder
+        //   .ConfigureSpecificPolicies()
+        //   .WithAuthorizationHandler<PolicyHandlerForSuperUser>();
         repositoryBuilder.WithInMemory(builder =>
         {
             builder
@@ -111,6 +111,7 @@ builder.Services.AddApiFromRepositoryFramework()
     .WithModelsApi()
     .WithDocumentation()
     .WithDefaultCorsWithAllOrigins();
+builder.Services.ScanAuthorizationForRepositoryFramework();
 ////.ConfigureAzureActiveDirectory(builder.Configuration);
 
 //builder.Services
