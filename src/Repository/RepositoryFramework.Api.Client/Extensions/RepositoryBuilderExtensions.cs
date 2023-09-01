@@ -23,7 +23,6 @@ namespace Microsoft.Extensions.DependencyInjection
            ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TKey : notnull
         {
-            builder.SetNotExposable();
             builder.SetStorageAndBuildOptions<RepositoryClient<T, TKey>, ApiRepositoryBuilder<T, TKey>, ApiClientSettings<T, TKey>>(options =>
             {
                 options.Services = builder.Services;
@@ -49,7 +48,6 @@ namespace Microsoft.Extensions.DependencyInjection
            ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TKey : notnull
         {
-            builder.SetNotExposable();
             builder.SetStorageAndBuildOptions<RepositoryClient<T, TKey>, ApiRepositoryBuilder<T, TKey>, ApiClientSettings<T, TKey>>(options =>
             {
                 options.Services = builder.Services;
@@ -75,7 +73,6 @@ namespace Microsoft.Extensions.DependencyInjection
            ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TKey : notnull
         {
-            builder.SetNotExposable();
             builder.SetStorageAndBuildOptions<RepositoryClient<T, TKey>, ApiRepositoryBuilder<T, TKey>, ApiClientSettings<T, TKey>>(options =>
             {
                 options.Services = builder.Services;
