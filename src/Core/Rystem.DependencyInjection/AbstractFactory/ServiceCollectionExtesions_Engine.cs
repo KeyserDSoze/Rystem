@@ -18,13 +18,8 @@ namespace Microsoft.Extensions.DependencyInjection
         }
         internal static string GetIntegrationName<TService>(this string? name)
         {
-            //var fullName = typeof(TService).FullName!;
-            //if (name?.StartsWith(fullName) == true)
-            //    return name;
-            //return $"{fullName}_{name}";
             return name ?? string.Empty;
         }
-
         private static IServiceCollection AddEngineFactoryWithoutGenerics(this IServiceCollection services,
             Type serviceType,
             Type implementationType,
