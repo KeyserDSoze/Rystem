@@ -45,6 +45,7 @@
             TOptions options = new();
             createOptions.Invoke(options);
             var builtOptions = options.Build();
+            services.AddFactory(builtOptions, name, ServiceLifetime.Singleton);
             services.AddEngineFactory(name, canOverrideConfiguration, lifetime,
                 implementationInstance,
                 implementationFactory,
@@ -70,6 +71,7 @@
             TOptions options = new();
             createOptions.Invoke(options);
             var builtOptions = await options.BuildAsync();
+            services.AddFactory(builtOptions, name, ServiceLifetime.Singleton);
             services.AddEngineFactory(name, canOverrideConfiguration, lifetime,
                 implementationInstance,
                 implementationFactory,
