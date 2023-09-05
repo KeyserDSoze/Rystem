@@ -77,8 +77,10 @@ namespace RepositoryFramework.Api.Server.Authorization
             async Task<string> ReadAsync()
             {
                 var memoryStream = new MemoryStream();
-                await httpContextAccessor.HttpContext!.Request.Body.CopyToAsync(memoryStream).NoContext();
+                httpContextAccessor!.HttpContext!.Request.EnableBuffering();
+                await httpContextAccessor.HttpContext.Request.Body.CopyToAsync(memoryStream).NoContext();
                 memoryStream.Position = 0;
+                httpContextAccessor.HttpContext.Request.Body.Position = 0;
                 var body = await memoryStream.ConvertToStringAsync().NoContext();
                 return body;
             }

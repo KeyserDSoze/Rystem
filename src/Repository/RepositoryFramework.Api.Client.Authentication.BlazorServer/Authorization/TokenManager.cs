@@ -1,9 +1,5 @@
-﻿using System.Security.Claims;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Identity.Abstractions;
+﻿using Microsoft.Identity.Abstractions;
 using Microsoft.Identity.Web;
-using Microsoft.Identity.Web.TokenCacheProviders;
 using RepositoryFramework.Api.Client.DefaultInterceptor;
 
 namespace RepositoryFramework.Api.Client.Authorization
@@ -15,9 +11,9 @@ namespace RepositoryFramework.Api.Client.Authorization
         private readonly IAuthorizationHeaderProvider _authorizationHeaderProvider;
 
         public TokenManager(
-        AuthenticatorSettings settings,
-        MicrosoftIdentityConsentAndConditionalAccessHandler consentHandler,
-        IAuthorizationHeaderProvider authorizationHeaderProvider)
+            AuthenticatorSettings settings,
+            MicrosoftIdentityConsentAndConditionalAccessHandler consentHandler,
+            IAuthorizationHeaderProvider authorizationHeaderProvider)
         {
             _settings = settings;
             _consentHandler = consentHandler;
