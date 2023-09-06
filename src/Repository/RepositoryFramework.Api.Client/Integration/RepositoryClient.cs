@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace RepositoryFramework.Api.Client
 {
@@ -22,18 +23,14 @@ namespace RepositoryFramework.Api.Client
         private readonly IEnumerable<IRepositoryClientInterceptor<T, TKey>>? _specificClientInterceptorsWithKeys;
         public RepositoryClient(IHttpClientFactory httpClientFactory,
             KeySettings<TKey> keySettings,
-            IEnumerable<IRepositoryClientInterceptor>? clientInterceptors = null,
-            IEnumerable<IRepositoryClientInterceptor<T>>? specificClientInterceptors = null,
-            IEnumerable<IRepositoryClientInterceptor<T, TKey>>? specificClientInterceptorsWithKeys = null,
-            ApiClientSettings<T, TKey>? options = null)
+            IServiceProvider serviceProvider)
         {
             var name = typeof(T).Name;
             _httpClient = httpClientFactory.CreateClient($"{name}{Const.HttpClientName}");
             _keySettings = keySettings;
-            _clientInterceptors = clientInterceptors;
-            _specificClientInterceptors = specificClientInterceptors;
-            _specificClientInterceptorsWithKeys = specificClientInterceptorsWithKeys;
-            _options = options;
+            _clientInterceptors = serviceProvider.GetServices<IRepositoryClientInterceptor>();
+            _specificClientInterceptors = serviceProvider.GetServices<IRepositoryClientInterceptor<T>>();
+            _specificClientInterceptorsWithKeys = serviceProvider.GetServices<IRepositoryClientInterceptor<T, TKey>>();
         }
         private bool _clientAlreadyEnriched = false;
         private Task<HttpClient> EnrichedClientAsync(RepositoryMethods api)
