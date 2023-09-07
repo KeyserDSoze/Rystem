@@ -8,7 +8,7 @@ using Microsoft.Graph.Models.ODataErrors;
 
 namespace Rystem.Content.Infrastructure
 {
-    internal sealed class SharepointRepository : IContentRepository, IServiceForFactoryWithOptions<SharepointClientWrapper>
+    internal sealed class SharepointRepository : IContentRepository, IServiceWithFactoryWithOptions<SharepointClientWrapper>
     {
         public void SetOptions(SharepointClientWrapper options)
         {

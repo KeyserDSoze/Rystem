@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Rystem.Content.Infrastructure.Storage
 {
-    internal sealed class BlobStorageRepository : IContentRepository, IServiceForFactoryWithOptions<BlobServiceClientWrapper>
+    internal sealed class BlobStorageRepository : IContentRepository, IServiceWithFactoryWithOptions<BlobServiceClientWrapper>
     {
         public void SetOptions(BlobServiceClientWrapper options)
         {

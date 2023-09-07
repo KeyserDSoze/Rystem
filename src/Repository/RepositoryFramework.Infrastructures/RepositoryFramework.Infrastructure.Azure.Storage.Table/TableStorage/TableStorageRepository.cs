@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
 {
-    internal sealed class TableStorageRepository<T, TKey> : IRepository<T, TKey>, IServiceForFactoryWithOptions<TableClientWrapper<T, TKey>>
+    internal sealed class TableStorageRepository<T, TKey> : IRepository<T, TKey>, IServiceWithFactoryWithOptions<TableClientWrapper<T, TKey>>
         where TKey : notnull
     {
         public void SetOptions(TableClientWrapper<T, TKey> options)

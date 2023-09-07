@@ -43,7 +43,7 @@ namespace RepositoryFramework
             Action<TStorageOptions> options,
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
-            where TStorage : class, TRepositoryPattern, IServiceForFactoryWithOptions<TConnection>
+            where TStorage : class, TRepositoryPattern, IServiceWithFactoryWithOptions<TConnection>
             where TStorageOptions : class, IOptionsBuilderAsync<TConnection>, new()
             where TConnection : class
         {
@@ -57,7 +57,7 @@ namespace RepositoryFramework
             Action<TStorageOptions> options,
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
-            where TStorage : class, TRepositoryPattern, IServiceForFactoryWithOptions<TConnection>
+            where TStorage : class, TRepositoryPattern, IServiceWithFactoryWithOptions<TConnection>
             where TStorageOptions : class, IOptionsBuilder<TConnection>, new()
             where TConnection : class
         {
@@ -70,7 +70,7 @@ namespace RepositoryFramework
             Action<TStorageOptions> options,
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
-            where TStorage : class, TRepositoryPattern, IServiceForFactoryWithOptions<TStorageOptions>
+            where TStorage : class, TRepositoryPattern, IServiceWithFactoryWithOptions<TStorageOptions>
             where TStorageOptions : class, new()
         {
             SetDefaultFrameworkBeforeStorage<TStorage>(name, serviceLifetime);

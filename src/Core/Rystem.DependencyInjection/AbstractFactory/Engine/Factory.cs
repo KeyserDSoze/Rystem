@@ -1,28 +1,47 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
     internal sealed class Factory<TService> : IFactory<TService>
+        where TService : class
     {
         private readonly IServiceProvider _serviceProvider;
-        private readonly FactoryServices<TService> _map;
-        public Factory(IServiceProvider serviceProvider, FactoryServices<TService> map)
+        public Factory(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
-            _map = map;
         }
-        public TService Create(string? name = null)
+        public TService? Create(string? name = null)
         {
-            name = name.GetIntegrationName<TService>();
-            return _map.Services[name ?? string.Empty].ServiceFactory.Invoke(_serviceProvider, true);
+            var factoryName = name.GetFactoryName<TService>();
+            return Create(name, factoryName);
         }
-        public TService CreateWithoutDecoration(string? name = null)
+        public TService? CreateWithoutDecoration(string? name = null)
         {
-            name = name.GetIntegrationName<TService>();
-            return _map.Services[name ?? string.Empty].ServiceFactory.Invoke(_serviceProvider, false);
+            var decoratedName = name.GetDecoratedName<TService>();
+            return Create(name, decoratedName);
         }
+        private TService? Create(string? name, string factoryName)
+        {
+            name ??= string.Empty;
+            var service = _serviceProvider.GetKeyedService<TService>(factoryName);
+            if (service is IServiceForFactory factoryService)
+                factoryService.SetFactoryName(name);
+            if (service is IDecoratorService<TService> decoratorService)
+                decoratorService.SetDecoratedService(CreateWithoutDecoration(name)!);
+            if (service is IServiceForFactoryWithOptions serviceWithCustomOptions)
+            {
+                var optionsName = name.GetOptionsName<TService>();
+                var options = _serviceProvider.GetKeyedService<object>(optionsName);
+                var dynamicServiceWithCustomOptions = (dynamic)serviceWithCustomOptions;
+                dynamicServiceWithCustomOptions
+                    .SetOptions(options);
+            }
+            return service;
+        }
+
         public bool Exists(string? name = null)
         {
-            name = name.GetIntegrationName<TService>();
-            return _map.Services.ContainsKey(name ?? string.Empty);
+            var factoryName = name.GetFactoryName<TService>();
+            var service = _serviceProvider.GetKeyedService<TService>(factoryName);
+            return service != null;
         }
     }
 }

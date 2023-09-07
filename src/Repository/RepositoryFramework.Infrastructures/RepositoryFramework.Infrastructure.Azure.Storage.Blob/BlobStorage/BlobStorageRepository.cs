@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
 {
-    internal sealed class BlobStorageRepository<T, TKey> : IRepository<T, TKey>, IServiceForFactoryWithOptions<BlobContainerClientWrapper>
+    internal sealed class BlobStorageRepository<T, TKey> : IRepository<T, TKey>, IServiceWithFactoryWithOptions<BlobContainerClientWrapper>
         where TKey : notnull
     {
         public void SetOptions(BlobContainerClientWrapper options)

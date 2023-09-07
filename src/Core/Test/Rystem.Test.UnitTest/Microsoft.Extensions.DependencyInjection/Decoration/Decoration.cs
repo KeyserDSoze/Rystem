@@ -14,7 +14,7 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection.Decorati
     {
         public T Get() => default!;
     }
-    internal sealed class Repository<T> : IRepository<T>, IServiceForFactory, IServiceForFactoryWithOptions<RepositoryOptions>
+    internal sealed class Repository<T> : IRepository<T>, IServiceForFactory, IServiceWithFactoryWithOptions<RepositoryOptions>
     {
         private RepositoryOptions _options = null!;
         private readonly IFactory<IRepositoryPattern<T>> _patternFactory;
@@ -35,7 +35,7 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection.Decorati
             _options = options;
         }
     }
-    internal sealed class Cache<T> : IRepository<T>, IDecoratorService<IRepository<T>>, IServiceForFactoryWithOptions<RepositoryOptions>
+    internal sealed class Cache<T> : IRepository<T>, IDecoratorService<IRepository<T>>, IServiceWithFactoryWithOptions<RepositoryOptions>
     {
         private RepositoryOptions _options;
         private IRepository<T>? _repository;

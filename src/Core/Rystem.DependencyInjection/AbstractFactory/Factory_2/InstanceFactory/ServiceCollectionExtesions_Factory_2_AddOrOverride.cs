@@ -3,23 +3,23 @@
     public static partial class ServiceCollectionExtesions
     {
         public static bool AddOrOverrideFactory<TService, TImplementation>(this IServiceCollection services,
-            Func<IServiceProvider, TService> implementationFactory,
+            Func<IServiceProvider, object?, TService> implementationFactory,
            string? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Transient)
            where TService : class
            where TImplementation : class, TService
         {
             var check = true;
-            services.AddEngineFactory<TService, TImplementation>(name, true, lifetime, null, implementationFactory, () => InformThatItsAlreadyInstalled(ref check), null);
+            services.AddEngineFactory<TService, TImplementation>(name, true, lifetime, null, implementationFactory, () => InformThatItsAlreadyInstalled(ref check));
             return check;
         }
         public static bool AddOrOverrideFactory<TService, TImplementation, TOptions>(this IServiceCollection services,
-            Func<IServiceProvider, TService> implementationFactory,
+            Func<IServiceProvider, object?, TService> implementationFactory,
             Action<TOptions> createOptions,
             string? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
-            where TImplementation : class, TService, IServiceForFactoryWithOptions<TOptions>
+            where TImplementation : class, TService, IServiceWithFactoryWithOptions<TOptions>
             where TOptions : class, new()
         {
             var check = true;
@@ -27,12 +27,12 @@
             return check;
         }
         public static bool AddOrOverrideFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
-            Func<IServiceProvider, TService> implementationFactory,
+            Func<IServiceProvider, object?, TService> implementationFactory,
             Action<TOptions> createOptions,
             string? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
-            where TImplementation : class, TService, IServiceForFactoryWithOptions<TBuiltOptions>
+            where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>
             where TOptions : class, IOptionsBuilder<TBuiltOptions>, new()
             where TBuiltOptions : class
         {
@@ -42,12 +42,12 @@
         }
 
         public static async Task<bool> AddOrOverrideFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
-            Func<IServiceProvider, TService> implementationFactory,
+            Func<IServiceProvider, object?, TService> implementationFactory,
             Action<TOptions> createOptions,
             string? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
-            where TImplementation : class, TService, IServiceForFactoryWithOptions<TBuiltOptions>
+            where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>
             where TOptions : class, IOptionsBuilderAsync<TBuiltOptions>, new()
             where TBuiltOptions : class
         {

@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace RepositoryFramework.Api.Client
 {
-    internal sealed class RepositoryClient<T, TKey> : IRepository<T, TKey>, IServiceForFactoryWithOptions<ApiClientSettings<T, TKey>>
+    internal sealed class RepositoryClient<T, TKey> : IRepository<T, TKey>, IServiceWithFactoryWithOptions<ApiClientSettings<T, TKey>>
         where TKey : notnull
     {
         private readonly HttpClient _httpClient;

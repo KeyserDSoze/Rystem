@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Rystem.Content.Infrastructure.Storage
 {
-    internal sealed class FileStorageRepository : IContentRepository, IServiceForFactoryWithOptions<FileServiceClientWrapper>
+    internal sealed class FileStorageRepository : IContentRepository, IServiceWithFactoryWithOptions<FileServiceClientWrapper>
     {
         public void SetOptions(FileServiceClientWrapper options)
         {

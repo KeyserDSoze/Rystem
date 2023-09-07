@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Migration
 {
-    internal class MigrationManager<T, TKey> : IMigrationManager<T, TKey>, IServiceForFactoryWithOptions<MigrationOptions<T, TKey>>
+    internal class MigrationManager<T, TKey> : IMigrationManager<T, TKey>, IServiceWithFactoryWithOptions<MigrationOptions<T, TKey>>
          where TKey : notnull
     {
         private readonly IFactory<IRepository<T, TKey>>? _repositoryFactory;

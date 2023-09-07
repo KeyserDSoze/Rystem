@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    public interface IServiceForFactoryWithOptions<in TOptions> : IServiceForFactoryWithOptions
+    public interface IServiceWithFactoryWithOptions<in TOptions> : IServiceForFactoryWithOptions
     {
         void SetOptions(TOptions options);
     }

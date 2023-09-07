@@ -24,8 +24,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 string? name = null)
             where TKey : notnull
         {
-            var map = builder.Services.TryAddSingletonAndGetService<FactoryServices<IRepository<BlobStorageCacheModel, string>>>();
-            if (!map.Services.ContainsKey($"{typeof(IRepository<BlobStorageCacheModel, string>).FullName}_"))
+            var keyName = $"{typeof(IRepository<BlobStorageCacheModel, string>).FullName}_{name}";
+            if (!builder.Services.HasFactory<IRepository<BlobStorageCacheModel, string>>(keyName))
                 builder.Services.AddRepository<BlobStorageCacheModel, string>(repositoryBuilder =>
                 {
                     repositoryBuilder
@@ -52,8 +52,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 string? name = null)
             where TKey : notnull
         {
-            var map = builder.Services.TryAddSingletonAndGetService<FactoryServices<IRepository<BlobStorageCacheModel, string>>>();
-            if (!map.Services.ContainsKey($"{typeof(IRepository<BlobStorageCacheModel, string>).FullName}_"))
+            var keyName = $"{typeof(IRepository<BlobStorageCacheModel, string>).FullName}_{name}";
+            if (!builder.Services.HasFactory<IRepository<BlobStorageCacheModel, string>>(keyName))
                 builder.Services.AddRepository<BlobStorageCacheModel, string>(repositoryBuilder =>
                 {
                     repositoryBuilder
@@ -80,8 +80,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 string? name = null)
             where TKey : notnull
         {
-            var map = builder.Services.TryAddSingletonAndGetService<FactoryServices<IRepository<BlobStorageCacheModel, string>>>();
-            if (!map.Services.ContainsKey($"{typeof(IRepository<BlobStorageCacheModel, string>).FullName}_"))
+            var keyName = $"{typeof(IRepository<BlobStorageCacheModel, string>).FullName}_{name}";
+            if (!builder.Services.HasFactory<IRepository<BlobStorageCacheModel, string>>(keyName))
                 builder.Services.AddRepository<BlobStorageCacheModel, string>(repositoryBuilder =>
                 {
                     repositoryBuilder

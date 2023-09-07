@@ -1,24 +1,29 @@
 ﻿using System.Reflection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
+using System.Xml.Linq;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
     public static partial class ServiceCollectionExtesions
     {
         private static void SendInError<TService, TImplementation>(this IServiceCollection services, string name)
+            where TService : class
+            where TImplementation : class, TService
         {
-            name = name.GetIntegrationName<TService>();
-            var map = services.TryAddSingletonAndGetService<FactoryServices<TService>>();
-            var descriptor = map.Services[name].Descriptor;
-            throw new ArgumentException($"Service {typeof(TImplementation).FullName} with name: '{name.Replace($"{typeof(TService).FullName}_", string.Empty)}' for your factory {typeof(TService).FullName} already exists in the form of {descriptor.ImplementationType?.FullName ?? descriptor.ImplementationInstance?.GetType().FullName ?? descriptor.ServiceType.FullName}");
+            name = name.GetFactoryName<TService>();
+            _ = services.HasKeyedService<TService, TImplementation>(name, out var serviceDescriptor);
+            throw new ArgumentException($"Service {typeof(TImplementation).FullName} with name: '{name.Replace($"{typeof(TService).FullName}_", string.Empty)}' for your factory {typeof(TService).FullName} already exists in the form of {serviceDescriptor.ImplementationType?.FullName ?? serviceDescriptor.ImplementationInstance?.GetType().FullName ?? serviceDescriptor.ServiceType.FullName}");
         }
         private static void InformThatItsAlreadyInstalled(ref bool check)
         {
             check = false;
         }
-        internal static string GetIntegrationName<TService>(this string? name)
+        internal static string GetFactoryName<TService>(this string? name)
         {
-            return name ?? string.Empty;
+            return $"Rystem.Factory.{name ?? string.Empty}";
+        }
+        internal static string GetOptionsName<TService>(this string? name)
+        {
+            return $"Rystem.Factory.Options.{typeof(TService).FullName}.{name ?? string.Empty}";
         }
         private static IServiceCollection AddEngineFactoryWithoutGenerics(this IServiceCollection services,
             Type serviceType,
@@ -28,166 +33,95 @@ namespace Microsoft.Extensions.DependencyInjection
             ServiceLifetime lifetime,
             object? implementationInstance,
             Func<IServiceProvider, object>? implementationFactory,
-            Action? whenExists,
-            Func<IServiceProvider, object, object>? addingBehaviorToFactory
+            Action? whenExists
             )
         {
             return Generics
                 .WithStatic(typeof(ServiceCollectionExtesions), nameof(ServiceCollectionExtesions.AddEngineFactory), serviceType, implementationType)
-                .Invoke(services, name!, canOverrideConfiguration, lifetime, implementationInstance!, implementationFactory!, whenExists!, addingBehaviorToFactory!);
+                .Invoke(services, name!, canOverrideConfiguration, lifetime, implementationInstance!, implementationFactory!, whenExists!);
+        }
+        private static ServiceDescriptor GetServiceDescriptor<TService, TImplementation>(
+            this IServiceCollection services,
+            string name,
+            ServiceLifetime lifetime,
+            object? implementationInstance,
+            Func<IServiceProvider, object?, TService>? implementationFactory)
+            where TService : class
+            where TImplementation : class, TService
+        {
+            ServiceDescriptor serviceDescriptor;
+            if (implementationFactory != null)
+            {
+                serviceDescriptor = new ServiceDescriptor(typeof(TService), name, implementationFactory, lifetime);
+            }
+            else if (implementationInstance != null)
+            {
+                serviceDescriptor = new ServiceDescriptor(typeof(TService), name, implementationInstance);
+            }
+            else
+            {
+                serviceDescriptor = new ServiceDescriptor(typeof(TService), name, typeof(TImplementation), lifetime);
+            }
+            return serviceDescriptor;
+        }
+        private static ServiceDescriptor GetServiceDescriptor<TService, TImplementation>(
+            this IServiceCollection services,
+            string name,
+            ServiceLifetime lifetime,
+            object? implementationInstance,
+            Func<IServiceProvider, object?, object>? implementationFactory)
+            where TService : class
+            where TImplementation : class, TService
+        {
+            ServiceDescriptor serviceDescriptor;
+            if (implementationFactory != null)
+            {
+                serviceDescriptor = new ServiceDescriptor(typeof(TService), name, implementationFactory, lifetime);
+            }
+            else if (implementationInstance != null)
+            {
+                serviceDescriptor = new ServiceDescriptor(typeof(TService), name, implementationInstance);
+            }
+            else
+            {
+                serviceDescriptor = new ServiceDescriptor(typeof(TService), name, typeof(TImplementation), lifetime);
+            }
+            return serviceDescriptor;
         }
         private static IServiceCollection AddEngineFactory<TService, TImplementation>(this IServiceCollection services,
             string? name,
             bool canOverrideConfiguration,
             ServiceLifetime lifetime,
             TImplementation? implementationInstance,
-            Func<IServiceProvider, TService>? implementationFactory,
-            Action? whenExists,
-            Func<IServiceProvider, TService, TService>? addingBehaviorToFactory)
+            Func<IServiceProvider, object?, TService>? implementationFactory,
+            Action? whenExists)
             where TService : class
             where TImplementation : class, TService
         {
-            name = name.GetIntegrationName<TService>();
-            var serviceType = typeof(TService);
-            var implementationType = typeof(TImplementation);
-            services.TryAddTransient<IFactory<TService>, Factory<TService>>();
-            var map = services.TryAddSingletonAndGetService<FactoryServices<TService>>();
-            if (map.Services.TryGetValue(name, out var value) && canOverrideConfiguration)
+            name = name.GetFactoryName<TService>();
+            services.TryAddKeyedService<TService, TImplementation>(name, lifetime);
+            var existingServiceWithThatName = services.HasKeyedService<TService, TImplementation>(name, out var serviceDescriptor);
+            if (!existingServiceWithThatName || canOverrideConfiguration)
             {
-                var descriptor = value.Descriptor;
-                var toRemove = services.Where(x => x.ServiceType == descriptor.ServiceType).ToList();
-                if (descriptor.ImplementationType != null)
-                    toRemove.AddRange(services.Where(x => x.ImplementationType == descriptor.ImplementationType));
-                foreach (var service in toRemove)
-                    services.Remove(service);
-            }
-            if (!map.Services.ContainsKey(name) || canOverrideConfiguration)
-            {
-                ServiceDescriptor? serviceDescriptor = null;
-                if (implementationFactory != null)
-                {
-                    serviceDescriptor = new ServiceDescriptor(serviceType, implementationFactory, lifetime);
-                }
-                else if (implementationInstance != null)
-                {
-                    serviceDescriptor = new ServiceDescriptor(serviceType, implementationInstance);
-                }
-                else
-                {
-                    var suffix = $"{serviceType.Name}{typeof(TImplementation).Name}{name}{Guid.NewGuid():N}";
-                    var (@interface, implementation) = services
-                        .AddProxy(
-                            serviceType,
-                            implementationType,
-                            $"RystemProxyService{suffix}Interface",
-                            $"RystemProxyService{suffix}Concretization",
-                            lifetime);
-                    serviceDescriptor = new ServiceDescriptor(@interface, implementation, lifetime);
-                }
-                if (!map.Services.ContainsKey(name))
-                    map.Services.TryAdd(name, new()
-                    {
-                        ServiceFactory = ServiceFactory,
-                        Descriptor = serviceDescriptor,
-                    });
-                else
-                {
-                    map.Services[name].ServiceFactory = ServiceFactory;
-                    map.Services[name].Descriptor = serviceDescriptor;
-                }
-                services.AddOrOverrideService(serviceProvider => ServiceFactory(serviceProvider, true), lifetime);
+                if (serviceDescriptor != null)
+                    services.Remove(serviceDescriptor);
+                serviceDescriptor = services.GetServiceDescriptor<TService, TImplementation>(name, lifetime, implementationInstance, implementationFactory);
+                services.Add(serviceDescriptor);
+                services.AddOrOverrideService(serviceProvider => serviceProvider.GetRequiredService<IFactory<TService>>().Create(name)!, lifetime);
             }
             else
                 whenExists?.Invoke();
-
-            TService ServiceFactory(IServiceProvider serviceProvider, bool withDecoration)
-            {
-                var factory = map.Services[name];
-                var service = GetService(factory.Descriptor, null);
-
-                if (withDecoration && factory.Decorators != null)
-                {
-                    foreach (var decoratorType in factory.Decorators)
-                    {
-                        service = GetService(decoratorType,
-                            decorator =>
-                            {
-                                if (decorator is IDecoratorService<TService> decorateWithService)
-                                {
-                                    decorateWithService.SetDecoratedService(service);
-                                }
-                            });
-                    }
-                }
-                return service;
-
-                TService GetService(ServiceDescriptor serviceDescriptor, Action<TService>? afterCreation)
-                {
-                    var service = GetServiceFromServiceProvider();
-                    TService GetServiceFromServiceProvider()
-                    {
-                        if (serviceDescriptor.ImplementationInstance != null)
-                            return (TService)serviceDescriptor.ImplementationInstance;
-                        else if (serviceDescriptor.ImplementationFactory != null)
-                            return (TService)serviceDescriptor.ImplementationFactory(serviceProvider);
-                        else
-                        {
-                            var proxyService = serviceProvider.GetRequiredService(serviceDescriptor.ServiceType);
-                            if (proxyService is ProxyService<TService> proxyServiceProxy)
-                                return proxyServiceProxy.Proxy;
-                        }
-                        return default!;
-                    }
-
-                    addingBehaviorToFactory?.Invoke(serviceProvider, service);
-                    afterCreation?.Invoke(service);
-                    if (service is IServiceForFactory factoryService)
-                        factoryService.SetFactoryName(name);
-                    foreach (var behavior in factory.FurtherBehaviors.Select(x => x.Value))
-                        service = behavior.Invoke(serviceProvider, service);
-                    return service;
-                }
-            }
-
             return services;
         }
         public static bool HasFactory<TService>(
             this IServiceCollection services,
             string? name)
             where TService : class
-        {
-            name = name.GetIntegrationName<TService>();
-            var map = services.TryAddSingletonAndGetService<FactoryServices<TService>>();
-            return map.Services.ContainsKey(name);
-        }
-        public static bool HasFactory<TService>(
+            => services.HasKeyedService<TService>(name, out _);
+        public static bool HasFactory(
             this IServiceCollection services,
             Type serviceType,
             string? name)
-            where TService : class
-        {
-            name = name.GetIntegrationName<TService>();
-            var factoryServicesType = typeof(FactoryServices<>).MakeGenericType(serviceType);
-            var map = (dynamic)services.TryAddSingletonAndGetService(factoryServicesType);
-            return map.Services.ContainsKey(name);
-        }
-        private static TService AddOptionsToFactory<TService, TOptions>(
-            IServiceProvider serviceProvider,
-            TService service,
-            Func<IServiceProvider, TOptions>? optionsCreator)
-             where TOptions : class
-        {
-            if (service is IServiceForFactoryWithOptions<TOptions> serviceWithOptions)
-            {
-                serviceWithOptions.SetOptions(optionsCreator?.Invoke(serviceProvider)!);
-            }
-            else if (service is IServiceForFactoryWithOptions serviceWithCustomOptions)
-            {
-                var dynamicServiceWithCustomOptions = (dynamic)serviceWithCustomOptions;
-                dynamicServiceWithCustomOptions
-                    .SetOptions(optionsCreator?.Invoke(serviceProvider)!);
-            }
-            return service;
-        }
+            => services.HasKeyedService(serviceType, name, out _);
     }
 }

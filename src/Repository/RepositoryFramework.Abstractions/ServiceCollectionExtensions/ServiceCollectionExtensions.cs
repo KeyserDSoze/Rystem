@@ -122,7 +122,7 @@ namespace Microsoft.Extensions.DependencyInjection
                         var repositoryBusinessManagerInterface = typeof(IRepositoryBusinessManager<,>).MakeGenericType(genericArguments);
                         var repositoryBusinessManagerImplementation = typeof(RepositoryBusinessManager<,>).MakeGenericType(genericArguments);
                         services
-                            .TryAddService(repositoryBusinessManagerInterface, repositoryBusinessManagerImplementation, ServiceLifetime.Transient); ;
+                            .TryAddService(repositoryBusinessManagerInterface, repositoryBusinessManagerImplementation, ServiceLifetime.Transient);
                     }
                 }
             }

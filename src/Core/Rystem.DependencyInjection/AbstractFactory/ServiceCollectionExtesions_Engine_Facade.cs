@@ -9,25 +9,26 @@
                 bool canOverrideConfiguration,
                 ServiceLifetime lifetime,
                 TImplementation? implementationInstance,
-                Func<IServiceProvider, TService>? implementationFactory,
+                Func<IServiceProvider, object?, TService>? implementationFactory,
                 Action? whenExists)
                 where TService : class
-                where TImplementation : class, TService, IServiceForFactoryWithOptions<TOptions>
+                where TImplementation : class, TService, IServiceWithFactoryWithOptions<TOptions>
                 where TOptions : class, new()
         {
             var options = new TOptions();
             createOptions.Invoke(options);
-            services.TryAddFactory(options, name, ServiceLifetime.Singleton);
+            var optionsName = name.GetOptionsName<TService>();
+            services.AddOrOverrideFactory<object>((serviceProvider, name) =>
+            {
+                return options;
+            }, optionsName, ServiceLifetime.Singleton);
             services.AddEngineFactory(
                 name,
                 canOverrideConfiguration,
                 lifetime,
                 implementationInstance,
                 implementationFactory,
-                whenExists,
-                (serviceProvider, service) =>
-                    AddOptionsToFactory(serviceProvider, service, serviceProvider => options)
-                );
+                whenExists);
             return services;
         }
         private static IServiceCollection AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
@@ -36,24 +37,25 @@
             bool canOverrideConfiguration,
             ServiceLifetime lifetime,
             TImplementation? implementationInstance,
-            Func<IServiceProvider, TService>? implementationFactory,
+            Func<IServiceProvider, object?, TService>? implementationFactory,
             Action? whenExists)
                where TService : class
-               where TImplementation : class, TService, IServiceForFactoryWithOptions<TBuiltOptions>
+               where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>
                where TOptions : class, IOptionsBuilder<TBuiltOptions>, new()
                where TBuiltOptions : class
         {
             TOptions options = new();
             createOptions.Invoke(options);
             var builtOptions = options.Build();
-            services.TryAddFactory(builtOptions, name, ServiceLifetime.Singleton);
+            var optionsName = name.GetOptionsName<TService>();
+            services.AddOrOverrideFactory<object>((serviceProvider, name) =>
+            {
+                return builtOptions.Invoke(serviceProvider);
+            }, optionsName, ServiceLifetime.Transient);
             services.AddEngineFactory(name, canOverrideConfiguration, lifetime,
                 implementationInstance,
                 implementationFactory,
-                whenExists,
-                (serviceProvider, service) =>
-                    AddOptionsToFactory(serviceProvider, service, builtOptions)
-                );
+                whenExists);
             return services;
         }
         private static async Task<IServiceCollection> AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
@@ -62,23 +64,25 @@
             bool canOverrideConfiguration,
             ServiceLifetime lifetime,
             TImplementation? implementationInstance,
-            Func<IServiceProvider, TService>? implementationFactory,
+            Func<IServiceProvider, object?, TService>? implementationFactory,
             Action? whenExists)
                 where TService : class
-                where TImplementation : class, TService, IServiceForFactoryWithOptions<TBuiltOptions>
+                where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>
                 where TOptions : class, IOptionsBuilderAsync<TBuiltOptions>, new()
                 where TBuiltOptions : class
         {
             TOptions options = new();
             createOptions.Invoke(options);
             var builtOptions = await options.BuildAsync();
-            services.TryAddFactory(builtOptions, name, ServiceLifetime.Singleton);
+            var optionsName = name.GetOptionsName<TService>();
+            services.AddOrOverrideFactory<object>((serviceProvider, name) =>
+            {
+                return builtOptions.Invoke(serviceProvider);
+            }, optionsName, ServiceLifetime.Transient);
             services.AddEngineFactory(name, canOverrideConfiguration, lifetime,
                 implementationInstance,
                 implementationFactory,
-                whenExists,
-                (serviceProvider, service) =>
-                    AddOptionsToFactory(serviceProvider, service, builtOptions)
+                whenExists
                 );
             return services;
         }

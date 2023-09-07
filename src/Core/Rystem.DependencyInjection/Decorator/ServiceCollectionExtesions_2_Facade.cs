@@ -19,7 +19,7 @@
             => services.AddDecorationEngine<TService, TImplementation>(implementationInstance, null, name, lifetime);
         public static IServiceCollection AddDecoration<TService, TImplementation>(
             this IServiceCollection services,
-            Func<IServiceProvider, TService> implementationFactory,
+            Func<IServiceProvider, object?, TService> implementationFactory,
             string? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
            where TService : class

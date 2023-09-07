@@ -3,6 +3,6 @@
     public interface IDecoratedService<out TService>
         where TService : class
     {
-        TService Service { get; }
+        TService? Service { get; }
     }
 }

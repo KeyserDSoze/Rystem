@@ -15,7 +15,8 @@ namespace Microsoft.Extensions.DependencyInjection
             string factoryName,
             ApiAuthorization? authorization,
             List<string> furtherPolicies)
-           where TKey : notnull
+            where TKey : notnull
+            where TService : class
         {
             app.AddApi<T, TKey, TService>(uri, name, factoryName, authorization, furtherPolicies,
                 RepositoryMethods.Get, null,
@@ -39,7 +40,8 @@ namespace Microsoft.Extensions.DependencyInjection
             string factoryName,
             ApiAuthorization? authorization,
             List<string> furtherPolicies)
-           where TKey : notnull
+            where TKey : notnull
+            where TService : class
         {
             app.AddApi<T, TKey, TService>(uri, name, factoryName, authorization, furtherPolicies,
                 RepositoryMethods.Exist, null,
@@ -64,6 +66,7 @@ namespace Microsoft.Extensions.DependencyInjection
             ApiAuthorization? authorization,
             List<string> furtherPolicies)
             where TKey : notnull
+            where TService : class
         {
             _ = app.MapPost(uri,
                 async (HttpRequest request,
@@ -111,6 +114,7 @@ namespace Microsoft.Extensions.DependencyInjection
             ApiAuthorization? authorization,
             List<string> furtherPolicies)
                 where TKey : notnull
+                where TService : class
         {
             _ = app.MapPost(uri,
                 async ([FromQuery] string op, [FromQuery] string? returnType,
@@ -170,6 +174,7 @@ namespace Microsoft.Extensions.DependencyInjection
             ApiAuthorization? authorization,
             List<string> furtherPolicies)
             where TKey : notnull
+            where TService : class
         {
             app.AddApi(uri, name, factoryName, authorization, furtherPolicies,
                 RepositoryMethods.Insert,
@@ -195,6 +200,7 @@ namespace Microsoft.Extensions.DependencyInjection
             ApiAuthorization? authorization,
             List<string> furtherPolicies)
             where TKey : notnull
+            where TService : class
         {
             app.AddApi(uri, name, factoryName, authorization, furtherPolicies,
                 RepositoryMethods.Update,
@@ -220,6 +226,7 @@ namespace Microsoft.Extensions.DependencyInjection
             ApiAuthorization? authorization,
             List<string> furtherPolicies)
             where TKey : notnull
+            where TService : class
         {
             app.AddApi<T, TKey, TService>(uri, name, factoryName, authorization, furtherPolicies,
                 RepositoryMethods.Delete, null,
@@ -243,6 +250,7 @@ namespace Microsoft.Extensions.DependencyInjection
             ApiAuthorization? authorization,
             List<string> furtherPolicies)
             where TKey : notnull
+            where TService : class
         {
             _ = app.MapPost(uri,
                 async ([FromBody] BatchOperations<T, TKey> operations,
@@ -294,6 +302,7 @@ namespace Microsoft.Extensions.DependencyInjection
             Func<T, TKey, TService, CancellationToken, Task<IResult>>? action,
             Func<TKey, TService, CancellationToken, Task<IResult>>? actionWithNoEntity)
             where TKey : notnull
+            where TService : class
         {
             RouteHandlerBuilder? apiMapped = null;
             if (KeySettings<TKey>.Instance.IsJsonable && actionWithNoEntity != null)
