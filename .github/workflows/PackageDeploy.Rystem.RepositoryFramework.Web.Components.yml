@@ -16,6 +16,6 @@ jobs:
       - name: Publish package
         uses: KeyserDSoze/DefaultAction/pushing_nuget_with_symbols@v.1.0.2
         with:
-          dotnet-version: "7.x"
+          dotnet-version: ${{ secrets.NET_VERSION }}
           path: src/Repository/RepositoryFramework.Web/RepositoryFramework.Web.Components/RepositoryFramework.Web.Components.csproj
           api-key: ${{ secrets.NUGET_API_KEY }}
