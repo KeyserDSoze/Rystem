@@ -2,7 +2,7 @@
 
 namespace Microsoft.Extensions.DependencyInjection
 {
-    public static partial class ServiceCollectionExtesions
+    public static partial class ServiceCollectionExtensions
     {
         internal static Dictionary<Type, Dictionary<Type, bool>> ScannedTypes { get; } = new();
         public static ScanResult Scan<T>(

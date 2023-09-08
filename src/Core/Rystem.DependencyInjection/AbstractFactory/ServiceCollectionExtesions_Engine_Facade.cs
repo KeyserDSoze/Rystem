@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    public static partial class ServiceCollectionExtesions
+    public static partial class ServiceCollectionExtensions
     {
         private static IServiceCollection AddFactory<TService, TImplementation, TOptions>(
             this IServiceCollection services,
@@ -13,12 +13,12 @@
                 Action? whenExists)
                 where TService : class
                 where TImplementation : class, TService, IServiceWithFactoryWithOptions<TOptions>
-                where TOptions : class, new()
+                where TOptions : class, IFactoryOptions, new()
         {
             var options = new TOptions();
             createOptions.Invoke(options);
             var optionsName = name.GetOptionsName<TService>();
-            services.AddOrOverrideFactory<object>((serviceProvider, name) =>
+            services.AddOrOverrideFactory<IFactoryOptions>((serviceProvider, name) =>
             {
                 return options;
             }, optionsName, ServiceLifetime.Singleton);
@@ -42,13 +42,13 @@
                where TService : class
                where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>
                where TOptions : class, IOptionsBuilder<TBuiltOptions>, new()
-               where TBuiltOptions : class
+               where TBuiltOptions : class, IFactoryOptions
         {
             TOptions options = new();
             createOptions.Invoke(options);
             var builtOptions = options.Build();
             var optionsName = name.GetOptionsName<TService>();
-            services.AddOrOverrideFactory<object>((serviceProvider, name) =>
+            services.AddOrOverrideFactory<IFactoryOptions>((serviceProvider, name) =>
             {
                 return builtOptions.Invoke(serviceProvider);
             }, optionsName, ServiceLifetime.Transient);
@@ -69,13 +69,13 @@
                 where TService : class
                 where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>
                 where TOptions : class, IOptionsBuilderAsync<TBuiltOptions>, new()
-                where TBuiltOptions : class
+                where TBuiltOptions : class, IFactoryOptions
         {
             TOptions options = new();
             createOptions.Invoke(options);
             var builtOptions = await options.BuildAsync();
             var optionsName = name.GetOptionsName<TService>();
-            services.AddOrOverrideFactory<object>((serviceProvider, name) =>
+            services.AddOrOverrideFactory<IFactoryOptions>((serviceProvider, name) =>
             {
                 return builtOptions.Invoke(serviceProvider);
             }, optionsName, ServiceLifetime.Transient);

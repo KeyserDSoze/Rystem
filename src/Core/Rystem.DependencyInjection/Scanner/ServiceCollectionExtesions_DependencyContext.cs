@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyModel;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
-    public static partial class ServiceCollectionExtesions
+    public static partial class ServiceCollectionExtensions
     {
         public static ScanResult ScanDependencyContext<T>(
             this IServiceCollection services,

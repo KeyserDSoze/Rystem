@@ -1,6 +1,8 @@
-﻿namespace RepositoryFramework.Api.Client
+﻿using Microsoft.Extensions.DependencyInjection;
+
+namespace RepositoryFramework.Api.Client
 {
-    public sealed class ApiClientSettings<T, TKey>
+    public sealed class ApiClientSettings<T, TKey> : IFactoryOptions
         where TKey : notnull
     {
         public string StartingPath { get; }

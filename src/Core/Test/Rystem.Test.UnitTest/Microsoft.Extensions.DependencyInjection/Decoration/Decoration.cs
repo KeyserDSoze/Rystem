@@ -69,7 +69,7 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection.Decorati
     {
         public string Name { get; set; } = "Hello!!";
     }
-    public class RepositoryOptions
+    public class RepositoryOptions : IFactoryOptions
     {
         public string Name { get; set; }
     }

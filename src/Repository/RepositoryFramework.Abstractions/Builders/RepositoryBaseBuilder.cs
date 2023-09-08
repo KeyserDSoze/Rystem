@@ -45,7 +45,7 @@ namespace RepositoryFramework
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern, IServiceWithFactoryWithOptions<TConnection>
             where TStorageOptions : class, IOptionsBuilderAsync<TConnection>, new()
-            where TConnection : class
+            where TConnection : class, IFactoryOptions
         {
             SetDefaultFrameworkBeforeStorage<TStorage>(name, serviceLifetime);
             await Services
@@ -59,7 +59,7 @@ namespace RepositoryFramework
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern, IServiceWithFactoryWithOptions<TConnection>
             where TStorageOptions : class, IOptionsBuilder<TConnection>, new()
-            where TConnection : class
+            where TConnection : class, IFactoryOptions
         {
             SetDefaultFrameworkBeforeStorage<TStorage>(name, serviceLifetime);
             Services
@@ -71,7 +71,7 @@ namespace RepositoryFramework
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern, IServiceWithFactoryWithOptions<TStorageOptions>
-            where TStorageOptions : class, new()
+            where TStorageOptions : class, IFactoryOptions, new()
         {
             SetDefaultFrameworkBeforeStorage<TStorage>(name, serviceLifetime);
             Services

@@ -2,7 +2,7 @@
 
 namespace Microsoft.Extensions.DependencyInjection
 {
-    public static partial class ServiceCollectionExtesions
+    public static partial class ServiceCollectionExtensions
     {
         public static ScanResult ScanCallingAssembly<T>(
             this IServiceCollection services,

@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    public static partial class ServiceCollectionExtesions
+    public static partial class ServiceCollectionExtensions
     {
         public static IServiceCollection AddDecoration<TService, TImplementation>(
             this IServiceCollection services,

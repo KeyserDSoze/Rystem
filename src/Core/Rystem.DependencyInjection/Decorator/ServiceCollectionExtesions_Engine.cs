@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    public static partial class ServiceCollectionExtesions
+    public static partial class ServiceCollectionExtensions
     {
         internal static string GetDecoratedName<TService>(this string? name)
         {
@@ -25,7 +25,7 @@
         {
             var factoryName = name.GetFactoryName<TService>();
             var decoratedName = name.GetDecoratedName<TService>();
-            var descriptor = services.FirstOrDefault(x => x.IsKeyedService && x.ServiceKey == factoryName && x.ServiceType == typeof(TService));
+            var descriptor = services.GetDescriptor<TService>(factoryName);
             if (descriptor != null)
             {
                 services.Remove(descriptor);

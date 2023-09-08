@@ -13,17 +13,17 @@ namespace RepositoryFramework
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern, IServiceWithFactoryWithOptions<TConnection>
             where TStorageOptions : class, IOptionsBuilder<TConnection>, new()
-            where TConnection : class;
+            where TConnection : class, IFactoryOptions;
         TRepositoryBuilder SetStorageWithOptions<TStorage, TStorageOptions>(Action<TStorageOptions> options, string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
            where TStorage : class, TRepositoryPattern, IServiceWithFactoryWithOptions<TStorageOptions>
-           where TStorageOptions : class, new();
+           where TStorageOptions : class, IFactoryOptions, new();
         Task<TRepositoryBuilder> SetStorageAndBuildOptionsAsync<TStorage, TStorageOptions, TConnection>(
             Action<TStorageOptions> options,
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern, IServiceWithFactoryWithOptions<TConnection>
             where TStorageOptions : class, IOptionsBuilderAsync<TConnection>, new()
-            where TConnection : class;
+            where TConnection : class, IFactoryOptions;
         TRepositoryBuilder SetStorage<TStorage>(string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern;
         Func<Task>? AfterBuildAsync { get; set; }

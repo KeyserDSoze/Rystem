@@ -1,9 +1,8 @@
 ﻿using System.Reflection;
-using System.Xml.Linq;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
-    public static partial class ServiceCollectionExtesions
+    public static partial class ServiceCollectionExtensions
     {
         private static void SendInError<TService, TImplementation>(this IServiceCollection services, string name)
             where TService : class
@@ -37,10 +36,10 @@ namespace Microsoft.Extensions.DependencyInjection
             )
         {
             return Generics
-                .WithStatic(typeof(ServiceCollectionExtesions), nameof(ServiceCollectionExtesions.AddEngineFactory), serviceType, implementationType)
+                .WithStatic(typeof(ServiceCollectionExtensions), nameof(AddEngineFactory), serviceType, implementationType)
                 .Invoke(services, name!, canOverrideConfiguration, lifetime, implementationInstance!, implementationFactory!, whenExists!);
         }
-        private static ServiceDescriptor GetServiceDescriptor<TService, TImplementation>(
+        private static RystemServiceDescriptor GetServiceDescriptor<TService, TImplementation>(
             this IServiceCollection services,
             string name,
             ServiceLifetime lifetime,
@@ -49,22 +48,22 @@ namespace Microsoft.Extensions.DependencyInjection
             where TService : class
             where TImplementation : class, TService
         {
-            ServiceDescriptor serviceDescriptor;
+            RystemServiceDescriptor serviceDescriptor;
             if (implementationFactory != null)
             {
-                serviceDescriptor = new ServiceDescriptor(typeof(TService), name, implementationFactory, lifetime);
+                serviceDescriptor = new RystemServiceDescriptor(typeof(TService), name, implementationFactory, lifetime);
             }
             else if (implementationInstance != null)
             {
-                serviceDescriptor = new ServiceDescriptor(typeof(TService), name, implementationInstance);
+                serviceDescriptor = new RystemServiceDescriptor(typeof(TService), name, implementationInstance);
             }
             else
             {
-                serviceDescriptor = new ServiceDescriptor(typeof(TService), name, typeof(TImplementation), lifetime);
+                serviceDescriptor = new RystemServiceDescriptor(typeof(TService), name, typeof(TImplementation), lifetime);
             }
             return serviceDescriptor;
         }
-        private static ServiceDescriptor GetServiceDescriptor<TService, TImplementation>(
+        private static RystemServiceDescriptor GetServiceDescriptor<TService, TImplementation>(
             this IServiceCollection services,
             string name,
             ServiceLifetime lifetime,
@@ -73,18 +72,18 @@ namespace Microsoft.Extensions.DependencyInjection
             where TService : class
             where TImplementation : class, TService
         {
-            ServiceDescriptor serviceDescriptor;
+            RystemServiceDescriptor serviceDescriptor;
             if (implementationFactory != null)
             {
-                serviceDescriptor = new ServiceDescriptor(typeof(TService), name, implementationFactory, lifetime);
+                serviceDescriptor = new RystemServiceDescriptor(typeof(TService), name, implementationFactory, lifetime);
             }
             else if (implementationInstance != null)
             {
-                serviceDescriptor = new ServiceDescriptor(typeof(TService), name, implementationInstance);
+                serviceDescriptor = new RystemServiceDescriptor(typeof(TService), name, implementationInstance);
             }
             else
             {
-                serviceDescriptor = new ServiceDescriptor(typeof(TService), name, typeof(TImplementation), lifetime);
+                serviceDescriptor = new RystemServiceDescriptor(typeof(TService), name, typeof(TImplementation), lifetime);
             }
             return serviceDescriptor;
         }
@@ -99,14 +98,26 @@ namespace Microsoft.Extensions.DependencyInjection
             where TImplementation : class, TService
         {
             name = name.GetFactoryName<TService>();
-            services.TryAddKeyedService<TService, TImplementation>(name, lifetime);
             var existingServiceWithThatName = services.HasKeyedService<TService, TImplementation>(name, out var serviceDescriptor);
             if (!existingServiceWithThatName || canOverrideConfiguration)
             {
-                if (serviceDescriptor != null)
-                    services.Remove(serviceDescriptor);
-                serviceDescriptor = services.GetServiceDescriptor<TService, TImplementation>(name, lifetime, implementationInstance, implementationFactory);
-                services.Add(serviceDescriptor);
+                var id = 0;
+                if (s_services.ContainsKey(name))
+                {
+                    id = s_services[name].Id;
+                }
+                else
+                {
+                    id = s_services.Count(x => x.Value.ServiceType == typeof(TService));
+                }
+                services.AddKeyedServiceEngine(typeof(TService),
+                    name,
+                    typeof(TService) != typeof(TImplementation) ? typeof(TImplementation) : null,
+                    implementationInstance,
+                    implementationFactory,
+                    lifetime,
+                    canOverrideConfiguration,
+                    id);
                 services.AddOrOverrideService(serviceProvider => serviceProvider.GetRequiredService<IFactory<TService>>().Create(name)!, lifetime);
             }
             else

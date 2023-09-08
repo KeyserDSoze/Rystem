@@ -4,10 +4,11 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.MsSql
 {
-    internal sealed class MsSqlOptions<T, TKey>
+    internal sealed class MsSqlOptions<T, TKey> : IFactoryOptions
         where TKey : notnull
     {
         public string Schema { get; set; } = "dbo";

@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    public static partial class ServiceCollectionExtesions
+    public static partial class ServiceCollectionExtensions
     {
         public static bool AddOrOverrideFactory<TService>(this IServiceCollection services,
            TService implementationInstance,
@@ -18,7 +18,7 @@
             string? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class, IServiceWithFactoryWithOptions<TOptions>
-            where TOptions : class, new()
+            where TOptions : class, IFactoryOptions, new()
         {
             var check = true;
             services.AddFactory<TService, TService, TOptions>(createOptions, name, true, lifetime, implementationInstance, null, () => InformThatItsAlreadyInstalled(ref check));
@@ -31,7 +31,7 @@
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class, IServiceWithFactoryWithOptions<TBuiltOptions>
             where TOptions : class, IOptionsBuilder<TBuiltOptions>, new()
-            where TBuiltOptions : class
+            where TBuiltOptions : class, IFactoryOptions
         {
             var check = true;
             services.AddFactory<TService, TService, TOptions, TBuiltOptions>(createOptions, name, true, lifetime, implementationInstance, null, () => InformThatItsAlreadyInstalled(ref check));
@@ -45,7 +45,7 @@
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class, IServiceWithFactoryWithOptions<TBuiltOptions>
             where TOptions : class, IOptionsBuilderAsync<TBuiltOptions>, new()
-            where TBuiltOptions : class
+            where TBuiltOptions : class, IFactoryOptions
         {
             var check = true;
             await services

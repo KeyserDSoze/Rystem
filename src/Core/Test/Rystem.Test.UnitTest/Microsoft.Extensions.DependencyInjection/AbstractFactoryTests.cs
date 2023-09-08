@@ -31,7 +31,7 @@ namespace Rystem.Test.UnitTest.DependencyInjection
             Options = options;
         }
     }
-    public class TestOptions
+    public class TestOptions : IFactoryOptions
     {
         public string ClassicName { get; set; }
     }

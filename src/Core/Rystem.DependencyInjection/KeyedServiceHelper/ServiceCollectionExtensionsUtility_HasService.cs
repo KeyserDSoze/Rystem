@@ -8,10 +8,7 @@
             out ServiceDescriptor? serviceDescriptor)
             where TService : class
         {
-            serviceDescriptor = services.FirstOrDefault(
-                 x => x.IsKeyedService
-                    && x.ServiceKey == serviceKey
-                    && x.ServiceType == typeof(TService));
+            serviceDescriptor = services.GetDescriptor(typeof(TService), serviceKey);
             return serviceDescriptor != null;
         }
 
@@ -22,12 +19,7 @@
             where TService : class
             where TImplementation : class, TService
         {
-            serviceDescriptor = services.FirstOrDefault(
-                    x => x.IsKeyedService
-                    && x.ServiceKey == serviceKey
-                    && x.ServiceType == typeof(TService)
-                    && (x.ImplementationType == typeof(TImplementation)
-                    || x.ImplementationInstance?.GetType() == typeof(TImplementation)));
+            serviceDescriptor = services.GetDescriptor<TService>(serviceKey);
             return serviceDescriptor != null;
         }
         public static bool HasKeyedService(
@@ -36,10 +28,7 @@
             object? serviceKey,
             out ServiceDescriptor? serviceDescriptor)
         {
-            serviceDescriptor = services.FirstOrDefault(
-                 x => x.IsKeyedService
-                    && x.ServiceKey == serviceKey
-                    && x.ServiceType == serviceType);
+            serviceDescriptor = services.GetDescriptor(serviceType, serviceKey);
             return serviceDescriptor != null;
         }
 
@@ -50,12 +39,9 @@
             Type implementationType,
             out ServiceDescriptor? serviceDescriptor)
         {
-            serviceDescriptor = services.FirstOrDefault(
-                    x => x.IsKeyedService
-                    && x.ServiceKey == serviceKey
-                    && x.ServiceType == serviceType
-                    && (x.ImplementationType == implementationType
-                    || x.ImplementationInstance?.GetType() == implementationType));
+            serviceDescriptor = services
+                .GetDescriptor(serviceType,
+                serviceKey, implementationType);
             return serviceDescriptor != null;
         }
     }

@@ -27,7 +27,7 @@ namespace Rystem.Content
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
             where TFileRepository : class, IContentRepository, IServiceWithFactoryWithOptions<TOptions>
-            where TOptions : class, new();
+            where TOptions : class, IFactoryOptions, new();
         /// <summary>
         /// Add content repository integration
         /// </summary>
@@ -44,6 +44,6 @@ namespace Rystem.Content
             ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
             where TFileRepository : class, IContentRepository, IServiceWithFactoryWithOptions<TConnection>
             where TOptions : class, IOptionsBuilderAsync<TConnection>, new()
-            where TConnection : class;
+            where TConnection : class, IFactoryOptions;
     }
 }

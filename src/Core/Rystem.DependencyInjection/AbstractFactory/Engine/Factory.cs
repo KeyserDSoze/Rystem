@@ -26,10 +26,10 @@
                 factoryService.SetFactoryName(name);
             if (service is IDecoratorService<TService> decoratorService)
                 decoratorService.SetDecoratedService(CreateWithoutDecoration(name)!);
-            if (service is IServiceForFactoryWithOptions serviceWithCustomOptions)
+            if (service is IServiceWithFactoryWithOptions serviceWithCustomOptions)
             {
                 var optionsName = name.GetOptionsName<TService>();
-                var options = _serviceProvider.GetKeyedService<object>(optionsName);
+                var options = _serviceProvider.GetKeyedService<IFactoryOptions>(optionsName);
                 var dynamicServiceWithCustomOptions = (dynamic)serviceWithCustomOptions;
                 dynamicServiceWithCustomOptions
                     .SetOptions(options);

@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    public static partial class ServiceCollectionExtesions
+    public static partial class ServiceCollectionExtensions
     {
         public static IServiceCollection AddFactory<TService, TImplementation>(this IServiceCollection services,
            Func<IServiceProvider, object?, TService> implementationFactory,
@@ -16,7 +16,7 @@
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
             where TImplementation : class, TService, IServiceWithFactoryWithOptions<TOptions>
-            where TOptions : class, new()
+            where TOptions : class, IFactoryOptions, new()
             => services.AddFactory<TService, TImplementation, TOptions>(createOptions, name, false, lifetime, null, implementationFactory, () => services.SendInError<TService, TImplementation>(name ?? string.Empty));
         public static IServiceCollection AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Func<IServiceProvider, object?, TService> implementationFactory,
@@ -26,7 +26,7 @@
             where TService : class
             where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>
             where TOptions : class, IOptionsBuilder<TBuiltOptions>, new()
-            where TBuiltOptions : class
+            where TBuiltOptions : class, IFactoryOptions
             => services.AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, false, lifetime, null, implementationFactory, () => services.SendInError<TService, TImplementation>(name ?? string.Empty));
         public static Task<IServiceCollection> AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Func<IServiceProvider, object?, TService> implementationFactory,
@@ -36,7 +36,7 @@
             where TService : class
             where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>
             where TOptions : class, IOptionsBuilderAsync<TBuiltOptions>, new()
-            where TBuiltOptions : class
+            where TBuiltOptions : class, IFactoryOptions
             => services.AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, false, lifetime, null, implementationFactory, () => services.SendInError<TService, TImplementation>(name ?? string.Empty));
 
     }

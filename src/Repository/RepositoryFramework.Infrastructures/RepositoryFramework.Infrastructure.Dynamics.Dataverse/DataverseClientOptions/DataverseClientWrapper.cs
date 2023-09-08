@@ -1,8 +1,9 @@
-﻿using Microsoft.PowerPlatform.Dataverse.Client;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.PowerPlatform.Dataverse.Client;
 
 namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
 {
-    internal sealed class DataverseClientWrapper<T, TKey>
+    internal sealed class DataverseClientWrapper<T, TKey> : IFactoryOptions
         where TKey : notnull
     {
         public ServiceClient Client { get; set; } = null!;

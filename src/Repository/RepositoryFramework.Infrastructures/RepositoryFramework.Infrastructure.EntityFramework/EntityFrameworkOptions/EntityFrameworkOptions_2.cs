@@ -1,9 +1,10 @@
 ﻿using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.EntityFramework
 {
-    public sealed class EntityFrameworkOptions<T, TKey, TEntityModel, TContext>
+    public sealed class EntityFrameworkOptions<T, TKey, TEntityModel, TContext> : IFactoryOptions
         where TEntityModel : class
         where TKey : notnull
         where TContext : DbContext
