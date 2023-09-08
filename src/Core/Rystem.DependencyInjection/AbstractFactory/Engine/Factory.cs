@@ -15,7 +15,7 @@
         }
         public TService? CreateWithoutDecoration(string? name = null)
         {
-            var decoratedName = name.GetDecoratedName<TService>();
+            var decoratedName = name.GetDecoratedName<TService>().GetFactoryName<TService>();
             return Create(name, decoratedName);
         }
         private TService? Create(string? name, string factoryName)
@@ -28,7 +28,7 @@
                 decoratorService.SetDecoratedService(CreateWithoutDecoration(name)!);
             if (service is IServiceWithFactoryWithOptions serviceWithCustomOptions)
             {
-                var optionsName = name.GetOptionsName<TService>();
+                var optionsName = name.GetOptionsName<TService>().GetFactoryName<IFactoryOptions>();
                 var options = _serviceProvider.GetKeyedService<IFactoryOptions>(optionsName);
                 var dynamicServiceWithCustomOptions = (dynamic)serviceWithCustomOptions;
                 dynamicServiceWithCustomOptions

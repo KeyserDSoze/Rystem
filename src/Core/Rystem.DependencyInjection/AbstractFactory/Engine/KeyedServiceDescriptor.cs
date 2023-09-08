@@ -2,9 +2,9 @@
 
 namespace Microsoft.Extensions.DependencyInjection
 {
-    public class RystemServiceDescriptor : ServiceDescriptor
+    public class KeyedServiceDescriptor : ServiceDescriptor
     {
-        public RystemServiceDescriptor(
+        public KeyedServiceDescriptor(
             Type serviceType,
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type implementationType,
             ServiceLifetime lifetime)
@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.DependencyInjection
         {
         }
 
-        public RystemServiceDescriptor(
+        public KeyedServiceDescriptor(
             Type serviceType,
             object? serviceKey,
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type implementationType,
@@ -22,14 +22,14 @@ namespace Microsoft.Extensions.DependencyInjection
             ServiceKey = serviceKey;
         }
 
-        public RystemServiceDescriptor(
+        public KeyedServiceDescriptor(
             Type serviceType,
             object instance)
             : base(serviceType, instance)
         {
         }
 
-        public RystemServiceDescriptor(
+        public KeyedServiceDescriptor(
             Type serviceType,
             object? serviceKey,
             object instance)
@@ -37,8 +37,16 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             ServiceKey = serviceKey;
         }
+        public KeyedServiceDescriptor(
+            Type serviceType,
+            object? serviceKey,
+            ServiceLifetime lifetime)
+            : base(serviceType, lifetime)
+        {
+            ServiceKey = serviceKey;
+        }
 
-        public RystemServiceDescriptor(
+        public KeyedServiceDescriptor(
             Type serviceType,
             Func<IServiceProvider, object> factory,
             ServiceLifetime lifetime)
@@ -46,7 +54,7 @@ namespace Microsoft.Extensions.DependencyInjection
         {
         }
 
-        public RystemServiceDescriptor(
+        public KeyedServiceDescriptor(
             Type serviceType,
             object? serviceKey,
             Func<IServiceProvider, object?, object> factory,
@@ -60,20 +68,24 @@ namespace Microsoft.Extensions.DependencyInjection
         public bool IsKeyedService => ServiceKey != null;
         public object? KeyedImplementationInstance => ImplementationInstance;
         public Func<IServiceProvider, object?, object>? KeyedImplementationFactory => ImplementationFactory == null ? null : (serviceProvider, key) => ImplementationFactory(serviceProvider);
-        public int Id { get; init; }
+        public int Skip { get; set; }
     }
     public static class ServiceProviderExtensions
     {
-        public static T GetKeyedService<T>(this IServiceProvider serviceProvider, string name)
+        public static T? GetKeyedService<T>(this IServiceProvider serviceProvider, string name)
             where T : class
         {
             var services = serviceProvider.GetServices<T>();
+            if (ServiceCollectionExtensions.Services.TryGetValue(name, out var descriptor))
+            {
+                return services.Skip(descriptor.Skip).FirstOrDefault();
+            }
             return default;
         }
     }
     public static partial class ServiceCollectionExtensions
     {
-        private static readonly Dictionary<object, RystemServiceDescriptor> s_services;
+        internal static readonly Dictionary<object, KeyedServiceDescriptor> Services = new();
         private static IServiceCollection AddKeyedServiceEngine(this IServiceCollection services,
             Type serviceType,
             object? serviceKey,
@@ -86,11 +98,11 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             if (serviceKey == null)
                 throw new ArgumentNullException(nameof(serviceKey));
-            if (s_services.ContainsKey(serviceKey))
+            if (Services.ContainsKey(serviceKey))
             {
                 if (canOverride == true)
                 {
-                    if (s_services.Remove(serviceKey, out var value))
+                    if (Services.Remove(serviceKey, out var value))
                         services.Remove(value);
                 }
                 else if (canOverride == false)
@@ -98,19 +110,19 @@ namespace Microsoft.Extensions.DependencyInjection
                 else
                     return services;
             }
-            RystemServiceDescriptor descriptor;
+            KeyedServiceDescriptor descriptor;
             if (instance != null)
-                descriptor = new RystemServiceDescriptor(serviceType, serviceKey, instance) { Id = id };
+                descriptor = new KeyedServiceDescriptor(serviceType, serviceKey, instance) { Skip = id };
             else if (instanceFactory != null)
-                descriptor = new RystemServiceDescriptor(serviceType, serviceKey, (services, key) => instanceFactory(services, key), lifetime) { Id = id };
+                descriptor = new KeyedServiceDescriptor(serviceType, serviceKey, (services, key) => instanceFactory(services, key), lifetime) { Skip = id };
             else
             {
                 if (implementationType == null)
-                    descriptor = new RystemServiceDescriptor(serviceType, serviceKey) { Id = id };
+                    descriptor = new KeyedServiceDescriptor(serviceType, serviceKey, lifetime) { Skip = id };
                 else
-                    descriptor = new RystemServiceDescriptor(serviceType, serviceKey, implementationType) { Id = id };
+                    descriptor = new KeyedServiceDescriptor(serviceType, serviceKey, implementationType, lifetime) { Skip = id };
             }
-            s_services.Add(serviceKey, descriptor);
+            Services.Add(serviceKey, descriptor);
             services.Add(descriptor);
             return services;
         }
@@ -188,10 +200,6 @@ namespace Microsoft.Extensions.DependencyInjection
             object? serviceKey,
             Type implementationType)
         => services.AddKeyedServiceEngine(serviceType, serviceKey, implementationType, null, null, ServiceLifetime.Scoped, false);
-
-
-
-
         public static IServiceCollection TryAddKeyedSingleton<TService>(this IServiceCollection services,
             object? serviceKey,
             TService implementation)
@@ -276,39 +284,50 @@ namespace Microsoft.Extensions.DependencyInjection
             object? serviceKey,
             Type implementationType)
         => services.AddKeyedServiceEngine(serviceType, serviceKey, implementationType, null, null, ServiceLifetime.Scoped, true);
-
-        public static RystemServiceDescriptor? GetDescriptor<TService>(this IServiceCollection services,
+        public static ServiceDescriptor? GetDescriptor<TService>(this IServiceCollection services,
             object? serviceKey)
             => services.GetDrescriptorEngine(typeof(TService), serviceKey, null);
-        public static RystemServiceDescriptor? GetDescriptor<TService, TImplementation>(this IServiceCollection services,
+        public static ServiceDescriptor? GetDescriptor<TService, TImplementation>(this IServiceCollection services,
             object? serviceKey)
             where TService : class
             where TImplementation : class, TService
             => services.GetDrescriptorEngine(typeof(TService), serviceKey, typeof(TImplementation));
-        public static RystemServiceDescriptor? GetDescriptor(this IServiceCollection services,
+        public static ServiceDescriptor? GetDescriptor(this IServiceCollection services,
             Type serviceType,
             object? serviceKey)
             => services.GetDrescriptorEngine(serviceType, serviceKey, null);
-        public static RystemServiceDescriptor? GetDescriptor(this IServiceCollection services,
+        public static ServiceDescriptor? GetDescriptor(this IServiceCollection services,
             Type serviceType,
             object? serviceKey,
             Type implementationType)
             => services.GetDrescriptorEngine(serviceType, serviceKey, implementationType);
-        private static RystemServiceDescriptor? GetDrescriptorEngine(
+        private static ServiceDescriptor? GetDrescriptorEngine(
             this IServiceCollection services,
             Type serviceType,
             object? serviceKey,
             Type? implementationType)
         {
-            var serviceDescriptor = services
-                .Where(x => x is RystemServiceDescriptor)
-                .Select(x => x as RystemServiceDescriptor).FirstOrDefault(
-                    x => x.IsKeyedService
-                    && x.ServiceKey == serviceKey
-                    && x.ServiceType == serviceType
-                    && (implementationType == null || x.ImplementationType == implementationType
-                    || x.ImplementationInstance?.GetType() == implementationType));
-            return serviceDescriptor;
+            if (serviceKey != null)
+            {
+                var serviceDescriptor = services
+                    .Where(x => x is KeyedServiceDescriptor)
+                    .Select(x => x as KeyedServiceDescriptor).FirstOrDefault(
+                        x => (serviceKey == null || x!.IsKeyedService)
+                        && (serviceKey == null || x!.ServiceKey?.Equals(serviceKey) == true)
+                        && x!.ServiceType == serviceType
+                        && (implementationType == null || x.ImplementationType == implementationType
+                        || x.ImplementationInstance?.GetType() == implementationType));
+                return serviceDescriptor;
+            }
+            else
+            {
+                var serviceDescriptor = services
+                    .FirstOrDefault(
+                        x => x!.ServiceType == serviceType
+                        && (implementationType == null || x.ImplementationType == implementationType
+                        || x.ImplementationInstance?.GetType() == implementationType));
+                return serviceDescriptor;
+            }
         }
     }
 }

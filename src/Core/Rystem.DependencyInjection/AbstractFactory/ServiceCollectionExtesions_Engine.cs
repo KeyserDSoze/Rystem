@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -18,7 +19,7 @@ namespace Microsoft.Extensions.DependencyInjection
         }
         internal static string GetFactoryName<TService>(this string? name)
         {
-            return $"Rystem.Factory.{name ?? string.Empty}";
+            return $"Rystem.Factory.{typeof(TService).FullName}.{name ?? string.Empty}";
         }
         internal static string GetOptionsName<TService>(this string? name)
         {
@@ -31,61 +32,13 @@ namespace Microsoft.Extensions.DependencyInjection
             bool canOverrideConfiguration,
             ServiceLifetime lifetime,
             object? implementationInstance,
-            Func<IServiceProvider, object>? implementationFactory,
+            Func<IServiceProvider, object?, object>? implementationFactory,
             Action? whenExists
             )
         {
             return Generics
                 .WithStatic(typeof(ServiceCollectionExtensions), nameof(AddEngineFactory), serviceType, implementationType)
                 .Invoke(services, name!, canOverrideConfiguration, lifetime, implementationInstance!, implementationFactory!, whenExists!);
-        }
-        private static RystemServiceDescriptor GetServiceDescriptor<TService, TImplementation>(
-            this IServiceCollection services,
-            string name,
-            ServiceLifetime lifetime,
-            object? implementationInstance,
-            Func<IServiceProvider, object?, TService>? implementationFactory)
-            where TService : class
-            where TImplementation : class, TService
-        {
-            RystemServiceDescriptor serviceDescriptor;
-            if (implementationFactory != null)
-            {
-                serviceDescriptor = new RystemServiceDescriptor(typeof(TService), name, implementationFactory, lifetime);
-            }
-            else if (implementationInstance != null)
-            {
-                serviceDescriptor = new RystemServiceDescriptor(typeof(TService), name, implementationInstance);
-            }
-            else
-            {
-                serviceDescriptor = new RystemServiceDescriptor(typeof(TService), name, typeof(TImplementation), lifetime);
-            }
-            return serviceDescriptor;
-        }
-        private static RystemServiceDescriptor GetServiceDescriptor<TService, TImplementation>(
-            this IServiceCollection services,
-            string name,
-            ServiceLifetime lifetime,
-            object? implementationInstance,
-            Func<IServiceProvider, object?, object>? implementationFactory)
-            where TService : class
-            where TImplementation : class, TService
-        {
-            RystemServiceDescriptor serviceDescriptor;
-            if (implementationFactory != null)
-            {
-                serviceDescriptor = new RystemServiceDescriptor(typeof(TService), name, implementationFactory, lifetime);
-            }
-            else if (implementationInstance != null)
-            {
-                serviceDescriptor = new RystemServiceDescriptor(typeof(TService), name, implementationInstance);
-            }
-            else
-            {
-                serviceDescriptor = new RystemServiceDescriptor(typeof(TService), name, typeof(TImplementation), lifetime);
-            }
-            return serviceDescriptor;
         }
         private static IServiceCollection AddEngineFactory<TService, TImplementation>(this IServiceCollection services,
             string? name,
@@ -98,17 +51,22 @@ namespace Microsoft.Extensions.DependencyInjection
             where TImplementation : class, TService
         {
             name = name.GetFactoryName<TService>();
+            services.TryAddTransient<IFactory<TService>, Factory<TService>>();
             var existingServiceWithThatName = services.HasKeyedService<TService, TImplementation>(name, out var serviceDescriptor);
             if (!existingServiceWithThatName || canOverrideConfiguration)
             {
                 var id = 0;
-                if (s_services.ContainsKey(name))
+                var reorder = false;
+                if (Services.ContainsKey(name))
                 {
-                    id = s_services[name].Id;
+                    id = Services[name].Skip;
+                    reorder = true;
                 }
                 else
                 {
-                    id = s_services.Count(x => x.Value.ServiceType == typeof(TService));
+                    id = Services.Count(x => x.Value.ServiceType == typeof(TService));
+                    if (id > 0)
+                        services.Remove(services.First(x => x.ServiceType == typeof(TService)));
                 }
                 services.AddKeyedServiceEngine(typeof(TService),
                     name,
@@ -118,7 +76,20 @@ namespace Microsoft.Extensions.DependencyInjection
                     lifetime,
                     canOverrideConfiguration,
                     id);
-                services.AddOrOverrideService(serviceProvider => serviceProvider.GetRequiredService<IFactory<TService>>().Create(name)!, lifetime);
+                if (reorder)
+                {
+                    foreach (var service in Services.Where(x => x.Value.ServiceType == typeof(TService)))
+                    {
+                        services.Remove(service.Value);
+                    }
+                    foreach (var service in Services.Where(x => x.Value.ServiceType == typeof(TService)).OrderBy(x => x.Value.Skip))
+                    {
+                        services.Add(service.Value);
+                    }
+                }
+                //todo: remember that we need to add this feature in the next release with .net 8 because we need to inject directly the last implementation of a service to retrieve without IFactory
+
+                services.AddService(serviceProvider => serviceProvider.GetRequiredService<IFactory<TService>>().Create(name)!, lifetime);
             }
             else
                 whenExists?.Invoke();

@@ -4,7 +4,7 @@
     {
         internal static string GetDecoratedName<TService>(this string? name)
         {
-            return $"Rystem.Decorated.{name ?? string.Empty}";
+            return $"Rystem.Decorated.{typeof(TService).FullName}.{name ?? string.Empty}";
         }
         private static IServiceCollection AddDecorationEngine<TService>(
            this IServiceCollection services,
@@ -25,14 +25,18 @@
         {
             var factoryName = name.GetFactoryName<TService>();
             var decoratedName = name.GetDecoratedName<TService>();
-            var descriptor = services.GetDescriptor<TService>(factoryName);
+            var descriptor = services.GetDescriptor<TService>(factoryName) ?? services.GetDescriptor<TService>(null);
             if (descriptor != null)
             {
                 services.Remove(descriptor);
-                descriptor = services
-                    .GetServiceDescriptor<TService, TImplementation>(
-                        decoratedName, descriptor.Lifetime, descriptor.KeyedImplementationInstance, descriptor.KeyedImplementationFactory);
-                services.Add(descriptor);
+                services.AddEngineFactoryWithoutGenerics(typeof(TService),
+                    typeof(TImplementation),
+                        decoratedName, true, descriptor.Lifetime,
+                        (descriptor as KeyedServiceDescriptor)?.KeyedImplementationInstance ?? descriptor.ImplementationInstance,
+                        (descriptor as KeyedServiceDescriptor)?.KeyedImplementationFactory ??
+                            (descriptor.ImplementationFactory != null ?
+                                (serviceProvider, key) => descriptor.ImplementationFactory(serviceProvider) : null),
+                        null);
                 var check = true;
                 services
                     .AddEngineFactory(
