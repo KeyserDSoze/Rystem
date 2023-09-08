@@ -94,7 +94,8 @@ namespace Rystem.Test.UnitTest.DependencyInjection
             }
             catch (Exception ex)
             {
-                Assert.StartsWith("It's not possible to override a service not installed", ex.Message);
+                var value = $"Factory name '' not found for service {typeof(ITestWithoutFactoryService).FullName}.";
+                Assert.StartsWith(value, ex.Message);
             }
             try
             {
@@ -104,7 +105,8 @@ namespace Rystem.Test.UnitTest.DependencyInjection
             }
             catch (Exception ex)
             {
-                Assert.StartsWith("It's not possible to override a service not installed", ex.Message);
+                var value = $"Factory name '{name}' not found for service {typeof(ITestService).FullName}.";
+                Assert.StartsWith(value, ex.Message);
             }
 
             services.AddFactory<ITestService, TestService, TestOptions>(x =>
