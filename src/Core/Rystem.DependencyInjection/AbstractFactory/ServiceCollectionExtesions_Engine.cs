@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection
@@ -45,32 +46,40 @@ namespace Microsoft.Extensions.DependencyInjection
             bool canOverrideConfiguration,
             ServiceLifetime lifetime,
             TImplementation? implementationInstance,
-            Func<IServiceProvider, object?, TService>? implementationFactory,
+            Func<IServiceProvider, object?, object>? implementationFactory,
             Action? whenExists)
             where TService : class
             where TImplementation : class, TService
         {
-            name = name.GetFactoryName<TService>();
+            var factoryName = name.GetFactoryName<TService>();
             services.TryAddTransient<IFactory<TService>, Factory<TService>>();
-            var existingServiceWithThatName = services.HasKeyedService<TService, TImplementation>(name, out var serviceDescriptor);
+            //var serviceType = typeof(TService);
+            var serviceType = typeof(TImplementation);
+            var map = services.TryAddSingletonAndGetService<ServiceFactoryMap>();
+            //var existingServiceWithThatName = services.HasKeyedService<TService, TImplementation>(name, out var serviceDescriptor);
+            var existingServiceWithThatName = services.HasKeyedService<TImplementation, TImplementation>(factoryName, out var serviceDescriptor);
             if (!existingServiceWithThatName || canOverrideConfiguration)
             {
                 var id = 0;
                 var reorder = false;
-                if (Services.ContainsKey(name))
+                if (map.Services.TryGetValue(factoryName, out var keyedServiceDescriptor))
                 {
-                    id = Services[name].Skip;
+                    id = keyedServiceDescriptor.Skip;
+                    map.Services.Remove(factoryName);
+                    services.Remove(keyedServiceDescriptor);
                     reorder = true;
                 }
                 else
                 {
-                    id = Services.Count(x => x.Value.ServiceType == typeof(TService));
-                    if (id > 0)
-                        services.Remove(services.First(x => x.ServiceType == typeof(TService)));
+                    //id = Services.Count(x => x.Value.ServiceType == typeof(TService));
+                    //if (id > 0)
+                    //    services.Remove(services.Last(x => x.ServiceType == typeof(TService)));
+                    id = map.Services.Count(x => x.Value.ServiceType == serviceType);
                 }
-                services.AddKeyedServiceEngine(typeof(TService),
-                    name,
-                    typeof(TService) != typeof(TImplementation) ? typeof(TImplementation) : null,
+                services.AddKeyedServiceEngine(serviceType,
+                    factoryName,
+                    //typeof(TService) != typeof(TImplementation) ? typeof(TImplementation) : typeof(TService),
+                    serviceType,
                     implementationInstance,
                     implementationFactory,
                     lifetime,
@@ -78,18 +87,21 @@ namespace Microsoft.Extensions.DependencyInjection
                     id);
                 if (reorder)
                 {
-                    foreach (var service in Services.Where(x => x.Value.ServiceType == typeof(TService)))
+                    foreach (var service in map.Services.Where(x => x.Value.ServiceType == serviceType))
                     {
                         services.Remove(service.Value);
                     }
-                    foreach (var service in Services.Where(x => x.Value.ServiceType == typeof(TService)).OrderBy(x => x.Value.Skip))
+                    foreach (var service in map.Services.Where(x => x.Value.ServiceType == serviceType).OrderBy(x => x.Value.Skip))
                     {
                         services.Add(service.Value);
                     }
                 }
                 //todo: remember that we need to add this feature in the next release with .net 8 because we need to inject directly the last implementation of a service to retrieve without IFactory
 
-                services.AddService(serviceProvider => serviceProvider.GetRequiredService<IFactory<TService>>().Create(name)!, lifetime);
+                services.AddOrOverrideService<TService>(serviceProvider =>
+                {
+                    return serviceProvider.GetRequiredService<IFactory<TService>>().Create(name)!;
+                }, lifetime);
             }
             else
                 whenExists?.Invoke();

@@ -34,9 +34,7 @@ namespace RepositoryFramework.Cache
             }
         }
 
-        public CachedRepository(IDecoratedService<IQuery<T, TKey>>? query = null,
-            IDecoratedService<ICommand<T, TKey>>? command = null,
-            IDecoratedService<IRepository<T, TKey>>? repository = null,
+        public CachedRepository(
             IFactory<IQuery<T, TKey>>? queryFactory = null,
             IFactory<ICommand<T, TKey>>? commandFactory = null,
             IFactory<IRepository<T, TKey>>? repositoryFactory = null,
@@ -44,10 +42,8 @@ namespace RepositoryFramework.Cache
             CacheOptions<T, TKey>? cacheOptions = null,
             IDistributedCache<T, TKey>? distributed = null,
             DistributedCacheOptions<T, TKey>? distributedCacheOptions = null) :
-            base(query, repository, queryFactory, repositoryFactory, cache, cacheOptions, distributed, distributedCacheOptions)
+            base(queryFactory, repositoryFactory, cache, cacheOptions, distributed, distributedCacheOptions)
         {
-            _repository = repository?.Service;
-            _command = command?.Service;
             _commandFactory = commandFactory;
         }
 

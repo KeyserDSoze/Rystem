@@ -18,16 +18,24 @@
             var options = new TOptions();
             createOptions.Invoke(options);
             var optionsName = name.GetOptionsName<TService>();
-            services.AddOrOverrideFactory<IFactoryOptions>((serviceProvider, name) =>
+            services.AddOrOverrideFactory<IFactoryOptions, TOptions>((serviceProvider, name) =>
             {
                 return options;
             }, optionsName, ServiceLifetime.Singleton);
-            services.AddEngineFactory(
+            var map = services.TryAddSingletonAndGetService<ServiceFactoryMap>();
+            map.OptionsSetter.TryAdd(optionsName, (service, opt) =>
+            {
+                if (opt is TOptions optionsForService && service is IServiceWithFactoryWithOptions<TOptions> serviceWithOptions)
+                {
+                    serviceWithOptions.SetOptions(optionsForService);
+                }
+            });
+            services.AddEngineFactory<TService, TImplementation>(
                 name,
                 canOverrideConfiguration,
                 lifetime,
                 implementationInstance,
-                implementationFactory,
+                implementationFactory != null ? (serviceProvider, name) => implementationFactory(serviceProvider, name) : null,
                 whenExists);
             return services;
         }
@@ -48,13 +56,21 @@
             createOptions.Invoke(options);
             var builtOptions = options.Build();
             var optionsName = name.GetOptionsName<TService>();
-            services.AddOrOverrideFactory<IFactoryOptions>((serviceProvider, name) =>
+            services.AddOrOverrideFactory<IFactoryOptions, TBuiltOptions>((serviceProvider, name) =>
             {
                 return builtOptions.Invoke(serviceProvider);
             }, optionsName, ServiceLifetime.Transient);
-            services.AddEngineFactory(name, canOverrideConfiguration, lifetime,
+            var map = services.TryAddSingletonAndGetService<ServiceFactoryMap>();
+            map.OptionsSetter.TryAdd(optionsName, (service, opt) =>
+            {
+                if (opt is TBuiltOptions optionsForService && service is IServiceWithFactoryWithOptions<TBuiltOptions> serviceWithOptions)
+                {
+                    serviceWithOptions.SetOptions(optionsForService);
+                }
+            });
+            services.AddEngineFactory<TService, TImplementation>(name, canOverrideConfiguration, lifetime,
                 implementationInstance,
-                implementationFactory,
+                implementationFactory != null ? (serviceProvider, name) => implementationFactory(serviceProvider, name) : null,
                 whenExists);
             return services;
         }
@@ -75,13 +91,21 @@
             createOptions.Invoke(options);
             var builtOptions = await options.BuildAsync();
             var optionsName = name.GetOptionsName<TService>();
-            services.AddOrOverrideFactory<IFactoryOptions>((serviceProvider, name) =>
+            services.AddOrOverrideFactory<IFactoryOptions, TBuiltOptions>((serviceProvider, name) =>
             {
                 return builtOptions.Invoke(serviceProvider);
             }, optionsName, ServiceLifetime.Transient);
-            services.AddEngineFactory(name, canOverrideConfiguration, lifetime,
+            var map = services.TryAddSingletonAndGetService<ServiceFactoryMap>();
+            map.OptionsSetter.TryAdd(optionsName, (service, opt) =>
+            {
+                if (opt is TBuiltOptions optionsForService && service is IServiceWithFactoryWithOptions<TBuiltOptions> serviceWithOptions)
+                {
+                    serviceWithOptions.SetOptions(optionsForService);
+                }
+            });
+            services.AddEngineFactory<TService, TImplementation>(name, canOverrideConfiguration, lifetime,
                 implementationInstance,
-                implementationFactory,
+                implementationFactory != null ? (serviceProvider, name) => implementationFactory(serviceProvider, name) : null,
                 whenExists
                 );
             return services;

@@ -75,17 +75,26 @@ namespace Microsoft.Extensions.DependencyInjection
         public static T? GetKeyedService<T>(this IServiceProvider serviceProvider, string name)
             where T : class
         {
-            var services = serviceProvider.GetServices<T>();
-            if (ServiceCollectionExtensions.Services.TryGetValue(name, out var descriptor))
+            var map = serviceProvider.GetRequiredService<ServiceFactoryMap>();
+            //var services = serviceProvider.GetServices<T>();
+            if (map.Services.TryGetValue(name, out var descriptor))
             {
-                return services.Skip(descriptor.Skip).FirstOrDefault();
+                var services = serviceProvider.GetServices(descriptor.ServiceType);
+                var service = services.Skip(descriptor.Skip).FirstOrDefault();
+                if (service is T tService)
+                    return tService;
             }
             return default;
         }
     }
+    public sealed class ServiceFactoryMap
+    {
+        public Dictionary<object, KeyedServiceDescriptor> Services { get; } = new();
+        public Dictionary<string, Action<object, object>> OptionsSetter { get; } = new();
+    }
     public static partial class ServiceCollectionExtensions
     {
-        internal static readonly Dictionary<object, KeyedServiceDescriptor> Services = new();
+
         private static IServiceCollection AddKeyedServiceEngine(this IServiceCollection services,
             Type serviceType,
             object? serviceKey,
@@ -98,11 +107,12 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             if (serviceKey == null)
                 throw new ArgumentNullException(nameof(serviceKey));
-            if (Services.ContainsKey(serviceKey))
+            var map = services.TryAddSingletonAndGetService<ServiceFactoryMap>();
+            if (map.Services.ContainsKey(serviceKey))
             {
                 if (canOverride == true)
                 {
-                    if (Services.Remove(serviceKey, out var value))
+                    if (map.Services.Remove(serviceKey, out var value))
                         services.Remove(value);
                 }
                 else if (canOverride == false)
@@ -122,7 +132,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 else
                     descriptor = new KeyedServiceDescriptor(serviceType, serviceKey, implementationType, lifetime) { Skip = id };
             }
-            Services.Add(serviceKey, descriptor);
+            map.Services.Add(serviceKey, descriptor);
             services.Add(descriptor);
             return services;
         }
@@ -311,12 +321,9 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 var serviceDescriptor = services
                     .Where(x => x is KeyedServiceDescriptor)
-                    .Select(x => x as KeyedServiceDescriptor).FirstOrDefault(
-                        x => (serviceKey == null || x!.IsKeyedService)
-                        && (serviceKey == null || x!.ServiceKey?.Equals(serviceKey) == true)
-                        && x!.ServiceType == serviceType
-                        && (implementationType == null || x.ImplementationType == implementationType
-                        || x.ImplementationInstance?.GetType() == implementationType));
+                    .Select(x => x as KeyedServiceDescriptor)
+                    .FirstOrDefault(x => (serviceKey == null || x!.IsKeyedService)
+                        && (serviceKey == null || x!.ServiceKey?.Equals(serviceKey) == true));
                 return serviceDescriptor;
             }
             else

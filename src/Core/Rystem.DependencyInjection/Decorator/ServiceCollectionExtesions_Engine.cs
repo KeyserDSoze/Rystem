@@ -28,9 +28,11 @@
             var descriptor = services.GetDescriptor<TService>(factoryName) ?? services.GetDescriptor<TService>(null);
             if (descriptor != null)
             {
+                var map = services.TryAddSingletonAndGetService<ServiceFactoryMap>();
                 services.Remove(descriptor);
+                map.Services.Remove(factoryName);
                 services.AddEngineFactoryWithoutGenerics(typeof(TService),
-                    typeof(TImplementation),
+                    descriptor.ImplementationType!,
                         decoratedName, true, descriptor.Lifetime,
                         (descriptor as KeyedServiceDescriptor)?.KeyedImplementationInstance ?? descriptor.ImplementationInstance,
                         (descriptor as KeyedServiceDescriptor)?.KeyedImplementationFactory ??
@@ -39,18 +41,18 @@
                         null);
                 var check = true;
                 services
-                    .AddEngineFactory(
+                    .AddEngineFactory<TService, TImplementation>(
                         name,
                         true,
                         lifetime,
                         implementationInstance,
                         implementationFactory,
                         () => InformThatItsAlreadyInstalled(ref check));
-                services.AddOrOverrideService<IDecoratedService<TService>, DecoratedService<TService>>(
+                services.AddOrOverrideService<IDecoratedService<TService>>(
                     serviceProvider =>
                 {
                     var factory = serviceProvider.GetRequiredService<IFactory<TService>>();
-                    return new DecoratedService<TService>(factory.Create(decoratedName));
+                    return new DecoratedService<TService>(factory.CreateWithoutDecoration(name));
                 }, lifetime);
                 if (!check)
                     throw new ArgumentException($"Decorator name '{name}' is not installed correctly for service {typeof(TService).FullName}.");

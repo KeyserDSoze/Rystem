@@ -28,11 +28,14 @@
                 decoratorService.SetDecoratedService(CreateWithoutDecoration(name)!);
             if (service is IServiceWithFactoryWithOptions serviceWithCustomOptions)
             {
-                var optionsName = name.GetOptionsName<TService>().GetFactoryName<IFactoryOptions>();
-                var options = _serviceProvider.GetKeyedService<IFactoryOptions>(optionsName);
-                var dynamicServiceWithCustomOptions = (dynamic)serviceWithCustomOptions;
-                dynamicServiceWithCustomOptions
-                    .SetOptions(options);
+                var optionsName = name.GetOptionsName<TService>();
+                var options = _serviceProvider.GetKeyedService<IFactoryOptions>(optionsName.GetFactoryName<IFactoryOptions>());
+                if (options != null)
+                {
+                    var map = _serviceProvider.GetRequiredService<ServiceFactoryMap>();
+                    if (map.OptionsSetter.TryGetValue(optionsName, out var optionsSetter))
+                        optionsSetter.Invoke(serviceWithCustomOptions, options);
+                }
             }
             return service;
         }
