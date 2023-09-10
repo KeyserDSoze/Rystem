@@ -10,7 +10,7 @@
            where TImplementation : class, TService
         {
             var check = true;
-            services.AddEngineFactory<TService, TImplementation>(name, false, lifetime, implementationInstance, null, () => InformThatItsAlreadyInstalled(ref check));
+            services.AddEngineFactory<TService, TImplementation>(name, false, lifetime, implementationInstance, null, () => InformThatItsAlreadyInstalled(ref check), true);
             return check;
         }
         public static bool TryAddFactory<TService, TImplementation, TOptions>(this IServiceCollection services,
@@ -23,7 +23,7 @@
             where TOptions : class, IFactoryOptions, new()
         {
             var check = true;
-            services.AddFactory<TService, TImplementation, TOptions>(createOptions, name, false, lifetime, implementationInstance, null, () => InformThatItsAlreadyInstalled(ref check));
+            services.AddFactory<TService, TImplementation, TOptions>(createOptions, name, false, lifetime, implementationInstance, null, () => InformThatItsAlreadyInstalled(ref check), true);
             return check;
         }
         public static bool TryAddFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
@@ -37,7 +37,7 @@
             where TBuiltOptions : class, IFactoryOptions
         {
             var check = true;
-            services.AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, false, lifetime, implementationInstance, null, () => InformThatItsAlreadyInstalled(ref check));
+            services.AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, false, lifetime, implementationInstance, null, () => InformThatItsAlreadyInstalled(ref check), true);
             return check;
         }
 
@@ -53,7 +53,7 @@
         {
             var check = true;
             await services
-                .AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, false, lifetime, implementationInstance, null, () => InformThatItsAlreadyInstalled(ref check));
+                .AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, false, lifetime, implementationInstance, null, () => InformThatItsAlreadyInstalled(ref check), true);
             return check;
         }
     }

@@ -1,6 +1,6 @@
 ﻿namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
 {
-    internal sealed class TableStorageSettings<T, TKey>
+    public sealed class TableStorageSettings<T, TKey>
         where TKey : notnull
     {
         public Func<T, string> PartitionKeyFunction { get; internal set; } = null!;

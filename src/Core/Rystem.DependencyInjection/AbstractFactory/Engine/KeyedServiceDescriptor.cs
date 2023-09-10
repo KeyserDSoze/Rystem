@@ -91,6 +91,7 @@ namespace Microsoft.Extensions.DependencyInjection
     {
         public Dictionary<object, KeyedServiceDescriptor> Services { get; } = new();
         public Dictionary<string, Action<object, object>> OptionsSetter { get; } = new();
+        public Dictionary<string, int> DecorationCount { get; } = new();
     }
     public static partial class ServiceCollectionExtensions
     {

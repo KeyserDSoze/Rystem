@@ -2,9 +2,9 @@
 {
     public static partial class ServiceCollectionExtensions
     {
-        internal static string GetDecoratedName<TService>(this string? name)
+        internal static string GetDecoratorName<TService>(this string? name, int index)
         {
-            return $"Rystem.Decorated.{typeof(TService).FullName}.{name ?? string.Empty}";
+            return $"Rystem.Decorator.{index}.{typeof(TService).FullName}.{name ?? string.Empty}";
         }
         private static IServiceCollection AddDecorationEngine<TService>(
            this IServiceCollection services,
@@ -24,30 +24,39 @@
            where TImplementation : class, TService, IDecoratorService<TService>
         {
             var factoryName = name.GetFactoryName<TService>();
-            var decoratedName = name.GetDecoratedName<TService>();
-            var descriptor = services.GetDescriptor<TService>(factoryName) ?? services.GetDescriptor<TService>(null);
+            var descriptor = services.GetDescriptor<TService>(factoryName);
+            //controllare il primo factory se non c'è va installato come factory dal service descriptor che è null
+            if (descriptor == null)
+            {
+                descriptor = services.GetDescriptor<TService>(null);
+                if (descriptor != null)
+                {
+                    services.Remove(descriptor);
+                    services.AddEngineFactoryWithoutGenerics(typeof(TService),
+                        descriptor.ImplementationType!,
+                            name, true, descriptor.Lifetime,
+                            descriptor.ImplementationInstance,
+                            (descriptor.ImplementationFactory != null ?
+                                (serviceProvider, key) => descriptor.ImplementationFactory(serviceProvider) : null),
+                        null, true);
+                }
+            }
+
             if (descriptor != null)
             {
                 var map = services.TryAddSingletonAndGetService<ServiceFactoryMap>();
-                services.Remove(descriptor);
-                map.Services.Remove(factoryName);
-                services.AddEngineFactoryWithoutGenerics(typeof(TService),
-                    descriptor.ImplementationType!,
-                        decoratedName, true, descriptor.Lifetime,
-                        (descriptor as KeyedServiceDescriptor)?.KeyedImplementationInstance ?? descriptor.ImplementationInstance,
-                        (descriptor as KeyedServiceDescriptor)?.KeyedImplementationFactory ??
-                            (descriptor.ImplementationFactory != null ?
-                                (serviceProvider, key) => descriptor.ImplementationFactory(serviceProvider) : null),
-                        null);
+                map.DecorationCount[factoryName]++;
                 var check = true;
+                var decoratorName = name.GetDecoratorName<TService>(map.DecorationCount[factoryName]);
                 services
                     .AddEngineFactory<TService, TImplementation>(
-                        name,
+                        decoratorName,
                         true,
                         lifetime,
                         implementationInstance,
                         implementationFactory,
-                        () => InformThatItsAlreadyInstalled(ref check));
+                        () => InformThatItsAlreadyInstalled(ref check),
+                        false);
                 services.AddOrOverrideService<IDecoratedService<TService>>(
                     serviceProvider =>
                 {

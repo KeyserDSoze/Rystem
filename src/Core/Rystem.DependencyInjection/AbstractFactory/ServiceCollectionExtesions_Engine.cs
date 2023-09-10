@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Text;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection
@@ -34,12 +35,12 @@ namespace Microsoft.Extensions.DependencyInjection
             ServiceLifetime lifetime,
             object? implementationInstance,
             Func<IServiceProvider, object?, object>? implementationFactory,
-            Action? whenExists
-            )
+            Action? whenExists,
+            bool fromDecoration)
         {
             return Generics
                 .WithStatic(typeof(ServiceCollectionExtensions), nameof(AddEngineFactory), serviceType, implementationType)
-                .Invoke(services, name!, canOverrideConfiguration, lifetime, implementationInstance!, implementationFactory!, whenExists!);
+                .Invoke(services, name!, canOverrideConfiguration, lifetime, implementationInstance!, implementationFactory!, whenExists!, fromDecoration);
         }
         private static IServiceCollection AddEngineFactory<TService, TImplementation>(this IServiceCollection services,
             string? name,
@@ -47,7 +48,8 @@ namespace Microsoft.Extensions.DependencyInjection
             ServiceLifetime lifetime,
             TImplementation? implementationInstance,
             Func<IServiceProvider, object?, object>? implementationFactory,
-            Action? whenExists)
+            Action? whenExists,
+            bool fromDecoration)
             where TService : class
             where TImplementation : class, TService
         {
@@ -60,6 +62,8 @@ namespace Microsoft.Extensions.DependencyInjection
             var existingServiceWithThatName = services.HasKeyedService<TImplementation, TImplementation>(factoryName, out var serviceDescriptor);
             if (!existingServiceWithThatName || canOverrideConfiguration)
             {
+                if (fromDecoration && !map.DecorationCount.ContainsKey(factoryName))
+                    map.DecorationCount.Add(factoryName, new());
                 var id = 0;
                 var reorder = false;
                 if (map.Services.TryGetValue(factoryName, out var keyedServiceDescriptor))
@@ -97,11 +101,11 @@ namespace Microsoft.Extensions.DependencyInjection
                     }
                 }
                 //todo: remember that we need to add this feature in the next release with .net 8 because we need to inject directly the last implementation of a service to retrieve without IFactory
-
-                services.AddOrOverrideService<TService>(serviceProvider =>
-                {
-                    return serviceProvider.GetRequiredService<IFactory<TService>>().Create(name)!;
-                }, lifetime);
+                if (fromDecoration)
+                    services.AddOrOverrideService(serviceProvider =>
+                    {
+                        return serviceProvider.GetRequiredService<IFactory<TService>>().Create(name)!;
+                    }, lifetime);
             }
             else
                 whenExists?.Invoke();

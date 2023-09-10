@@ -10,7 +10,8 @@
                 ServiceLifetime lifetime,
                 TImplementation? implementationInstance,
                 Func<IServiceProvider, object?, TService>? implementationFactory,
-                Action? whenExists)
+                Action? whenExists,
+                bool fromDecoration)
                 where TService : class
                 where TImplementation : class, TService, IServiceWithFactoryWithOptions<TOptions>
                 where TOptions : class, IFactoryOptions, new()
@@ -36,7 +37,8 @@
                 lifetime,
                 implementationInstance,
                 implementationFactory != null ? (serviceProvider, name) => implementationFactory(serviceProvider, name) : null,
-                whenExists);
+                whenExists,
+                fromDecoration);
             return services;
         }
         private static IServiceCollection AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
@@ -46,7 +48,8 @@
             ServiceLifetime lifetime,
             TImplementation? implementationInstance,
             Func<IServiceProvider, object?, TService>? implementationFactory,
-            Action? whenExists)
+            Action? whenExists,
+            bool fromDecoration)
                where TService : class
                where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>
                where TOptions : class, IOptionsBuilder<TBuiltOptions>, new()
@@ -71,7 +74,8 @@
             services.AddEngineFactory<TService, TImplementation>(name, canOverrideConfiguration, lifetime,
                 implementationInstance,
                 implementationFactory != null ? (serviceProvider, name) => implementationFactory(serviceProvider, name) : null,
-                whenExists);
+                whenExists,
+                fromDecoration);
             return services;
         }
         private static async Task<IServiceCollection> AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
@@ -81,7 +85,8 @@
             ServiceLifetime lifetime,
             TImplementation? implementationInstance,
             Func<IServiceProvider, object?, TService>? implementationFactory,
-            Action? whenExists)
+            Action? whenExists,
+            bool fromDecoration)
                 where TService : class
                 where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>
                 where TOptions : class, IOptionsBuilderAsync<TBuiltOptions>, new()
@@ -106,8 +111,8 @@
             services.AddEngineFactory<TService, TImplementation>(name, canOverrideConfiguration, lifetime,
                 implementationInstance,
                 implementationFactory != null ? (serviceProvider, name) => implementationFactory(serviceProvider, name) : null,
-                whenExists
-                );
+                whenExists,
+                fromDecoration);
             return services;
         }
     }

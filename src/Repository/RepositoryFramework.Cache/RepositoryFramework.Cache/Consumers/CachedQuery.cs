@@ -27,7 +27,8 @@ namespace RepositoryFramework.Cache
             _factoryName = name;
         }
         private string _factoryName = string.Empty;
-        public CachedQuery(
+        public CachedQuery(IDecoratedService<IQuery<T, TKey>>? query = null,
+            IDecoratedService<IRepository<T, TKey>>? repository = null,
             IFactory<IQuery<T, TKey>>? queryFactory = null,
             IFactory<IRepository<T, TKey>>? repositoryFactory = null,
             ICache<T, TKey>? cache = null,
@@ -35,6 +36,7 @@ namespace RepositoryFramework.Cache
             IDistributedCache<T, TKey>? distributed = null,
             DistributedCacheOptions<T, TKey>? distributedCacheOptions = null)
         {
+            _query = query?.Service ?? repository?.Service!;
             QueryFactory = queryFactory;
             RepositoryFactory = repositoryFactory;
             Cache = cache;
