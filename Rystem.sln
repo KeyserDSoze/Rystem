@@ -184,7 +184,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RepositoryFramework.Api.Cli
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.DependencyInjection", "src\Core\Rystem.DependencyInjection\Rystem.DependencyInjection.csproj", "{373F15D8-AFE4-42CD-B9BB-082F82CA6FCD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RepositoryFramework.Wasm", "src\Repository\RepositoryFramework.Test\RepositoryFramework.Wasm\RepositoryFramework.Wasm.csproj", "{09203D14-DD7F-441D-BE62-1C075448D733}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RepositoryFramework.Wasm", "src\Repository\RepositoryFramework.Test\RepositoryFramework.Wasm\RepositoryFramework.Wasm.csproj", "{09203D14-DD7F-441D-BE62-1C075448D733}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RepositoryFramework.Api.Client.Authentication.BlazorWasm", "src\Repository\RepositoryFramework.Api.Client.Authentication.BlazorWasm\RepositoryFramework.Api.Client.Authentication.BlazorWasm.csproj", "{C5EEE70F-3968-4898-B209-4EFA8534633F}"
 EndProject

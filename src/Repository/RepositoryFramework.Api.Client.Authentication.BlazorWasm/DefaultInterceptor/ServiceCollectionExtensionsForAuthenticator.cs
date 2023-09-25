@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection.Extensions;
-using RepositoryFramework.Api.Client;
-using RepositoryFramework.Api.Client.Authorization;
+﻿using RepositoryFramework.Api.Client.Authorization;
 using RepositoryFramework.Api.Client.DefaultInterceptor;
 
 namespace Microsoft.Extensions.DependencyInjection
@@ -17,7 +15,7 @@ namespace Microsoft.Extensions.DependencyInjection
             Action<AuthenticatorSettings>? authenticatorSettings = null)
         {
             return services.AddDefaultAuthorizationInterceptorForApiHttpClient<TokenManager>(
-                authenticatorSettings, ServiceLifetime.Singleton);
+                authenticatorSettings, ServiceLifetime.Scoped);
         }
         /// <summary>
         /// Add JWT specific interceptor for your <typeparamref name="T"/> client. Interceptor runs before every request.
@@ -30,7 +28,7 @@ namespace Microsoft.Extensions.DependencyInjection
             Action<AuthenticatorSettings<T>>? authenticatorSettings = null)
         {
             return services.AddDefaultAuthorizationInterceptorForApiHttpClient<T, TokenManager>(
-                authenticatorSettings, ServiceLifetime.Singleton);
+                authenticatorSettings, ServiceLifetime.Scoped);
         }
         /// <summary>
         /// Add JWT specific interceptor for your <typeparamref name="T"/> client. Interceptor runs before every request.
@@ -45,7 +43,7 @@ namespace Microsoft.Extensions.DependencyInjection
             where TKey : notnull
         {
             return services.AddDefaultAuthorizationInterceptorForApiHttpClient<T, TKey, TokenManager>(
-                authenticatorSettings, ServiceLifetime.Singleton);
+                authenticatorSettings, ServiceLifetime.Scoped);
         }
     }
 }
