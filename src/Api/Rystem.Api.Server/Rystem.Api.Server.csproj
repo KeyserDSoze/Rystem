@@ -12,18 +12,20 @@
 		<DebugType>portable</DebugType>
         <Authors>Alessandro Rapiti</Authors>
         <Company>Alessandro Rapiti</Company>
-        <Product>Rystem.Content</Product>
-        <Description>Rystem.Content helps you to integrate with azure services or to create an abstraction layer among your infrastructure and your business.</Description>
+        <Product>Rystem.Api</Product>
+        <Description>Rystem.Api helps you to integrate Api Server and Automated Client for Aspect-Oriented programming.</Description>
         <Copyright>2023</Copyright>
-		<PackageIcon>rystem.content.abstraction.png</PackageIcon>
+		<PackageIcon>rystem.api.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Content</RepositoryUrl>
-		<PackageId>Rystem.Content.Abstractions</PackageId>
+		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Api</RepositoryUrl>
+		<PackageId>Rystem.Api.Server</PackageId>
 		<Version>5.0.20</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	</PropertyGroup>
-
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
     <Choose>
         <When Condition=" '$(Configuration)'=='Debug' ">
             <ItemGroup>
@@ -38,7 +40,7 @@
     </Choose>
 
 	<ItemGroup>
-		<None Update="rystem.content.abstraction.png">
+		<None Update="rystem.api.png">
 			<Pack>True</Pack>
 			<PackagePath>\</PackagePath>
 		</None>
