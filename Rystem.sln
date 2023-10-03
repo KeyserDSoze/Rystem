@@ -194,6 +194,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Api.Client", "src\Ap
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Api.Server", "src\Api\Rystem.Api.Server\Rystem.Api.Server.csproj", "{281BEA6B-E7BB-40A1-A9F9-85658C372F8E}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{B329ED9E-8FD6-4F12-9CD5-D395FF3C63C8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rystem.Api.TestServer", "src\Api\Test\Rystem.Api.TestServer\Rystem.Api.TestServer.csproj", "{B558D3AA-A9DD-46DB-B6CA-53C0504332E7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -410,6 +414,10 @@ Global
 		{281BEA6B-E7BB-40A1-A9F9-85658C372F8E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{281BEA6B-E7BB-40A1-A9F9-85658C372F8E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{281BEA6B-E7BB-40A1-A9F9-85658C372F8E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B558D3AA-A9DD-46DB-B6CA-53C0504332E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B558D3AA-A9DD-46DB-B6CA-53C0504332E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B558D3AA-A9DD-46DB-B6CA-53C0504332E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B558D3AA-A9DD-46DB-B6CA-53C0504332E7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -487,6 +495,8 @@ Global
 		{D64C942F-895F-48F4-B70D-D66270851435} = {B385DA45-F3CA-455B-91F1-1663EAC993E9}
 		{C98C741E-4DD5-4746-A205-D86BCC93F27C} = {D64C942F-895F-48F4-B70D-D66270851435}
 		{281BEA6B-E7BB-40A1-A9F9-85658C372F8E} = {D64C942F-895F-48F4-B70D-D66270851435}
+		{B329ED9E-8FD6-4F12-9CD5-D395FF3C63C8} = {D64C942F-895F-48F4-B70D-D66270851435}
+		{B558D3AA-A9DD-46DB-B6CA-53C0504332E7} = {B329ED9E-8FD6-4F12-9CD5-D395FF3C63C8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {35C6ADE0-7E70-48ED-A810-A71B2BC94F57}

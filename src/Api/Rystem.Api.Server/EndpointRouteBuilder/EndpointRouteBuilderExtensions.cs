@@ -1,92 +1,133 @@
 ﻿using System.Reflection;
-using Microsoft.AspNetCore.Builder;
+using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.AspNetCore.Routing.Patterns;
-using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
+using Rystem.Api;
 
-namespace Rystem.Api.Server
+namespace Microsoft.AspNetCore.Builder
 {
-    public static class EndpointRouteBuilderExtensions
+    public static class EndpointRouteBuilderRystemExtensions
     {
-        public static IEndpointRouteBuilder AddEndpointApi<T>(this IEndpointRouteBuilder app)
+        public static IEndpointRouteBuilder UseEndpointApi(this IEndpointRouteBuilder builder)
+        {
+            if (builder is IApplicationBuilder app)
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
+            foreach (var endpoint in EndpointsManager.Endpoints)
+            {
+                Generics.WithStatic(
+                typeof(EndpointRouteBuilderRystemExtensions),
+                nameof(PrivateUseEndpointApi),
+                endpoint.Type).Invoke(builder, endpoint);
+            }
+            return builder;
+        }
+        private static IEndpointRouteBuilder PrivateUseEndpointApi<T>(this IEndpointRouteBuilder builder, EndpointValue endpointValue)
+            where T : class
         {
             var interfaceType = typeof(T);
-            foreach (var method in interfaceType.GetMethods())
+            foreach (var method in endpointValue.Methods)
             {
-                if (method.GetParameters().Length > 0)
+                var endpointMethodValue = method.Value;
+                List<Func<HttpContext, Task<object>>> retrievers = new();
+                var nonPrimitivesCount = method.Value.Parameters.Count(x => !x.IsPrimitive);
+                var isPost = nonPrimitivesCount > 0;
+                var isMultipart = nonPrimitivesCount > 1;
+                foreach (var parameter in method.Value.Parameters)
                 {
-                    List<ParameterInfo> primitives = new();
-                    List<ParameterInfo> nonPrimitives = new();
-
-                    foreach (var parameter in method.GetParameters())
+                    var parameterName = (parameter.Info.GetCustomAttribute(typeof(ApiParameterNameAttribute)) as ApiParameterNameAttribute)?.Name ?? parameter.Name;
+                    if (parameter.IsPrimitive)
                     {
-                        if (parameter.ParameterType.IsPrimitive())
+                        retrievers.Add(context =>
                         {
-                            primitives.Add(parameter);
-                        }
-                        else
-                            nonPrimitives.Add(parameter);
+                            var query = context.Request.Query[parameterName!].ToString();
+                            var task = Task.FromResult((object)query.Cast(parameter.Type));
+                            return task;
+                        });
                     }
-                    var isPost = nonPrimitives.Count > 0;
-                    var isMultipart = nonPrimitives.Count > 1;
-                    Func<HttpContext, object[]?> readParameters;
-                    if (!isPost)
+                    else if (isMultipart)
                     {
-                        readParameters = (HttpContext context) =>
+                        retrievers.Add(context =>
                         {
-                            var parameters = new object[primitives.Count];
-                            var counter = 0;
-                            foreach (var parameter in primitives)
-                            {
-                                parameters[counter] = context.Request.Query[parameter.Name!].ToString().Cast(parameter.ParameterType);
-                                counter++;
-                            }
-                            return parameters;
-                        };
-                        app.MapGet($"api/{interfaceType.Name}/{method.Name}", async (HttpContext context, [FromServices] T service) =>
-                        {
-                            var result = method.Invoke(service, readParameters(context));
-                            if (result is Task task)
-                                await task;
-                            if (result is ValueTask valueTask)
-                                await valueTask;
-                            return ((dynamic)result!).Result;
-                        }).AllowAnonymous();
+                            var value = context.Request.Form.First(x => x.Key == parameterName);
+                            var body = value.Value.ToString();
+                            return Task.FromResult(body.FromJson(parameter.Type)!);
+                        });
                     }
                     else
                     {
-                        readParameters = (HttpContext context) =>
+                        retrievers.Add(async context =>
                         {
-                            var parameters = new object[primitives.Count];
-                            var counter = 0;
-                            foreach (var parameter in primitives)
-                            {
-                                parameters[counter] = context.Request.Query[parameter.Name!].Cast(parameter.ParameterType);
-                                counter++;
-                            }
-                            foreach (var parameter in nonPrimitives)
-                            {
-                                var value = context.Request.Form.First(x => x.Key == parameter.Name);
-                                parameters[counter] = value.Value.ToString().FromJson(parameter.ParameterType)!;
-                                counter++;
-                            }
-                            return parameters;
-                        };
-                        app.MapPost($"api/{interfaceType.Name}/{method.Name}", async (HttpContext context, [FromServices] T service) =>
-                        {
-                            var result = method.Invoke(service, readParameters(context));
-                            if (result is Task task)
-                                await task;
-                            if (result is ValueTask valueTask)
-                                await valueTask;
-                            return result;
-                        }).AllowAnonymous();
+                            var value = await context.Request.Body.ConvertToStringAsync();
+                            return value.FromJson(parameter.Type)!;
+                        });
                     }
                 }
+                var currentMethod = method.Value.Method;
+                endpointMethodValue.EndpointUri = $"api/{(endpointValue.EndpointName ?? interfaceType.Name)}/{(!string.IsNullOrWhiteSpace(endpointValue.FactoryName) ? $"{endpointValue.FactoryName}/" : string.Empty)}{endpointMethodValue?.Name ?? method.Key}";
+
+                if (!isPost)
+                {
+                    builder
+                        .MapGet(endpointMethodValue.EndpointUri, async (HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory) =>
+                        {
+                            return await ExecuteAsync(context, service, factory);
+                        })
+                        .AddAuthorization(endpointMethodValue.Policies);
+                }
+                else
+                {
+                    builder.MapPost(endpointMethodValue.EndpointUri, async (HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory) =>
+                    {
+                        return await ExecuteAsync(context, service, factory);
+                    })
+                    .AddAuthorization(endpointMethodValue.Policies);
+                }
+
+                async Task<object> ExecuteAsync(HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory)
+                {
+                    if (factory != null)
+                        service = factory.Create(endpointValue.FactoryName);
+                    var result = currentMethod.Invoke(service, await ReadParametersAsync(context));
+                    if (result is Task task)
+                        await task;
+                    if (result is ValueTask valueTask)
+                        await valueTask;
+                    return ((dynamic)result!).Result;
+                }
+
+                async Task<object[]> ReadParametersAsync(HttpContext context)
+                {
+                    var parameters = new object[retrievers.Count];
+                    var counter = 0;
+                    foreach (var retriever in retrievers)
+                    {
+                        parameters[counter] = await retriever.Invoke(context);
+                        counter++;
+                    }
+                    return parameters;
+                }
             }
-            return app;
+            return builder;
+        }
+        private static RouteHandlerBuilder AddAuthorization(this RouteHandlerBuilder router, string[]? policies)
+        {
+            if (policies == null)
+                router.AllowAnonymous();
+            else if (policies.Length == 0)
+            {
+                router.RequireAuthorization();
+            }
+            else
+            {
+                router.RequireAuthorization(policies);
+            }
+            return router;
         }
     }
 }

@@ -25,6 +25,7 @@
 	</PropertyGroup>
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
     </ItemGroup>
     <Choose>
         <When Condition=" '$(Configuration)'=='Debug' ">
