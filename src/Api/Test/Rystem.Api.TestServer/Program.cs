@@ -1,4 +1,5 @@
-﻿using Rystem.Api.TestServer.Clients;
+﻿using Microsoft.AspNetCore.Mvc;
+using Rystem.Api.TestServer.Clients;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
@@ -25,4 +26,14 @@ var app = builder.Build();
 
 app.UseHttpsRedirection();
 app.UseEndpointApi();
+app.MapPost("/handle-file", async ([FromForm] IFormFile myFile, [FromForm] IFormFile myFile2) =>
+{
+    string tempfile = Path.GetTempFileName();
+    await using var stream = File.OpenWrite(tempfile);
+    await myFile.CopyToAsync(stream);
+});
+app.MapGet("/handle2/{param:int}", async (int param) =>
+{
+    return true;
+});
 app.Run();

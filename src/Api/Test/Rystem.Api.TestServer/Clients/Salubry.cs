@@ -1,4 +1,6 @@
-﻿namespace Rystem.Api.TestServer.Clients
+﻿using Microsoft.AspNetCore.Mvc;
+
+namespace Rystem.Api.TestServer.Clients
 {
     public interface ISalubry
     {
@@ -16,9 +18,14 @@
     }
     public interface IColam
     {
-        Task<bool> GetAsync([ApiParameterLocation(ApiParameterLocation.Path, 3)] string id,
-            [ApiParameterLocation(ApiParameterLocation.Query)] string fol, [ApiParameterLocation(ApiParameterLocation.Header)] string cul,
-            [ApiParameterLocation(ApiParameterLocation.Body)] Faul faul, [ApiParameterLocation(ApiParameterLocation.Body)] Faul faul2);
+        Task<bool> GetAsync([Path(PathIndex = 0)] string id,
+            IFormFile file,
+            [Query] string fol,
+            [Header] string cul,
+            [Cookie(Name = "xx")] string cookie,
+            [Form(Name = "aa", IsRequired = false)] Faul faul,
+            [Form(Name = "bb", IsRequired = false)] Faul faul2,
+            [Form(Name = "cc", IsRequired = false)] IFormFile file2);
     }
     public class Faul
     {
@@ -27,7 +34,14 @@
     }
     public class Comad : IColam
     {
-        public Task<bool> GetAsync([ApiParameterLocation(ApiParameterLocation.Path, 3)] string id, [ApiParameterLocation(ApiParameterLocation.Query)] string fol, [ApiParameterLocation(ApiParameterLocation.Header)] string cul, [ApiParameterLocation(ApiParameterLocation.Body)] Faul faul, [ApiParameterLocation(ApiParameterLocation.Body)] Faul faul2)
+        public Task<bool> GetAsync([Path(PathIndex = 0)] string id,
+            IFormFile? file,
+            [Query] string fol,
+            [Header] string cul,
+            [Cookie(Name = "xx")] string cookie,
+            [Form(Name = "aa")] Faul? faul,
+            [Form(Name = "bb")] Faul? faul2,
+            [Form(Name = "cc")] IFormFile? file2)
         {
             return null!;
         }

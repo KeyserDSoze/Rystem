@@ -36,7 +36,15 @@ namespace Microsoft.AspNetCore.Builder
                 List<Func<HttpContext, Task<object>>> retrievers = new();
                 var nonPrimitivesCount = method.Value.Parameters.Count(x => x.Location == ApiParameterLocation.Body);
                 var isPost = nonPrimitivesCount > 0;
-                var isMultipart = nonPrimitivesCount > 1;
+                var isMultipart = nonPrimitivesCount > 1 || method.Value.Parameters.Any(x => x.IsStream);
+                var currentMethod = method.Value.Method;
+                endpointMethodValue.EndpointUri = $"api/{(endpointValue.EndpointName ?? interfaceType.Name)}/{(!string.IsNullOrWhiteSpace(endpointValue.FactoryName) ? $"{endpointValue.FactoryName}/" : string.Empty)}{endpointMethodValue?.Name ?? method.Key}";
+                var numberOfValueInPath = endpointMethodValue!.EndpointUri.Split('/').Length + 1;
+                foreach (var parameter in method.Value.Parameters.Where(x => x.Location == ApiParameterLocation.Path).OrderBy(x => x.Position))
+                {
+                    endpointMethodValue.EndpointUri += $"/{{{parameter.Name}}}";
+                }
+                var currentPathParameter = 0;
                 foreach (var parameter in method.Value.Parameters)
                 {
                     switch (parameter.Location)
@@ -72,29 +80,42 @@ namespace Microsoft.AspNetCore.Builder
                             });
                             break;
                         case ApiParameterLocation.Path:
+                            var currentPathParameterValue = parameter.Position == -1 ? currentPathParameter : parameter.Position;
                             retrievers.Add(context =>
                             {
-                                if (!parameter.IsRequired && !context.Request.Headers.ContainsKey(parameter.Name))
-                                    return default!;
                                 var values = context.Request.Path.Value?.Split('/');
                                 if (parameter.IsRequired && values?.Length < parameter.Position)
                                     return default!;
-                                var value = values[parameter.Position];
+                                var value = values![numberOfValueInPath + currentPathParameterValue];
                                 var task = parameter.IsPrimitive ? Task.FromResult((object)value.Cast(parameter.Type)) : Task.FromResult(value.FromJson(parameter.Type)!);
                                 return task;
                             });
+                            currentPathParameter++;
                             break;
                         case ApiParameterLocation.Body:
                             if (isMultipart)
                             {
-                                retrievers.Add(context =>
+                                if (parameter.IsStream)
                                 {
-                                    var value = context.Request.Form.FirstOrDefault(x => x.Key == parameter.Name);
-                                    if (value.Equals(default) && !parameter.IsRequired)
-                                        return default!;
-                                    var body = value.Value.ToString();
-                                    return Task.FromResult(body.FromJson(parameter.Type)!);
-                                });
+                                    retrievers.Add(context =>
+                                    {
+                                        var value = context.Request.Form.Files.FirstOrDefault(x => x.Name == parameter.Name);
+                                        if (value == null && !parameter.IsRequired)
+                                            return default!;
+                                        return Task.FromResult((object)value!);
+                                    });
+                                }
+                                else
+                                {
+                                    retrievers.Add(context =>
+                                    {
+                                        var value = context.Request.Form.FirstOrDefault(x => x.Key == parameter.Name);
+                                        if (value.Equals(default) && !parameter.IsRequired)
+                                            return default!;
+                                        var body = value.Value.ToString();
+                                        return Task.FromResult(body.FromJson(parameter.Type)!);
+                                    });
+                                }
                             }
                             else
                             {
@@ -107,8 +128,6 @@ namespace Microsoft.AspNetCore.Builder
                             break;
                     }
                 }
-                var currentMethod = method.Value.Method;
-                endpointMethodValue.EndpointUri = $"api/{(endpointValue.EndpointName ?? interfaceType.Name)}/{(!string.IsNullOrWhiteSpace(endpointValue.FactoryName) ? $"{endpointValue.FactoryName}/" : string.Empty)}{endpointMethodValue?.Name ?? method.Key}";
 
                 if (!isPost)
                 {
