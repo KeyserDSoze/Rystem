@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using Rystem.Api;
 
 namespace Microsoft.AspNetCore.Builder
 {
@@ -35,37 +34,77 @@ namespace Microsoft.AspNetCore.Builder
             {
                 var endpointMethodValue = method.Value;
                 List<Func<HttpContext, Task<object>>> retrievers = new();
-                var nonPrimitivesCount = method.Value.Parameters.Count(x => !x.IsPrimitive);
+                var nonPrimitivesCount = method.Value.Parameters.Count(x => x.Location == ApiParameterLocation.Body);
                 var isPost = nonPrimitivesCount > 0;
                 var isMultipart = nonPrimitivesCount > 1;
                 foreach (var parameter in method.Value.Parameters)
                 {
-                    var parameterName = (parameter.Info.GetCustomAttribute(typeof(ApiParameterNameAttribute)) as ApiParameterNameAttribute)?.Name ?? parameter.Name;
-                    if (parameter.IsPrimitive)
+                    switch (parameter.Location)
                     {
-                        retrievers.Add(context =>
-                        {
-                            var query = context.Request.Query[parameterName!].ToString();
-                            var task = Task.FromResult((object)query.Cast(parameter.Type));
-                            return task;
-                        });
-                    }
-                    else if (isMultipart)
-                    {
-                        retrievers.Add(context =>
-                        {
-                            var value = context.Request.Form.First(x => x.Key == parameterName);
-                            var body = value.Value.ToString();
-                            return Task.FromResult(body.FromJson(parameter.Type)!);
-                        });
-                    }
-                    else
-                    {
-                        retrievers.Add(async context =>
-                        {
-                            var value = await context.Request.Body.ConvertToStringAsync();
-                            return value.FromJson(parameter.Type)!;
-                        });
+                        case ApiParameterLocation.Query:
+                            retrievers.Add(context =>
+                            {
+                                if (!parameter.IsRequired && !context.Request.Query.ContainsKey(parameter.Name))
+                                    return default!;
+                                var value = context.Request.Query[parameter.Name!].ToString();
+                                var task = parameter.IsPrimitive ? Task.FromResult((object)value.Cast(parameter.Type)) : Task.FromResult(value.FromJson(parameter.Type)!);
+                                return task;
+                            });
+                            break;
+                        case ApiParameterLocation.Cookie:
+                            retrievers.Add(context =>
+                            {
+                                if (!parameter.IsRequired && !context.Request.Cookies.ContainsKey(parameter.Name))
+                                    return default!;
+                                var value = context.Request.Cookies[parameter.Name!]!.ToString();
+                                var task = parameter.IsPrimitive ? Task.FromResult((object)value.Cast(parameter.Type)) : Task.FromResult(value.FromJson(parameter.Type)!);
+                                return task;
+                            });
+                            break;
+                        case ApiParameterLocation.Header:
+                            retrievers.Add(context =>
+                            {
+                                if (!parameter.IsRequired && !context.Request.Headers.ContainsKey(parameter.Name))
+                                    return default!;
+                                var value = context.Request.Headers[parameter.Name!].ToString();
+                                var task = parameter.IsPrimitive ? Task.FromResult((object)value.Cast(parameter.Type)) : Task.FromResult(value.FromJson(parameter.Type)!);
+                                return task;
+                            });
+                            break;
+                        case ApiParameterLocation.Path:
+                            retrievers.Add(context =>
+                            {
+                                if (!parameter.IsRequired && !context.Request.Headers.ContainsKey(parameter.Name))
+                                    return default!;
+                                var values = context.Request.Path.Value?.Split('/');
+                                if (parameter.IsRequired && values?.Length < parameter.Position)
+                                    return default!;
+                                var value = values[parameter.Position];
+                                var task = parameter.IsPrimitive ? Task.FromResult((object)value.Cast(parameter.Type)) : Task.FromResult(value.FromJson(parameter.Type)!);
+                                return task;
+                            });
+                            break;
+                        case ApiParameterLocation.Body:
+                            if (isMultipart)
+                            {
+                                retrievers.Add(context =>
+                                {
+                                    var value = context.Request.Form.FirstOrDefault(x => x.Key == parameter.Name);
+                                    if (value.Equals(default) && !parameter.IsRequired)
+                                        return default!;
+                                    var body = value.Value.ToString();
+                                    return Task.FromResult(body.FromJson(parameter.Type)!);
+                                });
+                            }
+                            else
+                            {
+                                retrievers.Add(async context =>
+                                {
+                                    var value = await context.Request.Body.ConvertToStringAsync();
+                                    return value.FromJson(parameter.Type)!;
+                                });
+                            }
+                            break;
                     }
                 }
                 var currentMethod = method.Value.Method;
