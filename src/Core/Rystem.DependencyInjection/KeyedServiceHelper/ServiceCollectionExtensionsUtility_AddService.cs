@@ -2,6 +2,47 @@
 {
     public static partial class ServiceCollectionExtensions
     {
+        private static IServiceCollection AddKeyedServiceEngine(this IServiceCollection services,
+            Type serviceType,
+            object? serviceKey,
+            Type? implementationType,
+            object? instance,
+            Func<IServiceProvider, object?, object>? instanceFactory,
+            ServiceLifetime lifetime,
+            bool? canOverride,
+            int id = 0)
+        {
+            if (serviceKey == null)
+                throw new ArgumentNullException(nameof(serviceKey));
+            var map = services.TryAddSingletonAndGetService<ServiceFactoryMap>();
+            if (map.Services.ContainsKey(serviceKey))
+            {
+                if (canOverride == true)
+                {
+                    if (map.Services.Remove(serviceKey, out var value))
+                        services.Remove(value);
+                }
+                else if (canOverride == false)
+                    throw new ArgumentException($"{serviceKey} already installed.");
+                else
+                    return services;
+            }
+            ServiceDescriptor descriptor;
+            if (instance != null)
+                descriptor = new ServiceDescriptor(serviceType, serviceKey, instance) { Skip = id };
+            else if (instanceFactory != null)
+                descriptor = new ServiceDescriptor(serviceType, serviceKey, (services, key) => instanceFactory(services, key), lifetime) { Skip = id };
+            else
+            {
+                if (implementationType == null)
+                    descriptor = new ServiceDescriptor(serviceType, serviceKey, lifetime) { Skip = id };
+                else
+                    descriptor = new ServiceDescriptor(serviceType, serviceKey, implementationType, lifetime) { Skip = id };
+            }
+            map.Services.Add(serviceKey, descriptor);
+            services.Add(descriptor);
+            return services;
+        }
         public static IServiceCollection AddKeyedService<TService>(this IServiceCollection services,
             object? serviceKey,
            ServiceLifetime lifetime)

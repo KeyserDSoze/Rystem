@@ -82,8 +82,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
                 services.AddKeyedServiceEngine(serviceType,
                     factoryName,
-                    //typeof(TService) != typeof(TImplementation) ? typeof(TImplementation) : typeof(TService),
-                    serviceType,
+                    typeof(TService) != typeof(TImplementation) ? typeof(TImplementation) : typeof(TService),
                     implementationInstance,
                     implementationFactory,
                     lifetime,
