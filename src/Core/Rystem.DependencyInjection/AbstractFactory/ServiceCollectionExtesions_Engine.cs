@@ -29,7 +29,7 @@ namespace Microsoft.Extensions.DependencyInjection
         }
         private static IServiceCollection AddEngineFactoryWithoutGenerics(this IServiceCollection services,
             Type serviceType,
-            Type implementationType,
+            Type? implementationType,
             string? name,
             bool canOverrideConfiguration,
             ServiceLifetime lifetime,
@@ -39,7 +39,7 @@ namespace Microsoft.Extensions.DependencyInjection
             bool fromDecoration)
         {
             return Generics
-                .WithStatic(typeof(ServiceCollectionExtensions), nameof(AddEngineFactory), serviceType, implementationType)
+                .WithStatic(typeof(ServiceCollectionExtensions), nameof(AddEngineFactory), serviceType, implementationType ?? serviceType)
                 .Invoke(services, name!, canOverrideConfiguration, lifetime, implementationInstance!, implementationFactory!, whenExists!, fromDecoration);
         }
         private static IServiceCollection AddEngineFactory<TService, TImplementation>(this IServiceCollection services,
@@ -51,34 +51,21 @@ namespace Microsoft.Extensions.DependencyInjection
             Action? whenExists,
             bool fromDecoration)
             where TService : class
-            where TImplementation : class
+            where TImplementation : class, TService
         {
             var factoryName = name.GetFactoryName<TService>();
             services.TryAddTransient<IFactory<TService>, Factory<TService>>();
-            //var serviceType = typeof(TService);
-            var serviceType = typeof(TImplementation);
+            var serviceType = typeof(TService);
             var map = services.TryAddSingletonAndGetService<ServiceFactoryMap>();
-            //var existingServiceWithThatName = services.HasKeyedService<TService, TImplementation>(name, out var serviceDescriptor);
-            var existingServiceWithThatName = services.HasKeyedService<TImplementation, TImplementation>(factoryName, out var serviceDescriptor);
+            var existingServiceWithThatName = services.HasKeyedService<TService, TImplementation>(factoryName, out var serviceDescriptor);
             if (!existingServiceWithThatName || canOverrideConfiguration)
             {
                 if (fromDecoration && !map.DecorationCount.ContainsKey(factoryName))
                     map.DecorationCount.Add(factoryName, new());
-                var id = 0;
-                var reorder = false;
                 if (map.Services.TryGetValue(factoryName, out var keyedServiceDescriptor))
                 {
-                    id = keyedServiceDescriptor.Skip;
                     map.Services.Remove(factoryName);
                     services.Remove(keyedServiceDescriptor);
-                    reorder = true;
-                }
-                else
-                {
-                    //id = Services.Count(x => x.Value.ServiceType == typeof(TService));
-                    //if (id > 0)
-                    //    services.Remove(services.Last(x => x.ServiceType == typeof(TService)));
-                    id = map.Services.Count(x => x.Value.ServiceType == serviceType);
                 }
                 services.AddKeyedServiceEngine(serviceType,
                     factoryName,
@@ -86,19 +73,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     implementationInstance,
                     implementationFactory,
                     lifetime,
-                    canOverrideConfiguration,
-                    id);
-                if (reorder)
-                {
-                    foreach (var service in map.Services.Where(x => x.Value.ServiceType == serviceType))
-                    {
-                        services.Remove(service.Value);
-                    }
-                    foreach (var service in map.Services.Where(x => x.Value.ServiceType == serviceType).OrderBy(x => x.Value.Skip))
-                    {
-                        services.Add(service.Value);
-                    }
-                }
+                    canOverrideConfiguration);
                 //todo: remember that we need to add this feature in the next release with .net 8 because we need to inject directly the last implementation of a service to retrieve without IFactory
                 if (fromDecoration)
                     services.AddOrOverrideService(serviceProvider =>

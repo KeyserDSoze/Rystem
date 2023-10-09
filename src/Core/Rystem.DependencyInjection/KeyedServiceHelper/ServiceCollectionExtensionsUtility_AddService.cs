@@ -29,15 +29,15 @@
             }
             ServiceDescriptor descriptor;
             if (instance != null)
-                descriptor = new ServiceDescriptor(serviceType, serviceKey, instance) { Skip = id };
+                descriptor = new ServiceDescriptor(serviceType, serviceKey, instance);
             else if (instanceFactory != null)
-                descriptor = new ServiceDescriptor(serviceType, serviceKey, (services, key) => instanceFactory(services, key), lifetime) { Skip = id };
+                descriptor = new ServiceDescriptor(serviceType, serviceKey, (services, key) => instanceFactory(services, key), lifetime);
             else
             {
                 if (implementationType == null)
-                    descriptor = new ServiceDescriptor(serviceType, serviceKey, lifetime) { Skip = id };
+                    descriptor = new ServiceDescriptor(serviceType, serviceKey, lifetime);
                 else
-                    descriptor = new ServiceDescriptor(serviceType, serviceKey, implementationType, lifetime) { Skip = id };
+                    descriptor = new ServiceDescriptor(serviceType, serviceKey, implementationType, lifetime);
             }
             map.Services.Add(serviceKey, descriptor);
             services.Add(descriptor);

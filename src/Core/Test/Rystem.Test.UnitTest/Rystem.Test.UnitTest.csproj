@@ -8,7 +8,9 @@
 
     <UserSecretsId>621d04d4-f04a-4b1f-adfb-76a6c78f1d48</UserSecretsId>
   </PropertyGroup>
-
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0-rc.1.23419.4" />
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.0-rc.1.23419.4" />

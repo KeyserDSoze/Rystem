@@ -9,7 +9,7 @@
             this IServiceCollection services,
             Type typeToRemove)
         {
-            var currentServices = services.Where(x => x.ImplementationType == typeToRemove).ToList();
+            var currentServices = services.Where(x => x.ServiceType == typeToRemove).ToList();
             foreach (var service in currentServices)
                 services.Remove(service);
             return services;
