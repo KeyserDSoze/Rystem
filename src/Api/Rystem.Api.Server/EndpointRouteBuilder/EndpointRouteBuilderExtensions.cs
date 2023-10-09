@@ -17,7 +17,8 @@ namespace Microsoft.AspNetCore.Builder
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
-            foreach (var endpoint in EndpointsManager.Endpoints)
+            var endpointsManager = builder.ServiceProvider.GetRequiredService<EndpointsManager>();
+            foreach (var endpoint in endpointsManager.Endpoints)
             {
                 Generics.WithStatic(
                 typeof(EndpointRouteBuilderRystemExtensions),
@@ -47,7 +48,7 @@ namespace Microsoft.AspNetCore.Builder
                     endpointMethodValue.EndpointUri += $"/{{{parameter.Name}}}";
                 }
                 var currentPathParameter = 0;
-                foreach (var parameter in method.Value.Parameters)
+                foreach (var parameter in method.Value.Parameters.OrderBy(x => x.Position))
                 {
                     switch (parameter.Location)
                     {

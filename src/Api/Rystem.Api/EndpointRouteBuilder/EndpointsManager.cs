@@ -1,7 +1,7 @@
 ﻿namespace Microsoft.AspNetCore.Builder
 {
-    public static class EndpointsManager
+    public sealed class EndpointsManager
     {
-        public static readonly List<EndpointValue> Endpoints = new();
+        public List<EndpointValue> Endpoints { get; } = new();
     }
 }

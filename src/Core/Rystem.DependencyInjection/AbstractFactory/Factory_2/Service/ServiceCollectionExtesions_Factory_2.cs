@@ -2,6 +2,15 @@
 {
     public static partial class ServiceCollectionExtensions
     {
+        public static IServiceCollection AddFactory(this IServiceCollection services,
+            Type serviceType,
+            Type implementationType,
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Transient)
+        {
+            services.AddEngineFactoryWithoutGenerics(serviceType, implementationType, name, false, lifetime, null, null, null, false);
+            return services;
+        }
         public static IServiceCollection AddFactory<TService, TImplementation>(this IServiceCollection services,
            string? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Transient)

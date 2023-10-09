@@ -9,6 +9,11 @@ namespace Rystem.Api
 {
     internal sealed class EndpointInformationProvider : IOperationFilter
     {
+        private readonly EndpointsManager _endpointsManager;
+        public EndpointInformationProvider(EndpointsManager endpointsManager)
+        {
+            _endpointsManager = endpointsManager;
+        }
         private OpenApiString? GetExample(EndpointMethodParameterValue endpointMethodParameterValue)
         {
             if (endpointMethodParameterValue.Example != null)
@@ -17,7 +22,7 @@ namespace Rystem.Api
         }
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
-            var currentEndpoint = EndpointsManager.Endpoints.SelectMany(x => x.Methods).FirstOrDefault(x => x.Value.EndpointUri == context.ApiDescription.RelativePath);
+            var currentEndpoint = _endpointsManager.Endpoints.SelectMany(x => x.Methods).FirstOrDefault(x => x.Value.EndpointUri == context.ApiDescription.RelativePath);
             if (currentEndpoint.Value != null)
             {
                 foreach (var parameter in currentEndpoint.Value.Parameters)

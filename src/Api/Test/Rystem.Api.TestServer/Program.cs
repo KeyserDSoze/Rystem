@@ -5,19 +5,20 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddTransient<IColam, Comad>();
+builder.Services.AddFactory<ISalubry, Salubry>();
 builder.Services.AddFactory<ISalubry, Salubry2>("Doma");
 builder.Services.AddServerIntegrationForRystemApi();
-builder.Services.AddServiceAsEndpoint<ISalubry, Salubry>(endpointBuilder =>
+builder.Services.AddEndpoint<ISalubry>(endpointBuilder =>
 {
     endpointBuilder.SetEndpointName("Salubriend");
     endpointBuilder.SetMethodName(x => x.GetAsync, "Gimme");
-});
-builder.Services.AddEndpoint<IColam>(endpointBuilder =>
+})
+.AddEndpoint<IColam>(endpointBuilder =>
 {
     endpointBuilder.SetEndpointName("Comator");
     endpointBuilder.SetMethodName(x => x.GetAsync, "Cod");
-});
-builder.Services.AddEndpoint<ISalubry>(endpointBuilder =>
+})
+.AddEndpoint<ISalubry>(endpointBuilder =>
 {
     endpointBuilder
         .SetEndpointName("E")
@@ -42,4 +43,44 @@ app.MapGet("/handle2/{param:int}", async (int param) =>
 {
     return true;
 });
+ExecuteAsync();
 app.Run();
+
+async Task ExecuteAsync()
+{
+    var services = new ServiceCollection();
+    services.AddEndpoint<ISalubry>(endpointBuilder =>
+    {
+        endpointBuilder.SetEndpointName("Salubriend");
+        endpointBuilder.SetMethodName(x => x.GetAsync, "Gimme");
+    })
+    .AddEndpoint<IColam>(endpointBuilder =>
+    {
+        endpointBuilder.SetEndpointName("Comator");
+        endpointBuilder.SetMethodName(x => x.GetAsync, "Cod");
+    })
+    .AddEndpoint<ISalubry>(endpointBuilder =>
+    {
+        endpointBuilder
+            .SetEndpointName("E")
+            .SetMethodName(x => x.GetAsync, "Ra")
+            .SetupParameter(x => x.GetAsync, "id", x =>
+            {
+                x.Location = ApiParameterLocation.Body;
+                x.Example = 56;
+            });
+    }, "Doma");
+    var q = services.ToList();
+    services.AddClientsForEndpointApi();
+    await Task.Delay(10_000);
+    var provider = services.BuildServiceProvider().CreateScope().ServiceProvider;
+    try
+    {
+        var salubry = provider.GetRequiredService<IFactory<ISalubry>>().Create();
+        var response = await salubry.GetAsync(2, new MemoryStream());
+    }
+    catch (Exception ex)
+    {
+        string olaf = ex.Message;
+    }
+}

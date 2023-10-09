@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Rystem.Api.Client\Rystem.Api.Client.csproj" />
     <ProjectReference Include="..\..\Rystem.Api.Server\Rystem.Api.Server.csproj" />
   </ItemGroup>
 

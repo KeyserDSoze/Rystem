@@ -51,7 +51,7 @@ namespace Microsoft.Extensions.DependencyInjection
             Action? whenExists,
             bool fromDecoration)
             where TService : class
-            where TImplementation : class, TService
+            where TImplementation : class
         {
             var factoryName = name.GetFactoryName<TService>();
             services.TryAddTransient<IFactory<TService>, Factory<TService>>();

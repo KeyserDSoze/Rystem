@@ -2,7 +2,7 @@
 {
     public abstract class DispatchProxyAsync
     {
-        public static T Create<T, TProxy>() where TProxy : DispatchProxyAsync 
+        public static T Create<T, TProxy>() where TProxy : DispatchProxyAsync
             => (T)AsyncDispatchProxyGenerator.CreateProxyInstance(typeof(TProxy), typeof(T));
 
         public abstract object Invoke(MethodInfo method, object[] args);
