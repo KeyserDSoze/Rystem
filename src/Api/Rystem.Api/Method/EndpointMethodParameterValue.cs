@@ -1,6 +1,5 @@
 ﻿using System.Reflection;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+using Rystem.Api;
 
 namespace Microsoft.AspNetCore.Builder
 {
@@ -15,11 +14,12 @@ namespace Microsoft.AspNetCore.Builder
         public bool IsRequired { get; set; }
         public bool IsStream { get; }
         public string? ContentType { get; set; }
+        public object? Example { get; set; }
         public EndpointMethodParameterValue(ParameterInfo parameterInfo)
         {
             Info = parameterInfo;
             IsPrimitive = parameterInfo.ParameterType.IsPrimitive();
-            IsStream = parameterInfo.ParameterType == typeof(IFormFile);
+            IsStream = parameterInfo.ParameterType.IsAssignableFrom(typeof(Stream));
             Type = parameterInfo.ParameterType;
             Name = parameterInfo.Name!;
             Location = IsPrimitive ? ApiParameterLocation.Query : ApiParameterLocation.Body;

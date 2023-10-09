@@ -2,13 +2,15 @@
 
 namespace Microsoft.AspNetCore.Builder
 {
-    internal sealed class EndpointMethodValue
+    public sealed class EndpointMethodValue
     {
         public string[]? Policies { get; set; }
         public string? Name { get; set; }
         public List<EndpointMethodParameterValue> Parameters { get; }
         public MethodInfo Method { get; }
-        public string EndpointUri { get; internal set; } = string.Empty;
+        public string EndpointUri { get; set; } = string.Empty;
+        public bool IsPost { get; private set; }
+        public bool IsMultipart { get; private set; }
         public EndpointMethodValue(MethodInfo method)
         {
             Method = method;
@@ -16,6 +18,13 @@ namespace Microsoft.AspNetCore.Builder
             {
                 return new EndpointMethodParameterValue(x);
             }).ToList();
+            Update();
+        }
+        internal void Update()
+        {
+            var nonPrimitivesCount = Parameters.Count(x => x.Location == ApiParameterLocation.Body);
+            IsPost = nonPrimitivesCount > 0;
+            IsMultipart = nonPrimitivesCount > 1 || Parameters.Any(x => x.IsStream);
         }
     }
 }

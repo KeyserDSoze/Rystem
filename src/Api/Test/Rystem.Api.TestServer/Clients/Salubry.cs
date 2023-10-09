@@ -1,19 +1,17 @@
-﻿using Microsoft.AspNetCore.Mvc;
-
-namespace Rystem.Api.TestServer.Clients
+﻿namespace Rystem.Api.TestServer.Clients
 {
     public interface ISalubry
     {
-        Task<bool> GetAsync(int id);
+        Task<bool> GetAsync(int id, Stream stream);
     }
     public class Salubry : ISalubry
     {
-        public Task<bool> GetAsync(int id)
+        public Task<bool> GetAsync(int id, Stream stream)
             => Task.FromResult(true);
     }
     public class Salubry2 : ISalubry
     {
-        public Task<bool> GetAsync(int id)
+        public Task<bool> GetAsync(int id, Stream stream)
             => Task.FromResult(false);
     }
     public interface IColam

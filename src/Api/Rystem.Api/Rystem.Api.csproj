@@ -18,25 +18,20 @@
 		<PackageIcon>rystem.api.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Api</RepositoryUrl>
-		<PackageId>Rystem.Api.Server</PackageId>
+		<PackageId>Rystem.Api</PackageId>
 		<Version>5.0.20</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	</PropertyGroup>
-    <ItemGroup>
-        <FrameworkReference Include="Microsoft.AspNetCore.App" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.10" />
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
-    </ItemGroup>
     <Choose>
         <When Condition=" '$(Configuration)'=='Debug' ">
             <ItemGroup>
-                <ProjectReference Include="..\Rystem.Api\Rystem.Api.csproj" />
+                <ProjectReference Include="..\..\Core\Rystem.DependencyInjection\Rystem.DependencyInjection.csproj" />
             </ItemGroup>
         </When>
         <When Condition=" '$(Configuration)'!='Debug' ">
             <ItemGroup>
-                <PackageReference Include="Rystem.Api" Version="5.0.20" />
+                <PackageReference Include="Rystem.DependencyInjection" Version="5.0.20" />
             </ItemGroup>
         </When>
     </Choose>

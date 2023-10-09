@@ -33,6 +33,7 @@ namespace Microsoft.AspNetCore.Builder
             if (_endpointValue.Methods.TryGetValue(methodName, out var actualValue))
             {
                 actualValue.Name = name;
+                actualValue.Update();
             }
             return this;
         }
@@ -45,6 +46,7 @@ namespace Microsoft.AspNetCore.Builder
                     allPolicies.AddRange(actualValue.Policies);
                 allPolicies.AddRange(policies);
                 actualValue.Policies = allPolicies.Distinct().ToArray();
+                actualValue.Update();
             }
             return this;
         }
@@ -77,6 +79,7 @@ namespace Microsoft.AspNetCore.Builder
                 if (value != null)
                 {
                     setup.Invoke(value);
+                    actualValue.Update();
                 }
             }
             return this;

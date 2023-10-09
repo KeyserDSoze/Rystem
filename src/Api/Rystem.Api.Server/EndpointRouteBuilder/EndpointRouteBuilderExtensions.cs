@@ -39,9 +39,6 @@ namespace Microsoft.AspNetCore.Builder
             {
                 var endpointMethodValue = method.Value;
                 List<RetrieverWrapper> retrievers = new();
-                var nonPrimitivesCount = method.Value.Parameters.Count(x => x.Location == ApiParameterLocation.Body);
-                var isPost = nonPrimitivesCount > 0;
-                var isMultipart = nonPrimitivesCount > 1 || method.Value.Parameters.Any(x => x.IsStream);
                 var currentMethod = method.Value.Method;
                 endpointMethodValue.EndpointUri = $"api/{(endpointValue.EndpointName ?? interfaceType.Name)}/{(!string.IsNullOrWhiteSpace(endpointValue.FactoryName) ? $"{endpointValue.FactoryName}/" : string.Empty)}{endpointMethodValue?.Name ?? method.Key}";
                 var numberOfValueInPath = endpointMethodValue!.EndpointUri.Split('/').Length + 1;
@@ -110,18 +107,28 @@ namespace Microsoft.AspNetCore.Builder
                             currentPathParameter++;
                             break;
                         case ApiParameterLocation.Body:
-                            if (isMultipart)
+                            if (method.Value.IsMultipart)
                             {
-                                if (parameter.IsStream)
+                                var isFormFile = parameter.Type == typeof(IFormFile);
+                                var isStreamable = parameter.IsStream || isFormFile;
+                                if (isStreamable)
                                 {
                                     retrievers.Add(new RetrieverWrapper
                                     {
-                                        Executor = context =>
+                                        ExecutorAsync = async context =>
                                         {
                                             var value = context.Request.Form.Files.FirstOrDefault(x => x.Name == parameter.Name);
                                             if (value == null && !parameter.IsRequired)
                                                 return default!;
-                                            return value!;
+                                            if (isFormFile)
+                                                return value!;
+                                            else
+                                            {
+                                                var memoryStream = new MemoryStream();
+                                                await value!.CopyToAsync(memoryStream).NoContext();
+                                                memoryStream.Position = 0;
+                                                return memoryStream;
+                                            }
                                         }
                                     });
                                 }
@@ -157,7 +164,7 @@ namespace Microsoft.AspNetCore.Builder
                     }
                 }
 
-                if (!isPost)
+                if (!method.Value.IsPost)
                 {
                     builder
                         .MapGet(endpointMethodValue.EndpointUri, async (HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory) =>

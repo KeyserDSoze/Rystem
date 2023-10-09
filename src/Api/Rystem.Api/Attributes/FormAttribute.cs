@@ -1,10 +1,10 @@
-﻿using Microsoft.AspNetCore.Http.Metadata;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
-
-namespace Microsoft.AspNetCore.Mvc
+﻿namespace Rystem.Api
 {
+    /// <summary>
+    /// Specifies that a parameter or property should be bound using form-data in the request body.
+    /// </summary>
     [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
-    public class HeaderAttribute : Attribute, IModelNameProvider, IFromHeaderMetadata
+    public class FormAttribute : Attribute
     {
         /// <inheritdoc />
         public string? Name { get; set; }

@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.AspNetCore.Builder
 {
-    internal sealed class EndpointValue
+    public sealed class EndpointValue
     {
         public EndpointValue(Type type) { Type = type; }
         public Type Type { get; }

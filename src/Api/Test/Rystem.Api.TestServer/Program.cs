@@ -25,6 +25,7 @@ builder.Services.AddEndpoint<ISalubry>(endpointBuilder =>
         .SetupParameter(x => x.GetAsync, "id", x =>
         {
             x.Location = ApiParameterLocation.Body;
+            x.Example = 56;
         });
 }, "Doma");
 var app = builder.Build();
@@ -33,7 +34,7 @@ app.UseHttpsRedirection();
 app.UseEndpointApi();
 app.MapPost("/handle-file", async ([FromForm] IFormFile myFile, [FromForm] IFormFile myFile2) =>
 {
-    string tempfile = Path.GetTempFileName();
+    var tempfile = Path.GetTempFileName();
     await using var stream = File.OpenWrite(tempfile);
     await myFile.CopyToAsync(stream);
 });

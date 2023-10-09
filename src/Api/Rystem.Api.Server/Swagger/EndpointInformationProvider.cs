@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System.Text.Json;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
@@ -6,13 +9,17 @@ namespace Rystem.Api
 {
     internal sealed class EndpointInformationProvider : IOperationFilter
     {
+        private OpenApiString? GetExample(EndpointMethodParameterValue endpointMethodParameterValue)
+        {
+            if (endpointMethodParameterValue.Example != null)
+                return new OpenApiString(endpointMethodParameterValue.IsPrimitive ? endpointMethodParameterValue.Example.ToString() : endpointMethodParameterValue.Example.ToJson(), false);
+            return null;
+        }
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
             var currentEndpoint = EndpointsManager.Endpoints.SelectMany(x => x.Methods).FirstOrDefault(x => x.Value.EndpointUri == context.ApiDescription.RelativePath);
             if (currentEndpoint.Value != null)
             {
-                var nonPrimitivesCount = currentEndpoint.Value.Parameters.Count(x => x.Location == ApiParameterLocation.Body);
-                var isMultipart = nonPrimitivesCount > 1;
                 foreach (var parameter in currentEndpoint.Value.Parameters)
                 {
                     switch (parameter.Location)
@@ -22,7 +29,8 @@ namespace Rystem.Api
                             {
                                 Name = parameter.Name,
                                 In = ParameterLocation.Query,
-                                Required = parameter.IsRequired
+                                Required = parameter.IsRequired,
+                                Example = GetExample(parameter)
                             });
                             break;
                         case ApiParameterLocation.Cookie:
@@ -30,7 +38,8 @@ namespace Rystem.Api
                             {
                                 Name = parameter.Name,
                                 In = ParameterLocation.Cookie,
-                                Required = parameter.IsRequired
+                                Required = parameter.IsRequired,
+                                Example = GetExample(parameter)
                             });
                             break;
                         case ApiParameterLocation.Header:
@@ -38,7 +47,8 @@ namespace Rystem.Api
                             {
                                 Name = parameter.Name,
                                 In = ParameterLocation.Header,
-                                Required = parameter.IsRequired
+                                Required = parameter.IsRequired,
+                                Example = GetExample(parameter)
                             });
                             break;
                         case ApiParameterLocation.Path:
@@ -46,12 +56,15 @@ namespace Rystem.Api
                             {
                                 Name = parameter.Name,
                                 In = ParameterLocation.Path,
-                                Required = parameter.IsRequired
+                                Required = parameter.IsRequired,
+                                Example = GetExample(parameter)
                             });
                             break;
                         case ApiParameterLocation.Body:
-                            if (isMultipart)
+                            if (currentEndpoint.Value.IsMultipart)
                             {
+                                var isFormFile = parameter.Type == typeof(IFormFile);
+                                var isStreamable = parameter.IsStream || isFormFile;
                                 if (operation.RequestBody == null)
                                 {
                                     operation.RequestBody = new OpenApiRequestBody
@@ -73,12 +86,12 @@ namespace Rystem.Api
                                     content.Schema.Required.Add(parameter.Name);
                                 content.Schema.Properties.Add(parameter.Name, new OpenApiSchema
                                 {
-                                    Type = parameter.IsStream ? "string" : "object",
-                                    Format = parameter.IsStream ? "binary" : "application/json"
+                                    Type = isStreamable ? "string" : "object",
+                                    Format = isStreamable ? "binary" : "application/json"
                                 });
                                 content.Encoding.Add(parameter.Name, new OpenApiEncoding
                                 {
-                                    ContentType = parameter.IsStream ? parameter.ContentType : "application/json",
+                                    ContentType = isStreamable ? parameter.ContentType : "application/json",
                                     Style = ParameterStyle.Form
                                 });
                             }
@@ -98,6 +111,7 @@ namespace Rystem.Api
                                                     Format = "string",
                                                     Description = parameter.Name,
                                                     Title = parameter.Name,
+                                                    Example = GetExample(parameter)
                                                 }
                                             }
                                         },
@@ -106,17 +120,6 @@ namespace Rystem.Api
                             }
                             break;
                     }
-                    context.ApiDescription.ParameterDescriptions.Add(new Microsoft.AspNetCore.Mvc.ApiExplorer.ApiParameterDescription
-                    {
-                        Name = parameter.Name,
-                        IsRequired = true,
-                        Type = parameter.Type,
-                        ParameterDescriptor = new Microsoft.AspNetCore.Mvc.Abstractions.ParameterDescriptor
-                        {
-                            Name = parameter.Name,
-                            ParameterType = parameter.Type,
-                        },
-                    });
                 }
             }
         }

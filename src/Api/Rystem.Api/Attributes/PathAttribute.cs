@@ -1,4 +1,4 @@
-﻿namespace Microsoft.AspNetCore.Mvc
+﻿namespace Rystem.Api
 {
     /// <summary>
     /// Specifies that a parameter or property should be bound using the request cookie.
