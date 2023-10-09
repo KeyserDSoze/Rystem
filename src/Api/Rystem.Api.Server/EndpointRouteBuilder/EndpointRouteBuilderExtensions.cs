@@ -26,6 +26,11 @@ namespace Microsoft.AspNetCore.Builder
             }
             return builder;
         }
+        private sealed class RetrieverWrapper
+        {
+            public Func<HttpContext, Task<object>>? ExecutorAsync { get; set; }
+            public Func<HttpContext, object>? Executor { get; set; }
+        }
         private static IEndpointRouteBuilder PrivateUseEndpointApi<T>(this IEndpointRouteBuilder builder, EndpointValue endpointValue)
             where T : class
         {
@@ -33,7 +38,7 @@ namespace Microsoft.AspNetCore.Builder
             foreach (var method in endpointValue.Methods)
             {
                 var endpointMethodValue = method.Value;
-                List<Func<HttpContext, Task<object>>> retrievers = new();
+                List<RetrieverWrapper> retrievers = new();
                 var nonPrimitivesCount = method.Value.Parameters.Count(x => x.Location == ApiParameterLocation.Body);
                 var isPost = nonPrimitivesCount > 0;
                 var isMultipart = nonPrimitivesCount > 1 || method.Value.Parameters.Any(x => x.IsStream);
@@ -50,45 +55,57 @@ namespace Microsoft.AspNetCore.Builder
                     switch (parameter.Location)
                     {
                         case ApiParameterLocation.Query:
-                            retrievers.Add(context =>
+                            retrievers.Add(new RetrieverWrapper
                             {
-                                if (!parameter.IsRequired && !context.Request.Query.ContainsKey(parameter.Name))
-                                    return default!;
-                                var value = context.Request.Query[parameter.Name!].ToString();
-                                var task = parameter.IsPrimitive ? Task.FromResult((object)value.Cast(parameter.Type)) : Task.FromResult(value.FromJson(parameter.Type)!);
-                                return task;
+                                Executor = context =>
+                                {
+                                    if (!parameter.IsRequired && !context.Request.Query.ContainsKey(parameter.Name))
+                                        return default!;
+                                    var value = context.Request.Query[parameter.Name!].ToString();
+                                    var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
+                                    return returnValue;
+                                }
                             });
                             break;
                         case ApiParameterLocation.Cookie:
-                            retrievers.Add(context =>
+                            retrievers.Add(new RetrieverWrapper
                             {
-                                if (!parameter.IsRequired && !context.Request.Cookies.ContainsKey(parameter.Name))
-                                    return default!;
-                                var value = context.Request.Cookies[parameter.Name!]!.ToString();
-                                var task = parameter.IsPrimitive ? Task.FromResult((object)value.Cast(parameter.Type)) : Task.FromResult(value.FromJson(parameter.Type)!);
-                                return task;
+                                Executor = context =>
+                                {
+                                    if (!parameter.IsRequired && !context.Request.Cookies.ContainsKey(parameter.Name))
+                                        return default!;
+                                    var value = context.Request.Cookies[parameter.Name!]!.ToString();
+                                    var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
+                                    return returnValue;
+                                }
                             });
                             break;
                         case ApiParameterLocation.Header:
-                            retrievers.Add(context =>
+                            retrievers.Add(new RetrieverWrapper
                             {
-                                if (!parameter.IsRequired && !context.Request.Headers.ContainsKey(parameter.Name))
-                                    return default!;
-                                var value = context.Request.Headers[parameter.Name!].ToString();
-                                var task = parameter.IsPrimitive ? Task.FromResult((object)value.Cast(parameter.Type)) : Task.FromResult(value.FromJson(parameter.Type)!);
-                                return task;
+                                Executor = context =>
+                                {
+                                    if (!parameter.IsRequired && !context.Request.Headers.ContainsKey(parameter.Name))
+                                        return default!;
+                                    var value = context.Request.Headers[parameter.Name!].ToString();
+                                    var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
+                                    return returnValue;
+                                }
                             });
                             break;
                         case ApiParameterLocation.Path:
                             var currentPathParameterValue = parameter.Position == -1 ? currentPathParameter : parameter.Position;
-                            retrievers.Add(context =>
+                            retrievers.Add(new RetrieverWrapper
                             {
-                                var values = context.Request.Path.Value?.Split('/');
-                                if (parameter.IsRequired && values?.Length < parameter.Position)
-                                    return default!;
-                                var value = values![numberOfValueInPath + currentPathParameterValue];
-                                var task = parameter.IsPrimitive ? Task.FromResult((object)value.Cast(parameter.Type)) : Task.FromResult(value.FromJson(parameter.Type)!);
-                                return task;
+                                Executor = context =>
+                                {
+                                    var values = context.Request.Path.Value?.Split('/');
+                                    if (parameter.IsRequired && values?.Length < parameter.Position)
+                                        return default!;
+                                    var value = values![numberOfValueInPath + currentPathParameterValue];
+                                    var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
+                                    return returnValue;
+                                }
                             });
                             currentPathParameter++;
                             break;
@@ -97,32 +114,43 @@ namespace Microsoft.AspNetCore.Builder
                             {
                                 if (parameter.IsStream)
                                 {
-                                    retrievers.Add(context =>
+                                    retrievers.Add(new RetrieverWrapper
                                     {
-                                        var value = context.Request.Form.Files.FirstOrDefault(x => x.Name == parameter.Name);
-                                        if (value == null && !parameter.IsRequired)
-                                            return default!;
-                                        return Task.FromResult((object)value!);
+                                        Executor = context =>
+                                        {
+                                            var value = context.Request.Form.Files.FirstOrDefault(x => x.Name == parameter.Name);
+                                            if (value == null && !parameter.IsRequired)
+                                                return default!;
+                                            return value!;
+                                        }
                                     });
                                 }
                                 else
                                 {
-                                    retrievers.Add(context =>
+                                    retrievers.Add(new RetrieverWrapper
                                     {
-                                        var value = context.Request.Form.FirstOrDefault(x => x.Key == parameter.Name);
-                                        if (value.Equals(default) && !parameter.IsRequired)
-                                            return default!;
-                                        var body = value.Value.ToString();
-                                        return Task.FromResult(body.FromJson(parameter.Type)!);
+                                        Executor = context =>
+                                        {
+                                            var value = context.Request.Form.FirstOrDefault(x => x.Key == parameter.Name);
+                                            if (value.Equals(default) && !parameter.IsRequired)
+                                                return default!;
+                                            var body = value.Value.ToString();
+                                            if (string.IsNullOrWhiteSpace(body) && !parameter.IsRequired)
+                                                return default!;
+                                            return parameter.IsPrimitive ? body.Cast(parameter.Type) : body.FromJson(parameter.Type)!;
+                                        }
                                     });
                                 }
                             }
                             else
                             {
-                                retrievers.Add(async context =>
+                                retrievers.Add(new RetrieverWrapper
                                 {
-                                    var value = await context.Request.Body.ConvertToStringAsync();
-                                    return value.FromJson(parameter.Type)!;
+                                    ExecutorAsync = async context =>
+                                    {
+                                        var value = await context.Request.Body.ConvertToStringAsync();
+                                        return parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
+                                    }
                                 });
                             }
                             break;
@@ -165,7 +193,10 @@ namespace Microsoft.AspNetCore.Builder
                     var counter = 0;
                     foreach (var retriever in retrievers)
                     {
-                        parameters[counter] = await retriever.Invoke(context);
+                        if (retriever.Executor is not null)
+                            parameters[counter] = retriever.Executor.Invoke(context);
+                        else if (retriever.ExecutorAsync is not null)
+                            parameters[counter] = await retriever.ExecutorAsync.Invoke(context);
                         counter++;
                     }
                     return parameters;

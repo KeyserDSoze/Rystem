@@ -19,8 +19,13 @@ builder.Services.AddEndpoint<IColam>(endpointBuilder =>
 });
 builder.Services.AddEndpoint<ISalubry>(endpointBuilder =>
 {
-    endpointBuilder.SetEndpointName("E");
-    endpointBuilder.SetMethodName(x => x.GetAsync, "Ra");
+    endpointBuilder
+        .SetEndpointName("E")
+        .SetMethodName(x => x.GetAsync, "Ra")
+        .SetupParameter(x => x.GetAsync, "id", x =>
+        {
+            x.Location = ApiParameterLocation.Body;
+        });
 }, "Doma");
 var app = builder.Build();
 

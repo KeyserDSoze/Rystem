@@ -14,9 +14,10 @@ namespace Microsoft.AspNetCore.Builder
                 _endpointValue.Methods.Add(method.Name, new EndpointMethodValue(method));
             }
         }
-        public void SetEndpointName(string name)
+        public ApiEndpointPolicyBuilder<T> SetEndpointName(string name)
         {
             _endpointValue.EndpointName = name;
+            return this;
         }
         private static string GetName(Expression<Func<T, Delegate>> expression)
         {
@@ -26,16 +27,16 @@ namespace Microsoft.AspNetCore.Builder
             var methodInfo = (MemberInfo)methodInfoExpression.Value!;
             return methodInfo!.Name;
         }
-        public void SetMethodName(Expression<Func<T, Delegate>> method, string name)
+        public ApiEndpointPolicyBuilder<T> SetMethodName(Expression<Func<T, Delegate>> method, string name)
         {
             var methodName = ApiEndpointPolicyBuilder<T>.GetName(method);
             if (_endpointValue.Methods.TryGetValue(methodName, out var actualValue))
             {
-                actualValue.Name = methodName;
+                actualValue.Name = name;
             }
+            return this;
         }
-
-        private void AddAuthorization(string methodName, string[] policies)
+        private ApiEndpointPolicyBuilder<T> AddAuthorization(string methodName, string[] policies)
         {
             if (_endpointValue.Methods.TryGetValue(methodName, out var actualValue))
             {
@@ -45,24 +46,40 @@ namespace Microsoft.AspNetCore.Builder
                 allPolicies.AddRange(policies);
                 actualValue.Policies = allPolicies.Distinct().ToArray();
             }
+            return this;
         }
-        public void AddAuthorization(Expression<Func<T, Delegate>> method)
+        public ApiEndpointPolicyBuilder<T> AddAuthorization(Expression<Func<T, Delegate>> method)
         {
-            AddAuthorization(ApiEndpointPolicyBuilder<T>.GetName(method), Array.Empty<string>());
+            return AddAuthorization(ApiEndpointPolicyBuilder<T>.GetName(method), Array.Empty<string>());
         }
-        public void AddAuthorization(Expression<Func<T, Delegate>> method, params string[] policies)
+        public ApiEndpointPolicyBuilder<T> AddAuthorization(Expression<Func<T, Delegate>> method, params string[] policies)
         {
-            AddAuthorization(ApiEndpointPolicyBuilder<T>.GetName(method), policies);
+            return AddAuthorization(ApiEndpointPolicyBuilder<T>.GetName(method), policies);
         }
-        public void AddAuthorizationForAll()
+        public ApiEndpointPolicyBuilder<T> AddAuthorizationForAll()
         {
             foreach (var method in typeof(T).GetMethods())
                 AddAuthorization(method.Name, Array.Empty<string>());
+            return this;
         }
-        public void AddAuthorizationForAll(params string[] policies)
+        public ApiEndpointPolicyBuilder<T> AddAuthorizationForAll(params string[] policies)
         {
             foreach (var method in typeof(T).GetMethods())
                 AddAuthorization(method.Name, policies);
+            return this;
+        }
+        public ApiEndpointPolicyBuilder<T> SetupParameter(Expression<Func<T, Delegate>> method, string parameterName, Action<EndpointMethodParameterValue> setup)
+        {
+            var methodName = ApiEndpointPolicyBuilder<T>.GetName(method);
+            if (_endpointValue.Methods.TryGetValue(methodName, out var actualValue))
+            {
+                var value = actualValue.Parameters.FirstOrDefault(x => x.Name == parameterName);
+                if (value != null)
+                {
+                    setup.Invoke(value);
+                }
+            }
+            return this;
         }
     }
 }

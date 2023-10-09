@@ -1,22 +1,20 @@
 ﻿using System.Reflection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.WebUtilities;
-using Rystem.Api;
 
 namespace Microsoft.AspNetCore.Builder
 {
-    internal sealed class EndpointMethodParameterValue
+    public sealed class EndpointMethodParameterValue
     {
         public ParameterInfo Info { get; set; }
         public bool IsPrimitive { get; }
         public Type Type { get; }
-        public string Name { get; }
-        public ApiParameterLocation Location { get; }
-        public int Position { get; }
-        public bool IsRequired { get; }
+        public string Name { get; set; }
+        public ApiParameterLocation Location { get; set; }
+        public int Position { get; set; }
+        public bool IsRequired { get; set; }
         public bool IsStream { get; }
-        public string? ContentType { get; }
+        public string? ContentType { get; set; }
         public EndpointMethodParameterValue(ParameterInfo parameterInfo)
         {
             Info = parameterInfo;

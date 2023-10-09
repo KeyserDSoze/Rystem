@@ -22,7 +22,7 @@ namespace Rystem.Api.TestServer.Clients
             IFormFile file,
             [Query] string fol,
             [Header] string cul,
-            [Cookie(Name = "xx")] string cookie,
+            [Cookie(Name = "xx", IsRequired = false)] string cookie,
             [Form(Name = "aa", IsRequired = false)] Faul faul,
             [Form(Name = "bb", IsRequired = false)] Faul faul2,
             [Form(Name = "cc", IsRequired = false)] IFormFile file2);
