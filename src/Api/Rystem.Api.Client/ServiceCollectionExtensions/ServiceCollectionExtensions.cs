@@ -122,7 +122,7 @@ namespace Microsoft.Extensions.DependencyInjection
                                         {
                                             if (context.Content == null)
                                             {
-                                                context.Content = new MultipartFormDataContent();
+                                                context.Content = new MultipartFormDataContent($"----------{Guid.NewGuid()}");
                                                 context.Content.Headers.ContentType = new MediaTypeHeaderValue("multipart/form-data");
                                             }
                                             if (context.Content is MultipartFormDataContent multipart)
