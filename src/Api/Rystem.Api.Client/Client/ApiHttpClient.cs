@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 
@@ -22,10 +23,12 @@ namespace Rystem.Api
     }
     public sealed class ApiClientRequestBearer
     {
-        public StringBuilder Path { get; set; }
-        public StringBuilder Query { get; set; }
-        public StringBuilder Cookie { get; set; }
-        public HttpRequestMessage Request { get; set; }
+        public StringBuilder? Path { get; set; }
+        public StringBuilder? Query { get; set; }
+        public StringBuilder? Cookie { get; set; }
+        public string ContentType { get; set; } = "application/json";
+        public HttpContent? Content { get; set; }
+        public Dictionary<string, string?> Headers { get; set; } = new();
     }
     public class ApiHttpClient<T> : DispatchProxyAsync where T : class
     {
@@ -49,7 +52,6 @@ namespace Rystem.Api
         private async Task<TResponse> CreateResponseAsync<TResponse>(MethodInfo method, object[] args, bool readResponse)
         {
             var currentMethod = _requestChain.Methods[method.Name];
-            var request = new HttpRequestMessage(currentMethod.IsPost ? HttpMethod.Post : HttpMethod.Get, currentMethod.FixedPath);
             var context = new ApiClientRequestBearer();
             var parameterCounter = 0;
             foreach (var chain in currentMethod.Parameters)
@@ -60,9 +62,14 @@ namespace Rystem.Api
                     await chain.ExecutorAsync(context, args[parameterCounter]);
                 parameterCounter++;
             }
-            request.RequestUri = new Uri($"{context.Path}{context.Query}");
-            if (context.Cookie.Length > 0)
+            var request = new HttpRequestMessage(currentMethod.IsPost ? HttpMethod.Post : HttpMethod.Get, $"{currentMethod.FixedPath}{context.Path}{context.Query}");
+            if (context.Cookie?.Length > 0)
                 request.Headers.Add("cookie", context.Cookie.ToString());
+            if (context.Headers?.Count > 0)
+                foreach (var header in context.Headers)
+                    request.Headers.Add(header.Key, header.Value);
+            if (context.Content != null)
+                request.Content = context.Content;
             var response = await _httpClient!.SendAsync(request);
             response.EnsureSuccessStatusCode();
             if (readResponse)

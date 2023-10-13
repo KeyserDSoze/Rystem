@@ -40,10 +40,9 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection.Decorati
         private RepositoryOptions _options;
         private IRepository<T>? _repository;
         public string Format { get; set; }
-        public Cache(RepositoryOptions options, IDecoratedService<IRepository<T>>? repository = null)
+        public Cache(IDecoratedService<IRepository<T>>? repository = null)
         {
             _repository = repository.Service;
-            _options = options;
         }
         public T Get()
         {

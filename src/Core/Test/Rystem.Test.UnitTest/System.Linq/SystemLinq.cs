@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Rystem.Test.UnitTest.Models;
@@ -24,7 +24,7 @@ namespace Rystem.Test.UnitTest.Linq
             services.AddSingleton(configuration);
             services.AddDbContext<SampleContext>(options =>
             {
-                options.UseSqlServer(configuration["Database:ConnectionString"]);
+                options.UseSqlServer(configuration["ConnectionString:Database"]);
             }, ServiceLifetime.Scoped);
             _serviceProvider = services.BuildServiceProvider().CreateScope().ServiceProvider;
         }

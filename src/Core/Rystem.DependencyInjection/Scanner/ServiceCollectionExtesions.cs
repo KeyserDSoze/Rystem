@@ -43,15 +43,22 @@ namespace Microsoft.Extensions.DependencyInjection
             var result = new ScanResult { Implementations = new() };
             foreach (var assembly in assemblies)
             {
-                foreach (var type in assembly.GetTypes().Where(x => !x.IsInterface && !x.IsAbstract))
+                try
                 {
-                    if (type.HasInterface(typeof(IScannable)))
+
+                    foreach (var type in assembly.GetTypes().Where(x => !x.IsInterface && !x.IsAbstract))
                     {
-                        var whatKindOfType = GetScannableInterfaceImplementation(type);
-                        if (whatKindOfType != null
-                            && services.AddScannedType(whatKindOfType, type, lifetime))
-                            result.Implementations.Add(type);
+                        if (type.HasInterface(typeof(IScannable)))
+                        {
+                            var whatKindOfType = GetScannableInterfaceImplementation(type);
+                            if (whatKindOfType != null
+                                && services.AddScannedType(whatKindOfType, type, lifetime))
+                                result.Implementations.Add(type);
+                        }
                     }
+                }
+                catch
+                {
                 }
             }
             return
@@ -75,7 +82,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
                 if (serviceType == implementationType)
                 {
-                    if (!services.Any(x => x.ServiceType == serviceType))
+                    if (!services.Any(x => !x.IsKeyedService && x.ServiceType == serviceType))
                     {
                         services.AddService(serviceType, lifetime);
                         scannedTypes.TryAdd(implementationType, true);
@@ -85,8 +92,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 else
                 {
                     if (!services.Any(x => x.ServiceType == serviceType
-                        && (x.ImplementationType == implementationType
-                        || x.ImplementationInstance?.GetType() == implementationType)))
+                        && (!x.IsKeyedService && (x.ImplementationType == implementationType
+                        || x.ImplementationInstance?.GetType() == implementationType))))
                     {
                         services.AddService(serviceType, implementationType, lifetime);
                         scannedTypes.TryAdd(implementationType, true);

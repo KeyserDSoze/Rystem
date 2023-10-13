@@ -70,8 +70,13 @@ async Task ExecuteAsync()
                 x.Example = 56;
             });
     }, "Doma");
-    var q = services.ToList();
-    services.AddClientsForEndpointApi();
+    services.AddClientsForEndpointApi(x =>
+    {
+        x.ConfigurationHttpClientForApi(t =>
+        {
+            t.BaseAddress = new Uri("https://localhost:7117");
+        });
+    });
     await Task.Delay(10_000);
     var provider = services.BuildServiceProvider().CreateScope().ServiceProvider;
     try

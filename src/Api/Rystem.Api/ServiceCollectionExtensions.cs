@@ -8,7 +8,7 @@ namespace Microsoft.Extensions.DependencyInjection
             Action<ApiEndpointPolicyBuilder<TService>> builder,
             string? name = null)
         {
-            var endpointsManager = services.TryAddKeyedSingletonAndGetService<EndpointsManager>(new EndpointsManager(), string.Empty);
+            var endpointsManager = services.TryAddSingletonAndGetService<EndpointsManager>();
             var value = new EndpointValue(typeof(TService))
             {
                 FactoryName = name

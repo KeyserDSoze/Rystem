@@ -8,50 +8,32 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static partial class RystemApiServiceCollectionExtensions
     {
-        private static string GetKey<T>() => $"ApiHttpClient_{typeof(T).FullName}";
-        private static readonly string s_defaultKey = GetKey<object>();
-        public static IServiceCollection ConfigurationHttpClientForEndpointApi<T>(this IServiceCollection services, Action<HttpClient>? settings)
-            where T : class
+        public static IServiceCollection AddClientsForEndpointApi(this IServiceCollection services, Action<HttpClientBuilder> httpClientBuilder)
         {
-            var key = GetKey<T>();
-            if (s_httpClientConfigurator.ContainsKey(key))
-                s_httpClientConfigurator[key] = settings;
-            else
-                s_httpClientConfigurator[key] = settings;
-            return services;
-        }
-        public static IServiceCollection ConfigurationHttpClientForApi(this IServiceCollection services, Action<HttpClient>? settings)
-        {
-            if (s_httpClientConfigurator.ContainsKey(s_defaultKey))
-                s_httpClientConfigurator[s_defaultKey] = settings;
-            else
-                s_httpClientConfigurator[s_defaultKey] = settings;
-            return services;
-        }
-        private static readonly Dictionary<string, Action<HttpClient>?> s_httpClientConfigurator = new();
-        public static IServiceCollection AddClientsForEndpointApi(this IServiceCollection services)
-        {
-            var endpointsManager = services.TryAddKeyedSingletonAndGetService<EndpointsManager>(new EndpointsManager(), string.Empty);
-            foreach (var endpoint in endpointsManager.Endpoints)
-            {
-                Generics.WithStatic(
-                typeof(RystemApiServiceCollectionExtensions),
-                nameof(PrivateUseEndpointApi),
-                endpoint.Type).Invoke(services, endpoint);
-            }
+            var httpClientSettings = new HttpClientBuilder();
+            httpClientBuilder.Invoke(httpClientSettings);
+            var endpointsManager = services.GetSingletonService<EndpointsManager>();
+            if (endpointsManager != null)
+                foreach (var endpoint in endpointsManager.Endpoints)
+                {
+                    Generics.WithStatic(
+                    typeof(RystemApiServiceCollectionExtensions),
+                    nameof(PrivateUseEndpointApi),
+                    endpoint.Type).Invoke(services, endpoint, httpClientSettings);
+                }
             return services;
         }
         private static readonly MediaTypeHeaderValue s_mediaTypeHeaderValueForJson = new("application/json");
         private static readonly MediaTypeHeaderValue s_mediaTypeHeaderValueForText = new("application/text");
-        private static IServiceCollection PrivateUseEndpointApi<T>(this IServiceCollection services, EndpointValue endpointValue)
+        private static IServiceCollection PrivateUseEndpointApi<T>(this IServiceCollection services, EndpointValue endpointValue, HttpClientBuilder builder)
             where T : class
         {
             var interfaceType = typeof(T);
-            var key = GetKey<T>();
-            if (s_httpClientConfigurator.ContainsKey(key))
-                services.AddHttpClient($"ApiHttpClient_{interfaceType.FullName}", x => s_httpClientConfigurator[key]?.Invoke(x));
-            else if (s_httpClientConfigurator.ContainsKey(s_defaultKey))
-                services.AddHttpClient($"ApiHttpClient_{interfaceType.FullName}", x => s_httpClientConfigurator[s_defaultKey]?.Invoke(x));
+            var key = builder.GetKey<T>();
+            if (builder.HttpClientConfigurator.ContainsKey(key))
+                services.AddHttpClient($"ApiHttpClient_{interfaceType.FullName}", x => builder.HttpClientConfigurator[key]?.Invoke(x));
+            else if (builder.HttpClientConfigurator.ContainsKey(builder.DefaultKey))
+                services.AddHttpClient($"ApiHttpClient_{interfaceType.FullName}", x => builder.HttpClientConfigurator[builder.DefaultKey]?.Invoke(x));
             else
                 services.AddHttpClient($"ApiHttpClient_{interfaceType.FullName}");
             var chainRequest = new ApiClientChainRequest<T>();
@@ -68,7 +50,7 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 var requestMethodCreator = new ApiClientCreateRequestMethod();
                 //todo method with the same name
-                chainRequest.Methods.Add(method.Value.Name!, requestMethodCreator);
+                chainRequest.Methods.Add(method.Key, requestMethodCreator);
                 var endpointMethodValue = method.Value;
                 var currentMethod = method.Value.Method;
                 endpointMethodValue.EndpointUri = $"api/{endpointValue.EndpointName ?? interfaceType.Name}/{(!string.IsNullOrWhiteSpace(endpointValue.FactoryName) ? $"{endpointValue.FactoryName}/" : string.Empty)}{endpointMethodValue?.Name ?? method.Key}";
@@ -85,6 +67,8 @@ namespace Microsoft.Extensions.DependencyInjection
                             {
                                 Executor = (context, value) =>
                                 {
+                                    if (context.Query == null)
+                                        context.Query = new();
                                     if (context.Query.Length == 0)
                                         context.Query.Append('?');
                                     else
@@ -98,6 +82,8 @@ namespace Microsoft.Extensions.DependencyInjection
                             {
                                 Executor = (context, value) =>
                                 {
+                                    if (context.Cookie == null)
+                                        context.Cookie = new();
                                     context.Cookie.Append($"{parameter.Name}={value}; ");
                                 }
                             });
@@ -107,7 +93,7 @@ namespace Microsoft.Extensions.DependencyInjection
                             {
                                 Executor = (context, value) =>
                                 {
-                                    context.Request.Headers.Add(parameter.Name, value?.ToString());
+                                    context.Headers.Add(parameter.Name, value?.ToString());
                                 }
                             });
                             break;
@@ -116,11 +102,14 @@ namespace Microsoft.Extensions.DependencyInjection
                             {
                                 Executor = (context, value) =>
                                 {
+                                    if (context.Path == null)
+                                        context.Path = new();
                                     context.Path.Append($"/{value}");
                                 }
                             });
                             break;
                         case ApiParameterLocation.Body:
+                            requestMethodCreator.IsPost = true;
                             if (method.Value.IsMultipart)
                             {
                                 var isStreamable = parameter.IsStream;
@@ -128,13 +117,15 @@ namespace Microsoft.Extensions.DependencyInjection
                                 {
                                     Executor = (context, value) =>
                                     {
+                                        context.ContentType = "multipart/form-data";
                                         if (!(value is null && !parameter.IsRequired))
                                         {
-                                            if (context.Request.Content == null)
+                                            if (context.Content == null)
                                             {
-                                                context.Request.Content = new MultipartFormDataContent();
+                                                context.Content = new MultipartFormDataContent();
+                                                context.Content.Headers.ContentType = new MediaTypeHeaderValue("multipart/form-data");
                                             }
-                                            if (context.Request.Content is MultipartFormDataContent multipart)
+                                            if (context.Content is MultipartFormDataContent multipart)
                                             {
                                                 if (isStreamable && value is Stream stream)
                                                 {
@@ -156,7 +147,7 @@ namespace Microsoft.Extensions.DependencyInjection
                                 {
                                     Executor = (context, value) =>
                                     {
-                                        context.Request.Content = new StringContent(parameter.IsPrimitive ? value?.ToString() : value.ToJson());
+                                        context.Content = new StringContent(parameter.IsPrimitive ? value?.ToString() : value.ToJson());
                                     }
                                 });
                             }

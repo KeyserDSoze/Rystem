@@ -48,7 +48,7 @@
            where TService : class
             where TImplementation : class, TService, new()
         {
-            if (!services.HasService<TService>(out var serviceDescriptor))
+            if (!services.HasKeyedService<TService>(serviceKey, out var serviceDescriptor))
             {
                 var service = new TImplementation();
                 services.AddKeyedSingleton<TService>(service);

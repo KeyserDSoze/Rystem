@@ -178,7 +178,15 @@ namespace Microsoft.AspNetCore.Builder
                 {
                     builder.MapPost(endpointMethodValue.EndpointUri, async (HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory) =>
                     {
-                        return await ExecuteAsync(context, service, factory);
+                        try
+                        {
+                            return await ExecuteAsync(context, service, factory);
+                        }
+                        catch (Exception ex)
+                        {
+                            var olaf = ex.Message;
+                            return default;
+                        }
                     })
                     .AddAuthorization(endpointMethodValue.Policies);
                 }
