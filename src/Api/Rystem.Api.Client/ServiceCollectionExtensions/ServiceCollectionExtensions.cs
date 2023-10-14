@@ -135,8 +135,15 @@ namespace Microsoft.Extensions.DependencyInjection
                                                 }
                                                 else if (parameter.IsSpecialStream)
                                                 {
-                                                    var dynamicStream = (dynamic)value;
-                                                    multipart.Add(new StreamContent(dynamicStream.OpenReadStream()), parameter.Name, dynamicStream.FileName);
+                                                    var dynamicStream = (dynamic)value!;
+                                                    var streamContent = new StreamContent(dynamicStream.OpenReadStream());
+                                                    Try.WithDefaultOnCatch(() =>
+                                                    {
+                                                        var contentType = dynamicStream.ContentType as string;
+                                                        if (contentType != null)
+                                                            streamContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+                                                    });
+                                                    multipart.Add(streamContent, parameter.Name, dynamicStream.FileName);
                                                 }
                                                 else
                                                 {

@@ -22,7 +22,7 @@ namespace Rystem.Api
             proxy!._requestChain = _requestChain;
             return (proxy as T)!;
         }
-        private async Task<TResponse> CreateResponseAsync<TResponse>(MethodInfo method, object[] args, bool readResponse)
+        private async Task<TResponse> InvokeHttpRequestAsync<TResponse>(MethodInfo method, object[] args, bool readResponse)
         {
             var currentMethod = _requestChain.Methods[method.Name];
             var context = new ApiClientRequestBearer();
@@ -55,10 +55,10 @@ namespace Rystem.Api
                 return default!;
         }
         public override Task InvokeAsync(MethodInfo method, object[] args)
-            => CreateResponseAsync<object>(method, args, false);
+            => InvokeHttpRequestAsync<object>(method, args, false);
 
         public override Task<TResponse> InvokeAsyncT<TResponse>(MethodInfo method, object[] args)
-            => CreateResponseAsync<TResponse>(method, args, true);
+            => InvokeHttpRequestAsync<TResponse>(method, args, true);
 
         public override object Invoke(MethodInfo method, object[] args)
         {
