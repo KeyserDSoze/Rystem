@@ -24,7 +24,7 @@ namespace Rystem.Api
         }
         private async Task<TResponse> InvokeHttpRequestAsync<TResponse>(MethodInfo method, object[] args, bool readResponse)
         {
-            var currentMethod = _requestChain.Methods[method.Name];
+            var currentMethod = _requestChain.Methods[method.GetSignature()];
             var context = new ApiClientRequestBearer();
             var parameterCounter = 0;
             foreach (var chain in currentMethod.Parameters)

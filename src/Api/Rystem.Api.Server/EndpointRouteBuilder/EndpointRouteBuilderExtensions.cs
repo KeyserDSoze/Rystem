@@ -23,7 +23,7 @@ namespace Microsoft.AspNetCore.Builder
                 Generics.WithStatic(
                 typeof(EndpointRouteBuilderRystemExtensions),
                 nameof(PrivateUseEndpointApi),
-                endpoint.Type).Invoke(builder, endpoint);
+                endpoint.Type).Invoke(builder, endpoint, endpointsManager);
             }
             return builder;
         }

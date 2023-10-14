@@ -68,8 +68,7 @@ namespace Rystem.Api
                         case ApiParameterLocation.Body:
                             if (currentEndpoint.Value.IsMultipart)
                             {
-                                var isFormFile = parameter.Type == typeof(IFormFile);
-                                var isStreamable = parameter.IsStream || isFormFile;
+                                var isStreamable = parameter.IsStream || parameter.IsSpecialStream;
                                 if (operation.RequestBody == null)
                                 {
                                     operation.RequestBody = new OpenApiRequestBody

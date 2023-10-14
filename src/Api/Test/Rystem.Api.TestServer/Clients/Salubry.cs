@@ -24,6 +24,11 @@
             [Form(Name = "aa", IsRequired = false)] Faul faul,
             [Form(Name = "bb", IsRequired = false)] Faul faul2,
             [Form(Name = "cc", IsRequired = false)] IFormFile file2);
+        Task<bool> GetAsync([Query] string id,
+           IFormFile file,
+           [Query] string fol,
+           [Query] string cul,
+           [Header] string cookie);
     }
     public class Faul
     {
@@ -40,6 +45,11 @@
             [Form(Name = "aa")] Faul? faul,
             [Form(Name = "bb")] Faul? faul2,
             [Form(Name = "cc")] IFormFile? file2)
+        {
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> GetAsync([Query] string id, IFormFile file, [Query] string fol, [Query] string cul, [Header] string cookie)
         {
             return Task.FromResult(true);
         }

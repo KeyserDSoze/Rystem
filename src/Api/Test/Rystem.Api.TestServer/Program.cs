@@ -16,7 +16,7 @@ builder.Services.AddEndpoint<ISalubry>(endpointBuilder =>
 .AddEndpoint<IColam>(endpointBuilder =>
 {
     endpointBuilder.SetEndpointName("Comator");
-    endpointBuilder.SetMethodName(x => x.GetAsync, "Cod");
+    endpointBuilder.SetMethodName(typeof(IColam).GetMethods().First(), "Cod");
 })
 .AddEndpoint<ISalubry>(endpointBuilder =>
 {
@@ -57,7 +57,7 @@ async Task ExecuteAsync()
     .AddEndpoint<IColam>(endpointBuilder =>
     {
         endpointBuilder.SetEndpointName("Comator");
-        endpointBuilder.SetMethodName(x => x.GetAsync, "Cod");
+        endpointBuilder.SetMethodName(typeof(IColam).GetMethods().First(), "Cod");
     })
     .AddEndpoint<ISalubry>(endpointBuilder =>
     {
@@ -88,6 +88,10 @@ async Task ExecuteAsync()
         file.Headers = new HeaderDictionary();
         file.Headers.ContentType = "application/pdf";
         var response2 = await colam.GetAsync("dasdsa", file, "fol", "cul", "cookie", new Faul { Id = "a", Name = "a" }, new Faul { Id = "b", Name = "b" }, new FormFile(new MemoryStream(), 0, 0, "cd", "cd"));
+        file = new FormFile(new MemoryStream(), 0, 0, "a", "a");
+        file.Headers = new HeaderDictionary();
+        file.Headers.ContentType = "application/pdf";
+        var response3 = await colam.GetAsync("dasdsa", file, "fol", "cul", "cookie");
     }
     catch (Exception ex)
     {

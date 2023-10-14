@@ -11,10 +11,10 @@ namespace Microsoft.AspNetCore.Builder
         public string EndpointUri { get; set; } = string.Empty;
         public bool IsPost { get; private set; }
         public bool IsMultipart { get; private set; }
-        public EndpointMethodValue(MethodInfo method)
+        public EndpointMethodValue(MethodInfo method, string? forcedName)
         {
             Method = method;
-            Name = method.Name;
+            Name = forcedName ?? method.Name;
             Parameters = method.GetParameters().Select(x =>
             {
                 return new EndpointMethodParameterValue(x);
@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Builder
         {
             var nonPrimitivesCount = Parameters.Count(x => x.Location == ApiParameterLocation.Body);
             IsPost = nonPrimitivesCount > 0;
-            IsMultipart = nonPrimitivesCount > 1 || Parameters.Any(x => x.IsStream);
+            IsMultipart = nonPrimitivesCount > 1 || Parameters.Any(x => x.IsStream || x.IsSpecialStream);
         }
     }
 }
