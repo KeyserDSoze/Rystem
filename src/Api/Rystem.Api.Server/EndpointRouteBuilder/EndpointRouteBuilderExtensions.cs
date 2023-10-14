@@ -32,7 +32,7 @@ namespace Microsoft.AspNetCore.Builder
             public Func<HttpContext, Task<object>>? ExecutorAsync { get; set; }
             public Func<HttpContext, object>? Executor { get; set; }
         }
-        private static IEndpointRouteBuilder PrivateUseEndpointApi<T>(this IEndpointRouteBuilder builder, EndpointValue endpointValue)
+        private static IEndpointRouteBuilder PrivateUseEndpointApi<T>(this IEndpointRouteBuilder builder, EndpointValue endpointValue, EndpointsManager endpointsManager)
             where T : class
         {
             var interfaceType = typeof(T);
@@ -41,7 +41,7 @@ namespace Microsoft.AspNetCore.Builder
                 var endpointMethodValue = method.Value;
                 List<RetrieverWrapper> retrievers = new();
                 var currentMethod = method.Value.Method;
-                endpointMethodValue.EndpointUri = $"api/{(endpointValue.EndpointName ?? interfaceType.Name)}/{(!string.IsNullOrWhiteSpace(endpointValue.FactoryName) ? $"{endpointValue.FactoryName}/" : string.Empty)}{endpointMethodValue?.Name ?? method.Key}";
+                endpointMethodValue.EndpointUri = $"{endpointValue?.BasePath ?? endpointsManager.BasePath}{endpointValue.EndpointName}/{(!string.IsNullOrWhiteSpace(endpointValue.FactoryName) ? $"{endpointValue.FactoryName}/" : string.Empty)}{endpointMethodValue?.Name ?? method.Key}";
                 var numberOfValueInPath = endpointMethodValue!.EndpointUri.Split('/').Length + 1;
                 foreach (var parameter in method.Value.Parameters.Where(x => x.Location == ApiParameterLocation.Path).OrderBy(x => x.Position))
                 {
@@ -177,15 +177,7 @@ namespace Microsoft.AspNetCore.Builder
                 {
                     builder.MapPost(endpointMethodValue.EndpointUri, async (HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory) =>
                     {
-                        try
-                        {
-                            return await ExecuteAsync(context, service, factory);
-                        }
-                        catch (Exception ex)
-                        {
-                            var olaf = ex.Message;
-                            return default;
-                        }
+                        return await ExecuteAsync(context, service, factory);
                     })
                     .AddAuthorization(endpointMethodValue.Policies);
                 }

@@ -53,7 +53,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 chainRequest.Methods.Add(method.Key, requestMethodCreator);
                 var endpointMethodValue = method.Value;
                 var currentMethod = method.Value.Method;
-                endpointMethodValue.EndpointUri = $"api/{endpointValue.EndpointName ?? interfaceType.Name}/{(!string.IsNullOrWhiteSpace(endpointValue.FactoryName) ? $"{endpointValue.FactoryName}/" : string.Empty)}{endpointMethodValue?.Name ?? method.Key}";
+                endpointMethodValue.EndpointUri = $"api/{endpointValue.EndpointName}/{(!string.IsNullOrWhiteSpace(endpointValue.FactoryName) ? $"{endpointValue.FactoryName}/" : string.Empty)}{endpointMethodValue?.Name}";
                 requestMethodCreator.FixedPath = endpointMethodValue!.EndpointUri;
                 var numberOfValueInPath = endpointMethodValue!.EndpointUri.Split('/').Length + 1;
                 foreach (var parameter in method.Value.Parameters.OrderBy(x => x.Position))

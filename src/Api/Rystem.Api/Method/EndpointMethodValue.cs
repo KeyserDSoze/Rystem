@@ -14,6 +14,7 @@ namespace Microsoft.AspNetCore.Builder
         public EndpointMethodValue(MethodInfo method)
         {
             Method = method;
+            Name = method.Name;
             Parameters = method.GetParameters().Select(x =>
             {
                 return new EndpointMethodParameterValue(x);
