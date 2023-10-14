@@ -41,7 +41,7 @@ namespace Microsoft.AspNetCore.Builder
                 var endpointMethodValue = method.Value;
                 List<RetrieverWrapper> retrievers = new();
                 var currentMethod = method.Value.Method;
-                endpointMethodValue.EndpointUri = $"{endpointValue?.BasePath ?? endpointsManager.BasePath}{endpointValue.EndpointName}/{(!string.IsNullOrWhiteSpace(endpointValue.FactoryName) ? $"{endpointValue.FactoryName}/" : string.Empty)}{endpointMethodValue?.Name ?? method.Key}";
+                endpointMethodValue.EndpointUri = $"{endpointValue?.BasePath ?? endpointsManager.BasePath}{endpointValue.EndpointName}/{(!string.IsNullOrWhiteSpace(endpointValue.FactoryName) ? $"{endpointValue.FactoryName}/" : string.Empty)}{endpointMethodValue!.Name}";
                 var numberOfValueInPath = endpointMethodValue!.EndpointUri.Split('/').Length + 1;
                 foreach (var parameter in method.Value.Parameters.Where(x => x.Location == ApiParameterLocation.Path).OrderBy(x => x.Position))
                 {

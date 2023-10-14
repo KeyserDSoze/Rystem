@@ -19,13 +19,13 @@ namespace Microsoft.Extensions.DependencyInjection
                     Generics.WithStatic(
                     typeof(RystemApiServiceCollectionExtensions),
                     nameof(PrivateUseEndpointApi),
-                    endpoint.Type).Invoke(services, endpoint, httpClientSettings);
+                    endpoint.Type).Invoke(services, endpoint, httpClientSettings, endpointsManager);
                 }
             return services;
         }
         private static readonly MediaTypeHeaderValue s_mediaTypeHeaderValueForJson = new("application/json");
         private static readonly MediaTypeHeaderValue s_mediaTypeHeaderValueForText = new("application/text");
-        private static IServiceCollection PrivateUseEndpointApi<T>(this IServiceCollection services, EndpointValue endpointValue, HttpClientBuilder builder)
+        private static IServiceCollection PrivateUseEndpointApi<T>(this IServiceCollection services, EndpointValue endpointValue, HttpClientBuilder builder, EndpointsManager endpointsManager)
             where T : class
         {
             var interfaceType = typeof(T);
@@ -49,11 +49,10 @@ namespace Microsoft.Extensions.DependencyInjection
             foreach (var method in endpointValue.Methods)
             {
                 var requestMethodCreator = new ApiClientCreateRequestMethod();
-                //todo method with the same name
                 chainRequest.Methods.Add(method.Key, requestMethodCreator);
                 var endpointMethodValue = method.Value;
                 var currentMethod = method.Value.Method;
-                endpointMethodValue.EndpointUri = $"api/{endpointValue.EndpointName}/{(!string.IsNullOrWhiteSpace(endpointValue.FactoryName) ? $"{endpointValue.FactoryName}/" : string.Empty)}{endpointMethodValue?.Name}";
+                endpointMethodValue.EndpointUri = $"{endpointsManager.BasePath}{endpointValue.EndpointName}/{(!string.IsNullOrWhiteSpace(endpointValue.FactoryName) ? $"{endpointValue.FactoryName}/" : string.Empty)}{endpointMethodValue?.Name}";
                 requestMethodCreator.FixedPath = endpointMethodValue!.EndpointUri;
                 var numberOfValueInPath = endpointMethodValue!.EndpointUri.Split('/').Length + 1;
                 foreach (var parameter in method.Value.Parameters.OrderBy(x => x.Position))

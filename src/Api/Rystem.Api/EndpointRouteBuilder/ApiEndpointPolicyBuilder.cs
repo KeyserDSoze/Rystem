@@ -6,17 +6,20 @@ namespace Microsoft.AspNetCore.Builder
     public sealed class ApiEndpointPolicyBuilder<T>
     {
         private readonly EndpointValue _endpointValue;
-        internal ApiEndpointPolicyBuilder(EndpointValue endpointValue)
+        internal ApiEndpointPolicyBuilder(EndpointValue endpointValue, bool removeAsyncSuffix)
         {
             _endpointValue = endpointValue;
             foreach (var method in typeof(T).GetMethods())
             {
-                var name = method.Name;
+                var methodName = method.Name;
+                if (removeAsyncSuffix && methodName.EndsWith("Async"))
+                    methodName = methodName[0..^5];
+                var name = methodName;
                 var counter = 1;
                 while (_endpointValue.Methods.Any(x => x.Value.Name == name))
                 {
                     counter++;
-                    name = $"{method.Name}_{counter}";
+                    name = $"{methodName}_{counter}";
                 }
                 _endpointValue.Methods.Add(method.GetSignature(), new EndpointMethodValue(method, name));
             }

@@ -8,7 +8,12 @@ builder.Services.AddTransient<IColam, Comad>();
 builder.Services.AddFactory<ISalubry, Salubry>();
 builder.Services.AddFactory<ISalubry, Salubry2>("Doma");
 builder.Services.AddServerIntegrationForRystemApi();
-builder.Services.AddEndpoint<ISalubry>(endpointBuilder =>
+builder.Services
+    .ConfigureEndpoints(x =>
+    {
+        x.BasePath = "rapi/";
+    })
+    .AddEndpoint<ISalubry>(endpointBuilder =>
 {
     endpointBuilder.SetEndpointName("Salubriend");
     endpointBuilder.SetMethodName(x => x.GetAsync, "Gimme");
@@ -49,11 +54,16 @@ app.Run();
 async Task ExecuteAsync()
 {
     var services = new ServiceCollection();
-    services.AddEndpoint<ISalubry>(endpointBuilder =>
-    {
-        endpointBuilder.SetEndpointName("Salubriend");
-        endpointBuilder.SetMethodName(x => x.GetAsync, "Gimme");
-    })
+    services
+        .ConfigureEndpoints(x =>
+        {
+            x.BasePath = "rapi/";
+        })
+        .AddEndpoint<ISalubry>(endpointBuilder =>
+        {
+            endpointBuilder.SetEndpointName("Salubriend");
+            endpointBuilder.SetMethodName(x => x.GetAsync, "Gimme");
+        })
     .AddEndpoint<IColam>(endpointBuilder =>
     {
         endpointBuilder.SetEndpointName("Comator");

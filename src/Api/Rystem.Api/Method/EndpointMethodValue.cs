@@ -5,7 +5,7 @@ namespace Microsoft.AspNetCore.Builder
     public sealed class EndpointMethodValue
     {
         public string[]? Policies { get; set; }
-        public string? Name { get; set; }
+        public string Name { get; set; }
         public List<EndpointMethodParameterValue> Parameters { get; }
         public MethodInfo Method { get; }
         public string EndpointUri { get; set; } = string.Empty;
