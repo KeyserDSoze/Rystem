@@ -13,6 +13,7 @@ namespace Microsoft.AspNetCore.Builder
         public int Position { get; set; }
         public bool IsRequired { get; set; }
         public bool IsStream { get; }
+        public bool IsSpecialStream { get; }
         public string? ContentType { get; set; }
         public object? Example { get; set; }
         public EndpointMethodParameterValue(ParameterInfo parameterInfo)
@@ -20,6 +21,7 @@ namespace Microsoft.AspNetCore.Builder
             Info = parameterInfo;
             IsPrimitive = parameterInfo.ParameterType.IsPrimitive();
             IsStream = parameterInfo.ParameterType.IsAssignableFrom(typeof(Stream));
+            IsSpecialStream = parameterInfo.ParameterType.FullName?.StartsWith("Microsoft.AspNetCore.Http.IFormFile") == true;
             Type = parameterInfo.ParameterType;
             Name = parameterInfo.Name!;
             Location = IsPrimitive ? ApiParameterLocation.Query : ApiParameterLocation.Body;
@@ -47,9 +49,9 @@ namespace Microsoft.AspNetCore.Builder
             else if (parameterInfo.GetCustomAttribute(typeof(PathAttribute)) is PathAttribute fromPath)
             {
                 Location = ApiParameterLocation.Path;
-                if (fromPath.PathIndex > 0)
+                if (fromPath.Index > 0)
                 {
-                    Position = fromPath.PathIndex;
+                    Position = fromPath.Index;
                 }
                 IsRequired = fromPath.IsRequired;
             }

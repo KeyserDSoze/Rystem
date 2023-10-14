@@ -1,35 +1,8 @@
-﻿using System.Net.Http.Headers;
-using System.Reflection;
-using System.Text;
+﻿using System.Reflection;
 using System.Text.Json;
 
 namespace Rystem.Api
 {
-    public sealed class ApiClientChainRequest<T>
-    {
-        public Dictionary<string, ApiClientCreateRequestMethod> Methods { get; set; } = new();
-    }
-    public sealed class ApiClientCreateRequestMethod
-    {
-        public bool IsPost { get; set; }
-        public string FixedPath { get; set; }
-        public List<ApiClientCreateRequestParameterMethod> Parameters { get; set; } = new();
-    }
-    public sealed class ApiClientCreateRequestParameterMethod
-    {
-        public string Name { get; set; }
-        public Action<ApiClientRequestBearer, object> Executor { get; set; }
-        public Func<ApiClientRequestBearer, object, Task> ExecutorAsync { get; set; }
-    }
-    public sealed class ApiClientRequestBearer
-    {
-        public StringBuilder? Path { get; set; }
-        public StringBuilder? Query { get; set; }
-        public StringBuilder? Cookie { get; set; }
-        public string ContentType { get; set; } = "application/json";
-        public HttpContent? Content { get; set; }
-        public Dictionary<string, string?> Headers { get; set; } = new();
-    }
     public class ApiHttpClient<T> : DispatchProxyAsync where T : class
     {
         private static readonly string s_clientName = $"ApiHttpClient_{typeof(T).FullName}";

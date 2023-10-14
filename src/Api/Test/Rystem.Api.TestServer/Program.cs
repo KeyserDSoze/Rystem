@@ -83,6 +83,8 @@ async Task ExecuteAsync()
     {
         var salubry = provider.GetRequiredService<IFactory<ISalubry>>().Create();
         var response = await salubry.GetAsync(2, new MemoryStream());
+        var colam = provider.GetRequiredService<IColam>();
+        var response2 = await colam.GetAsync("dasdsa", new FormFile(new MemoryStream(), 0, 0, "a", "a"), "fol", "cul", "cookie", new Faul { Id = "a", Name = "a" }, new Faul { Id = "b", Name = "b" }, new FormFile(new MemoryStream(), 0, 0, "cd", "cd"));
     }
     catch (Exception ex)
     {

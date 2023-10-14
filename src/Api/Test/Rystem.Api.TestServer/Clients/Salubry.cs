@@ -16,7 +16,7 @@
     }
     public interface IColam
     {
-        Task<bool> GetAsync([Path(PathIndex = 0)] string id,
+        Task<bool> GetAsync([Path(Index = 0)] string id,
             IFormFile file,
             [Query] string fol,
             [Header] string cul,
@@ -32,7 +32,7 @@
     }
     public class Comad : IColam
     {
-        public Task<bool> GetAsync([Path(PathIndex = 0)] string id,
+        public Task<bool> GetAsync([Path(Index = 0)] string id,
             IFormFile? file,
             [Query] string fol,
             [Header] string cul,
@@ -41,7 +41,7 @@
             [Form(Name = "bb")] Faul? faul2,
             [Form(Name = "cc")] IFormFile? file2)
         {
-            return null!;
+            return Task.FromResult(true);
         }
     }
 }

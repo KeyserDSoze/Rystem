@@ -112,12 +112,11 @@ namespace Microsoft.Extensions.DependencyInjection
                             requestMethodCreator.IsPost = true;
                             if (method.Value.IsMultipart)
                             {
-                                var isStreamable = parameter.IsStream;
+                                var isStreamable = parameter.IsStream || parameter.IsSpecialStream;
                                 requestMethodCreator.Parameters.Add(new ApiClientCreateRequestParameterMethod
                                 {
                                     Executor = (context, value) =>
                                     {
-                                        context.ContentType = "multipart/form-data";
                                         if (!(value is null && !parameter.IsRequired))
                                         {
                                             if (context.Content == null)
@@ -126,9 +125,18 @@ namespace Microsoft.Extensions.DependencyInjection
                                             }
                                             if (context.Content is MultipartFormDataContent multipart)
                                             {
-                                                if (isStreamable && value is Stream stream)
+                                                if (isStreamable && value == null)
+                                                {
+                                                    multipart.Add(new StreamContent(s_emptyStream), parameter.Name, parameter.Name);
+                                                }
+                                                else if (isStreamable && value is Stream stream)
                                                 {
                                                     multipart.Add(new StreamContent(stream), parameter.Name, parameter.Name);
+                                                }
+                                                else if (parameter.IsSpecialStream)
+                                                {
+                                                    var dynamicStream = (dynamic)value;
+                                                    multipart.Add(new StreamContent(dynamicStream.OpenReadStream()), parameter.Name, dynamicStream.FileName);
                                                 }
                                                 else
                                                 {
@@ -156,5 +164,6 @@ namespace Microsoft.Extensions.DependencyInjection
             }
             return services;
         }
+        private static readonly MemoryStream s_emptyStream = new();
     }
 }

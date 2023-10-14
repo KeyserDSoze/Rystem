@@ -110,8 +110,7 @@ namespace Microsoft.AspNetCore.Builder
                         case ApiParameterLocation.Body:
                             if (method.Value.IsMultipart)
                             {
-                                var isFormFile = parameter.Type == typeof(IFormFile);
-                                var isStreamable = parameter.IsStream || isFormFile;
+                                var isStreamable = parameter.IsStream || parameter.IsSpecialStream;
                                 if (isStreamable)
                                 {
                                     retrievers.Add(new RetrieverWrapper
@@ -121,8 +120,8 @@ namespace Microsoft.AspNetCore.Builder
                                             var value = context.Request.Form.Files.FirstOrDefault(x => x.Name == parameter.Name);
                                             if (value == null && !parameter.IsRequired)
                                                 return default!;
-                                            if (isFormFile)
-                                                return value!;
+                                            if (parameter.IsSpecialStream && value is IFormFile formFile)
+                                                return formFile;
                                             else
                                             {
                                                 var memoryStream = new MemoryStream();

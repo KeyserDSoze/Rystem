@@ -9,7 +9,7 @@
         /// <summary>
         /// If you have api/something/somethingelse/{parameter1}/{parameter2} you need to set 0 to get the first parameter or 1 if you want the second, with -1 you get all paramters in a row.
         /// </summary>
-        public int PathIndex { get; set; } = -1;
+        public int Index { get; set; } = -1;
         public bool IsRequired { get; set; } = true;
     }
 }
