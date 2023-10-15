@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
 using System.Text;
-using Microsoft.AspNetCore.Components;
+using global::Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Radzen;
 using RepositoryFramework.Web.Components.Services;
@@ -8,7 +8,7 @@ using RepositoryFramework.Web.Components.Services;
 namespace RepositoryFramework.Web.Components.Standard
 {
     public partial class Edit<T, TKey>
-        where TKey : notnull
+      where TKey : notnull
     {
         [Parameter]
         public string Key { get; set; } = null!;

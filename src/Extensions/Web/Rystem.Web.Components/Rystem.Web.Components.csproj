@@ -27,6 +27,7 @@
     </PropertyGroup>
 
     <Target Condition="'$(Configuration)'=='Debug'" Name="PreBuild" BeforeTargets="PreBuildEvent">
+        <Exec Command="npm install -g node-sass" />
         <Exec Command="npm run build-css" />
     </Target>
 

@@ -1,8 +1,8 @@
 ﻿@namespace RepositoryFramework.Web.Components.Standard
-@using System.Reflection;
 @typeparam T
 @typeparam TKey where TKey: notnull
 @inherits RepositoryBase<T, TKey>
+@using System.Reflection
 
 @if (_entity != null)
 {
@@ -74,3 +74,4 @@
         </div>
     </div>
 }
+

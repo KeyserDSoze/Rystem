@@ -35,7 +35,6 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.0-rc.2.23480.2" />
         <PackageReference Include="Radzen.Blazor" Version="4.17.1" />
-        
     </ItemGroup>
     <Choose>
         <When Condition=" '$(Configuration)'=='Debug' ">

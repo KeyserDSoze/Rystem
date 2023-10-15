@@ -26,14 +26,17 @@ namespace Rystem.Nuget
             var line = Console.ReadLine();
             var currentUpdateTree = line == "1" ? UpdateConfiguration.OnlyRepositoryTree : (line == "2" ? UpdateConfiguration.OnlyRystemTree : (line == "3" ? UpdateConfiguration.OnlyContentTree : UpdateConfiguration.UpdateTree));
             string? specificVersion = null;
-            Console.WriteLine("Do you wanna set a specific version? y for true or something else");
-            if (Console.ReadLine() == "y")
+            Console.WriteLine("Do you wanna set a specific version? y for true or rc for next release candidate or something else");
+            var versionChoose = Console.ReadLine();
+            if (versionChoose == "y")
             {
                 specificVersion = Console.ReadLine();
                 if (specificVersion != null && !specificVersion.ContainsAtLeast(2, '.'))
                     throw new ArgumentException("You set a wrong version");
                 s_type = VersionType.Specific;
             }
+            else if (versionChoose == "rc")
+                s_type = VersionType.ReleaseCandidate;
             var checkIfGoAhead = line == "4";
             var isDebug = line == "5";
             while (currentUpdateTree != null)

@@ -5,7 +5,8 @@
         Major,
         Minor,
         Patch,
-        Specific
+        Specific,
+        ReleaseCandidate
     }
     internal record Version
     {
@@ -15,8 +16,8 @@
         }
         public int Major => int.Parse(V.Split('.').First());
         public int Minor => int.Parse(V.Split('.').Skip(1).First());
-        public int Patch => int.Parse(V.Split('.').Skip(2).First());
-
+        public int Patch => int.Parse(V.Split('.').Skip(2).First().Split('-').First());
+        public int ReleaaseCandidate => V.Contains("-rc.") ? int.Parse(V.Split("-rc.").Last()) : -1;
         public string V { get; private set; }
 
         public bool IsGreater(Version context)
@@ -28,7 +29,14 @@
                 if (context.Minor > Minor)
                     return true;
                 else if (context.Minor == Minor)
-                    return context.Patch > Patch;
+                {
+                    if (context.Patch > Patch)
+                        return true;
+                    else if (context.Patch == Patch)
+                    {
+                        return context.ReleaaseCandidate > ReleaaseCandidate;
+                    }
+                }
             }
             return false;
         }
@@ -44,6 +52,9 @@
                     break;
                 case VersionType.Patch:
                     V = $"{Major}.{Minor}.{Patch + addingValue}";
+                    break;
+                case VersionType.ReleaseCandidate:
+                    V = $"{Major}.{Minor}.{Patch}-rc.{ReleaaseCandidate + addingValue}";
                     break;
             }
         }
