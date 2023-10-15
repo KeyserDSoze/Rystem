@@ -1,0 +1,21 @@
+name: Api.Abastractions.Nuget
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - src/Api/Rystem.Api/Rystem.Api.csproj
+      - reload.txt
+jobs:
+  publish:
+    name: build, pack & publish
+    runs-on: ubuntu-latest
+    environment: Rystem.Nuget
+    
+    steps:
+      - name: Publish package
+        uses: KeyserDSoze/DefaultAction/pushing_nuget_with_symbols@v1.0.1
+        with:
+          dotnet-version: "7.x"
+          path: src/Api/Rystem.Api/Rystem.Api.csproj
+          api-key: ${{ secrets.NUGET_API_KEY }}
