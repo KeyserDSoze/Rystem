@@ -2,9 +2,9 @@
 {
     internal enum VersionType
     {
+        Patch,
         Major,
         Minor,
-        Patch,
         Specific,
         ReleaseCandidate
     }
@@ -17,7 +17,7 @@
         public int Major => int.Parse(V.Split('.').First());
         public int Minor => int.Parse(V.Split('.').Skip(1).First());
         public int Patch => int.Parse(V.Split('.').Skip(2).First().Split('-').First());
-        public int ReleaaseCandidate => V.Contains("-rc.") ? int.Parse(V.Split("-rc.").Last()) : -1;
+        public int ReleaaseCandidate => V.Contains("-rc.") ? int.Parse(V.Split("-rc.").Last()) : 0;
         public string V { get; private set; }
 
         public bool IsGreater(Version context)
