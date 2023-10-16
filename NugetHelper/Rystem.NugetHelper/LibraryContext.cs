@@ -34,6 +34,8 @@
                         return true;
                     else if (context.Patch == Patch)
                     {
+                        if (context.ReleaaseCandidate == 0 && ReleaaseCandidate > 0)
+                            return true;
                         return context.ReleaaseCandidate > ReleaaseCandidate;
                     }
                 }
