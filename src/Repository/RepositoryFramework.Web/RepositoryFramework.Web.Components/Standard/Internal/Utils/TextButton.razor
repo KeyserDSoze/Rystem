@@ -11,5 +11,7 @@
     public string Text { get; set; }
     [Parameter]
     public string? Class { get; set; } = DefaultClass;
+    [Inject]
+    public ILocalizationHandler LocalizationHandler { get; set; }
     private const string DefaultClass = "btn btn-primary bg-secondary btn";
 }

@@ -128,6 +128,8 @@
     public bool ForceNotEditable { get; set; }
     [Inject]
     public ICopyService Copy { get; set; }
+    [Inject]
+    public ILocalizationHandler LocalizationHandler { get; set; }
     private PropertyUiSettings? _propertyUiSettings;
     private object? _value;
     private string? _error;

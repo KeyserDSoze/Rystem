@@ -11,7 +11,7 @@ using RepositoryFramework.Web.Components.Services;
 
 namespace RepositoryFramework.Web.Components.Standard
 {
-    public partial class Query<T, TKey>
+    public partial class Query<T, TKey> : RepositoryBase<T, TKey>
          where TKey : notnull
     {
         [Parameter]

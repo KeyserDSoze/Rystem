@@ -26,6 +26,8 @@
 </div>
 
 @code {
+    [Inject]
+    public ILoaderService LoadService { get; set; }
     public string Style => LoadService.IsVisible ? "display: block !important; height: 80vh;" : "display: none !important;";
     public string AntiStyle => !LoadService.IsVisible ? "display: block !important;" : "display: none !important;";
 

@@ -3,7 +3,7 @@ using RepositoryFramework.Web.Components.Standard;
 
 namespace RepositoryFramework.Web.Components
 {
-    public partial class Show
+    public partial class Show : RepositoryBase
     {
         private protected override Type StandardType { get; } = typeof(Edit<,>);
         private protected override Action<RenderTreeBuilder>? RenderTreeBuilderConfigurator => (b) =>

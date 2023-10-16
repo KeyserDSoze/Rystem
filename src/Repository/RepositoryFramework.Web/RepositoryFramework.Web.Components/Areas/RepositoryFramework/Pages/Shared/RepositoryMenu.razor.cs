@@ -6,7 +6,7 @@ using RepositoryFramework.Web.Components.Services;
 
 namespace RepositoryFramework.Web.Components
 {
-    public partial class RepositoryMenu
+    public partial class RepositoryMenu : ComponentBase
     {
         [Inject]
         public IAppMenu AppMenu { get; set; } = null!;
@@ -16,6 +16,8 @@ namespace RepositoryFramework.Web.Components
         public IPolicyEvaluatorManager? PolicyEvaluatorManager { get; set; } = null!;
         [Inject]
         public AuthenticationStateProvider AuthenticationStateProvider { get; set; }
+        [Inject]
+        public ILoaderService LoadService { get; set; }
         [CascadingParameter(Name = nameof(HttpContext))]
         public HttpContext HttpContext { get; set; } = null!;
         private List<AppMenuItem>? _contextAppMenu;

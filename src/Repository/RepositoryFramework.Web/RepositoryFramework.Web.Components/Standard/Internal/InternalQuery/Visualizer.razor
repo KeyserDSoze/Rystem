@@ -48,8 +48,8 @@
                                     else
                                     {
                                         <TextButton Class="bg-transparent text-dark p-0"
-                                            Text="@item.EnumerableCountAsString(property, LocalizationHandler)"
-                                            Click="@(() => _ = ShowMoreValuesAsync(item, property, index))" />
+                                                    Text="@item.EnumerableCountAsString(property, LocalizationHandler)"
+                                                    Click="@(() => _ = ShowMoreValuesAsync(item, property, index))" />
                                     }
                                 </td>
                             }
@@ -62,41 +62,3 @@
     </div>
 }
 
-@code {
-    [Parameter]
-    public IEnumerable? Entity { get; set; }
-    [Inject]
-    public ICopyService Copy { get; set; }
-    [Inject]
-    public DialogService DialogService { get; set; }
-    private TypeShowcase TypeShowcase { get; set; } = null!;
-    private bool _isPrimitive;
-    protected override void OnParametersSet()
-    {
-        base.OnParametersSet();
-        var enumerator = Entity?.GetEnumerator();
-        if (enumerator?.MoveNext() == true)
-        {
-            var type = enumerator.Current.GetType();
-            _isPrimitive = type.IsPrimitive();
-            if (!_isPrimitive)
-                TypeShowcase = type.ToShowcase();
-        }
-    }
-    private async Task ShowMoreValuesAsync(object? entity, BaseProperty property, int nextIndex)
-    {
-        var retrieve = Try.WithDefaultOnCatch(() => property.Value(entity, null));
-        if (retrieve.Exception == null && retrieve.Entity is IEnumerable enumerable && enumerable.GetEnumerator().MoveNext())
-        {
-
-            _ = await DialogService.OpenAsync<Visualizer>(property.Self.Name,
-                new Dictionary<string, object>
-                    {
-                        { Constant.Entity, retrieve.Entity },
-                    }, new DialogOptions
-                    {
-                        Width = Constant.DialogWidth
-                    });
-        }
-    }
-}

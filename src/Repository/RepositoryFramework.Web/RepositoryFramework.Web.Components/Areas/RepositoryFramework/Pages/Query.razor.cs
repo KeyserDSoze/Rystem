@@ -3,7 +3,7 @@ using RepositoryFramework.Web.Components.Standard;
 
 namespace RepositoryFramework.Web.Components
 {
-    public partial class Query
+    public partial class Query : RepositoryBase
     {
         private protected override Type StandardType { get; } = typeof(Query<,>);
         private protected override Action<RenderTreeBuilder>? RenderTreeBuilderConfigurator => b =>

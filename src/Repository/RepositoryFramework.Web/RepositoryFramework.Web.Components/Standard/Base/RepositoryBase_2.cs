@@ -1,6 +1,8 @@
 ﻿using System.Reflection;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using RepositoryFramework.Web.Components.Business.Language;
+using RepositoryFramework.Web.Components.Services;
 
 namespace RepositoryFramework.Web.Components
 {
@@ -11,6 +13,10 @@ namespace RepositoryFramework.Web.Components
         public IServiceProvider? ServiceProvider { get; set; }
         [Inject]
         public NavigationManager NavigationManager { get; set; } = null!;
+        [Inject]
+        public ILoaderService LoadService { get; set; }
+        [Inject]
+        public ILocalizationHandler LocalizationHandler { get; set; }
         protected IRepository<T, TKey>? Repository { get; private set; }
         protected IQuery<T, TKey>? Query { get; private set; }
         protected ICommand<T, TKey>? Command { get; private set; }

@@ -2,15 +2,18 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using RepositoryFramework.Web.Components.Business.Language;
+using RepositoryFramework.Web.Components.Services;
 
 namespace RepositoryFramework.Web.Components
 {
-    public partial class Settings
+    public partial class Settings : ComponentBase
     {
         [Inject]
         public IServiceProvider ServiceProvider { get; set; }
         [Inject]
         public NavigationManager NavigationManager { get; set; } = null!;
+        [Inject]
+        public ILoaderService LoadService { get; set; }
         [CascadingParameter(Name = nameof(HttpContext))]
         public HttpContext HttpContext { get; set; }
         private bool _hasPalette;

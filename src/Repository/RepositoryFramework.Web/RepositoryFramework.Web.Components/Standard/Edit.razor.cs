@@ -7,7 +7,7 @@ using RepositoryFramework.Web.Components.Services;
 
 namespace RepositoryFramework.Web.Components.Standard
 {
-    public partial class Edit<T, TKey>
+    public partial class Edit<T, TKey> : RepositoryBase<T, TKey>
       where TKey : notnull
     {
         [Parameter]
