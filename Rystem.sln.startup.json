@@ -23,6 +23,12 @@
         "RepositoryFramework.WebApi": {},
         "RepositoryFramework.WebClient": {}
       }
+    },
+    "Api": {
+      "Projects": {
+        "Rystem.Api.TestServer": {},
+        "Rystem.Api.TestClient": {}
+      }
     }
   }
 }

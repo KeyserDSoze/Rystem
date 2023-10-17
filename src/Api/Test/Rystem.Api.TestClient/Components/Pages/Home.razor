@@ -1,0 +1,29 @@
+﻿@page "/"
+@using Rystem.Api.Test.Domain;
+
+<PageTitle>Home</PageTitle>
+
+<h1>Hello, world!</h1>
+
+Welcome to your new app.
+
+@code {
+    [Inject]
+    public IFactory<ISalubry> Factory { get; set; }
+    [Inject]
+    public IColam Colam { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        var salubry = Factory.Create();
+        var response = await salubry.GetAsync(2, new MemoryStream());
+        var file = new FormFile(new MemoryStream(), 0, 0, "a", "a");
+        file.Headers = new HeaderDictionary();
+        file.Headers.ContentType = "application/pdf";
+        var response2 = await Colam.GetAsync("dasdsa", new MemoryStream(), "fol", "cul", "cookie", new Faul { Id = "a", Name = "a" }, new Faul { Id = "b", Name = "b" }, new MemoryStream());
+        file = new FormFile(new MemoryStream(), 0, 0, "a", "a");
+        file.Headers = new HeaderDictionary();
+        file.Headers.ContentType = "application/pdf";
+        var response3 = await Colam.GetAsync("dasdsa", new MemoryStream(), "fol", "cul", "cookie");
+        await base.OnInitializedAsync();
+    }
+}
