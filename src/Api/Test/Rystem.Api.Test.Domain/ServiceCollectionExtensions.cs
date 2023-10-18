@@ -21,6 +21,8 @@ namespace Rystem.Api.Test.Domain
                 {
                     endpointBuilder.SetEndpointName("Salubriend");
                     endpointBuilder.SetMethodName(x => x.GetAsync, "Gimme");
+                    endpointBuilder
+                        .AddAuthorizationForAll("policy");
                 })
                 .AddEndpoint<IColam>(endpointBuilder =>
                 {

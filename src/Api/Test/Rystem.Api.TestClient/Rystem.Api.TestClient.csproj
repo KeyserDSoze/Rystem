@@ -1,15 +1,21 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <UserSecretsId>a03d572e-4534-4321-98da-8c2dfde8babd</UserSecretsId>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\Rystem.Api.Client\Rystem.Api.Client.csproj" />
-    <ProjectReference Include="..\Rystem.Api.Test.Domain\Rystem.Api.Test.Domain.csproj" />
-    <ProjectReference Include="..\Rystem.Api.TestServer\Rystem.Api.TestServer.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\Client\Rystem.Api.Client.Authentication.BlazorServer\Rystem.Api.Client.Authentication.BlazorServer.csproj" />
+        <ProjectReference Include="..\..\Rystem.Api.Client\Rystem.Api.Client.csproj" />
+        <ProjectReference Include="..\Rystem.Api.Test.Domain\Rystem.Api.Test.Domain.csproj" />
+        <ProjectReference Include="..\Rystem.Api.TestServer\Rystem.Api.TestServer.csproj" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0-rc.2.23480.2" NoWarn="NU1605" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="8.0.0-rc.2.23480.2" NoWarn="NU1605" />
+        <PackageReference Include="Microsoft.Identity.Web" Version="2.15.2" />
+        <PackageReference Include="Microsoft.Identity.Web.UI" Version="2.15.2" />
+    </ItemGroup>
 
 </Project>

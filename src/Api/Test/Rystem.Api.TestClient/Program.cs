@@ -1,12 +1,31 @@
 ﻿using Rystem.Api.Test.Domain;
 using Rystem.Api.TestClient.Components;
 using Rystem.Api.TestClient.Services;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.Identity.Web;
+using Microsoft.Identity.Web.UI;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+var scopes = new string[] { builder.Configuration["AzureAd:Scopes"]! };
+builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"))
+    .EnableTokenAcquisitionToCallDownstreamApi(scopes)
+    .AddInMemoryTokenCaches();
+builder.Services.AddControllersWithViews()
+    .AddMicrosoftIdentityUI();
+builder.Services.AddMicrosoftIdentityConsentHandler();
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = options.DefaultPolicy;
+});
+builder.Services.AddAuthenticationForAllEndpoints(settings =>
+{
+    settings.Scopes = scopes;
+});
 builder.Services.AddBusiness();
 builder.Services.AddClientsForEndpointApi(x =>
 {
@@ -33,6 +52,8 @@ app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 app.UseAntiforgery();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
