@@ -11,6 +11,6 @@
             [Form(Name = "bb")] Faul? faul2,
             [Form(Name = "cc")] Stream file2);
 
-        Task<bool> GetAsync([Query] string id, Stream file, [Query] string fol, [Query] string cul, [Header] string cookie);
+        Task<bool> GetAsync([Query] string id, IHttpFile file, [Query] string fol, [Query] string cul, [Header] string cookie);
     }
 }

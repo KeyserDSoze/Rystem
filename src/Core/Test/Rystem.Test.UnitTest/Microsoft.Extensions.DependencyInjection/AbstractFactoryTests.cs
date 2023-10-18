@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,9 +42,9 @@ namespace Rystem.Test.UnitTest.DependencyInjection
         {
             DecoratedFactoryName = name;
         }
-        public void SetDecoratedService(ITestService service)
+        public void SetDecoratedServices(IEnumerable<ITestService> services)
         {
-            Test = service;
+            Test = services.First();
         }
         public TestOptions Options { get; private set; }
         public void SetOptions(TestOptions options)
@@ -63,9 +64,9 @@ namespace Rystem.Test.UnitTest.DependencyInjection
     {
         public string Id { get; } = Guid.NewGuid().ToString();
         public ITestWithoutFactoryService Test { get; private set; }
-        public void SetDecoratedService(ITestWithoutFactoryService service)
+        public void SetDecoratedServices(IEnumerable<ITestWithoutFactoryService> services)
         {
-            Test = service;
+            Test = services.First();
         }
 
         public void SetFactoryName(string name)

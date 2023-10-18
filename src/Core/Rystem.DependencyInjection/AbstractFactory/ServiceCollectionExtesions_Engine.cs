@@ -36,11 +36,12 @@ namespace Microsoft.Extensions.DependencyInjection
             object? implementationInstance,
             Func<IServiceProvider, object?, object>? implementationFactory,
             Action? whenExists,
-            bool fromDecoration)
+            bool fromDecoration,
+            bool doNotRemoveExisting)
         {
             return Generics
                 .WithStatic(typeof(ServiceCollectionExtensions), nameof(AddEngineFactory), serviceType, implementationType ?? serviceType)
-                .Invoke(services, name!, canOverrideConfiguration, lifetime, implementationInstance!, implementationFactory!, whenExists!, fromDecoration);
+                .Invoke(services, name!, canOverrideConfiguration, lifetime, implementationInstance!, implementationFactory!, whenExists!, fromDecoration, doNotRemoveExisting);
         }
         private static IServiceCollection AddEngineFactory<TService, TImplementation>(this IServiceCollection services,
             string? name,
@@ -49,7 +50,8 @@ namespace Microsoft.Extensions.DependencyInjection
             TImplementation? implementationInstance,
             Func<IServiceProvider, object?, object>? implementationFactory,
             Action? whenExists,
-            bool fromDecoration)
+            bool fromDecoration,
+            bool doNotRemoveExisting)
             where TService : class
             where TImplementation : class, TService
         {
@@ -62,18 +64,14 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 if (fromDecoration && !map.DecorationCount.ContainsKey(factoryName))
                     map.DecorationCount.Add(factoryName, new());
-                if (map.Services.TryGetValue(factoryName, out var keyedServiceDescriptor))
-                {
-                    map.Services.Remove(factoryName);
-                    services.Remove(keyedServiceDescriptor);
-                }
                 services.AddKeyedServiceEngine(serviceType,
                     factoryName,
                     typeof(TService) != typeof(TImplementation) ? typeof(TImplementation) : typeof(TService),
                     implementationInstance,
                     implementationFactory,
                     lifetime,
-                    canOverrideConfiguration);
+                    canOverrideConfiguration,
+                    doNotRemoveExisting);
                 //todo: remember that we need to add this feature in the next release with .net 8 because we need to inject directly the last implementation of a service to retrieve without IFactory
                 if (fromDecoration)
                     services.AddOrOverrideService(serviceProvider =>

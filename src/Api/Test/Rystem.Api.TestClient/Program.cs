@@ -1,5 +1,6 @@
 ﻿using Rystem.Api.Test.Domain;
 using Rystem.Api.TestClient.Components;
+using Rystem.Api.TestClient.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +15,10 @@ builder.Services.AddClientsForEndpointApi(x =>
         t.BaseAddress = new Uri("https://localhost:7117");
     });
 });
+builder.Services.AddEnhancerForAllEndpoints<Enhancer>();
+builder.Services.AddEnhancerForAllEndpoints<Enhancer2>();
+builder.Services.AddEnhancerForEndpoint<Enhancer3, IColam>();
+builder.Services.AddEnhancerForEndpoint<Enhancer4, ISalubry>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

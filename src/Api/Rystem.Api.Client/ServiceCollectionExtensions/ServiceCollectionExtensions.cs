@@ -18,14 +18,27 @@ namespace Microsoft.Extensions.DependencyInjection
                 {
                     Generics.WithStatic(
                     typeof(RystemApiServiceCollectionExtensions),
-                    nameof(PrivateUseEndpointApi),
+                    nameof(PrivateAddClientForEndpointApi),
                     endpoint.Type).Invoke(services, endpoint, httpClientSettings, endpointsManager);
                 }
             return services;
         }
+        public static IServiceCollection AddClientForEndpointApi<T>(this IServiceCollection services, Action<HttpClientBuilder> httpClientBuilder, string? factoryName = null)
+            where T : class
+        {
+            var httpClientSettings = new HttpClientBuilder();
+            httpClientBuilder.Invoke(httpClientSettings);
+            var endpointsManager = services.GetSingletonService<EndpointsManager>();
+            if (endpointsManager != null)
+                return services.PrivateAddClientForEndpointApi<T>(
+                    endpointsManager.Endpoints.First(x => x.Type == typeof(T) && x.FactoryName == factoryName),
+                    httpClientSettings,
+                    endpointsManager);
+            return services;
+        }
         private static readonly MediaTypeHeaderValue s_mediaTypeHeaderValueForJson = new("application/json");
         private static readonly MediaTypeHeaderValue s_mediaTypeHeaderValueForText = new("application/text");
-        private static IServiceCollection PrivateUseEndpointApi<T>(this IServiceCollection services, EndpointValue endpointValue, HttpClientBuilder builder, EndpointsManager endpointsManager)
+        private static IServiceCollection PrivateAddClientForEndpointApi<T>(this IServiceCollection services, EndpointValue endpointValue, HttpClientBuilder builder, EndpointsManager endpointsManager)
             where T : class
         {
             var interfaceType = typeof(T);
@@ -42,6 +55,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 var client = new ApiHttpClient<T>()
                                   .SetApiClientDispatchProxy(
                                       serviceProvider.GetRequiredService<IHttpClientFactory>(),
+                                      serviceProvider.GetService<IFactory<IRequestEnhancer>>(),
                                       chainRequest)
                                   .CreateProxy();
                 return client;
@@ -111,7 +125,7 @@ namespace Microsoft.Extensions.DependencyInjection
                             requestMethodCreator.IsPost = true;
                             if (method.Value.IsMultipart)
                             {
-                                var isStreamable = parameter.IsStream || parameter.IsSpecialStream;
+                                var isStreamable = parameter.IsStream || parameter.IsSpecialStream || parameter.IsRystemSpecialStream;
                                 requestMethodCreator.Parameters.Add(new ApiClientCreateRequestParameterMethod
                                 {
                                     Executor = (context, value) =>
@@ -132,7 +146,7 @@ namespace Microsoft.Extensions.DependencyInjection
                                                 {
                                                     multipart.Add(new StreamContent(stream), parameter.Name, parameter.Name);
                                                 }
-                                                else if (parameter.IsSpecialStream)
+                                                else if (parameter.IsSpecialStream || parameter.IsRystemSpecialStream)
                                                 {
                                                     var dynamicStream = (dynamic)value!;
                                                     var streamContent = new StreamContent(dynamicStream.OpenReadStream());

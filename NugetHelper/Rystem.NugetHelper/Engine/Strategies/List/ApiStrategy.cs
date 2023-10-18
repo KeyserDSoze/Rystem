@@ -10,7 +10,9 @@
            .AddProject("Rystem.Api");
             updateTree
                 .CreateSon()
-                .AddProject("Rystem.Api.Server", "Rystem.Api.Client");
+                .AddProject("Rystem.Api.Server", "Rystem.Api.Client")
+                .CreateSon()
+                .AddProject("Rystem.Api.Client.Authentication.BlazorServer", "Rystem.Api.Client.Authentication.BlazorWasm");
             return updateTree;
         }
     }

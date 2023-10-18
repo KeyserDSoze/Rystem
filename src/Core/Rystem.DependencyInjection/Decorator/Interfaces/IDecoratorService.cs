@@ -3,6 +3,6 @@
     public interface IDecoratorService<in TService> : IServiceForFactory
         where TService : class
     {
-        void SetDecoratedService(TService service);
+        void SetDecoratedServices(IEnumerable<TService> services);
     }
 }

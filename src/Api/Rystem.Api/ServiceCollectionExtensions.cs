@@ -14,7 +14,7 @@ namespace Microsoft.Extensions.DependencyInjection
             return services;
         }
         public static IServiceCollection AddEndpoint<TService>(this IServiceCollection services,
-            Action<ApiEndpointPolicyBuilder<TService>> builder,
+            Action<ApiEndpointBuilder<TService>> builder,
             string? name = null)
         {
             var endpointsManager = services.TryAddSingletonAndGetService<EndpointsManager>();
@@ -23,7 +23,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 FactoryName = name
             };
             endpointsManager.Endpoints.Add(value);
-            var settings = new ApiEndpointPolicyBuilder<TService>(value, endpointsManager.RemoveAsyncSuffix);
+            var settings = new ApiEndpointBuilder<TService>(value, endpointsManager.RemoveAsyncSuffix);
             builder.Invoke(settings);
             return services;
         }

@@ -38,7 +38,7 @@
                             descriptor.ImplementationInstance,
                             (descriptor.ImplementationFactory != null ?
                                 (serviceProvider, key) => descriptor.ImplementationFactory(serviceProvider) : null),
-                        null, true);
+                        null, true, false);
                 }
             }
 
@@ -56,6 +56,7 @@
                         implementationInstance,
                         implementationFactory,
                         () => InformThatItsAlreadyInstalled(ref check),
+                        false,
                         false);
                 services.AddOrOverrideService<IDecoratedService<TService>>(
                     serviceProvider =>

@@ -16,7 +16,7 @@ namespace Rystem.Api.TestServer.Clients
             return Task.FromResult(true);
         }
 
-        public Task<bool> GetAsync([Query] string id, Stream file, [Query] string fol, [Query] string cul, [Header] string cookie)
+        public Task<bool> GetAsync([Query] string id, IHttpFile file, [Query] string fol, [Query] string cul, [Header] string cookie)
         {
             return Task.FromResult(true);
         }

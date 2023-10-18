@@ -10,17 +10,18 @@
             Func<IServiceProvider, object?, object>? instanceFactory,
             ServiceLifetime lifetime,
             bool? canOverride,
-            int id = 0)
+            bool? doNotRemoveExisting)
         {
             if (serviceKey == null)
                 throw new ArgumentNullException(nameof(serviceKey));
             var map = services.TryAddSingletonAndGetService<ServiceFactoryMap>();
-            if (map.Services.ContainsKey(serviceKey))
+            if (doNotRemoveExisting != true && map.Services.ContainsKey(serviceKey))
             {
                 if (canOverride == true)
                 {
                     if (map.Services.Remove(serviceKey, out var value))
-                        services.Remove(value);
+                        foreach (var service in value)
+                            services.Remove(service);
                 }
                 else if (canOverride == false)
                     throw new ArgumentException($"{serviceKey} already installed.");
@@ -39,7 +40,9 @@
                 else
                     descriptor = new ServiceDescriptor(serviceType, serviceKey, implementationType, lifetime);
             }
-            map.Services.Add(serviceKey, descriptor);
+            if (!map.Services.ContainsKey(serviceKey))
+                map.Services.Add(serviceKey, new());
+            map.Services[serviceKey].Add(descriptor);
             services.Add(descriptor);
             return services;
         }

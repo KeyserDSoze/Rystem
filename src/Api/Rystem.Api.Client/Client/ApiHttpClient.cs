@@ -1,18 +1,25 @@
 ﻿using System.Reflection;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Rystem.Api
 {
     public class ApiHttpClient<T> : DispatchProxyAsync where T : class
     {
+        private static readonly string s_clientNameForAll = $"ApiHttpClient";
         private static readonly string s_clientName = $"ApiHttpClient_{typeof(T).FullName}";
         private ApiClientChainRequest<T> _requestChain;
         private HttpClient? _httpClient;
+        private IEnumerable<IRequestEnhancer>? _requestEnhancers;
+        private IEnumerable<IRequestEnhancer>? _requestForAllEnhancers;
         public ApiHttpClient<T> SetApiClientDispatchProxy(IHttpClientFactory httpClientFactory,
+            IFactory<IRequestEnhancer>? factory,
             ApiClientChainRequest<T> requestChain)
         {
             _httpClient = httpClientFactory.CreateClient(s_clientName);
             _requestChain = requestChain;
+            _requestEnhancers = factory?.CreateAll(s_clientName);
+            _requestForAllEnhancers = factory?.CreateAll(s_clientNameForAll);
             return this;
         }
         public T CreateProxy()
@@ -20,6 +27,8 @@ namespace Rystem.Api
             var proxy = Create<T, ApiHttpClient<T>>() as ApiHttpClient<T>;
             proxy!._httpClient = _httpClient;
             proxy!._requestChain = _requestChain;
+            proxy!._requestEnhancers = _requestEnhancers;
+            proxy!._requestForAllEnhancers = _requestForAllEnhancers;
             return (proxy as T)!;
         }
         private async Task<TResponse> InvokeHttpRequestAsync<TResponse>(MethodInfo method, object[] args, bool readResponse)
@@ -43,6 +52,12 @@ namespace Rystem.Api
                     request.Headers.Add(header.Key, header.Value);
             if (context.Content != null)
                 request.Content = context.Content;
+            if (_requestForAllEnhancers != null)
+                foreach (var enhancer in _requestForAllEnhancers)
+                    await enhancer.EnhanceAsync(request);
+            if (_requestEnhancers != null)
+                foreach (var enhancer in _requestEnhancers)
+                    await enhancer.EnhanceAsync(request);
             var response = await _httpClient!.SendAsync(request);
             response.EnsureSuccessStatusCode();
             if (readResponse)

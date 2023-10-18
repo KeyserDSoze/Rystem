@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
+using Rystem.Api;
 
 namespace Microsoft.AspNetCore.Builder
 {
@@ -32,6 +34,8 @@ namespace Microsoft.AspNetCore.Builder
             public Func<HttpContext, Task<object>>? ExecutorAsync { get; set; }
             public Func<HttpContext, object>? Executor { get; set; }
         }
+        private static readonly FieldInfo s_baseStreamFromIFormFile = typeof(FormFile).GetField("_baseStream", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        private static readonly FieldInfo s_baseStreamOffsetFromIFormFile = typeof(FormFile).GetField("_baseStreamOffset", BindingFlags.NonPublic | BindingFlags.Instance)!;
         private static IEndpointRouteBuilder PrivateUseEndpointApi<T>(this IEndpointRouteBuilder builder, EndpointValue endpointValue, EndpointsManager endpointsManager)
             where T : class
         {
@@ -110,7 +114,7 @@ namespace Microsoft.AspNetCore.Builder
                         case ApiParameterLocation.Body:
                             if (method.Value.IsMultipart)
                             {
-                                var isStreamable = parameter.IsStream || parameter.IsSpecialStream;
+                                var isStreamable = parameter.IsStream || parameter.IsSpecialStream || parameter.IsRystemSpecialStream;
                                 if (isStreamable)
                                 {
                                     retrievers.Add(new RetrieverWrapper
@@ -120,8 +124,27 @@ namespace Microsoft.AspNetCore.Builder
                                             var value = context.Request.Form.Files.FirstOrDefault(x => x.Name == parameter.Name);
                                             if (value == null && !parameter.IsRequired)
                                                 return default!;
-                                            if (parameter.IsSpecialStream && value is IFormFile formFile)
-                                                return formFile;
+                                            if ((parameter.IsSpecialStream | parameter.IsRystemSpecialStream) && value is IFormFile formFile)
+                                            {
+                                                if (parameter.IsSpecialStream)
+                                                    return formFile;
+                                                else
+                                                {
+                                                    var baseStreamAsObject = s_baseStreamFromIFormFile.GetValue(formFile);
+                                                    var baseStream = baseStreamAsObject != null ? (Stream)baseStreamAsObject : new MemoryStream();
+                                                    var offset = (long)s_baseStreamOffsetFromIFormFile.GetValue(formFile)!;
+                                                    var file = new HttpFile(baseStream, offset, formFile.Length, formFile.Name, formFile.FileName);
+                                                    if (formFile.Headers != null && formFile.Headers is IDictionary<string, StringValues> headers)
+                                                    {
+                                                        file.Headers ??= new();
+                                                        foreach (var header in headers)
+                                                        {
+                                                            file.Headers.TryAdd(header.Key, header.Value.ToString());
+                                                        }
+                                                    }
+                                                    return file;
+                                                }
+                                            }
                                             else
                                             {
                                                 var memoryStream = new MemoryStream();

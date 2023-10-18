@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Cache
@@ -14,9 +15,9 @@ namespace RepositoryFramework.Cache
         private protected readonly IDistributedCache<T, TKey>? Distributed;
         private protected readonly DistributedCacheOptions<T, TKey> DistributedCacheOptions;
         private readonly string _cacheName;
-        public void SetDecoratedService(IQuery<T, TKey> service)
+        public void SetDecoratedServices(IEnumerable<IQuery<T, TKey>> services)
         {
-            _query = service;
+            _query = services.First();
         }
         public void SetFactoryName(string name)
         {

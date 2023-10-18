@@ -68,7 +68,7 @@ namespace Rystem.Api
                         case ApiParameterLocation.Body:
                             if (currentEndpoint.Value.IsMultipart)
                             {
-                                var isStreamable = parameter.IsStream || parameter.IsSpecialStream;
+                                var isStreamable = parameter.IsStream || parameter.IsSpecialStream | parameter.IsRystemSpecialStream;
                                 if (operation.RequestBody == null)
                                 {
                                     operation.RequestBody = new OpenApiRequestBody

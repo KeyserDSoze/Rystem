@@ -9,14 +9,14 @@ namespace RepositoryFramework.Cache
         private ICommand<T, TKey>? _command;
         private readonly IFactory<ICommand<T, TKey>>? _commandFactory;
 
-        public void SetDecoratedService(IRepository<T, TKey> service)
+        public void SetDecoratedServices(IEnumerable<IRepository<T, TKey>> services)
         {
-            _repository = service;
-            _query = service;
+            _repository = services.First();
+            _query = services.First();
         }
-        public void SetDecoratedService(ICommand<T, TKey> service)
+        public void SetDecoratedServices(IEnumerable<ICommand<T, TKey>> services)
         {
-            _command = service;
+            _command = services.First();
         }
         public new void SetFactoryName(string name)
         {

@@ -14,14 +14,21 @@ namespace Microsoft.AspNetCore.Builder
         public bool IsRequired { get; set; }
         public bool IsStream { get; }
         public bool IsSpecialStream { get; }
+        public bool IsRystemSpecialStream { get; }
         public string? ContentType { get; set; }
         public object? Example { get; set; }
+        private const string SpecialStreamFromAspNetCore = "Microsoft.AspNetCore.Http.IFormFile";
+        private const string SpecialStreamFromRystem = "Rystem.Api.IHttpFile";
         public EndpointMethodParameterValue(ParameterInfo parameterInfo)
         {
             Info = parameterInfo;
             IsPrimitive = parameterInfo.ParameterType.IsPrimitive();
             IsStream = parameterInfo.ParameterType.IsAssignableFrom(typeof(Stream));
-            IsSpecialStream = parameterInfo.ParameterType.FullName?.StartsWith("Microsoft.AspNetCore.Http.IFormFile") == true;
+            if (parameterInfo.ParameterType.FullName != null)
+            {
+                IsSpecialStream = parameterInfo.ParameterType.FullName.StartsWith(SpecialStreamFromAspNetCore);
+                IsRystemSpecialStream = parameterInfo.ParameterType.FullName.StartsWith(SpecialStreamFromRystem);
+            }
             Type = parameterInfo.ParameterType;
             Name = parameterInfo.Name!;
             Location = IsPrimitive ? ApiParameterLocation.Query : ApiParameterLocation.Body;

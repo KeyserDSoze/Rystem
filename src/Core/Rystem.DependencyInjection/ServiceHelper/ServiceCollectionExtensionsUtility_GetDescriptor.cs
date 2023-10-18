@@ -29,14 +29,14 @@
             {
                 var serviceDescriptor = services
                     .Where(x => x.IsKeyedService)
-                    .FirstOrDefault(x => serviceKey == null || x!.ServiceKey?.Equals(serviceKey) == true);
+                    .LastOrDefault(x => serviceKey == null || x!.ServiceKey?.Equals(serviceKey) == true);
                 return serviceDescriptor;
             }
             else
             {
                 var serviceDescriptor = services
                     .Where(x => !x.IsKeyedService)
-                    .FirstOrDefault(
+                    .LastOrDefault(
                         x => x!.ServiceType == serviceType
                         && (implementationType == null || x.ImplementationType == implementationType
                         || x.ImplementationInstance?.GetType() == implementationType));

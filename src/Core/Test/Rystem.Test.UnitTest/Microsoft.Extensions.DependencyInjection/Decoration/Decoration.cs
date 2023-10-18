@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection.Decoration
 {
@@ -49,9 +52,9 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection.Decorati
             return _repository.Get();
         }
 
-        public void SetDecoratedService(IRepository<T> service)
+        public void SetDecoratedServices(IEnumerable<IRepository<T>> services)
         {
-            _repository = service;
+            _repository = services.First();
         }
 
         public void SetOptions(RepositoryOptions options)

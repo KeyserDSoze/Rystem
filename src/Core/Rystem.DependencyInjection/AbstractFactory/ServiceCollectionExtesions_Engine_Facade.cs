@@ -11,7 +11,8 @@
                 TImplementation? implementationInstance,
                 Func<IServiceProvider, object?, TService>? implementationFactory,
                 Action? whenExists,
-                bool fromDecoration)
+                bool fromDecoration,
+                bool doNotRemoveExisting)
                 where TService : class
                 where TImplementation : class, TService, IServiceWithFactoryWithOptions<TOptions>
                 where TOptions : class, IFactoryOptions, new()
@@ -38,7 +39,8 @@
                 implementationInstance,
                 implementationFactory != null ? (serviceProvider, name) => implementationFactory(serviceProvider, name) : null,
                 whenExists,
-                fromDecoration);
+                fromDecoration,
+                doNotRemoveExisting);
             return services;
         }
         private static IServiceCollection AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
@@ -49,7 +51,8 @@
             TImplementation? implementationInstance,
             Func<IServiceProvider, object?, TService>? implementationFactory,
             Action? whenExists,
-            bool fromDecoration)
+            bool fromDecoration,
+            bool doNotRemoveExisting)
                where TService : class
                where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>
                where TOptions : class, IOptionsBuilder<TBuiltOptions>, new()
@@ -75,7 +78,8 @@
                 implementationInstance,
                 implementationFactory != null ? (serviceProvider, name) => implementationFactory(serviceProvider, name) : null,
                 whenExists,
-                fromDecoration);
+                fromDecoration,
+                doNotRemoveExisting);
             return services;
         }
         private static async Task<IServiceCollection> AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
@@ -86,7 +90,8 @@
             TImplementation? implementationInstance,
             Func<IServiceProvider, object?, TService>? implementationFactory,
             Action? whenExists,
-            bool fromDecoration)
+            bool fromDecoration,
+            bool doNotRemoveExisting)
                 where TService : class
                 where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>
                 where TOptions : class, IOptionsBuilderAsync<TBuiltOptions>, new()
@@ -112,7 +117,8 @@
                 implementationInstance,
                 implementationFactory != null ? (serviceProvider, name) => implementationFactory(serviceProvider, name) : null,
                 whenExists,
-                fromDecoration);
+                fromDecoration,
+                doNotRemoveExisting);
             return services;
         }
     }
