@@ -1,4 +1,4 @@
-name: Api.Client.Nuget
+name: Api.Client.BlazorServer.Nuget
 on:
   push:
     branches:
