@@ -26,7 +26,8 @@
             .CreateSon()
             .AddProject("Rystem.Queue", "Rystem.RepositoryFramework.Cache.Azure.Storage.Blob",
                          "Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer",
-                         "Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm");
+                         "Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm",
+                         "Rystem.Api.Client.Authentication.BlazorServer", "Rystem.Api.Client.Authentication.BlazorWasm");
             return updateTree;
         }
     }
