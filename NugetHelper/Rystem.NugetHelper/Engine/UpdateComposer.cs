@@ -109,7 +109,7 @@ namespace Rystem.NugetHelper.Engine
                         if (s_regexForVersion.IsMatch(content))
                         {
                             var currentVersion = s_regexForVersion.Match(content).Value;
-                            var version = new NugetHelper.Version(s_regexForVersion.Match(content).Value.Split('>').Skip(1).First().Split('<').First());
+                            var version = new Version(s_regexForVersion.Match(content).Value.Split('>').Skip(1).First().Split('<').First());
                             if (_versionType != VersionType.Specific)
                                 version.NextVersion(_versionType, _addingValueForVersion);
                             else
