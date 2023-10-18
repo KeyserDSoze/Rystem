@@ -11,6 +11,7 @@ namespace Rystem.NugetHelper.Engine
         private bool _pauseEachStep;
         private bool _isDebug;
         private string? _specificVersion;
+        private int _minutesToWait = 5;
         private int _addingValueForVersion = 1;
         private readonly Dictionary<string, string> _newVersionOfLibraries = new();
         private static readonly Regex s_regexForVersion = new("<Version>[^<]*</Version>");
@@ -55,6 +56,10 @@ namespace Rystem.NugetHelper.Engine
             var versionAdder = Console.ReadLine();
             if (int.TryParse(versionAdder, out var number))
                 _addingValueForVersion = number;
+            Console.WriteLine("Do you want to wait for each round 5 minutes as default or?");
+            var minutesToWait = Console.ReadLine();
+            if (int.TryParse(minutesToWait, out var minutes))
+                _minutesToWait = minutes;
         }
         public async Task ExecuteUpdateAsync()
         {
@@ -84,7 +89,7 @@ namespace Rystem.NugetHelper.Engine
                     }
                 }
                 if (library.Son != null && !_isDebug)
-                    await Task.Delay(5 * 60 * 1000);
+                    await Task.Delay(_minutesToWait * 60 * 1000);
                 library = library.Son;
             }
         }

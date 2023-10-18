@@ -8,7 +8,7 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static partial class RystemApiServiceCollectionExtensions
     {
-        public static IServiceCollection AddClientsForEndpointApi(this IServiceCollection services, Action<HttpClientBuilder> httpClientBuilder)
+        public static IServiceCollection AddClientsForAllEndpointsApi(this IServiceCollection services, Action<HttpClientBuilder> httpClientBuilder)
         {
             var httpClientSettings = new HttpClientBuilder();
             httpClientBuilder.Invoke(httpClientSettings);

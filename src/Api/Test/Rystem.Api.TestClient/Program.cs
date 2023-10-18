@@ -27,7 +27,7 @@ builder.Services.AddAuthenticationForAllEndpoints(settings =>
     settings.Scopes = scopes;
 });
 builder.Services.AddBusiness();
-builder.Services.AddClientsForEndpointApi(x =>
+builder.Services.AddClientsForAllEndpointsApi(x =>
 {
     x.ConfigurationHttpClientForApi(t =>
     {
