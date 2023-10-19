@@ -20,9 +20,9 @@ namespace RepositoryFramework.Api.Server.Authorization
         public IRepositoryPolicyBuilder<T, TKey> WithAuthorizationHandler<THandler>(ServiceLifetime lifetime = ServiceLifetime.Transient)
             where THandler : class, IRepositoryAuthorization<T, TKey>
         {
-            if (!_services.Any(x => x.ImplementationType == typeof(RepositoryRequirementHandler)))
+            if (!_services.Any(x => !x.IsKeyedService && x.ImplementationType == typeof(RepositoryRequirementHandler)))
                 _services.AddTransient<IAuthorizationHandler, RepositoryRequirementHandler>();
-            if (!_services.Any(x => x.ServiceType == typeof(IRepositoryAuthorization<T, TKey>) && x.ImplementationType == typeof(THandler)))
+            if (!_services.Any(x => !x.IsKeyedService && x.ServiceType == typeof(IRepositoryAuthorization<T, TKey>) && x.ImplementationType == typeof(THandler)))
                 _services.AddService<IRepositoryAuthorization<T, TKey>, THandler>(lifetime);
             var policyName = $"{typeof(THandler).FullName}_{typeof(TKey).FullName}_{typeof(T).FullName}";
             _service.Policies.Add(policyName);

@@ -187,7 +187,7 @@ namespace Microsoft.Extensions.DependencyInjection
            where TService : class
             where TImplementation : class, TService
         {
-            if (!services.Any(x => x.ServiceType == typeof(TService)))
+            if (!services.Any(x => !x.IsKeyedService && x.ServiceType == typeof(TService)))
             {
                 services.AddService<TService, TImplementation>(
                     implementationFactory,

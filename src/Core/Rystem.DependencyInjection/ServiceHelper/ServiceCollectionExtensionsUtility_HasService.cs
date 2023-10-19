@@ -7,7 +7,7 @@
             out ServiceDescriptor? serviceDescriptor)
             where TService : class
         {
-            serviceDescriptor = services.FirstOrDefault(x => x.ServiceType == typeof(TService));
+            serviceDescriptor = services.FirstOrDefault(x => !x.IsKeyedService && x.ServiceType == typeof(TService));
             return serviceDescriptor != null;
         }
 
@@ -17,9 +17,9 @@
             where TService : class
             where TImplementation : class, TService
         {
-            serviceDescriptor = services.FirstOrDefault(x => x.ServiceType == typeof(TService)
+            serviceDescriptor = services.FirstOrDefault(x => !x.IsKeyedService && (x.ServiceType == typeof(TService)
                     && (x.ImplementationType == typeof(TImplementation)
-                    || x.ImplementationInstance?.GetType() == typeof(TImplementation)));
+                    || x.ImplementationInstance?.GetType() == typeof(TImplementation))));
             return serviceDescriptor != null;
         }
     }

@@ -91,8 +91,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
                 else
                 {
-                    if (!services.Any(x => x.ServiceType == serviceType
-                        && (!x.IsKeyedService && (x.ImplementationType == implementationType
+                    if (!services.Any(x => !x.IsKeyedService && (x.ServiceType == serviceType
+                        && (x.ImplementationType == implementationType
                         || x.ImplementationInstance?.GetType() == implementationType))))
                     {
                         services.AddService(serviceType, implementationType, lifetime);

@@ -27,7 +27,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 var addedFromScan = services.Scan(serviceType, lifetime, assemblies);
                 if (addedFromScan.Count > 0)
                 {
-                    if (!services.Any(x => x.ImplementationType == typeof(RepositoryRequirementHandler)))
+                    if (!services.Any(x => !x.IsKeyedService && x.ImplementationType == typeof(RepositoryRequirementHandler)))
                         services.AddTransient<IAuthorizationHandler, RepositoryRequirementHandler>();
                     foreach (var added in addedFromScan.Implementations)
                     {
