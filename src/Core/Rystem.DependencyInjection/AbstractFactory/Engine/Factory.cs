@@ -1,6 +1,4 @@
-﻿using System.Diagnostics.Tracing;
-
-namespace Microsoft.Extensions.DependencyInjection
+﻿namespace Microsoft.Extensions.DependencyInjection
 {
     internal sealed class Factory<TService> : IFactory<TService>
         where TService : class
@@ -14,7 +12,7 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             var map = _serviceProvider.GetRequiredService<ServiceFactoryMap>();
             var factoryName = name.GetFactoryName<TService>();
-            var decorationCount = map.DecorationCount[factoryName];
+            var decorationCount = map.DecorationCount.ContainsKey(factoryName) ? map.DecorationCount[factoryName] : 0;
             return Create(name, decorationCount, false).FirstOrDefault();
         }
         public TService? CreateWithoutDecoration(string? name = null)
@@ -23,7 +21,7 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             var map = _serviceProvider.GetRequiredService<ServiceFactoryMap>();
             var factoryName = name.GetFactoryName<TService>();
-            var decorationCount = map.DecorationCount[factoryName];
+            var decorationCount = map.DecorationCount.ContainsKey(factoryName) ? map.DecorationCount[factoryName] : 0;
             return Create(name, decorationCount, true);
         }
         public IEnumerable<TService> CreateAllWithoutDecoration(string? name = null)
@@ -38,26 +36,29 @@ namespace Microsoft.Extensions.DependencyInjection
                 services = _serviceProvider.GetKeyedServices<TService>(factoryName);
             else
                 services = new List<TService>() { _serviceProvider.GetKeyedService<TService>(factoryName)! };
-            foreach (var service in services)
+            if (services != null)
             {
-                if (service != null)
+                foreach (var service in services)
                 {
-                    if (service is IServiceForFactory factoryService)
-                        factoryService.SetFactoryName(name);
-                    if (service is IDecoratorService<TService> decoratorService && decoration >= 0)
-                        decoratorService.SetDecoratedServices(Create(name, decoration - 1, enumerate)!);
-                    if (service is IServiceWithFactoryWithOptions serviceWithCustomOptions)
+                    if (service != null)
                     {
-                        var optionsName = name.GetOptionsName<TService>();
-                        var options = _serviceProvider.GetKeyedService<IFactoryOptions>(optionsName.GetFactoryName<IFactoryOptions>());
-                        if (options != null)
+                        if (service is IServiceForFactory factoryService)
+                            factoryService.SetFactoryName(name);
+                        if (service is IDecoratorService<TService> decoratorService && decoration >= 0)
+                            decoratorService.SetDecoratedServices(Create(name, decoration - 1, enumerate)!);
+                        if (service is IServiceWithFactoryWithOptions serviceWithCustomOptions)
                         {
-                            var map = _serviceProvider.GetRequiredService<ServiceFactoryMap>();
-                            if (map.OptionsSetter.TryGetValue(optionsName, out var optionsSetter))
-                                optionsSetter.Invoke(serviceWithCustomOptions, options);
+                            var optionsName = name.GetOptionsName<TService>();
+                            var options = _serviceProvider.GetKeyedService<IFactoryOptions>(optionsName.GetFactoryName<IFactoryOptions>());
+                            if (options != null)
+                            {
+                                var map = _serviceProvider.GetRequiredService<ServiceFactoryMap>();
+                                if (map.OptionsSetter.TryGetValue(optionsName, out var optionsSetter))
+                                    optionsSetter.Invoke(serviceWithCustomOptions, options);
+                            }
                         }
+                        yield return service;
                     }
-                    yield return service;
                 }
             }
         }
