@@ -20,6 +20,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddTransient<IColam, Comad>();
 builder.Services.AddFactory<ISalubry, Salubry>();
 builder.Services.AddFactory<ISalubry, Salubry2>("Doma");
+builder.Services.AddFactory<ITeamCalculator, TeamCalculator>();
 builder.Services.AddServerIntegrationForRystemApi();
 builder.Services.AddBusiness();
 builder.Services.AddAuthorization(x =>

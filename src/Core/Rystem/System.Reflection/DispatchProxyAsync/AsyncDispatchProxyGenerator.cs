@@ -10,6 +10,7 @@ namespace System.Reflection
 
         private static readonly ProxyAssembly s_proxyAssembly = new();
         private static readonly MethodInfo s_dispatchProxyInvokeMethod = typeof(DispatchProxyAsync).GetTypeInfo().GetDeclaredMethod("Invoke")!;
+        private static readonly MethodInfo s_dispatchProxyInvokeTMethod = typeof(DispatchProxyAsync).GetTypeInfo().GetDeclaredMethod("InvokeT")!;
         private static readonly MethodInfo s_dispatchProxyInvokeAsyncMethod = typeof(DispatchProxyAsync).GetTypeInfo().GetDeclaredMethod("InvokeAsync")!;
         private static readonly MethodInfo s_dispatchProxyInvokeAsyncTMethod = typeof(DispatchProxyAsync).GetTypeInfo().GetDeclaredMethod("InvokeAsyncT")!;
         internal static object CreateProxyInstance(Type baseType, Type interfaceType)
@@ -81,15 +82,27 @@ namespace System.Reflection
             return new ProxyMethodResolverContext(packed, method);
         }
 
-        public static object Invoke(object[] args)
+        public static void Invoke(object[] args)
+        {
+            var context = Resolve(args);
+            try
+            {
+                _ = s_dispatchProxyInvokeMethod.Invoke(context.Packed.DispatchProxy, new object[] { context.Method, context.Packed.Args })!;
+            }
+            catch (TargetInvocationException tie)
+            {
+                ExceptionDispatchInfo.Capture(tie.InnerException!).Throw();
+            }
+        }
+        public static T Invoke<T>(object[] args)
         {
             var context = Resolve(args);
 
-            // Call (protected method) DispatchProxyAsync.Invoke()
-            object? returnValue = null;
+            var returnValue = default(T);
             try
             {
-                returnValue = s_dispatchProxyInvokeMethod.Invoke(context.Packed.DispatchProxy, new object[] { context.Method, context.Packed.Args })!;
+                returnValue = (T)s_dispatchProxyInvokeTMethod.MakeGenericMethod(typeof(T))
+                    .Invoke(context.Packed.DispatchProxy, new object[] { context.Method, context.Packed.Args })!;
                 context.Packed.ReturnValue = returnValue;
             }
             catch (TargetInvocationException tie)
@@ -99,7 +112,6 @@ namespace System.Reflection
 
             return returnValue;
         }
-
         public static async Task InvokeAsync(object[] args)
         {
             var context = Resolve(args);
@@ -279,6 +291,7 @@ namespace System.Reflection
         private sealed class ProxyBuilder
         {
             private static readonly MethodInfo s_delegateInvoke = typeof(DispatchProxyHandler).GetMethod("InvokeHandle")!;
+            private static readonly MethodInfo s_delegateInvokeT = typeof(DispatchProxyHandler).GetMethod("InvokeHandleT")!;
             private static readonly MethodInfo s_delegateInvokeAsync = typeof(DispatchProxyHandler).GetMethod("InvokeAsyncHandle")!;
             private static readonly MethodInfo s_delegateinvokeAsyncT = typeof(DispatchProxyHandler).GetMethod("InvokeAsyncHandleT")!;
 
@@ -478,7 +491,7 @@ namespace System.Reflection
                         args.EndSet(i, typeof(object));
                     }
                 }
-
+                x
                 var invokeMethod = s_delegateInvoke;
                 if (mi.ReturnType == typeof(Task))
                 {

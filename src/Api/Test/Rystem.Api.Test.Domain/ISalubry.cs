@@ -1,4 +1,7 @@
-﻿namespace Rystem.Api.Test.Domain
+﻿using System.Numerics;
+using System.Threading.Channels;
+
+namespace Rystem.Api.Test.Domain
 {
     public interface ISalubry
     {

@@ -77,7 +77,7 @@ namespace Rystem.Api
 
         public override object Invoke(MethodInfo method, object[] args)
         {
-            throw new NotImplementedException();
+            return InvokeHttpRequestAsync(method, args, true).ToResult();
         }
     }
 }

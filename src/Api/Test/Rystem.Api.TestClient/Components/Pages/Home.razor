@@ -14,6 +14,8 @@ Welcome to your new app.
     public IFactory<ISalubry> Factory { get; set; }
     [Inject]
     public IColam Colam { get; set; }
+    [Inject]
+    public ITeamCalculator TeamCalculator { get; set; }
     protected override async Task OnInitializedAsync()
     {
         var salubry = Factory.Create();
@@ -25,5 +27,8 @@ Welcome to your new app.
         file.ContentType = "application/pdf";
         var response3 = await Colam.GetAsync("dasdsa", file, "fol", "cul", "cookie");
         await base.OnInitializedAsync();
+        var q1 = TeamCalculator.Chance;
+        TeamCalculator.SetLeagueSettings(new() { LeagueId = 45 });
+        var q2 = TeamCalculator.CalculatePoint(new List<EnrichedPlayer> { new() { Id = 3 } });
     }
 }

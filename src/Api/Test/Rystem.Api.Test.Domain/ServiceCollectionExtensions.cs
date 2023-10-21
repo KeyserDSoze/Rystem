@@ -29,6 +29,10 @@ namespace Rystem.Api.Test.Domain
                     endpointBuilder.SetEndpointName("Comator");
                     endpointBuilder.SetMethodName(typeof(IColam).GetMethods().First(), "Cod");
                 })
+                  .AddEndpoint<ITeamCalculator>(endpointBuilder =>
+                  {
+                      endpointBuilder.SetEndpointName("TeamCalculator");
+                  })
                 .AddEndpoint<ISalubry>(endpointBuilder =>
                 {
                     endpointBuilder
