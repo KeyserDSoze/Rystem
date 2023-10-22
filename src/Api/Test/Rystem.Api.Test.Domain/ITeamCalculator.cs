@@ -4,13 +4,13 @@ namespace Rystem.Api.Test.Domain
 {
     public interface ITeamCalculator
     {
-        bool IsLive { get; }
-        bool IsEditable { get; }
-        int SerieADay { get; }
-        VotedRealPlayerWrapper? Live { get; }
-        VotedRealPlayerWrapper? Official { get; }
-        ChancedRealPlayerWrapper? Chance { get; }
-        LeagueSetting? LeagueSetting { get; }
+        //bool IsLive { get; }
+        //bool IsEditable { get; }
+        //int SerieADay { get; }
+        //VotedRealPlayerWrapper? Live { get; }
+        //VotedRealPlayerWrapper? Official { get; }
+        //ChancedRealPlayerWrapper? Chance { get; }
+        //LeagueSetting? LeagueSetting { get; }
         ValueTask BuildRequestAsync(int year, int day, LeagueSetting leagueSettings, bool withRealGame, bool withVote, bool withChance);
         void SetLeagueSettings(LeagueSetting leagueSettings);
         Point CalculatePoint(IEnumerable<Player> players);

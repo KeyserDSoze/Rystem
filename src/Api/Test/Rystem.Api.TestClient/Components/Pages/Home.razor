@@ -27,7 +27,7 @@ Welcome to your new app.
         // file.ContentType = "application/pdf";
         // var response3 = await Colam.GetAsync("dasdsa", file, "fol", "cul", "cookie");
         await base.OnInitializedAsync();
-        var q1 = TeamCalculator.Chance;
+        // var q1 = TeamCalculator.Chance;
         TeamCalculator.SetLeagueSettings(new() { LeagueId = 45 });
         var q2 = TeamCalculator.CalculatePoint(new List<EnrichedPlayer> { new() { Id = 3 } });
     }
