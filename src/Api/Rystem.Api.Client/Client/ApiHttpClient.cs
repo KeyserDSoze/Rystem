@@ -74,10 +74,20 @@ namespace Rystem.Api
 
         public override Task<TResponse> InvokeAsyncT<TResponse>(MethodInfo method, object[] args)
             => InvokeHttpRequestAsync<TResponse>(method, args, true);
-
-        public override object Invoke(MethodInfo method, object[] args)
+        public override async ValueTask InvokeValueAsync(MethodInfo method, object[] args)
+          => _ = await InvokeHttpRequestAsync<object>(method, args, false);
+        public override async ValueTask<TResponse> InvokeValueAsyncT<TResponse>(MethodInfo method, object[] args)
         {
-            return InvokeHttpRequestAsync(method, args, true).ToResult();
+            var response = await InvokeHttpRequestAsync<TResponse>(method, args, true);
+            return response;
+        }
+        public override TResponse InvokeT<TResponse>(MethodInfo method, object[] args)
+        {
+            return InvokeHttpRequestAsync<TResponse>(method, args, true).ToResult();
+        }
+        public override void Invoke(MethodInfo method, object[] args)
+        {
+            _ = InvokeHttpRequestAsync<object>(method, args, false).ToResult();
         }
     }
 }

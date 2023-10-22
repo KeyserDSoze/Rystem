@@ -18,14 +18,14 @@ Welcome to your new app.
     public ITeamCalculator TeamCalculator { get; set; }
     protected override async Task OnInitializedAsync()
     {
-        var salubry = Factory.Create();
-        var response = await salubry.GetAsync(2, new MemoryStream());
-        var file = new HttpFile(new MemoryStream(), 0, 0, "a", "a");
-        file.ContentType = "application/pdf";
-        var response2 = await Colam.GetAsync("dasdsa", new MemoryStream(), "fol", "cul", "cookie", new Faul { Id = "a", Name = "a" }, new Faul { Id = "b", Name = "b" }, new MemoryStream());
-        file = new HttpFile(new MemoryStream(), 0, 0, "a", "a");
-        file.ContentType = "application/pdf";
-        var response3 = await Colam.GetAsync("dasdsa", file, "fol", "cul", "cookie");
+        // var salubry = Factory.Create();
+        // var response = await salubry.GetAsync(2, new MemoryStream());
+        // var file = new HttpFile(new MemoryStream(), 0, 0, "a", "a");
+        // file.ContentType = "application/pdf";
+        // var response2 = await Colam.GetAsync("dasdsa", new MemoryStream(), "fol", "cul", "cookie", new Faul { Id = "a", Name = "a" }, new Faul { Id = "b", Name = "b" }, new MemoryStream());
+        // file = new HttpFile(new MemoryStream(), 0, 0, "a", "a");
+        // file.ContentType = "application/pdf";
+        // var response3 = await Colam.GetAsync("dasdsa", file, "fol", "cul", "cookie");
         await base.OnInitializedAsync();
         var q1 = TeamCalculator.Chance;
         TeamCalculator.SetLeagueSettings(new() { LeagueId = 45 });
