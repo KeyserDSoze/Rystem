@@ -56,8 +56,8 @@ namespace System.Reflection
             }
             var pb = s_proxyAssembly.CreateProxy("generatedProxy", baseType);
             foreach (var t in interfaceType.GetTypeInfo().ImplementedInterfaces)
-                pb.AddInterfaceImpl(t);
-            pb.AddInterfaceImpl(interfaceType);
+                pb.AddInterfaceImplementation(t);
+            pb.AddInterfaceImplementation(interfaceType);
             var generatedProxyType = pb.CreateType();
             return generatedProxyType;
         }
@@ -119,8 +119,37 @@ namespace System.Reflection
             var returnValue = default(T);
             try
             {
-                var genericmethod = s_dispatchProxyInvokeAsyncTMethod.MakeGenericMethod(typeof(T));
-                returnValue = await (Task<T>)genericmethod.Invoke(context.Packed.DispatchProxy, new object[] { context.Method, context.Packed.Args })!;
+                var genericMethod = s_dispatchProxyInvokeAsyncTMethod.MakeGenericMethod(typeof(T));
+                returnValue = await (Task<T>)genericMethod.Invoke(context.Packed.DispatchProxy, new object[] { context.Method, context.Packed.Args })!;
+                context.Packed.ReturnValue = returnValue!;
+            }
+            catch (TargetInvocationException tie)
+            {
+                ExceptionDispatchInfo.Capture(tie.InnerException!).Throw();
+            }
+            return returnValue;
+        }
+        public static async ValueTask InvokeValueAsync(object[] args)
+        {
+            var context = Resolve(args);
+            try
+            {
+                await (Task)s_dispatchProxyInvokeAsyncMethod.Invoke(context.Packed.DispatchProxy, new object[] { context.Method, context.Packed.Args })!;
+            }
+            catch (TargetInvocationException tie)
+            {
+                ExceptionDispatchInfo.Capture(tie.InnerException!).Throw();
+            }
+        }
+
+        public static async ValueTask<T> InvokeValueAsync<T>(object[] args)
+        {
+            var context = Resolve(args);
+            var returnValue = default(T);
+            try
+            {
+                var genericMethod = s_dispatchProxyInvokeAsyncTMethod.MakeGenericMethod(typeof(T));
+                returnValue = await (Task<T>)genericMethod.Invoke(context.Packed.DispatchProxy, new object[] { context.Method, context.Packed.Args })!;
                 context.Packed.ReturnValue = returnValue!;
             }
             catch (TargetInvocationException tie)
@@ -140,7 +169,7 @@ namespace System.Reflection
 
             internal static readonly Type[] PackedTypes = new Type[] { typeof(object), typeof(Type), typeof(int), typeof(object[]), typeof(Type[]), typeof(object) };
 
-            private object[] _args;
+            private readonly object[] _args;
             internal PackedArgs() : this(new object[PackedTypes.Length]) { }
             internal PackedArgs(object[] args) { _args = args; }
 
@@ -153,22 +182,24 @@ namespace System.Reflection
         }
         private sealed class ProxyAssembly
         {
-            public AssemblyBuilder _ab;
-            private ModuleBuilder _mb;
+            internal AssemblyBuilder Ab { get; }
+            private readonly ModuleBuilder _mb;
             private int _typeId = 0;
             // to pass methods by token
-            private Dictionary<MethodBase, int> _methodToToken = new();
-            private List<MethodBase> _methodsByToken = new();
-            private HashSet<string> _ignoresAccessAssemblyNames = new();
-            private ConstructorInfo _ignoresAccessChecksToAttributeConstructor;
+            private readonly Dictionary<MethodBase, int> _methodToToken = new();
+            private readonly List<MethodBase> _methodsByToken = new();
+            private readonly HashSet<string> _ignoresAccessAssemblyNames = new();
+            private ConstructorInfo? _ignoresAccessChecksToAttributeConstructor;
 
             public ProxyAssembly()
             {
-                AssemblyBuilderAccess access = AssemblyBuilderAccess.Run;
-                var assemblyName = new AssemblyName("ProxyBuilder2");
-                assemblyName.Version = new Version(1, 0, 0);
-                _ab = AssemblyBuilder.DefineDynamicAssembly(assemblyName, access);
-                _mb = _ab.DefineDynamicModule("testmod");
+                var access = AssemblyBuilderAccess.Run;
+                var assemblyName = new AssemblyName("RystemProxyBuilder")
+                {
+                    Version = new Version(1, 0, 0)
+                };
+                Ab = AssemblyBuilder.DefineDynamicAssembly(assemblyName, access);
+                _mb = Ab.DefineDynamicModule("proxyBuilder");
             }
             internal ConstructorInfo IgnoresAccessChecksAttributeConstructor
             {
@@ -185,8 +216,8 @@ namespace System.Reflection
             }
             public ProxyBuilder CreateProxy(string name, Type proxyBaseType)
             {
-                int nextId = Interlocked.Increment(ref _typeId);
-                TypeBuilder tb = _mb.DefineType(name + "_" + nextId, TypeAttributes.Public, proxyBaseType);
+                var nextId = Interlocked.Increment(ref _typeId);
+                var tb = _mb.DefineType(name + "_" + nextId, TypeAttributes.Public, proxyBaseType);
                 return new ProxyBuilder(this, tb, proxyBaseType);
             }
             private TypeInfo GenerateTypeInfoOfIgnoresAccessChecksToAttribute()
@@ -243,7 +274,7 @@ namespace System.Reflection
                 var attributeConstructor = IgnoresAccessChecksAttributeConstructor;
                 var customAttributeBuilder =
                     new CustomAttributeBuilder(attributeConstructor, new object[] { assemblyName });
-                _ab.SetCustomAttribute(customAttributeBuilder);
+                Ab.SetCustomAttribute(customAttributeBuilder);
             }
             internal void EnsureTypeIsVisible(Type type)
             {
@@ -261,7 +292,7 @@ namespace System.Reflection
 
             internal void GetTokenForMethod(MethodBase method, out Type type, out int token)
             {
-                type = method.DeclaringType;
+                type = method.DeclaringType!;
                 token = 0;
                 if (!_methodToToken.TryGetValue(method, out token))
                 {
@@ -280,30 +311,39 @@ namespace System.Reflection
         {
             private static readonly MethodInfo s_delegateInvoke = typeof(DispatchProxyHandler).GetMethod(nameof(DispatchProxyHandler.InvokeHandle))!;
             private static readonly MethodInfo s_delegateInvokeAsync = typeof(DispatchProxyHandler).GetMethod(nameof(DispatchProxyHandler.InvokeAsyncHandle))!;
-            private static readonly MethodInfo s_delegateinvokeAsyncT = typeof(DispatchProxyHandler).GetMethod(nameof(DispatchProxyHandler.InvokeAsyncHandleT))!;
+            private static readonly MethodInfo s_delegateInvokeAsyncT = typeof(DispatchProxyHandler).GetMethod(nameof(DispatchProxyHandler.InvokeAsyncHandleT))!;
+            private static readonly MethodInfo s_delegateInvokeValueAsync = typeof(DispatchProxyHandler).GetMethod(nameof(DispatchProxyHandler.InvokeValueAsyncHandle))!;
+            private static readonly MethodInfo s_delegateInvokeValueAsyncT = typeof(DispatchProxyHandler).GetMethod(nameof(DispatchProxyHandler.InvokeValueAsyncHandleT))!;
 
-            private ProxyAssembly _assembly;
-            private TypeBuilder _tb;
-            private Type _proxyBaseType;
-            private List<FieldBuilder> _fields;
+            private readonly ProxyAssembly _assembly;
+            private readonly TypeBuilder _tb;
+            private readonly Type _proxyBaseType;
+            private readonly List<FieldBuilder> _fields;
 
             internal ProxyBuilder(ProxyAssembly assembly, TypeBuilder tb, Type proxyBaseType)
             {
                 _assembly = assembly;
                 _tb = tb;
                 _proxyBaseType = proxyBaseType;
-                _fields = new List<FieldBuilder>();
-                _fields.Add(tb.DefineField("_handler", typeof(DispatchProxyHandler), FieldAttributes.Private));
+                _fields = [tb.DefineField("_handler", typeof(DispatchProxyHandler), FieldAttributes.Private)];
             }
-
             private static bool IsGenericTask(Type type)
             {
                 var current = type;
                 while (current != null)
                 {
-                    if (current.GetTypeInfo().IsGenericType && 
-                        (current.GetGenericTypeDefinition() == typeof(Task<>) 
-                        || current.GetGenericTypeDefinition() == typeof(ValueTask<>)))
+                    if (current.GetTypeInfo().IsGenericType && current.GetGenericTypeDefinition() == typeof(Task<>))
+                        return true;
+                    current = current.GetTypeInfo().BaseType;
+                }
+                return false;
+            }
+            private static bool IsGenericValueTask(Type type)
+            {
+                var current = type;
+                while (current != null)
+                {
+                    if (current.GetTypeInfo().IsGenericType && current.GetGenericTypeDefinition() == typeof(ValueTask<>))
                         return true;
                     current = current.GetTypeInfo().BaseType;
                 }
@@ -319,10 +359,10 @@ namespace System.Reflection
                 }
                 var cb = _tb.DefineConstructor(MethodAttributes.Public, CallingConventions.HasThis, args);
                 var il = cb.GetILGenerator();
-                var baseCtor = _proxyBaseType.GetTypeInfo().DeclaredConstructors.SingleOrDefault(c => c.IsPublic && c.GetParameters().Length == 0);
+                var baseCtor = _proxyBaseType.GetTypeInfo().DeclaredConstructors.SingleOrDefault(c => c.IsPublic && c.GetParameters().Length == 0)!;
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Call, baseCtor);
-                for (int i = 0; i < args.Length; i++)
+                for (var i = 0; i < args.Length; i++)
                 {
                     il.Emit(OpCodes.Ldarg_0);
                     il.Emit(OpCodes.Ldarg, i + 1);
@@ -337,12 +377,12 @@ namespace System.Reflection
                 return _tb.CreateTypeInfo().AsType();
             }
 
-            internal void AddInterfaceImpl(Type iface)
+            internal void AddInterfaceImplementation(Type interfaceType)
             {
-                _assembly.EnsureTypeIsVisible(iface);
-                _tb.AddInterfaceImplementation(iface);
+                _assembly.EnsureTypeIsVisible(interfaceType);
+                _tb.AddInterfaceImplementation(interfaceType);
                 var propertyMap = new Dictionary<MethodInfo, PropertyAccessorInfo>(MethodInfoEqualityComparer.Instance);
-                foreach (var pi in iface.GetRuntimeProperties())
+                foreach (var pi in interfaceType.GetRuntimeProperties())
                 {
                     var ai = new PropertyAccessorInfo(pi.GetMethod!, pi.SetMethod!);
                     if (pi.GetMethod != null)
@@ -351,7 +391,7 @@ namespace System.Reflection
                         propertyMap[pi.SetMethod] = ai;
                 }
                 var eventMap = new Dictionary<MethodInfo, EventAccessorInfo>(MethodInfoEqualityComparer.Instance);
-                foreach (var ei in iface.GetRuntimeEvents())
+                foreach (var ei in interfaceType.GetRuntimeEvents())
                 {
                     var ai = new EventAccessorInfo(ei.AddMethod!, ei.RemoveMethod!, ei.RaiseMethod!);
                     if (ei.AddMethod != null)
@@ -362,9 +402,9 @@ namespace System.Reflection
                         eventMap[ei.RaiseMethod] = ai;
                 }
 
-                foreach (var mi in iface.GetRuntimeMethods())
+                foreach (var mi in interfaceType.GetRuntimeMethods())
                 {
-                    var mdb = AddMethodImpl(mi);
+                    var mdb = AddMethodImplementation(mi);
                     if (propertyMap.TryGetValue(mi, out var associatedProperty))
                     {
                         if (MethodInfoEqualityComparer.Instance.Equals(associatedProperty.InterfaceGetMethod, mi))
@@ -382,9 +422,9 @@ namespace System.Reflection
                             associatedEvent.RaiseMethodBuilder = mdb;
                     }
                 }
-                foreach (var pi in iface.GetRuntimeProperties())
+                foreach (var pi in interfaceType.GetRuntimeProperties())
                 {
-                    var ai = propertyMap[pi.GetMethod ?? pi.SetMethod];
+                    var ai = propertyMap[pi.GetMethod ?? pi.SetMethod!];
                     var pb = _tb.DefineProperty(pi.Name, pi.Attributes, pi.PropertyType, pi.GetIndexParameters().Select(p => p.ParameterType).ToArray());
                     if (ai.GetMethodBuilder != null)
                         pb.SetGetMethod(ai.GetMethodBuilder);
@@ -392,10 +432,10 @@ namespace System.Reflection
                         pb.SetSetMethod(ai.SetMethodBuilder);
                 }
 
-                foreach (var ei in iface.GetRuntimeEvents())
+                foreach (var ei in interfaceType.GetRuntimeEvents())
                 {
-                    var ai = eventMap[ei.AddMethod ?? ei.RemoveMethod];
-                    var eb = _tb.DefineEvent(ei.Name, ei.Attributes, ei.EventHandlerType);
+                    var ai = eventMap[ei.AddMethod ?? ei.RemoveMethod!];
+                    var eb = _tb.DefineEvent(ei.Name, ei.Attributes, ei.EventHandlerType!);
                     if (ai.AddMethodBuilder != null)
                         eb.SetAddOnMethod(ai.AddMethodBuilder);
                     if (ai.RemoveMethodBuilder != null)
@@ -405,7 +445,7 @@ namespace System.Reflection
                 }
             }
 
-            private MethodBuilder AddMethodImpl(MethodInfo mi)
+            private MethodBuilder AddMethodImplementation(MethodInfo mi)
             {
                 var parameters = mi.GetParameters();
                 var paramTypes = ParamTypes(parameters, false);
@@ -442,16 +482,15 @@ namespace System.Reflection
                 packedArr.BeginSet(PackedArgs.DispatchProxyPosition);
                 il.Emit(OpCodes.Ldarg_0);
                 packedArr.EndSet(typeof(DispatchProxyAsync));
-                var Type_GetTypeFromHandle = typeof(Type).GetRuntimeMethod("GetTypeFromHandle", new Type[] { typeof(RuntimeTypeHandle) });
-                Type declaringType;
-                _assembly.GetTokenForMethod(mi, out declaringType, out var methodToken);
+                var typeGetTypeFromHandle = typeof(Type).GetRuntimeMethod(nameof(Type.GetTypeFromHandle), [typeof(RuntimeTypeHandle)])!;
+                _assembly.GetTokenForMethod(mi, out var declaringType, out var methodToken);
                 packedArr.BeginSet(PackedArgs.DeclaringTypePosition);
                 il.Emit(OpCodes.Ldtoken, declaringType);
-                il.Emit(OpCodes.Call, Type_GetTypeFromHandle!);
+                il.Emit(OpCodes.Call, typeGetTypeFromHandle!);
                 packedArr.EndSet(typeof(object));
                 packedArr.BeginSet(PackedArgs.MethodTokenPosition);
                 il.Emit(OpCodes.Ldc_I4, methodToken);
-                packedArr.EndSet(typeof(Int32));
+                packedArr.EndSet(typeof(int));
                 packedArr.BeginSet(PackedArgs.ArgsPosition);
                 argsArr.Load();
                 packedArr.EndSet(typeof(object[]));
@@ -464,7 +503,7 @@ namespace System.Reflection
                     {
                         typeArr.BeginSet(i);
                         il.Emit(OpCodes.Ldtoken, genericTypes[i]);
-                        il.Emit(OpCodes.Call, Type_GetTypeFromHandle);
+                        il.Emit(OpCodes.Call, typeGetTypeFromHandle);
                         typeArr.EndSet(typeof(Type));
                     }
                     typeArr.Load();
@@ -482,24 +521,29 @@ namespace System.Reflection
                 }
 
                 var invokeMethod = s_delegateInvoke;
-                if (mi.ReturnType == typeof(Task) || mi.ReturnType == typeof(ValueTask))
+                if (mi.ReturnType == typeof(Task))
                 {
                     invokeMethod = s_delegateInvokeAsync;
                 }
-                if (IsGenericTask(mi.ReturnType))
+                else if (mi.ReturnType == typeof(ValueTask))
+                {
+                    invokeMethod = s_delegateInvokeValueAsync;
+                }
+                else if (IsGenericTask(mi.ReturnType))
                 {
                     var returnTypes = mi.ReturnType.GetGenericArguments();
-                    invokeMethod = s_delegateinvokeAsyncT.MakeGenericMethod(returnTypes);
+                    invokeMethod = s_delegateInvokeAsyncT.MakeGenericMethod(returnTypes);
+                }
+                else if (IsGenericValueTask(mi.ReturnType))
+                {
+                    var returnTypes = mi.ReturnType.GetGenericArguments();
+                    invokeMethod = s_delegateInvokeValueAsyncT.MakeGenericMethod(returnTypes);
                 }
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldfld, _fields[InvokeActionFieldAndCtorParameterIndex]);
                 packedArr.Load();
                 il.Emit(OpCodes.Callvirt, invokeMethod);
-                if (mi.ReturnType != typeof(void))
-                {
-                    Convert(il, typeof(object), mi.ReturnType, false);
-                }
-                else
+                if (mi.ReturnType == typeof(void))
                 {
                     il.Emit(OpCodes.Pop);
                 }
@@ -653,7 +697,7 @@ namespace System.Reflection
                 {
                     var argType = source.GetElementType();
                     Ldind(il, argType!);
-                    Convert(il, argType, target, isAddress);
+                    Convert(il, argType!, target, isAddress);
                     return;
                 }
                 if (targetTypeInfo.IsValueType)
@@ -785,8 +829,8 @@ namespace System.Reflection
             {
                 public MethodInfo InterfaceGetMethod { get; }
                 public MethodInfo InterfaceSetMethod { get; }
-                public MethodBuilder GetMethodBuilder { get; set; }
-                public MethodBuilder SetMethodBuilder { get; set; }
+                public MethodBuilder? GetMethodBuilder { get; set; }
+                public MethodBuilder? SetMethodBuilder { get; set; }
 
                 public PropertyAccessorInfo(MethodInfo interfaceGetMethod, MethodInfo interfaceSetMethod)
                 {
@@ -800,9 +844,9 @@ namespace System.Reflection
                 public MethodInfo InterfaceAddMethod { get; }
                 public MethodInfo InterfaceRemoveMethod { get; }
                 public MethodInfo InterfaceRaiseMethod { get; }
-                public MethodBuilder AddMethodBuilder { get; set; }
-                public MethodBuilder RemoveMethodBuilder { get; set; }
-                public MethodBuilder RaiseMethodBuilder { get; set; }
+                public MethodBuilder? AddMethodBuilder { get; set; }
+                public MethodBuilder? RemoveMethodBuilder { get; set; }
+                public MethodBuilder? RaiseMethodBuilder { get; set; }
 
                 public EventAccessorInfo(MethodInfo interfaceAddMethod, MethodInfo interfaceRemoveMethod, MethodInfo interfaceRaiseMethod)
                 {
@@ -816,14 +860,14 @@ namespace System.Reflection
             {
                 public static readonly MethodInfoEqualityComparer Instance = new MethodInfoEqualityComparer();
                 private MethodInfoEqualityComparer() { }
-                public sealed override bool Equals(MethodInfo left, MethodInfo right)
+                public sealed override bool Equals(MethodInfo? left, MethodInfo? right)
                 {
-                    if (ReferenceEquals(left, right))
-                        return true;
                     if (left == null)
                         return right == null;
                     else if (right == null)
                         return false;
+                    if (ReferenceEquals(left, right))
+                        return true;
                     if (!Equals(left.DeclaringType, right.DeclaringType))
                         return false;
                     if (!Equals(left.ReturnType, right.ReturnType))

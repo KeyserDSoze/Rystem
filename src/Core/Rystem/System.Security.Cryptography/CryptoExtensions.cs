@@ -7,7 +7,7 @@ namespace System.Security.Cryptography
     {
         public static string ToHash(this string message)
         {
-            using var mySHA512 = SHA512.Create("SHA512")!;
+            using var mySHA512 = (SHA512)CryptoConfig.CreateFromName("SHA512")!;
             var bytes = mySHA512.ComputeHash(Encoding.UTF8.GetBytes(message));
             StringBuilder stringBuilder = new();
             foreach (var @byte in bytes)

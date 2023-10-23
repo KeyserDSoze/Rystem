@@ -6,9 +6,7 @@
             => (T)AsyncDispatchProxyGenerator.CreateProxyInstance(typeof(TProxy), typeof(T));
 
         public abstract object Invoke(MethodInfo method, object[] args);
-
         public abstract Task InvokeAsync(MethodInfo method, object[] args);
-
         public abstract Task<TResponse> InvokeAsyncT<TResponse>(MethodInfo method, object[] args);
     }
 }
