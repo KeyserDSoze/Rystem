@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -64,7 +65,10 @@ namespace Rystem.Api
             {
                 //todo add the chance to return a stream or something similar which is not a json
                 var value = await response.Content.ReadAsStringAsync();
-                return value.FromJson<TResponse>()!;
+                if (!string.IsNullOrWhiteSpace(value) && value != Constant.NullResponse)
+                    return value.FromJson<TResponse>()!;
+                else
+                    return default!;
             }
             else
                 return default!;
@@ -74,20 +78,55 @@ namespace Rystem.Api
 
         public override Task<TResponse> InvokeAsyncT<TResponse>(MethodInfo method, object[] args)
             => InvokeHttpRequestAsync<TResponse>(method, args, true);
-        public override async ValueTask InvokeValueAsync(MethodInfo method, object[] args)
-          => _ = await InvokeHttpRequestAsync<object>(method, args, false);
-        public override async ValueTask<TResponse> InvokeValueAsyncT<TResponse>(MethodInfo method, object[] args)
+        //public override async ValueTask InvokeValueAsync(MethodInfo method, object[] args)
+        //  => _ = await InvokeHttpRequestAsync<object>(method, args, false);
+        //public override async ValueTask<TResponse> InvokeValueAsyncT<TResponse>(MethodInfo method, object[] args)
+        //{
+        //    var response = await InvokeHttpRequestAsync<TResponse>(method, args, true);
+        //    return response;
+        //}
+        //public override TResponse InvokeT<TResponse>(MethodInfo method, object[] args)
+        //{
+        //    return InvokeHttpRequestAsync<TResponse>(method, args, true).ToResult();
+        //}
+        //public override void Invoke(MethodInfo method, object[] args)
+        //{
+        //    _ = InvokeHttpRequestAsync<object>(method, args, false).ToResult();
+        //}
+        public override object Invoke(MethodInfo method, object[] args)
         {
-            var response = await InvokeHttpRequestAsync<TResponse>(method, args, true);
-            return response;
-        }
-        public override TResponse InvokeT<TResponse>(MethodInfo method, object[] args)
-        {
-            return InvokeHttpRequestAsync<TResponse>(method, args, true).ToResult();
-        }
-        public override void Invoke(MethodInfo method, object[] args)
-        {
-            _ = InvokeHttpRequestAsync<object>(method, args, false).ToResult();
+            var currentMethod = _requestChain.Methods[method.GetSignature()];
+            var context = new ApiClientRequestBearer();
+            var parameterCounter = 0;
+            foreach (var chain in currentMethod.Parameters)
+            {
+                if (chain.Executor != null)
+                    chain.Executor(context, args[parameterCounter]);
+                else
+                    chain.ExecutorAsync(context, args[parameterCounter]).ToResult();
+                parameterCounter++;
+            }
+            var request = new HttpRequestMessage(currentMethod.IsPost ? HttpMethod.Post : HttpMethod.Get, $"{currentMethod.FixedPath}{context.Path}{context.Query}");
+            if (context.Cookie?.Length > 0)
+                request.Headers.Add("cookie", context.Cookie.ToString());
+            if (context.Headers?.Count > 0)
+                foreach (var header in context.Headers)
+                    request.Headers.Add(header.Key, header.Value);
+            if (context.Content != null)
+                request.Content = context.Content;
+            if (_requestForAllEnhancers != null)
+                foreach (var enhancer in _requestForAllEnhancers)
+                    enhancer.EnhanceAsync(request).ToResult();
+            if (_requestEnhancers != null)
+                foreach (var enhancer in _requestEnhancers)
+                    enhancer.EnhanceAsync(request).ToResult();
+            var response = _httpClient!.SendAsync(request).ToResult();
+            response.EnsureSuccessStatusCode();
+            var value = response.Content.ReadAsStringAsync().ToResult();
+            if (method.ReturnType != typeof(void) && !string.IsNullOrWhiteSpace(value))
+                return value.FromJson(method.ReturnType)!;
+            else
+                return default!;
         }
     }
 }

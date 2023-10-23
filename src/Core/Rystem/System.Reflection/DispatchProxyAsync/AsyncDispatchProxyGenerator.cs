@@ -10,11 +10,8 @@ namespace System.Reflection
 
         private static readonly ProxyAssembly s_proxyAssembly = new();
         private static readonly MethodInfo s_dispatchProxyInvokeMethod = typeof(DispatchProxyAsync).GetTypeInfo().GetDeclaredMethod(nameof(DispatchProxyAsync.Invoke))!;
-        private static readonly MethodInfo s_dispatchProxyInvokeTMethod = typeof(DispatchProxyAsync).GetTypeInfo().GetDeclaredMethod(nameof(DispatchProxyAsync.InvokeT))!;
         private static readonly MethodInfo s_dispatchProxyInvokeAsyncMethod = typeof(DispatchProxyAsync).GetTypeInfo().GetDeclaredMethod(nameof(DispatchProxyAsync.InvokeAsync))!;
         private static readonly MethodInfo s_dispatchProxyInvokeAsyncTMethod = typeof(DispatchProxyAsync).GetTypeInfo().GetDeclaredMethod(nameof(DispatchProxyAsync.InvokeAsyncT))!;
-        private static readonly MethodInfo s_dispatchProxyInvokeAsyncValueMethod = typeof(DispatchProxyAsync).GetTypeInfo().GetDeclaredMethod(nameof(DispatchProxyAsync.InvokeValueAsync))!;
-        private static readonly MethodInfo s_dispatchProxyInvokeAsyncValueTMethod = typeof(DispatchProxyAsync).GetTypeInfo().GetDeclaredMethod(nameof(DispatchProxyAsync.InvokeValueAsyncT))!;
         internal static object CreateProxyInstance(Type baseType, Type interfaceType)
         {
             var proxiedType = GetProxyType(baseType, interfaceType);
@@ -84,27 +81,15 @@ namespace System.Reflection
             return new ProxyMethodResolverContext(packed, method);
         }
 
-        public static void Invoke(object[] args)
-        {
-            var context = Resolve(args);
-            try
-            {
-                _ = s_dispatchProxyInvokeMethod.Invoke(context.Packed.DispatchProxy, new object[] { context.Method, context.Packed.Args })!;
-            }
-            catch (TargetInvocationException tie)
-            {
-                ExceptionDispatchInfo.Capture(tie.InnerException!).Throw();
-            }
-        }
-        public static T Invoke<T>(object[] args)
+        public static object Invoke(object[] args)
         {
             var context = Resolve(args);
 
-            var returnValue = default(T);
+            // Call (protected method) DispatchProxyAsync.Invoke()
+            object? returnValue = null;
             try
             {
-                returnValue = (T)s_dispatchProxyInvokeTMethod.MakeGenericMethod(typeof(T))
-                    .Invoke(context.Packed.DispatchProxy, new object[] { context.Method, context.Packed.Args })!;
+                returnValue = s_dispatchProxyInvokeMethod.Invoke(context.Packed.DispatchProxy, new object[] { context.Method, context.Packed.Args })!;
                 context.Packed.ReturnValue = returnValue;
             }
             catch (TargetInvocationException tie)
@@ -114,6 +99,7 @@ namespace System.Reflection
 
             return returnValue;
         }
+
         public static async Task InvokeAsync(object[] args)
         {
             var context = Resolve(args);
@@ -135,35 +121,6 @@ namespace System.Reflection
             {
                 var genericmethod = s_dispatchProxyInvokeAsyncTMethod.MakeGenericMethod(typeof(T));
                 returnValue = await (Task<T>)genericmethod.Invoke(context.Packed.DispatchProxy, new object[] { context.Method, context.Packed.Args })!;
-                context.Packed.ReturnValue = returnValue!;
-            }
-            catch (TargetInvocationException tie)
-            {
-                ExceptionDispatchInfo.Capture(tie.InnerException!).Throw();
-            }
-            return returnValue;
-        }
-        public static async ValueTask InvokeValueAsync(object[] args)
-        {
-            var context = Resolve(args);
-            try
-            {
-                await (ValueTask)s_dispatchProxyInvokeAsyncValueMethod.Invoke(context.Packed.DispatchProxy, new object[] { context.Method, context.Packed.Args })!;
-            }
-            catch (TargetInvocationException tie)
-            {
-                ExceptionDispatchInfo.Capture(tie.InnerException!).Throw();
-            }
-        }
-
-        public static async ValueTask<T> InvokeValueAsync<T>(object[] args)
-        {
-            var context = Resolve(args);
-            var returnValue = default(T);
-            try
-            {
-                var genericmethod = s_dispatchProxyInvokeAsyncValueTMethod.MakeGenericMethod(typeof(T));
-                returnValue = await (ValueTask<T>)genericmethod.Invoke(context.Packed.DispatchProxy, new object[] { context.Method, context.Packed.Args })!;
                 context.Packed.ReturnValue = returnValue!;
             }
             catch (TargetInvocationException tie)
@@ -322,11 +279,9 @@ namespace System.Reflection
         private sealed class ProxyBuilder
         {
             private static readonly MethodInfo s_delegateInvoke = typeof(DispatchProxyHandler).GetMethod(nameof(DispatchProxyHandler.InvokeHandle))!;
-            private static readonly MethodInfo s_delegateInvokeT = typeof(DispatchProxyHandler).GetMethod(nameof(DispatchProxyHandler.InvokeHandleT))!;
             private static readonly MethodInfo s_delegateInvokeAsync = typeof(DispatchProxyHandler).GetMethod(nameof(DispatchProxyHandler.InvokeAsyncHandle))!;
             private static readonly MethodInfo s_delegateinvokeAsyncT = typeof(DispatchProxyHandler).GetMethod(nameof(DispatchProxyHandler.InvokeAsyncHandleT))!;
-            private static readonly MethodInfo s_delegateInvokeValueAsync = typeof(DispatchProxyHandler).GetMethod(nameof(DispatchProxyHandler.InvokeValueAsyncHandle))!;
-            private static readonly MethodInfo s_delegateinvokeValueAsyncT = typeof(DispatchProxyHandler).GetMethod(nameof(DispatchProxyHandler.InvokeValueAsyncHandleT))!;
+
             private ProxyAssembly _assembly;
             private TypeBuilder _tb;
             private Type _proxyBaseType;
@@ -346,18 +301,9 @@ namespace System.Reflection
                 var current = type;
                 while (current != null)
                 {
-                    if (current.GetTypeInfo().IsGenericType && current.GetGenericTypeDefinition() == typeof(Task<>))
-                        return true;
-                    current = current.GetTypeInfo().BaseType;
-                }
-                return false;
-            }
-            private static bool IsGenericValueTask(Type type)
-            {
-                var current = type;
-                while (current != null)
-                {
-                    if (current.GetTypeInfo().IsGenericType && current.GetGenericTypeDefinition() == typeof(ValueTask<>))
+                    if (current.GetTypeInfo().IsGenericType && 
+                        (current.GetGenericTypeDefinition() == typeof(Task<>) 
+                        || current.GetGenericTypeDefinition() == typeof(ValueTask<>)))
                         return true;
                     current = current.GetTypeInfo().BaseType;
                 }
@@ -534,28 +480,16 @@ namespace System.Reflection
                         args.EndSet(i, typeof(object));
                     }
                 }
-                var invokeMethod = s_delegateInvokeT;
-                if (mi.ReturnType == typeof(Task))
+
+                var invokeMethod = s_delegateInvoke;
+                if (mi.ReturnType == typeof(Task) || mi.ReturnType == typeof(ValueTask))
                 {
                     invokeMethod = s_delegateInvokeAsync;
-                }
-                if (mi.ReturnType == typeof(ValueTask))
-                {
-                    invokeMethod = s_delegateInvokeValueAsync;
-                }
-                if (mi.ReturnType == null || mi.ReturnType == typeof(void))
-                {
-                    invokeMethod = s_delegateInvoke;
                 }
                 if (IsGenericTask(mi.ReturnType))
                 {
                     var returnTypes = mi.ReturnType.GetGenericArguments();
                     invokeMethod = s_delegateinvokeAsyncT.MakeGenericMethod(returnTypes);
-                }
-                if (IsGenericValueTask(mi.ReturnType))
-                {
-                    var returnTypes = mi.ReturnType.GetGenericArguments();
-                    invokeMethod = s_delegateinvokeValueAsyncT.MakeGenericMethod(returnTypes);
                 }
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldfld, _fields[InvokeActionFieldAndCtorParameterIndex]);

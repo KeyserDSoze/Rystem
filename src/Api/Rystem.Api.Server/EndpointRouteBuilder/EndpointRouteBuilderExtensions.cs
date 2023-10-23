@@ -186,23 +186,29 @@ namespace Microsoft.AspNetCore.Builder
                             break;
                     }
                 }
-
+                var withoutReturn = method.Value.Method.ReturnType == typeof(void) || method.Value.Method.ReturnType == typeof(Task) || method.Value.Method.ReturnType == typeof(ValueTask);
+                var isGenericAsync = method.Value.Method.ReturnType.IsGenericType &&
+                    (method.Value.Method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)
+                    || method.Value.Method.ReturnType.GetGenericTypeDefinition() == typeof(ValueTask<>));
                 if (!method.Value.IsPost)
                 {
                     builder
                         .MapGet(endpointMethodValue.EndpointUri, async (HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory) =>
                         {
-                            return await ExecuteAsync(context, service, factory);
+                            var response = await ExecuteAsync(context, service, factory);
+                            return response;
                         })
                         .AddAuthorization(endpointMethodValue.Policies);
                 }
                 else
                 {
-                    builder.MapPost(endpointMethodValue.EndpointUri, async (HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory) =>
-                    {
-                        return await ExecuteAsync(context, service, factory);
-                    })
-                    .AddAuthorization(endpointMethodValue.Policies);
+                    builder
+                        .MapPost(endpointMethodValue.EndpointUri, async (HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory) =>
+                        {
+                            var response = await ExecuteAsync(context, service, factory);
+                            return response;
+                        })
+                        .AddAuthorization(endpointMethodValue.Policies);
                 }
 
                 async Task<object> ExecuteAsync(HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory)
@@ -214,7 +220,18 @@ namespace Microsoft.AspNetCore.Builder
                         await task;
                     if (result is ValueTask valueTask)
                         await valueTask;
-                    return ((dynamic)result!).Result;
+                    if (withoutReturn)
+                        return default!;
+                    else if (result is not null)
+                    {
+                        var response = isGenericAsync ? ((dynamic)result!).Result : result;
+                        if (response is not null)
+                            return response;
+                        else
+                            return default!;
+                    }
+                    else
+                        return default!;
                 }
 
                 async Task<object[]> ReadParametersAsync(HttpContext context)

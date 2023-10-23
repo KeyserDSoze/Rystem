@@ -19,11 +19,27 @@ namespace Rystem.Api.TestServer.Clients
 
         public LeagueSetting? LeagueSetting => new() { LeagueId = 4 };
 
-        public ValueTask BuildRequestAsync(int year, int day, LeagueSetting leagueSettings, bool withRealGame, bool withVote, bool withChance)
+        //public ValueTask BuildRequestAsync(int year, int day, LeagueSetting leagueSettings, bool withRealGame, bool withVote, bool withChance)
+        //{
+        //    return ValueTask.CompletedTask;
+        //}
+
+        public Task BuildRequestAsync(int year, int day, LeagueSetting leagueSettings, bool withRealGame, bool withVote, bool withChance)
+        {
+            return Task.CompletedTask;
+        }
+        public Task<bool> BuildRequest2Async(int year, int day, LeagueSetting leagueSettings, bool withRealGame, bool withVote, bool withChance)
+        {
+            return Task.FromResult(true);
+        }
+        public ValueTask BuildRequestValueAsync(int year, int day, LeagueSetting leagueSettings, bool withRealGame, bool withVote, bool withChance)
         {
             return ValueTask.CompletedTask;
         }
-
+        public ValueTask<bool> BuildRequestValue2Async(int year, int day, LeagueSetting leagueSettings, bool withRealGame, bool withVote, bool withChance)
+        {
+            return ValueTask.FromResult(true);
+        }
         public Point CalculatePoint(IEnumerable<Player> players)
         {
             return new Point(4);
