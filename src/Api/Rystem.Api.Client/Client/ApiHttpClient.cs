@@ -8,7 +8,7 @@ namespace Rystem.Api
     {
         private static readonly string s_clientNameForAll = $"ApiHttpClient";
         private static readonly string s_clientName = $"ApiHttpClient_{typeof(T).FullName}";
-        private ApiClientChainRequest<T> _requestChain;
+        private ApiClientChainRequest<T>? _requestChain;
         private HttpClient? _httpClient;
         private IEnumerable<IRequestEnhancer>? _requestEnhancers;
         private IEnumerable<IRequestEnhancer>? _requestForAllEnhancers;
@@ -33,6 +33,8 @@ namespace Rystem.Api
         }
         private async Task<TResponse> InvokeHttpRequestAsync<TResponse>(MethodInfo method, object[] args, bool readResponse)
         {
+            if (_requestChain == null)
+                return default!;
             var currentMethod = _requestChain.Methods[method.GetSignature()];
             var context = new ApiClientRequestBearer();
             var parameterCounter = 0;
@@ -63,8 +65,9 @@ namespace Rystem.Api
             if (readResponse)
             {
                 //todo add the chance to return a stream or something similar which is not a json
+                //todo add the IAsyncEnumerable
                 var value = await response.Content.ReadAsStringAsync();
-                if (!string.IsNullOrWhiteSpace(value) && value != Constant.NullResponse)
+                if (!string.IsNullOrWhiteSpace(value))
                     return value.FromJson<TResponse>()!;
                 else
                     return default!;
@@ -77,16 +80,10 @@ namespace Rystem.Api
 
         public override Task<TResponse> InvokeAsyncT<TResponse>(MethodInfo method, object[] args)
             => InvokeHttpRequestAsync<TResponse>(method, args, true);
-        //public override TResponse InvokeT<TResponse>(MethodInfo method, object[] args)
-        //{
-        //    return InvokeHttpRequestAsync<TResponse>(method, args, true).ToResult();
-        //}
-        //public override void Invoke(MethodInfo method, object[] args)
-        //{
-        //    _ = InvokeHttpRequestAsync<object>(method, args, false).ToResult();
-        //}
         public override object Invoke(MethodInfo method, object[] args)
         {
+            if (_requestChain == null)
+                return default!;
             var currentMethod = _requestChain.Methods[method.GetSignature()];
             var context = new ApiClientRequestBearer();
             var parameterCounter = 0;

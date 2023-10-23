@@ -25,6 +25,7 @@ Welcome to your new app.
     private EnrichedPlayer? q;
     private bool? q1;
     private bool? q2;
+    private ChancedRealPlayerWrapper? q3;
     protected override async Task OnInitializedAsync()
     {
         // var salubry = Factory.Create();
@@ -37,6 +38,7 @@ Welcome to your new app.
         // var response3 = await Colam.GetAsync("dasdsa", file, "fol", "cul", "cookie");
         await base.OnInitializedAsync();
         // var q1 = TeamCalculator.Chance;
+        q3 = TeamCalculator.Chance;
         TeamCalculator.SetLeagueSettings(new() { LeagueId = 45 });
         q = TeamCalculator.Enrich(new Player { Id = 4 });
         await TeamCalculator.BuildRequestAsync(1, 1, new LeagueSetting { LeagueId = 5 }, true, false, true);
