@@ -43,8 +43,8 @@ Welcome to your new app.
         q = TeamCalculator.Enrich(new Player { Id = 4 });
         await TeamCalculator.BuildRequestAsync(1, 1, new LeagueSetting { LeagueId = 5 }, true, false, true);
         q1 = await TeamCalculator.BuildRequest2Async(1, 1, new LeagueSetting { LeagueId = 5 }, true, false, true);
-        await TeamCalculator.BuildRequestValueAsync(1, 1, new LeagueSetting { LeagueId = 5 }, true, false, true);
         q2 = await TeamCalculator.BuildRequestValue2Async(1, 1, new LeagueSetting { LeagueId = 5 }, true, false, true);
+        await TeamCalculator.BuildRequestValueAsync(1, 1, new LeagueSetting { LeagueId = 5 }, true, false, true);
         // var q3 = TeamCalculator.CalculatePoint(new List<EnrichedPlayer> { new() { Id = 3 } });
     }
 }

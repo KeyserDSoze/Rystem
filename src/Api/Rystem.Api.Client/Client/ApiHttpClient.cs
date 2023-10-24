@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Rystem.Api
 {
-    public class ApiHttpClient<T> : DispatchProxyAsync where T : class
+    public class ApiHttpClient<T> : DispatchProxy where T : class
     {
         private static readonly string s_clientNameForAll = $"ApiHttpClient";
         private static readonly string s_clientName = $"ApiHttpClient_{typeof(T).FullName}";
@@ -31,11 +31,8 @@ namespace Rystem.Api
             proxy!._requestForAllEnhancers = _requestForAllEnhancers;
             return (proxy as T)!;
         }
-        private async Task<TResponse> InvokeHttpRequestAsync<TResponse>(MethodInfo method, object[] args, bool readResponse)
+        private async ValueTask<TResponse> InvokeHttpRequestAsync<TResponse>(ApiClientCreateRequestMethod currentMethod, object[] args, bool readResponse)
         {
-            if (_requestChain == null)
-                return default!;
-            var currentMethod = _requestChain.Methods[method.GetSignature()];
             var context = new ApiClientRequestBearer();
             var parameterCounter = 0;
             foreach (var chain in currentMethod.Parameters)
@@ -75,16 +72,59 @@ namespace Rystem.Api
             else
                 return default!;
         }
-        public override Task InvokeAsync(MethodInfo method, object[] args)
-            => InvokeHttpRequestAsync<object>(method, args, false);
-
-        public override Task<TResponse> InvokeAsyncT<TResponse>(MethodInfo method, object[] args)
-            => InvokeHttpRequestAsync<TResponse>(method, args, true);
-        public override object Invoke(MethodInfo method, object[] args)
+        private async Task InvokeAsync(ApiClientCreateRequestMethod currentMethod, object[] args, Type returnType)
+            => await InvokeHttpRequestAsync<object>(currentMethod, args, false);
+        private async Task<TResponse> InvokeTAsync<TResponse>(ApiClientCreateRequestMethod currentMethod, object[] args, Type returnType)
+            => await InvokeHttpRequestAsync<TResponse>(currentMethod, args, true);
+        private async ValueTask InvokeValueAsync(ApiClientCreateRequestMethod currentMethod, object[] args, Type returnType)
+            => await InvokeHttpRequestAsync<object>(currentMethod, args, false);
+        private async ValueTask<TResponse> InvokeValueTAsync<TResponse>(ApiClientCreateRequestMethod currentMethod, object[] args, Type returnType)
+            => await InvokeHttpRequestAsync<TResponse>(currentMethod, args, true);
+        private static readonly MethodInfo s_dispatchProxyInvokeMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeSync), BindingFlags.NonPublic | BindingFlags.Instance)!;
+        private static readonly MethodInfo s_dispatchProxyInvokeAsyncMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
+        private static readonly MethodInfo s_dispatchProxyInvokeTAsyncMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeTAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
+        private static readonly MethodInfo s_dispatchProxyInvokeValueAsyncMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeValueAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
+        private static readonly MethodInfo s_dispatchProxyInvokeValueTAsyncMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeValueTAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
+        private static readonly Dictionary<string, MethodInfo> s_methods = new();
+        protected override object Invoke(MethodInfo method, object[] args)
         {
+            var signature = method.GetSignature();
             if (_requestChain == null)
                 return default!;
-            var currentMethod = _requestChain.Methods[method.GetSignature()];
+            var currentMethod = _requestChain.Methods[signature];
+            if (!s_methods.ContainsKey(signature))
+            {
+                MethodInfo methodInfo;
+                if (method.ReturnType == typeof(Task))
+                {
+                    methodInfo = s_dispatchProxyInvokeAsyncMethod;
+                }
+                else if (method.ReturnType == typeof(ValueTask))
+                {
+                    methodInfo = s_dispatchProxyInvokeValueAsyncMethod;
+                }
+                else if (IsGenericTask(method.ReturnType))
+                {
+                    var returnTypes = method.ReturnType.GetGenericArguments();
+                    methodInfo = s_dispatchProxyInvokeTAsyncMethod.MakeGenericMethod(returnTypes);
+                }
+                else if (IsGenericValueTask(method.ReturnType))
+                {
+                    var returnTypes = method.ReturnType.GetGenericArguments();
+                    methodInfo = s_dispatchProxyInvokeValueTAsyncMethod.MakeGenericMethod(returnTypes);
+                }
+                else
+                {
+                    methodInfo = s_dispatchProxyInvokeMethod;
+                }
+                s_methods.TryAdd(signature, methodInfo);
+            }
+            var arguments = new object[3] { currentMethod, args, method.ReturnType };
+            s_methods.TryGetValue(signature, out var invoker);
+            return invoker!.Invoke(this, arguments)!;
+        }
+        private object InvokeSync(ApiClientCreateRequestMethod currentMethod, object[] args, Type returnType)
+        {
             var context = new ApiClientRequestBearer();
             var parameterCounter = 0;
             foreach (var chain in currentMethod.Parameters)
@@ -112,10 +152,32 @@ namespace Rystem.Api
             var response = _httpClient!.SendAsync(request).ToResult();
             response.EnsureSuccessStatusCode();
             var value = response.Content.ReadAsStringAsync().ToResult();
-            if (method.ReturnType != typeof(void) && !string.IsNullOrWhiteSpace(value))
-                return value.FromJson(method.ReturnType)!;
+            if (returnType != typeof(void) && !string.IsNullOrWhiteSpace(value))
+                return value.FromJson(returnType)!;
             else
                 return default!;
+        }
+        private static bool IsGenericTask(Type type)
+        {
+            var current = type;
+            while (current != null)
+            {
+                if (current.GetTypeInfo().IsGenericType && current.GetGenericTypeDefinition() == typeof(Task<>))
+                    return true;
+                current = current.GetTypeInfo().BaseType;
+            }
+            return false;
+        }
+        private static bool IsGenericValueTask(Type type)
+        {
+            var current = type;
+            while (current != null)
+            {
+                if (current.GetTypeInfo().IsGenericType && current.GetGenericTypeDefinition() == typeof(ValueTask<>))
+                    return true;
+                current = current.GetTypeInfo().BaseType;
+            }
+            return false;
         }
     }
 }
