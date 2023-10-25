@@ -71,111 +71,118 @@ namespace Microsoft.Extensions.DependencyInjection
                 var numberOfValueInPath = endpointMethodValue!.EndpointUri.Split('/').Length + 1;
                 foreach (var parameter in method.Value.Parameters.OrderBy(x => x.Position))
                 {
-                    //todo non primitive query parameter and other in theory primitive parameter
-                    //todo primitive parameter in multipart
-                    switch (parameter.Location)
+                    if (parameter.Type == typeof(CancellationToken))
                     {
-                        case ApiParameterLocation.Query:
-                            requestMethodCreator.Parameters.Add(new ApiClientCreateRequestParameterMethod
-                            {
-                                Executor = (context, value) =>
-                                {
-                                    context.Query ??= new();
-                                    if (context.Query.Length == 0)
-                                        context.Query.Append('?');
-                                    else
-                                        context.Query.Append('&');
-                                    context.Query.Append($"{parameter.Name}={value}");
-                                }
-                            });
-                            break;
-                        case ApiParameterLocation.Cookie:
-                            requestMethodCreator.Parameters.Add(new ApiClientCreateRequestParameterMethod
-                            {
-                                Executor = (context, value) =>
-                                {
-                                    context.Cookie ??= new();
-                                    context.Cookie.Append($"{parameter.Name}={value}; ");
-                                }
-                            });
-                            break;
-                        case ApiParameterLocation.Header:
-                            requestMethodCreator.Parameters.Add(new ApiClientCreateRequestParameterMethod
-                            {
-                                Executor = (context, value) =>
-                                {
-                                    context.Headers.Add(parameter.Name, value?.ToString());
-                                }
-                            });
-                            break;
-                        case ApiParameterLocation.Path:
-                            requestMethodCreator.Parameters.Add(new ApiClientCreateRequestParameterMethod
-                            {
-                                Executor = (context, value) =>
-                                {
-                                    context.Path ??= new();
-                                    context.Path.Append($"/{value}");
-                                }
-                            });
-                            break;
-                        case ApiParameterLocation.Body:
-                            requestMethodCreator.IsPost = true;
-                            if (method.Value.IsMultipart)
-                            {
-                                var isStreamable = parameter.IsStream || parameter.IsSpecialStream || parameter.IsRystemSpecialStream;
+                        requestMethodCreator.Parameters.Add(new ApiClientCreateRequestParameterMethod());
+                    }
+                    else
+                    {
+                        //todo non primitive query parameter and other in theory primitive parameter
+                        //todo primitive parameter in multipart
+                        switch (parameter.Location)
+                        {
+                            case ApiParameterLocation.Query:
                                 requestMethodCreator.Parameters.Add(new ApiClientCreateRequestParameterMethod
                                 {
                                     Executor = (context, value) =>
                                     {
-                                        if (!(value is null && !parameter.IsRequired))
+                                        context.Query ??= new();
+                                        if (context.Query.Length == 0)
+                                            context.Query.Append('?');
+                                        else
+                                            context.Query.Append('&');
+                                        context.Query.Append($"{parameter.Name}={value}");
+                                    }
+                                });
+                                break;
+                            case ApiParameterLocation.Cookie:
+                                requestMethodCreator.Parameters.Add(new ApiClientCreateRequestParameterMethod
+                                {
+                                    Executor = (context, value) =>
+                                    {
+                                        context.Cookie ??= new();
+                                        context.Cookie.Append($"{parameter.Name}={value}; ");
+                                    }
+                                });
+                                break;
+                            case ApiParameterLocation.Header:
+                                requestMethodCreator.Parameters.Add(new ApiClientCreateRequestParameterMethod
+                                {
+                                    Executor = (context, value) =>
+                                    {
+                                        context.Headers.Add(parameter.Name, value?.ToString());
+                                    }
+                                });
+                                break;
+                            case ApiParameterLocation.Path:
+                                requestMethodCreator.Parameters.Add(new ApiClientCreateRequestParameterMethod
+                                {
+                                    Executor = (context, value) =>
+                                    {
+                                        context.Path ??= new();
+                                        context.Path.Append($"/{value}");
+                                    }
+                                });
+                                break;
+                            case ApiParameterLocation.Body:
+                                requestMethodCreator.IsPost = true;
+                                if (method.Value.IsMultipart)
+                                {
+                                    var isStreamable = parameter.IsStream || parameter.IsSpecialStream || parameter.IsRystemSpecialStream;
+                                    requestMethodCreator.Parameters.Add(new ApiClientCreateRequestParameterMethod
+                                    {
+                                        Executor = (context, value) =>
                                         {
-                                            if (context.Content == null)
+                                            if (!(value is null && !parameter.IsRequired))
                                             {
-                                                context.Content = new MultipartFormDataContent($"----------{Guid.NewGuid()}");
-                                            }
-                                            if (context.Content is MultipartFormDataContent multipart)
-                                            {
-                                                if (isStreamable && value == null)
+                                                if (context.Content == null)
                                                 {
-                                                    multipart.Add(new StreamContent(s_emptyStream), parameter.Name, parameter.Name);
+                                                    context.Content = new MultipartFormDataContent($"----------{Guid.NewGuid()}");
                                                 }
-                                                else if (isStreamable && value is Stream stream)
+                                                if (context.Content is MultipartFormDataContent multipart)
                                                 {
-                                                    multipart.Add(new StreamContent(stream), parameter.Name, parameter.Name);
-                                                }
-                                                else if (parameter.IsSpecialStream || parameter.IsRystemSpecialStream)
-                                                {
-                                                    var dynamicStream = (dynamic)value!;
-                                                    var streamContent = new StreamContent(dynamicStream.OpenReadStream());
-                                                    Try.WithDefaultOnCatch(() =>
+                                                    if (isStreamable && value == null)
                                                     {
-                                                        var contentType = dynamicStream.ContentType as string;
-                                                        if (contentType != null)
-                                                            streamContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
-                                                    });
-                                                    multipart.Add(streamContent, parameter.Name, dynamicStream.FileName);
-                                                }
-                                                else
-                                                {
-                                                    multipart.Add(new StringContent(parameter.IsPrimitive ? value?.ToString() : value?.ToJson(),
-                                                        parameter.IsPrimitive ? s_mediaTypeHeaderValueForText : s_mediaTypeHeaderValueForJson), parameter.Name);
+                                                        multipart.Add(new StreamContent(s_emptyStream), parameter.Name, parameter.Name);
+                                                    }
+                                                    else if (isStreamable && value is Stream stream)
+                                                    {
+                                                        multipart.Add(new StreamContent(stream), parameter.Name, parameter.Name);
+                                                    }
+                                                    else if (parameter.IsSpecialStream || parameter.IsRystemSpecialStream)
+                                                    {
+                                                        var dynamicStream = (dynamic)value!;
+                                                        var streamContent = new StreamContent(dynamicStream.OpenReadStream());
+                                                        Try.WithDefaultOnCatch(() =>
+                                                        {
+                                                            var contentType = dynamicStream.ContentType as string;
+                                                            if (contentType != null)
+                                                                streamContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+                                                        });
+                                                        multipart.Add(streamContent, parameter.Name, dynamicStream.FileName);
+                                                    }
+                                                    else
+                                                    {
+                                                        multipart.Add(new StringContent(parameter.IsPrimitive ? value?.ToString() : value?.ToJson(),
+                                                            parameter.IsPrimitive ? s_mediaTypeHeaderValueForText : s_mediaTypeHeaderValueForJson), parameter.Name);
+                                                    }
                                                 }
                                             }
                                         }
-                                    }
-                                });
-                            }
-                            else
-                            {
-                                requestMethodCreator.Parameters.Add(new ApiClientCreateRequestParameterMethod
+                                    });
+                                }
+                                else
                                 {
-                                    Executor = (context, value) =>
+                                    requestMethodCreator.Parameters.Add(new ApiClientCreateRequestParameterMethod
                                     {
-                                        context.Content = new StringContent(parameter.IsPrimitive ? value?.ToString() : value.ToJson());
-                                    }
-                                });
-                            }
-                            break;
+                                        Executor = (context, value) =>
+                                        {
+                                            context.Content = new StringContent(parameter.IsPrimitive ? value?.ToString() : value.ToJson());
+                                        }
+                                    });
+                                }
+                                break;
+                        }
                     }
                 }
             }

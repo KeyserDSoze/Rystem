@@ -26,8 +26,8 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="8.0.0-rc.2.23480.2" />
-        <PackageReference Include="Microsoft.Identity.Web" Version="2.15.2" />
-        <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0-beta3" />
+        <PackageReference Include="Microsoft.Identity.Web" Version="2.15.3" />
+        <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0-beta4" />
     </ItemGroup>
 
     <ItemGroup>

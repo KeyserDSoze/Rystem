@@ -2,6 +2,6 @@
 {
     public interface IRequestEnhancer
     {
-        ValueTask EnhanceAsync(HttpRequestMessage request);
+        ValueTask EnhanceAsync(HttpRequestMessage request, CancellationToken cancellationToken);
     }
 }

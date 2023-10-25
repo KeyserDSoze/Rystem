@@ -22,24 +22,24 @@ namespace Rystem.Api.Client
             _authorizationHeaderProvider = authorizationHeaderProvider;
         }
 
-        public async ValueTask EnhanceAsync(HttpRequestMessage request)
+        public async ValueTask EnhanceAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            var tokenResponse = await Try.WithDefaultOnCatchAsync(() => GetTokenAsync()).NoContext();
+            var tokenResponse = await Try.WithDefaultOnCatchAsync(() => GetTokenAsync(cancellationToken)).NoContext();
             if (tokenResponse?.Exception == null && tokenResponse?.Entity != null)
             {
                 var splitted = tokenResponse.Entity.Split(' ');
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(splitted[0], splitted[1]);
             }
         }
-        private Task<string?> GetTokenAsync()
+        private Task<string?> GetTokenAsync(CancellationToken cancellationToken)
         {
-            return RefreshTokenAsync();
+            return RefreshTokenAsync(cancellationToken);
         }
-        private async Task<string?> RefreshTokenAsync()
+        private async Task<string?> RefreshTokenAsync(CancellationToken cancellationToken)
         {
             try
             {
-                var token = await _authorizationHeaderProvider.CreateAuthorizationHeaderForUserAsync(_settings.Scopes!);
+                var token = await _authorizationHeaderProvider.CreateAuthorizationHeaderForUserAsync(_settings.Scopes!, cancellationToken: cancellationToken);
                 return token;
             }
             catch (Exception ex)

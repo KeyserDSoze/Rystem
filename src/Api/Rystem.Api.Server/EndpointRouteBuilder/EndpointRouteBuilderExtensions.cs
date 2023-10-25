@@ -33,6 +33,7 @@ namespace Microsoft.AspNetCore.Builder
         {
             public Func<HttpContext, Task<object>>? ExecutorAsync { get; set; }
             public Func<HttpContext, object>? Executor { get; set; }
+            public bool IsCancellationToken { get; set; }
         }
         private static readonly FieldInfo s_baseStreamFromIFormFile = typeof(FormFile).GetField("_baseStream", BindingFlags.NonPublic | BindingFlags.Instance)!;
         private static readonly FieldInfo s_baseStreamOffsetFromIFormFile = typeof(FormFile).GetField("_baseStreamOffset", BindingFlags.NonPublic | BindingFlags.Instance)!;
@@ -54,136 +55,146 @@ namespace Microsoft.AspNetCore.Builder
                 var currentPathParameter = 0;
                 foreach (var parameter in method.Value.Parameters.OrderBy(x => x.Position))
                 {
-                    switch (parameter.Location)
+                    if (parameter.Type == typeof(CancellationToken))
                     {
-                        case ApiParameterLocation.Query:
-                            retrievers.Add(new RetrieverWrapper
-                            {
-                                Executor = context =>
+                        retrievers.Add(new RetrieverWrapper
+                        {
+                            IsCancellationToken = true
+                        });
+                    }
+                    else
+                    {
+                        switch (parameter.Location)
+                        {
+                            case ApiParameterLocation.Query:
+                                retrievers.Add(new RetrieverWrapper
                                 {
-                                    if (!parameter.IsRequired && !context.Request.Query.ContainsKey(parameter.Name))
-                                        return default!;
-                                    var value = context.Request.Query[parameter.Name!].ToString();
-                                    var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
-                                    return returnValue;
-                                }
-                            });
-                            break;
-                        case ApiParameterLocation.Cookie:
-                            retrievers.Add(new RetrieverWrapper
-                            {
-                                Executor = context =>
-                                {
-                                    if (!parameter.IsRequired && !context.Request.Cookies.ContainsKey(parameter.Name))
-                                        return default!;
-                                    var value = context.Request.Cookies[parameter.Name!]!.ToString();
-                                    var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
-                                    return returnValue;
-                                }
-                            });
-                            break;
-                        case ApiParameterLocation.Header:
-                            retrievers.Add(new RetrieverWrapper
-                            {
-                                Executor = context =>
-                                {
-                                    if (!parameter.IsRequired && !context.Request.Headers.ContainsKey(parameter.Name))
-                                        return default!;
-                                    var value = context.Request.Headers[parameter.Name!].ToString();
-                                    var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
-                                    return returnValue;
-                                }
-                            });
-                            break;
-                        case ApiParameterLocation.Path:
-                            var currentPathParameterValue = parameter.Position == -1 ? currentPathParameter : parameter.Position;
-                            retrievers.Add(new RetrieverWrapper
-                            {
-                                Executor = context =>
-                                {
-                                    var values = context.Request.Path.Value?.Split('/');
-                                    if (parameter.IsRequired && values?.Length < parameter.Position)
-                                        return default!;
-                                    var value = values![numberOfValueInPath + currentPathParameterValue];
-                                    var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
-                                    return returnValue;
-                                }
-                            });
-                            currentPathParameter++;
-                            break;
-                        case ApiParameterLocation.Body:
-                            if (method.Value.IsMultipart)
-                            {
-                                var isStreamable = parameter.IsStream || parameter.IsSpecialStream || parameter.IsRystemSpecialStream;
-                                if (isStreamable)
-                                {
-                                    retrievers.Add(new RetrieverWrapper
+                                    Executor = context =>
                                     {
-                                        ExecutorAsync = async context =>
+                                        if (!parameter.IsRequired && !context.Request.Query.ContainsKey(parameter.Name))
+                                            return default!;
+                                        var value = context.Request.Query[parameter.Name!].ToString();
+                                        var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
+                                        return returnValue;
+                                    }
+                                });
+                                break;
+                            case ApiParameterLocation.Cookie:
+                                retrievers.Add(new RetrieverWrapper
+                                {
+                                    Executor = context =>
+                                    {
+                                        if (!parameter.IsRequired && !context.Request.Cookies.ContainsKey(parameter.Name))
+                                            return default!;
+                                        var value = context.Request.Cookies[parameter.Name!]!.ToString();
+                                        var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
+                                        return returnValue;
+                                    }
+                                });
+                                break;
+                            case ApiParameterLocation.Header:
+                                retrievers.Add(new RetrieverWrapper
+                                {
+                                    Executor = context =>
+                                    {
+                                        if (!parameter.IsRequired && !context.Request.Headers.ContainsKey(parameter.Name))
+                                            return default!;
+                                        var value = context.Request.Headers[parameter.Name!].ToString();
+                                        var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
+                                        return returnValue;
+                                    }
+                                });
+                                break;
+                            case ApiParameterLocation.Path:
+                                var currentPathParameterValue = parameter.Position == -1 ? currentPathParameter : parameter.Position;
+                                retrievers.Add(new RetrieverWrapper
+                                {
+                                    Executor = context =>
+                                    {
+                                        var values = context.Request.Path.Value?.Split('/');
+                                        if (parameter.IsRequired && values?.Length < parameter.Position)
+                                            return default!;
+                                        var value = values![numberOfValueInPath + currentPathParameterValue];
+                                        var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
+                                        return returnValue;
+                                    }
+                                });
+                                currentPathParameter++;
+                                break;
+                            case ApiParameterLocation.Body:
+                                if (method.Value.IsMultipart)
+                                {
+                                    var isStreamable = parameter.IsStream || parameter.IsSpecialStream || parameter.IsRystemSpecialStream;
+                                    if (isStreamable)
+                                    {
+                                        retrievers.Add(new RetrieverWrapper
                                         {
-                                            var value = context.Request.Form.Files.FirstOrDefault(x => x.Name == parameter.Name);
-                                            if (value == null && !parameter.IsRequired)
-                                                return default!;
-                                            if ((parameter.IsSpecialStream | parameter.IsRystemSpecialStream) && value is IFormFile formFile)
+                                            ExecutorAsync = async context =>
                                             {
-                                                if (parameter.IsSpecialStream)
-                                                    return formFile;
+                                                var value = context.Request.Form.Files.FirstOrDefault(x => x.Name == parameter.Name);
+                                                if (value == null && !parameter.IsRequired)
+                                                    return default!;
+                                                if ((parameter.IsSpecialStream | parameter.IsRystemSpecialStream) && value is IFormFile formFile)
+                                                {
+                                                    if (parameter.IsSpecialStream)
+                                                        return formFile;
+                                                    else
+                                                    {
+                                                        var baseStreamAsObject = s_baseStreamFromIFormFile.GetValue(formFile);
+                                                        var baseStream = baseStreamAsObject != null ? (Stream)baseStreamAsObject : new MemoryStream();
+                                                        var offset = (long)s_baseStreamOffsetFromIFormFile.GetValue(formFile)!;
+                                                        var file = new HttpFile(baseStream, offset, formFile.Length, formFile.Name, formFile.FileName);
+                                                        if (formFile.Headers != null && formFile.Headers is IDictionary<string, StringValues> headers)
+                                                        {
+                                                            file.Headers ??= new();
+                                                            foreach (var header in headers)
+                                                            {
+                                                                file.Headers.TryAdd(header.Key, header.Value.ToString());
+                                                            }
+                                                        }
+                                                        return file;
+                                                    }
+                                                }
                                                 else
                                                 {
-                                                    var baseStreamAsObject = s_baseStreamFromIFormFile.GetValue(formFile);
-                                                    var baseStream = baseStreamAsObject != null ? (Stream)baseStreamAsObject : new MemoryStream();
-                                                    var offset = (long)s_baseStreamOffsetFromIFormFile.GetValue(formFile)!;
-                                                    var file = new HttpFile(baseStream, offset, formFile.Length, formFile.Name, formFile.FileName);
-                                                    if (formFile.Headers != null && formFile.Headers is IDictionary<string, StringValues> headers)
-                                                    {
-                                                        file.Headers ??= new();
-                                                        foreach (var header in headers)
-                                                        {
-                                                            file.Headers.TryAdd(header.Key, header.Value.ToString());
-                                                        }
-                                                    }
-                                                    return file;
+                                                    var memoryStream = new MemoryStream();
+                                                    await value!.CopyToAsync(memoryStream).NoContext();
+                                                    memoryStream.Position = 0;
+                                                    return memoryStream;
                                                 }
                                             }
-                                            else
+                                        });
+                                    }
+                                    else
+                                    {
+                                        retrievers.Add(new RetrieverWrapper
+                                        {
+                                            Executor = context =>
                                             {
-                                                var memoryStream = new MemoryStream();
-                                                await value!.CopyToAsync(memoryStream).NoContext();
-                                                memoryStream.Position = 0;
-                                                return memoryStream;
+                                                var value = context.Request.Form.FirstOrDefault(x => x.Key == parameter.Name);
+                                                if (value.Equals(default) && !parameter.IsRequired)
+                                                    return default!;
+                                                var body = value.Value.ToString();
+                                                if (string.IsNullOrWhiteSpace(body) && !parameter.IsRequired)
+                                                    return default!;
+                                                return parameter.IsPrimitive ? body.Cast(parameter.Type) : body.FromJson(parameter.Type)!;
                                             }
-                                        }
-                                    });
+                                        });
+                                    }
                                 }
                                 else
                                 {
                                     retrievers.Add(new RetrieverWrapper
                                     {
-                                        Executor = context =>
+                                        ExecutorAsync = async context =>
                                         {
-                                            var value = context.Request.Form.FirstOrDefault(x => x.Key == parameter.Name);
-                                            if (value.Equals(default) && !parameter.IsRequired)
-                                                return default!;
-                                            var body = value.Value.ToString();
-                                            if (string.IsNullOrWhiteSpace(body) && !parameter.IsRequired)
-                                                return default!;
-                                            return parameter.IsPrimitive ? body.Cast(parameter.Type) : body.FromJson(parameter.Type)!;
+                                            var value = await context.Request.Body.ConvertToStringAsync();
+                                            return parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
                                         }
                                     });
                                 }
-                            }
-                            else
-                            {
-                                retrievers.Add(new RetrieverWrapper
-                                {
-                                    ExecutorAsync = async context =>
-                                    {
-                                        var value = await context.Request.Body.ConvertToStringAsync();
-                                        return parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
-                                    }
-                                });
-                            }
-                            break;
+                                break;
+                        }
                     }
                 }
                 var withoutReturn = method.Value.Method.ReturnType == typeof(void) || method.Value.Method.ReturnType == typeof(Task) || method.Value.Method.ReturnType == typeof(ValueTask);
@@ -193,9 +204,9 @@ namespace Microsoft.AspNetCore.Builder
                 if (!method.Value.IsPost)
                 {
                     builder
-                        .MapGet(endpointMethodValue.EndpointUri, async (HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory) =>
+                        .MapGet(endpointMethodValue.EndpointUri, async (HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory, CancellationToken cancellationToken) =>
                         {
-                            var response = await ExecuteAsync(context, service, factory);
+                            var response = await ExecuteAsync(context, service, factory, cancellationToken);
                             return response;
                         })
                         .AddAuthorization(endpointMethodValue.Policies);
@@ -203,19 +214,20 @@ namespace Microsoft.AspNetCore.Builder
                 else
                 {
                     builder
-                        .MapPost(endpointMethodValue.EndpointUri, async (HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory) =>
+                        .MapPost(endpointMethodValue.EndpointUri, async (HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory, CancellationToken cancellationToken) =>
                         {
-                            var response = await ExecuteAsync(context, service, factory);
+                            var response = await ExecuteAsync(context, service, factory, cancellationToken);
                             return response;
                         })
                         .AddAuthorization(endpointMethodValue.Policies);
                 }
 
-                async Task<object> ExecuteAsync(HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory)
+                async Task<object> ExecuteAsync(HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory, CancellationToken cancellationToken)
                 {
                     if (factory != null)
                         service = factory.Create(endpointValue.FactoryName);
-                    var result = currentMethod.Invoke(service, await ReadParametersAsync(context));
+                    var result = currentMethod.Invoke(service, await ReadParametersAsync(context, cancellationToken));
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (result is Task task)
                         await task;
                     if (result is ValueTask valueTask)
@@ -234,13 +246,15 @@ namespace Microsoft.AspNetCore.Builder
                         return default!;
                 }
 
-                async Task<object[]> ReadParametersAsync(HttpContext context)
+                async Task<object[]> ReadParametersAsync(HttpContext context, CancellationToken cancellationToken)
                 {
                     var parameters = new object[retrievers.Count];
                     var counter = 0;
                     foreach (var retriever in retrievers)
                     {
-                        if (retriever.Executor is not null)
+                        if (retriever.IsCancellationToken)
+                            parameters[counter] = cancellationToken;
+                        else if (retriever.Executor is not null)
                             parameters[counter] = retriever.Executor.Invoke(context);
                         else if (retriever.ExecutorAsync is not null)
                             parameters[counter] = await retriever.ExecutorAsync.Invoke(context);

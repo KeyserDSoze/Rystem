@@ -17,7 +17,7 @@ namespace Rystem.Api.Client
             _tokenProvider = tokenProvider;
             _settings = settings.Create()!;
         }
-        public async ValueTask EnhanceAsync(HttpRequestMessage request)
+        public async ValueTask EnhanceAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var tokenResponse = await Try.WithDefaultOnCatchAsync(() => GetTokenAsync()).NoContext();
             if (tokenResponse?.Exception == null && tokenResponse?.Entity != null)

@@ -12,8 +12,8 @@ namespace Rystem.Api.Test.Domain
         ChancedRealPlayerWrapper? Chance { get; }
         LeagueSetting? LeagueSetting { get; }
         Task BuildRequestAsync(int year, int day, LeagueSetting leagueSettings, bool withRealGame, bool withVote, bool withChance);
-        Task<bool> BuildRequest2Async(int year, int day, LeagueSetting leagueSettings, bool withRealGame, bool withVote, bool withChance);
-        ValueTask BuildRequestValueAsync(int year, int day, LeagueSetting leagueSettings, bool withRealGame, bool withVote, bool withChance);
+        Task<bool> BuildRequest2Async(int year, int day, LeagueSetting leagueSettings, bool withRealGame, bool withVote, bool withChance, CancellationToken cancellationToken);
+        ValueTask BuildRequestValueAsync(int year, int day, LeagueSetting leagueSettings, bool withRealGame, CancellationToken cancellationToken, bool withVote, bool withChance);
         ValueTask<bool> BuildRequestValue2Async(int year, int day, LeagueSetting leagueSettings, bool withRealGame, bool withVote, bool withChance);
         void SetLeagueSettings(LeagueSetting leagueSettings);
         Point CalculatePoint(IEnumerable<Player> players);

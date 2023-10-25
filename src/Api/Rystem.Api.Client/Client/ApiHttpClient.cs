@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -8,7 +9,7 @@ namespace Rystem.Api
     {
         private static readonly string s_clientNameForAll = $"ApiHttpClient";
         private static readonly string s_clientName = $"ApiHttpClient_{typeof(T).FullName}";
-        private static readonly Dictionary<string, MethodInfo> s_methods = new();
+        private static readonly Dictionary<string, MethodInfoWrapper> s_methods = new();
         private static readonly MethodInfo s_dispatchProxyInvokeMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeSync), BindingFlags.NonPublic | BindingFlags.Instance)!;
         private static readonly MethodInfo s_dispatchProxyInvokeAsyncMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
         private static readonly MethodInfo s_dispatchProxyInvokeTAsyncMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeTAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
@@ -19,6 +20,11 @@ namespace Rystem.Api
         {
             PropertyNameCaseInsensitive = true,
         };
+        private sealed class MethodInfoWrapper
+        {
+            public MethodInfo Method { get; init; }
+            public int Cancellation { get; init; }
+        }
         private static bool IsSpecificGenericType(Type toVerify, Type type)
         {
             var current = type;
@@ -91,14 +97,30 @@ namespace Rystem.Api
                 {
                     methodInfo = s_dispatchProxyInvokeMethod;
                 }
-                s_methods.TryAdd(signature, methodInfo);
+                s_methods.TryAdd(signature, new MethodInfoWrapper
+                {
+                    Method = methodInfo,
+                    Cancellation = GetParameterWithCancellationToken()
+                });
+
+                int GetParameterWithCancellationToken()
+                {
+                    var parameters = method!.GetParameters();
+                    for (var i = 0; i < parameters.Length; i++)
+                    {
+                        if (parameters[i].ParameterType == typeof(CancellationToken))
+                            return i;
+                    }
+                    return -1;
+                }
             }
-            var arguments = new object[3] { currentMethod, args!, method.ReturnType };
-            s_methods.TryGetValue(signature, out var invoker);
-            var response = invoker!.Invoke(this, arguments)!;
+            s_methods.TryGetValue(signature, out var invokerWrapper);
+            var cancellationWrapped = invokerWrapper!.Cancellation >= 0 ? args![invokerWrapper.Cancellation] : new CancellationToken();
+            var arguments = new object[4] { currentMethod, args!, method.ReturnType, cancellationWrapped! };
+            var response = invokerWrapper.Method!.Invoke(this, arguments)!;
             return response;
         }
-        private async ValueTask<HttpRequestMessage> CalculateRequestAsync(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType)
+        private async ValueTask<HttpRequestMessage> CalculateRequestAsync(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType, CancellationToken cancellationToken)
         {
             var context = new ApiClientRequestBearer();
             var parameterCounter = 0;
@@ -120,21 +142,21 @@ namespace Rystem.Api
                 request.Content = context.Content;
             if (_requestForAllEnhancers != null)
                 foreach (var enhancer in _requestForAllEnhancers)
-                    await enhancer.EnhanceAsync(request);
+                    await enhancer.EnhanceAsync(request, cancellationToken);
             if (_requestEnhancers != null)
                 foreach (var enhancer in _requestEnhancers)
-                    await enhancer.EnhanceAsync(request);
+                    await enhancer.EnhanceAsync(request, cancellationToken);
             return request;
         }
-        private async ValueTask<TResponse> InvokeHttpRequestAsync<TResponse>(ApiClientCreateRequestMethod currentMethod, object?[]? args, bool readResponse, Type returnType)
+        private async ValueTask<TResponse> InvokeHttpRequestAsync<TResponse>(ApiClientCreateRequestMethod currentMethod, object?[]? args, bool readResponse, Type returnType, CancellationToken cancellationToken)
         {
-            var request = await CalculateRequestAsync(currentMethod, args, returnType);
-            var response = await _httpClient!.SendAsync(request);
+            var request = await CalculateRequestAsync(currentMethod, args, returnType, cancellationToken);
+            var response = await _httpClient!.SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
             if (readResponse)
             {
                 //todo add the chance to return a stream or something similar which is not a json
-                var value = await response.Content.ReadAsStringAsync();
+                var value = await response.Content.ReadAsStringAsync(cancellationToken);
                 if (!string.IsNullOrWhiteSpace(value))
                     return value.FromJson<TResponse>()!;
                 else
@@ -143,32 +165,33 @@ namespace Rystem.Api
             else
                 return default!;
         }
-        private async Task InvokeAsync(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType)
-            => await InvokeHttpRequestAsync<object>(currentMethod, args, false, returnType);
-        private async Task<TResponse> InvokeTAsync<TResponse>(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType)
-            => await InvokeHttpRequestAsync<TResponse>(currentMethod, args, true, returnType);
-        private async ValueTask InvokeValueAsync(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType)
-            => await InvokeHttpRequestAsync<object>(currentMethod, args, false, returnType);
-        private ValueTask<TResponse> InvokeValueTAsync<TResponse>(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType)
-            => InvokeHttpRequestAsync<TResponse>(currentMethod, args, true, returnType);
-        private object InvokeSync(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType)
+        private async Task InvokeAsync(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType, CancellationToken cancellationToken)
+            => await InvokeHttpRequestAsync<object>(currentMethod, args, false, returnType, cancellationToken);
+        private async Task<TResponse> InvokeTAsync<TResponse>(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType, CancellationToken cancellationToken)
+            => await InvokeHttpRequestAsync<TResponse>(currentMethod, args, true, returnType, cancellationToken);
+        private async ValueTask InvokeValueAsync(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType, CancellationToken cancellationToken)
+            => await InvokeHttpRequestAsync<object>(currentMethod, args, false, returnType, cancellationToken);
+        private ValueTask<TResponse> InvokeValueTAsync<TResponse>(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType, CancellationToken cancellationToken)
+            => InvokeHttpRequestAsync<TResponse>(currentMethod, args, true, returnType, cancellationToken);
+        private object InvokeSync(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType, CancellationToken cancellationToken)
         {
-            var request = CalculateRequestAsync(currentMethod, args, returnType).ToResult();
-            var response = _httpClient!.SendAsync(request).ToResult();
+            var request = CalculateRequestAsync(currentMethod, args, returnType, cancellationToken).ToResult();
+            var response = _httpClient!.SendAsync(request, cancellationToken).ToResult();
             response.EnsureSuccessStatusCode();
-            var value = response.Content.ReadAsStringAsync().ToResult();
+            var value = response.Content.ReadAsStringAsync(cancellationToken).ToResult();
             if (returnType != typeof(void) && !string.IsNullOrWhiteSpace(value))
                 return value.FromJson(returnType, s_jsonSerializerOptions)!;
             else
                 return default!;
         }
-        private async IAsyncEnumerable<TResponse> InvokeEnumerableAsync<TResponse>(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType)
+        private async IAsyncEnumerable<TResponse> InvokeEnumerableAsync<TResponse>(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            var request = await CalculateRequestAsync(currentMethod, args, returnType);
-            var response = await _httpClient!.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+            var request = await CalculateRequestAsync(currentMethod, args, returnType, cancellationToken);
+            var response = await _httpClient!.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             response.EnsureSuccessStatusCode();
-            using var stream = await response.Content.ReadAsStreamAsync().NoContext();
-            var items = JsonSerializer.DeserializeAsyncEnumerable<TResponse>(stream, s_jsonSerializerOptions);
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).NoContext();
+            var items = JsonSerializer.DeserializeAsyncEnumerable<TResponse>(stream, s_jsonSerializerOptions, cancellationToken);
             if (items != null)
                 await foreach (var item in items)
                 {

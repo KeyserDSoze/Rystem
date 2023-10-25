@@ -28,11 +28,11 @@ namespace Rystem.Api.TestServer.Clients
         {
             return Task.CompletedTask;
         }
-        public Task<bool> BuildRequest2Async(int year, int day, LeagueSetting leagueSettings, bool withRealGame, bool withVote, bool withChance)
+        public Task<bool> BuildRequest2Async(int year, int day, LeagueSetting leagueSettings, bool withRealGame, bool withVote, bool withChance, CancellationToken cancellationToken)
         {
             return Task.FromResult(true);
         }
-        public ValueTask BuildRequestValueAsync(int year, int day, LeagueSetting leagueSettings, bool withRealGame, bool withVote, bool withChance)
+        public ValueTask BuildRequestValueAsync(int year, int day, LeagueSetting leagueSettings, bool withRealGame, CancellationToken cancellationToken, bool withVote, bool withChance)
         {
             return ValueTask.CompletedTask;
         }
