@@ -82,9 +82,11 @@ namespace Rystem.Api.TestServer.Clients
             yield return new() { Id = 13 };
         }
 
-        public IEnumerable<EnrichedPlayer> GetRightFormation(IEnumerable<EnrichedPlayer> players)
+        public async IAsyncEnumerable<EnrichedPlayer> GetRightFormationAsync(IEnumerable<EnrichedPlayer> players)
         {
+            await Task.CompletedTask;
             yield return new() { Id = 14 };
+            await Task.CompletedTask;
             yield return new() { Id = 15 };
         }
 

@@ -13,6 +13,10 @@ Welcome to your new app.
     <div>@q.Id</div>
     <div>@q1</div>
     <div>@q2</div>
+    @foreach (var player in q4)
+    {
+        <div>the player @player.Id</div>
+    }
 }
 
 @code {
@@ -26,6 +30,7 @@ Welcome to your new app.
     private bool? q1;
     private bool? q2;
     private ChancedRealPlayerWrapper? q3;
+    private List<EnrichedPlayer> q4 = new();
     protected override async Task OnInitializedAsync()
     {
         // var salubry = Factory.Create();
@@ -45,6 +50,15 @@ Welcome to your new app.
         q1 = await TeamCalculator.BuildRequest2Async(1, 1, new LeagueSetting { LeagueId = 5 }, true, false, true);
         q2 = await TeamCalculator.BuildRequestValue2Async(1, 1, new LeagueSetting { LeagueId = 5 }, true, false, true);
         await TeamCalculator.BuildRequestValueAsync(1, 1, new LeagueSetting { LeagueId = 5 }, true, false, true);
+        await foreach (var player in TeamCalculator.GetRightFormationAsync(new List<EnrichedPlayer>
+        {
+            new EnrichedPlayer { Id=4 },
+            new EnrichedPlayer { Id=5 },
+            new EnrichedPlayer { Id=6 },
+        }))
+        {
+            q4.Add(player);
+        }
         // var q3 = TeamCalculator.CalculatePoint(new List<EnrichedPlayer> { new() { Id = 3 } });
     }
 }

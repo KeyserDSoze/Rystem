@@ -22,7 +22,7 @@ namespace Rystem.Api.Test.Domain
         EnrichedPlayer ForceEnrich(Player player, Vote? vote, Chance? chance, RealGame? realGame);
         IEnumerable<EnrichedPlayer> Enrich(IEnumerable<Player> players);
         IEnumerable<EnrichedPlayer> GetRightFormation(IEnumerable<Player> players);
-        IEnumerable<EnrichedPlayer> GetRightFormation(IEnumerable<EnrichedPlayer> players);
+        IAsyncEnumerable<EnrichedPlayer> GetRightFormationAsync(IEnumerable<EnrichedPlayer> players);
         VoteValue FinalValue(Player player);
         VoteValue FinalValue(EnrichedPlayer player);
     }

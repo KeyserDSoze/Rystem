@@ -80,8 +80,7 @@ namespace Microsoft.Extensions.DependencyInjection
                             {
                                 Executor = (context, value) =>
                                 {
-                                    if (context.Query == null)
-                                        context.Query = new();
+                                    context.Query ??= new();
                                     if (context.Query.Length == 0)
                                         context.Query.Append('?');
                                     else
@@ -95,8 +94,7 @@ namespace Microsoft.Extensions.DependencyInjection
                             {
                                 Executor = (context, value) =>
                                 {
-                                    if (context.Cookie == null)
-                                        context.Cookie = new();
+                                    context.Cookie ??= new();
                                     context.Cookie.Append($"{parameter.Name}={value}; ");
                                 }
                             });
@@ -115,8 +113,7 @@ namespace Microsoft.Extensions.DependencyInjection
                             {
                                 Executor = (context, value) =>
                                 {
-                                    if (context.Path == null)
-                                        context.Path = new();
+                                    context.Path ??= new();
                                     context.Path.Append($"/{value}");
                                 }
                             });
@@ -160,7 +157,7 @@ namespace Microsoft.Extensions.DependencyInjection
                                                 }
                                                 else
                                                 {
-                                                    multipart.Add(new StringContent(parameter.IsPrimitive ? value?.ToString() : value.ToJson(),
+                                                    multipart.Add(new StringContent(parameter.IsPrimitive ? value?.ToString() : value?.ToJson(),
                                                         parameter.IsPrimitive ? s_mediaTypeHeaderValueForText : s_mediaTypeHeaderValueForJson), parameter.Name);
                                                 }
                                             }
