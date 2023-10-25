@@ -8,10 +8,6 @@ namespace Rystem.Api
     {
         private static readonly string s_clientNameForAll = $"ApiHttpClient";
         private static readonly string s_clientName = $"ApiHttpClient_{typeof(T).FullName}";
-        private ApiClientChainRequest<T>? _requestChain;
-        private HttpClient? _httpClient;
-        private IEnumerable<IRequestEnhancer>? _requestEnhancers;
-        private IEnumerable<IRequestEnhancer>? _requestForAllEnhancers;
         private static readonly Dictionary<string, MethodInfo> s_methods = new();
         private static readonly MethodInfo s_dispatchProxyInvokeMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeSync), BindingFlags.NonPublic | BindingFlags.Instance)!;
         private static readonly MethodInfo s_dispatchProxyInvokeAsyncMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
@@ -19,7 +15,7 @@ namespace Rystem.Api
         private static readonly MethodInfo s_dispatchProxyInvokeValueAsyncMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeValueAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
         private static readonly MethodInfo s_dispatchProxyInvokeValueTAsyncMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeValueTAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
         private static readonly MethodInfo s_dispatchProxyInvokeEnumerableAsyncMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeEnumerableAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
-        private static readonly JsonSerializerOptions s_jsonSerializerOptions = new JsonSerializerOptions
+        private static readonly JsonSerializerOptions s_jsonSerializerOptions = new()
         {
             PropertyNameCaseInsensitive = true,
         };
@@ -34,6 +30,10 @@ namespace Rystem.Api
             }
             return false;
         }
+        private ApiClientChainRequest<T>? _requestChain;
+        private HttpClient? _httpClient;
+        private IEnumerable<IRequestEnhancer>? _requestEnhancers;
+        private IEnumerable<IRequestEnhancer>? _requestForAllEnhancers;
         public ApiHttpClient<T> SetApiClientDispatchProxy(IHttpClientFactory httpClientFactory,
             IFactory<IRequestEnhancer>? factory,
             ApiClientChainRequest<T> requestChain)
