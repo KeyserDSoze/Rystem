@@ -95,5 +95,33 @@ namespace Rystem.Api.TestServer.Clients
             var x = leagueSettings;
             return;
         }
+
+        public Stream GetFile(string fileName)
+        {
+            return new MemoryStream();
+        }
+
+        public async Task<Stream> GetFileAsync(string fileName)
+        {
+            await Task.CompletedTask;
+            return new MemoryStream();
+        }
+
+        public IHttpFile GetHttpFile(string fileName)
+        {
+            return new HttpFile(new MemoryStream(), 0, 0, "X", "x.pdf")
+            {
+                ContentType = "application/pdf"
+            };
+        }
+
+        public async ValueTask<IHttpFile> GetHttpFileAsync(string fileName)
+        {
+            await Task.CompletedTask;
+            return new HttpFile(new MemoryStream(), 0, 0, "X", "x.pdf")
+            {
+                ContentType = "application/pdf"
+            };
+        }
     }
 }

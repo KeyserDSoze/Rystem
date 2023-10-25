@@ -59,6 +59,10 @@ Welcome to your new app.
         {
             q4.Add(player);
         }
+        var stream1 = TeamCalculator.GetFile("x");
+        var stream2 = await TeamCalculator.GetFileAsync("x");
+        var stream3 = TeamCalculator.GetHttpFile("x");
+        var stream4 = await TeamCalculator.GetHttpFileAsync("x");
         // var q3 = TeamCalculator.CalculatePoint(new List<EnrichedPlayer> { new() { Id = 3 } });
     }
 }

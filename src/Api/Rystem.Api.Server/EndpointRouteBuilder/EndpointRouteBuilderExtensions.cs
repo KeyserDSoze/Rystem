@@ -124,7 +124,7 @@ namespace Microsoft.AspNetCore.Builder
                             case ApiParameterLocation.Body:
                                 if (method.Value.IsMultipart)
                                 {
-                                    var isStreamable = parameter.IsStream || parameter.IsSpecialStream || parameter.IsRystemSpecialStream;
+                                    var isStreamable = parameter.StreamType != StreamType.None;
                                     if (isStreamable)
                                     {
                                         retrievers.Add(new RetrieverWrapper
@@ -134,9 +134,10 @@ namespace Microsoft.AspNetCore.Builder
                                                 var value = context.Request.Form.Files.FirstOrDefault(x => x.Name == parameter.Name);
                                                 if (value == null && !parameter.IsRequired)
                                                     return default!;
-                                                if ((parameter.IsSpecialStream | parameter.IsRystemSpecialStream) && value is IFormFile formFile)
+                                                if ((parameter.StreamType == StreamType.AspNet || parameter.StreamType == StreamType.Rystem)
+                                                    && value is IFormFile formFile)
                                                 {
-                                                    if (parameter.IsSpecialStream)
+                                                    if (parameter.StreamType == StreamType.AspNet)
                                                         return formFile;
                                                     else
                                                     {
@@ -201,13 +202,20 @@ namespace Microsoft.AspNetCore.Builder
                 var isGenericAsync = method.Value.Method.ReturnType.IsGenericType &&
                     (method.Value.Method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)
                     || method.Value.Method.ReturnType.GetGenericTypeDefinition() == typeof(ValueTask<>));
+
+                var streamTypeResult = method.Value.Method.ReturnType.IsGenericType && 
+                        (method.Value.Method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)
+                        || method.Value.Method.ReturnType.GetGenericTypeDefinition() == typeof(ValueTask<>)) ?
+                    EndpointMethodParameterValue.IsThisTypeASpecialStream(method.Value.Method.ReturnType.GetGenericArguments().First()) :
+                    EndpointMethodParameterValue.IsThisTypeASpecialStream(method.Value.Method.ReturnType);
+
                 if (!method.Value.IsPost)
                 {
                     builder
                         .MapGet(endpointMethodValue.EndpointUri, async (HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory, CancellationToken cancellationToken) =>
                         {
                             var response = await ExecuteAsync(context, service, factory, cancellationToken);
-                            return response;
+                            return CalculateResponse(response);
                         })
                         .AddAuthorization(endpointMethodValue.Policies);
                 }
@@ -217,9 +225,21 @@ namespace Microsoft.AspNetCore.Builder
                         .MapPost(endpointMethodValue.EndpointUri, async (HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory, CancellationToken cancellationToken) =>
                         {
                             var response = await ExecuteAsync(context, service, factory, cancellationToken);
-                            return response;
+                            return CalculateResponse(response);
                         })
                         .AddAuthorization(endpointMethodValue.Policies);
+                }
+
+                object CalculateResponse(object response)
+                {
+                    if (streamTypeResult == StreamType.AspNet && response is IFormFile formFile)
+                        return Results.Stream(formFile.OpenReadStream(), formFile.ContentType, formFile.FileName);
+                    else if (streamTypeResult == StreamType.Rystem && response is IHttpFile httpFile)
+                        return Results.Stream(httpFile.OpenReadStream(), httpFile.ContentType, httpFile.FileName);
+                    else if (streamTypeResult == StreamType.Default && response is Stream stream)
+                        return Results.Stream(stream);
+                    else
+                        return response;
                 }
 
                 async Task<object> ExecuteAsync(HttpContext context, [FromServices] T? service, [FromServices] IFactory<T>? factory, CancellationToken cancellationToken)

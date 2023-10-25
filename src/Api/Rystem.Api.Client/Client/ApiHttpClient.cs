@@ -1,7 +1,11 @@
-﻿using System.Reflection;
+﻿using System.IO;
+using System;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using System.Net.Mime;
 
 namespace Rystem.Api
 {
@@ -11,15 +15,13 @@ namespace Rystem.Api
         private static readonly string s_clientName = $"ApiHttpClient_{typeof(T).FullName}";
         private static readonly Dictionary<string, MethodInfoWrapper> s_methods = new();
         private static readonly MethodInfo s_dispatchProxyInvokeMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeSync), BindingFlags.NonPublic | BindingFlags.Instance)!;
+        private static readonly MethodInfo s_dispatchProxyInvokeTMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeTSync), BindingFlags.NonPublic | BindingFlags.Instance)!;
         private static readonly MethodInfo s_dispatchProxyInvokeAsyncMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
         private static readonly MethodInfo s_dispatchProxyInvokeTAsyncMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeTAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
         private static readonly MethodInfo s_dispatchProxyInvokeValueAsyncMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeValueAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
         private static readonly MethodInfo s_dispatchProxyInvokeValueTAsyncMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeValueTAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
         private static readonly MethodInfo s_dispatchProxyInvokeEnumerableAsyncMethod = typeof(ApiHttpClient<T>).GetMethod(nameof(InvokeEnumerableAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
-        private static readonly JsonSerializerOptions s_jsonSerializerOptions = new()
-        {
-            PropertyNameCaseInsensitive = true,
-        };
+
         private sealed class MethodInfoWrapper
         {
             public MethodInfo Method { get; init; }
@@ -93,6 +95,10 @@ namespace Rystem.Api
                     var returnTypes = method.ReturnType.GetGenericArguments();
                     methodInfo = s_dispatchProxyInvokeEnumerableAsyncMethod.MakeGenericMethod(returnTypes);
                 }
+                else if (method.ReturnType != typeof(void))
+                {
+                    methodInfo = s_dispatchProxyInvokeTMethod.MakeGenericMethod(method.ReturnType);
+                }
                 else
                 {
                     methodInfo = s_dispatchProxyInvokeMethod;
@@ -155,15 +161,23 @@ namespace Rystem.Api
             response.EnsureSuccessStatusCode();
             if (readResponse)
             {
-                //todo add the chance to return a stream or something similar which is not a json
-                var value = await response.Content.ReadAsStringAsync(cancellationToken);
-                if (!string.IsNullOrWhiteSpace(value))
-                    return value.FromJson<TResponse>()!;
+                if (currentMethod.ResultStreamType == StreamType.None)
+                {
+                    var value = await response.Content.ReadAsStringAsync(cancellationToken);
+                    if (!string.IsNullOrWhiteSpace(value))
+                        return value.FromJson<TResponse>()!;
+                    else
+                        return default!;
+                }
                 else
-                    return default!;
+                {
+                    var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                    var readStream = GetRightStream(currentMethod, stream, response);
+                    if (readStream != null)
+                        return (TResponse)readStream;
+                }
             }
-            else
-                return default!;
+            return default!;
         }
         private async Task InvokeAsync(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType, CancellationToken cancellationToken)
             => await InvokeHttpRequestAsync<object>(currentMethod, args, false, returnType, cancellationToken);
@@ -173,16 +187,59 @@ namespace Rystem.Api
             => await InvokeHttpRequestAsync<object>(currentMethod, args, false, returnType, cancellationToken);
         private ValueTask<TResponse> InvokeValueTAsync<TResponse>(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType, CancellationToken cancellationToken)
             => InvokeHttpRequestAsync<TResponse>(currentMethod, args, true, returnType, cancellationToken);
-        private object InvokeSync(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType, CancellationToken cancellationToken)
+        private TResponse InvokeTSync<TResponse>(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType, CancellationToken cancellationToken)
+            => InvokeHttpRequest<TResponse>(currentMethod, args, true, returnType, cancellationToken);
+        private void InvokeSync(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType, CancellationToken cancellationToken)
+            => InvokeHttpRequest<object>(currentMethod, args, false, returnType, cancellationToken);
+        private TResponse InvokeHttpRequest<TResponse>(ApiClientCreateRequestMethod currentMethod, object?[]? args, bool readResponse, Type returnType, CancellationToken cancellationToken)
         {
             var request = CalculateRequestAsync(currentMethod, args, returnType, cancellationToken).ToResult();
             var response = _httpClient!.SendAsync(request, cancellationToken).ToResult();
             response.EnsureSuccessStatusCode();
-            var value = response.Content.ReadAsStringAsync(cancellationToken).ToResult();
-            if (returnType != typeof(void) && !string.IsNullOrWhiteSpace(value))
-                return value.FromJson(returnType, s_jsonSerializerOptions)!;
-            else
-                return default!;
+            if (readResponse)
+            {
+                if (currentMethod.ResultStreamType == StreamType.None)
+                {
+                    var value = response.Content.ReadAsStringAsync(cancellationToken).ToResult();
+                    if (!string.IsNullOrWhiteSpace(value))
+                        return value.FromJson<TResponse>()!;
+                    else
+                        return default!;
+                }
+                else
+                {
+                    var stream = response.Content.ReadAsStreamAsync(cancellationToken).ToResult();
+                    var readStream = GetRightStream(currentMethod, stream, response);
+                    if (readStream != null)
+                        return (TResponse)readStream;
+                }
+            }
+            return default!;
+        }
+        private static object? GetRightStream(ApiClientCreateRequestMethod currentMethod, Stream stream, HttpResponseMessage response)
+        {
+            if (currentMethod.ResultStreamType == StreamType.Default)
+                return stream;
+            else if (currentMethod.ResultStreamType == StreamType.Rystem)
+            {
+                var file = new HttpFile(stream, 0, stream.Length, response.Content.Headers.ContentDisposition.Name!, response.Content.Headers.ContentDisposition.FileName!)
+                {
+                    ContentType = response.Content.Headers.ContentType?.MediaType!,
+                    ContentDisposition = response.Content.Headers.ContentDisposition.DispositionType
+                };
+                return file;
+            }
+            else if (currentMethod.ResultStreamType == StreamType.AspNet)
+            {
+                dynamic file = Activator.CreateInstance(currentMethod.ReturnType, new object[5] { stream, 0, stream.Length, response.Content.Headers.ContentDisposition.Name!, response.Content.Headers.ContentDisposition.FileName! })!;
+                if (file != null)
+                {
+                    file.ContentType = response.Content.Headers.ContentType?.MediaType!;
+                    file.ContentDisposition = response.Content.Headers.ContentDisposition.DispositionType;
+                }
+                return file;
+            }
+            return null;
         }
         private async IAsyncEnumerable<TResponse> InvokeEnumerableAsync<TResponse>(ApiClientCreateRequestMethod currentMethod, object?[]? args, Type returnType,
             [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -191,7 +248,7 @@ namespace Rystem.Api
             var response = await _httpClient!.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             response.EnsureSuccessStatusCode();
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).NoContext();
-            var items = JsonSerializer.DeserializeAsyncEnumerable<TResponse>(stream, s_jsonSerializerOptions, cancellationToken);
+            var items = JsonSerializer.DeserializeAsyncEnumerable<TResponse>(stream, Constants.JsonSerializerOptions, cancellationToken);
             if (items != null)
                 await foreach (var item in items)
                 {

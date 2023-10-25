@@ -68,6 +68,14 @@ namespace Microsoft.Extensions.DependencyInjection
                 var currentMethod = method.Value.Method;
                 endpointMethodValue.EndpointUri = $"{endpointsManager.BasePath}{endpointValue.EndpointName}/{(!string.IsNullOrWhiteSpace(endpointValue.FactoryName) ? $"{endpointValue.FactoryName}/" : string.Empty)}{endpointMethodValue?.Name}";
                 requestMethodCreator.FixedPath = endpointMethodValue!.EndpointUri;
+                var streamTypeResult = method.Value.Method.ReturnType.IsGenericType &&
+                       (method.Value.Method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)
+                       || method.Value.Method.ReturnType.GetGenericTypeDefinition() == typeof(ValueTask<>)) ?
+                   EndpointMethodParameterValue.IsThisTypeASpecialStream(method.Value.Method.ReturnType.GetGenericArguments().First()) :
+                   EndpointMethodParameterValue.IsThisTypeASpecialStream(method.Value.Method.ReturnType);
+                requestMethodCreator.ResultStreamType = streamTypeResult;
+                if (streamTypeResult == StreamType.AspNet)
+                    requestMethodCreator.ReturnType = currentMethod.ReturnType.Assembly.GetType("Microsoft.AspNetCore.Http.FormFile")!;
                 var numberOfValueInPath = endpointMethodValue!.EndpointUri.Split('/').Length + 1;
                 foreach (var parameter in method.Value.Parameters.OrderBy(x => x.Position))
                 {
@@ -128,7 +136,7 @@ namespace Microsoft.Extensions.DependencyInjection
                                 requestMethodCreator.IsPost = true;
                                 if (method.Value.IsMultipart)
                                 {
-                                    var isStreamable = parameter.IsStream || parameter.IsSpecialStream || parameter.IsRystemSpecialStream;
+                                    var isStreamable = parameter.StreamType != StreamType.None;
                                     requestMethodCreator.Parameters.Add(new ApiClientCreateRequestParameterMethod
                                     {
                                         Executor = (context, value) =>
@@ -149,7 +157,7 @@ namespace Microsoft.Extensions.DependencyInjection
                                                     {
                                                         multipart.Add(new StreamContent(stream), parameter.Name, parameter.Name);
                                                     }
-                                                    else if (parameter.IsSpecialStream || parameter.IsRystemSpecialStream)
+                                                    else if (parameter.StreamType == StreamType.AspNet || parameter.StreamType == StreamType.Rystem)
                                                     {
                                                         var dynamicStream = (dynamic)value!;
                                                         var streamContent = new StreamContent(dynamicStream.OpenReadStream());

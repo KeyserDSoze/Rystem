@@ -25,6 +25,10 @@ namespace Rystem.Api.Test.Domain
         IAsyncEnumerable<EnrichedPlayer> GetRightFormationAsync(IEnumerable<EnrichedPlayer> players);
         VoteValue FinalValue(Player player);
         VoteValue FinalValue(EnrichedPlayer player);
+        Stream GetFile(string fileName);
+        Task<Stream> GetFileAsync(string fileName);
+        IHttpFile GetHttpFile(string fileName);
+        ValueTask<IHttpFile> GetHttpFileAsync(string fileName);
     }
     public sealed class VotedRealPlayerWrapper
     {

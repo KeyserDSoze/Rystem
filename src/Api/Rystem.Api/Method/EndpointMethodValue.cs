@@ -25,7 +25,7 @@ namespace Microsoft.AspNetCore.Builder
         {
             var nonPrimitivesCount = Parameters.Count(x => x.Location == ApiParameterLocation.Body);
             IsPost = nonPrimitivesCount > 0;
-            IsMultipart = nonPrimitivesCount > 1 || Parameters.Any(x => x.IsStream || x.IsSpecialStream || x.IsRystemSpecialStream);
+            IsMultipart = nonPrimitivesCount > 1 || Parameters.Any(x => x.StreamType != StreamType.None);
         }
     }
 }
