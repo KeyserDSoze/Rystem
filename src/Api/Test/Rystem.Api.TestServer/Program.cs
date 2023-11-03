@@ -35,7 +35,9 @@ var app = builder.Build();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseEndpointApi();
+app
+    .UseEndpointApi()
+    .UseEndpointApiModels();
 app.MapPost("/handle-file", async ([FromForm] IFormFile myFile, [FromForm] IFormFile myFile2) =>
 {
     var tempfile = Path.GetTempFileName();

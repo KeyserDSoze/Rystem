@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.ProgrammingLanguage;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
@@ -28,6 +29,53 @@ namespace Microsoft.AspNetCore.Builder
                 endpoint.Type).Invoke(builder, endpoint, endpointsManager);
             }
             return builder;
+        }
+        private static List<Type> s_typesToAvoid = new List<Type> { typeof(IHttpFile), typeof(IFormFile), typeof(CancellationToken) };
+        private static List<Type> s_genericTypesToAvoid = new List<Type> { typeof(Task<>), typeof(ValueTask<>), typeof(IEnumerable<>),
+        typeof(IList<>), typeof(IDictionary<,>), typeof(ICollection<>), typeof(IAsyncEnumerable<>)};
+        public static void UseEndpointApiModels(this IEndpointRouteBuilder builder)
+        {
+            var languages = new List<ProgrammingLanguageType>() { ProgrammingLanguageType.Typescript };
+            var endpointsManager = builder.ServiceProvider.GetRequiredService<EndpointsManager>();
+            var types = new List<Type>();
+            foreach (var endpoint in endpointsManager.Endpoints)
+            {
+                foreach (var method in endpoint.Methods)
+                {
+                    Add(method.Value.Method.ReturnType);
+                    foreach (var possibleType in method.Value.Method.GetParameters().Select(p => p.ParameterType))
+                        Add(possibleType);
+                }
+                void Add(Type current)
+                {
+                    if (s_typesToAvoid.Contains(current) || current.IsPrimitive())
+                        return;
+                    if (current.IsGenericType && s_genericTypesToAvoid.Contains(current.GetGenericTypeDefinition()))
+                    {
+                        foreach (var type in current.GetGenericArguments())
+                            Add(type);
+                    }
+                    else if (!(current == typeof(ValueTask) || current == typeof(Task) || current == typeof(void)))
+                    {
+                        types.Add(current);
+                    }
+                }
+            }
+            types = types.Distinct(x => x).ToList();
+
+            foreach (var language in languages)
+            {
+                var converted = types.ConvertAs(language);
+                Try.WithDefaultOnCatch(() =>
+                {
+                    builder
+                        .MapGet($"Business/Models/{language}", () =>
+                        {
+                            return Results.Text(converted.Text, contentType: converted.MimeType);
+                        })
+                        .WithTags($"Business-{language}");
+                });
+            }
         }
         private sealed class RetrieverWrapper
         {
@@ -203,7 +251,7 @@ namespace Microsoft.AspNetCore.Builder
                     (method.Value.Method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)
                     || method.Value.Method.ReturnType.GetGenericTypeDefinition() == typeof(ValueTask<>));
 
-                var streamTypeResult = method.Value.Method.ReturnType.IsGenericType && 
+                var streamTypeResult = method.Value.Method.ReturnType.IsGenericType &&
                         (method.Value.Method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)
                         || method.Value.Method.ReturnType.GetGenericTypeDefinition() == typeof(ValueTask<>)) ?
                     EndpointMethodParameterValue.IsThisTypeASpecialStream(method.Value.Method.ReturnType.GetGenericArguments().First()) :

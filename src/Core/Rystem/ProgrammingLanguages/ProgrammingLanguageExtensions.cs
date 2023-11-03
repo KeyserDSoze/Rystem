@@ -2,16 +2,20 @@
 using System.Text;
 using System.Text.Json.Serialization;
 
-namespace RepositoryFramework.ProgrammingLanguage
+namespace System.ProgrammingLanguage
 {
     public static class ProgrammingLanguageExtensions
     {
         public static ProgrammingLanguangeResponse ConvertAs(this IEnumerable<Type> types, ProgrammingLanguageType programmingLanguage)
         {
-            IProgrammingLanguage programming = new TypeScript();
+            IProgrammingLanguage? programming;
             switch (programmingLanguage)
             {
+                case ProgrammingLanguageType.Typescript:
+                    programming = new TypeScript();
+                    break;
                 default:
+                    programming = new TypeScript();
                     break;
             }
             var stringBuilder = new StringBuilder();

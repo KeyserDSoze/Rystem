@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 using System.Text;
 
-namespace RepositoryFramework.ProgrammingLanguage
+namespace System.ProgrammingLanguage
 {
     internal sealed class TypeScript : IProgrammingLanguage
     {
@@ -10,7 +10,7 @@ namespace RepositoryFramework.ProgrammingLanguage
             return "}";
         }
         public string GetMimeType()
-            => "application/x-typescript";
+            => "application/typescript";
         public string SetProperty(string name, string type)
         {
             return $"{name}: {type};";

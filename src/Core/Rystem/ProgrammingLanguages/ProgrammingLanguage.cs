@@ -1,4 +1,4 @@
-﻿namespace RepositoryFramework.ProgrammingLanguage
+﻿namespace System.ProgrammingLanguage
 {
     public enum ProgrammingLanguageType
     {
