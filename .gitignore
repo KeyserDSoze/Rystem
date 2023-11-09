@@ -409,3 +409,5 @@ FodyWeavers.xsd
 /.github/workflows/PackageDeploy.Rystem.DependencyInjection.yml.bak
 /src/Repository/repositoryframework.api.client.typescript/src/rystem/src/hooks/hooks.js
 /src/Repository/repositoryframework.api.client.typescript/src/rystem/src/hooks/hooks.js.map
+/src/Authentication/rystem.authentication.social.react/rystem.authentication.social.react/lib
+/src/Authentication/rystem.authentication.social.react/src/rystem.authentication.social.react/lib
