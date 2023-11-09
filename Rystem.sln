@@ -226,13 +226,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Api.Client.Authentic
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Authentication", "Authentication", "{685F643C-C2A2-4499-821A-00C732CE7FBB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rystem.Authentication.Social", "src\Authentication\Rystem.Authentication.Social\Rystem.Authentication.Social.csproj", "{C5C233DF-0AA8-45F1-A3B4-31DA346E9BAB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Authentication.Social", "src\Authentication\Rystem.Authentication.Social\Rystem.Authentication.Social.csproj", "{C5C233DF-0AA8-45F1-A3B4-31DA346E9BAB}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{034E0E48-3CB6-46EF-A2D0-C556A032FCF1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rystem.Authentication.Social.TestApi", "src\Authentication\Tests\Rystem.Authentication.Social.TestApi\Rystem.Authentication.Social.TestApi.csproj", "{4AF6A055-3D9B-44D9-B91F-F443613FA982}"
-EndProject
-Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "rystem.authentication.social.react", "src\Authentication\rystem.authentication.social.react\rystem.authentication.social.react.esproj", "{B53C585F-813D-4CC2-A0FF-D421F772238E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Authentication.Social.TestApi", "src\Authentication\Tests\Rystem.Authentication.Social.TestApi\Rystem.Authentication.Social.TestApi.csproj", "{4AF6A055-3D9B-44D9-B91F-F443613FA982}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Repository", "Repository", "{C5A84798-38D1-47BB-AFDA-185F39DB1480}"
 	ProjectSection(SolutionItems) = preProject
@@ -287,6 +285,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Authentication", "Authentic
 		.github\workflows\PackageDeploy.Rystem.Authentication.Social.React.yml = .github\workflows\PackageDeploy.Rystem.Authentication.Social.React.yml
 		.github\workflows\PackageDeploy.Rystem.Authentication.Social.yml = .github\workflows\PackageDeploy.Rystem.Authentication.Social.yml
 	EndProjectSection
+EndProject
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "rystem.authentication.social.react", "src\Authentication\rystem.authentication.social.react\rystem.authentication.social.react.esproj", "{0AFE97B4-BB80-46C5-9C48-DA5681715D65}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -536,12 +536,12 @@ Global
 		{4AF6A055-3D9B-44D9-B91F-F443613FA982}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4AF6A055-3D9B-44D9-B91F-F443613FA982}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4AF6A055-3D9B-44D9-B91F-F443613FA982}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B53C585F-813D-4CC2-A0FF-D421F772238E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B53C585F-813D-4CC2-A0FF-D421F772238E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B53C585F-813D-4CC2-A0FF-D421F772238E}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
-		{B53C585F-813D-4CC2-A0FF-D421F772238E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B53C585F-813D-4CC2-A0FF-D421F772238E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B53C585F-813D-4CC2-A0FF-D421F772238E}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{0AFE97B4-BB80-46C5-9C48-DA5681715D65}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0AFE97B4-BB80-46C5-9C48-DA5681715D65}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0AFE97B4-BB80-46C5-9C48-DA5681715D65}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{0AFE97B4-BB80-46C5-9C48-DA5681715D65}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0AFE97B4-BB80-46C5-9C48-DA5681715D65}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0AFE97B4-BB80-46C5-9C48-DA5681715D65}.Release|Any CPU.Deploy.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -631,12 +631,12 @@ Global
 		{C5C233DF-0AA8-45F1-A3B4-31DA346E9BAB} = {685F643C-C2A2-4499-821A-00C732CE7FBB}
 		{034E0E48-3CB6-46EF-A2D0-C556A032FCF1} = {685F643C-C2A2-4499-821A-00C732CE7FBB}
 		{4AF6A055-3D9B-44D9-B91F-F443613FA982} = {034E0E48-3CB6-46EF-A2D0-C556A032FCF1}
-		{B53C585F-813D-4CC2-A0FF-D421F772238E} = {685F643C-C2A2-4499-821A-00C732CE7FBB}
 		{C5A84798-38D1-47BB-AFDA-185F39DB1480} = {21EA88B3-A513-4C01-8EB2-0E537C31EA07}
 		{940BD67E-8712-433A-8E25-56B6AFE32E48} = {21EA88B3-A513-4C01-8EB2-0E537C31EA07}
 		{0B8C2C27-2611-4F24-B1A1-9007A139261D} = {21EA88B3-A513-4C01-8EB2-0E537C31EA07}
 		{31D3C78A-6F66-4CC3-A944-68C0661C942A} = {21EA88B3-A513-4C01-8EB2-0E537C31EA07}
 		{9A85031E-8A37-4E47-8F70-C2D5BEFADC97} = {21EA88B3-A513-4C01-8EB2-0E537C31EA07}
+		{0AFE97B4-BB80-46C5-9C48-DA5681715D65} = {685F643C-C2A2-4499-821A-00C732CE7FBB}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {35C6ADE0-7E70-48ED-A810-A71B2BC94F57}
