@@ -1,0 +1,6 @@
+@Rystem.Authentication.Social.TestApi_HostAddress = http://localhost:5291
+
+GET {{Rystem.Authentication.Social.TestApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

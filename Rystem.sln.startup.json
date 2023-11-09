@@ -29,6 +29,12 @@
         "Rystem.Api.TestServer": {},
         "Rystem.Api.TestClient": {}
       }
+    },
+    "Authentication.Social": {
+      "Projects": {
+        "Rystem.Authentication.Social.TestApi": {},
+        "rystem.authentication.social.react": {}
+      }
     }
   }
 }

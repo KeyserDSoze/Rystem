@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "target": "ES2022",
+    "module": "CommonJS",
+    "lib": [ "ES2022", "DOM" ],
+    "declaration": true,
+    "outDir": "./lib",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "noImplicitAny": false
+  },
+  "include": [
+    "./src/**/*"
+  ],
+  "exclude": [
+    "./lib"
+  ]
+}

@@ -1,0 +1,30 @@
+name: Authentication.Social.React.Npm
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - src/Authentication/rystem.authentication.social.react/src/rystem.authentication.social.react/
+      - reload.txt
+jobs:
+  publish:
+    name: build, pack & publish
+    runs-on: ubuntu-latest
+    environment: Rystem.Nuget
+    defaults:
+        run:
+            working-directory: "src/Authentication/rystem.authentication.social.react/src/rystem.authentication.social.react/"
+    
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '14.x'
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm install -g typescript
+      - run: tsc --build --clean
+      - run: npm install
+      - run: npm run build --if-present
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

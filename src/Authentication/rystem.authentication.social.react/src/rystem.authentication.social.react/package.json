@@ -1,0 +1,17 @@
+{
+  "name": "rystem.authentication.social.react",
+  "version": "0.1.1",
+  "author": "Alessandro Rapiti <alessandro.rapiti44@gmail.com>",
+  "license": "MIT",
+  "description": "It can simplify the integration with social identities and .Net.",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "dependencies": {
+    "reactjs-social-login": "^2.6.3",
+    "react-social-login-buttons": "^3.9.1",
+    "typescript": "^5.2.2"
+  },
+  "files": [
+    "/lib"
+  ]
+}

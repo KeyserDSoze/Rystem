@@ -224,6 +224,70 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Api.Client.Authentic
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Api.Client.Authentication.BlazorWasm", "src\Api\Client\Rystem.Api.Client.Authentication.BlazorWasm\Rystem.Api.Client.Authentication.BlazorWasm.csproj", "{4B8AB0F4-BE4E-4F72-A974-3E029F4397EC}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Authentication", "Authentication", "{685F643C-C2A2-4499-821A-00C732CE7FBB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rystem.Authentication.Social", "src\Authentication\Rystem.Authentication.Social\Rystem.Authentication.Social.csproj", "{C5C233DF-0AA8-45F1-A3B4-31DA346E9BAB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{034E0E48-3CB6-46EF-A2D0-C556A032FCF1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rystem.Authentication.Social.TestApi", "src\Authentication\Tests\Rystem.Authentication.Social.TestApi\Rystem.Authentication.Social.TestApi.csproj", "{4AF6A055-3D9B-44D9-B91F-F443613FA982}"
+EndProject
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "rystem.authentication.social.react", "src\Authentication\rystem.authentication.social.react\rystem.authentication.social.react.esproj", "{B53C585F-813D-4CC2-A0FF-D421F772238E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Repository", "Repository", "{C5A84798-38D1-47BB-AFDA-185F39DB1480}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.CosmosSql.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.CosmosSql.yml
+		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.Storage.Blob.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.Storage.Blob.yml
+		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.Storage.Table.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.Storage.Table.yml
+		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Dynamics.Dataverse.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Dynamics.Dataverse.yml
+		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.EntityFramework.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.EntityFramework.yml
+		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.InMemory.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.InMemory.yml
+		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.MsSql.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.MsSql.yml
+		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Abstractions.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Abstractions.yml
+		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer.yml
+		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Client.Authentication.Wasm.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Client.Authentication.Wasm.yml
+		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Client.Typescript.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Client.Typescript.yml
+		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Client.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Client.yml
+		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Server.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Server.yml
+		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Cache.Azure.Storage.Blob.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Cache.Azure.Storage.Blob.yml
+		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Cache.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Cache.yml
+		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.MigrationTools.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.MigrationTools.yml
+		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Web.Components.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Web.Components.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Api", "Api", "{940BD67E-8712-433A-8E25-56B6AFE32E48}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\PackageDeploy.Rystem.Api.Client.Authentication.BlazorServer.yml = .github\workflows\PackageDeploy.Rystem.Api.Client.Authentication.BlazorServer.yml
+		.github\workflows\PackageDeploy.Rystem.Api.Client.Authentication.BlazorWasm.yml = .github\workflows\PackageDeploy.Rystem.Api.Client.Authentication.BlazorWasm.yml
+		.github\workflows\PackageDeploy.Rystem.Api.Client.yml = .github\workflows\PackageDeploy.Rystem.Api.Client.yml
+		.github\workflows\PackageDeploy.Rystem.Api.Server.yml = .github\workflows\PackageDeploy.Rystem.Api.Server.yml
+		.github\workflows\PackageDeploy.Rystem.Api.yml = .github\workflows\PackageDeploy.Rystem.Api.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{0B8C2C27-2611-4F24-B1A1-9007A139261D}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\PackageDeploy.Rystem.BackgroundJob.yml = .github\workflows\PackageDeploy.Rystem.BackgroundJob.yml
+		.github\workflows\PackageDeploy.Rystem.Concurrency.yml = .github\workflows\PackageDeploy.Rystem.Concurrency.yml
+		.github\workflows\PackageDeploy.Rystem.DependencyInjection.yml = .github\workflows\PackageDeploy.Rystem.DependencyInjection.yml
+		.github\workflows\PackageDeploy.Rystem.Queue.yml = .github\workflows\PackageDeploy.Rystem.Queue.yml
+		.github\workflows\PackageDeploy.Rystem.yml = .github\workflows\PackageDeploy.Rystem.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Content", "Content", "{31D3C78A-6F66-4CC3-A944-68C0661C942A}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\PackageDeploy.Rystem.Content.Abstractions.yml = .github\workflows\PackageDeploy.Rystem.Content.Abstractions.yml
+		.github\workflows\PackageDeploy.Rystem.Content.Infrastructure.Azure.Storage.Blob.yml = .github\workflows\PackageDeploy.Rystem.Content.Infrastructure.Azure.Storage.Blob.yml
+		.github\workflows\PackageDeploy.Rystem.Content.Infrastructure.Azure.Storage.File.yml = .github\workflows\PackageDeploy.Rystem.Content.Infrastructure.Azure.Storage.File.yml
+		.github\workflows\PackageDeploy.Rystem.Content.Infrastructure.InMemory.yml = .github\workflows\PackageDeploy.Rystem.Content.Infrastructure.InMemory.yml
+		.github\workflows\PackageDeploy.Rystem.Content.Infrastructure.M365.Sharepoint.yml = .github\workflows\PackageDeploy.Rystem.Content.Infrastructure.M365.Sharepoint.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Authentication", "Authentication", "{9A85031E-8A37-4E47-8F70-C2D5BEFADC97}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\PackageDeploy.Rystem.Authentication.Social.React.yml = .github\workflows\PackageDeploy.Rystem.Authentication.Social.React.yml
+		.github\workflows\PackageDeploy.Rystem.Authentication.Social.yml = .github\workflows\PackageDeploy.Rystem.Authentication.Social.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -464,6 +528,20 @@ Global
 		{4B8AB0F4-BE4E-4F72-A974-3E029F4397EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4B8AB0F4-BE4E-4F72-A974-3E029F4397EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4B8AB0F4-BE4E-4F72-A974-3E029F4397EC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C5C233DF-0AA8-45F1-A3B4-31DA346E9BAB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C5C233DF-0AA8-45F1-A3B4-31DA346E9BAB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C5C233DF-0AA8-45F1-A3B4-31DA346E9BAB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C5C233DF-0AA8-45F1-A3B4-31DA346E9BAB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4AF6A055-3D9B-44D9-B91F-F443613FA982}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4AF6A055-3D9B-44D9-B91F-F443613FA982}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4AF6A055-3D9B-44D9-B91F-F443613FA982}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4AF6A055-3D9B-44D9-B91F-F443613FA982}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B53C585F-813D-4CC2-A0FF-D421F772238E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B53C585F-813D-4CC2-A0FF-D421F772238E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B53C585F-813D-4CC2-A0FF-D421F772238E}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{B53C585F-813D-4CC2-A0FF-D421F772238E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B53C585F-813D-4CC2-A0FF-D421F772238E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B53C585F-813D-4CC2-A0FF-D421F772238E}.Release|Any CPU.Deploy.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -549,6 +627,16 @@ Global
 		{5C00B663-F89D-4D49-B3E8-A5C5F8DFABB8} = {D64C942F-895F-48F4-B70D-D66270851435}
 		{DA3191E5-1D2C-4076-9998-B1D1540B0EEB} = {5C00B663-F89D-4D49-B3E8-A5C5F8DFABB8}
 		{4B8AB0F4-BE4E-4F72-A974-3E029F4397EC} = {5C00B663-F89D-4D49-B3E8-A5C5F8DFABB8}
+		{685F643C-C2A2-4499-821A-00C732CE7FBB} = {B385DA45-F3CA-455B-91F1-1663EAC993E9}
+		{C5C233DF-0AA8-45F1-A3B4-31DA346E9BAB} = {685F643C-C2A2-4499-821A-00C732CE7FBB}
+		{034E0E48-3CB6-46EF-A2D0-C556A032FCF1} = {685F643C-C2A2-4499-821A-00C732CE7FBB}
+		{4AF6A055-3D9B-44D9-B91F-F443613FA982} = {034E0E48-3CB6-46EF-A2D0-C556A032FCF1}
+		{B53C585F-813D-4CC2-A0FF-D421F772238E} = {685F643C-C2A2-4499-821A-00C732CE7FBB}
+		{C5A84798-38D1-47BB-AFDA-185F39DB1480} = {21EA88B3-A513-4C01-8EB2-0E537C31EA07}
+		{940BD67E-8712-433A-8E25-56B6AFE32E48} = {21EA88B3-A513-4C01-8EB2-0E537C31EA07}
+		{0B8C2C27-2611-4F24-B1A1-9007A139261D} = {21EA88B3-A513-4C01-8EB2-0E537C31EA07}
+		{31D3C78A-6F66-4CC3-A944-68C0661C942A} = {21EA88B3-A513-4C01-8EB2-0E537C31EA07}
+		{9A85031E-8A37-4E47-8F70-C2D5BEFADC97} = {21EA88B3-A513-4C01-8EB2-0E537C31EA07}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {35C6ADE0-7E70-48ED-A810-A71B2BC94F57}
