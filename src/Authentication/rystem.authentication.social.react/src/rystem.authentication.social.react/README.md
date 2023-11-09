@@ -1,205 +1,109 @@
 ### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
-# Client for Repository Framework
+# Social logins
 
 ## Services setup
-You need to install through the RepositoryServices class
-all the repository clients, with settings.
+You need to install the configuration in the startup file.
 
-.Create() => set a default uri for all clients.
-In settings you have:
-- name: a value to retrieve the installed client.
-- path: a path which concatened with default uri create the final url for your client.
-- uri: override the default uri and the path
 
 ```
-import { RepositoryServices } from "rystem.repository.client";
+import { SocialLoginWrapper, setupSocialLogin } from 'rystem.authentication.social.react';
 
-RepositoryServices
-    .Create("https://localhost:7058/api/")
-    .addRepository<IperUser, string>(x => {
-        x.name = "test";
-        x.path = "SuperUser";
-    })
-    .addRepository<SuperUser, string>(x => {
-        x.name = "test2"
-        x.uri = "https://localhost:9090/api/SuperUser/inmemory/"
-    });
-```
+setupSocialLogin(x => {
+    x.apiUri = "https://localhost:7017";
+    x.google.clientId = "23769141170-lfs24avv5qrj00m4cbmrm202c0fc6gcg.apps.googleusercontent.com";
+    x.google.indexOrder = 1;
+    x.microsoft.clientId = "0b90db07-be9f-4b29-b673-9e8ee9265927";
+    x.microsoft.indexOrder = 0;
+    x.facebook.clientId = "345885718092912";
+    x.facebook.indexOrder = 2;
+    x.automaticRefresh = true; //this one help to autorefresh the token if expired during getting it.
+});
 
-You can also add Command or Query for your CQRS pattern with
+function App() {
+    return (
+        <>
+            <SocialLoginWrapper>
+                <Wrapper></Wrapper>
+            </SocialLoginWrapper>
+        </>
+    )
+}
 
-```
-RepositoryServices
-    .Create("https://localhost:7058/api/")
-    .addCommand<IperUser, string>(x => {
-        x.name = "test";
-        x.path = "SuperUser";
-    })
-    .addQuery<SuperUser, string>(x => {
-        x.name = "test2"
-        x.uri = "https://localhost:9090/api/SuperUser/inmemory/"
-    });
+export default App
 ```
 
-### Add Custom Headers to each request
-For instance when you need to add a token from your authentication flow you can use this implementation.
+### Usage for token
+Get current token to use for example in http request to your api services.
+Check before the request if the token is expired.
 
 ```
-RepositoryServices
-        .Create("http://localhost:5000/api/")
-        .addRepository<IperUser, string>(x => {
-            x.name = "test";
-            x.path = "SuperUser";
-            x.addHeadersEnricher((...args) => {
-                return {
-                    "Authorization-UI": "Bearer dsjadjalsdjalsdjalsda"
-                }
-            });
-            x.addHeadersEnricher((endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any) => {
-                return {
-                    "Authorization-UI2": "Bearer dsjadjalsdjalsdjalsda"
-                }
-            })
-        })
+const token = useSocialToken();
+const isExpired = token.isExpired;
 ```
 
-### Add Custom Error Handlers
-For instance when you need to capture a not authorized error to request a new authentication flow before a new request.
-Returning true you can retry automatically the request, with false the request chain will be stopped.
+### Usage for user
+Get current user to retrieve information about him.
 
 ```
-RepositoryServices
-        .Create("http://localhost:5000/api/")
-        .addRepository<IperUser, string>(x => {
-            x.name = "test";
-            x.path = "SuperUser";
-            x.addErrorHandler((endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any) => {
-                return (err as string).startsWith("big error");
-            });
-        })
+const user = useSocialUser();
 ```
 
-## Usage
-Always with RepositoryServices class you can retrieve with
-the correct name the integration you setup during your startup.
-
+### Force refresh
+Get the refresh action to use as you wish to refresh the token with a brand new one.
 ```
-const repository = RepositoryServices
-    .Repository<IperUser, string>("test");
+const forceRefresh = useContext(SocialLoginContextRefresh);
 ```
 
-You can also retrieve CQRS interfaces.
-
+### Force logout
+Get the logout action to set, for instance, as an event of a clicked button.
 ```
-const command = RepositoryServices
-    .Command<IperUser, string>("test");
-const query = RepositoryServices
-    .Query<IperUser, string>("test2");
+const logout = useContext(SocialLoginContextLogout);
 ```
 
-## Methods
 
-### Insert
-
-```
-let response: State<IperUser, string> =
-    await repository.insert(id, iperUser);
-```
-
-### Update
+### Example
+For example the Wrapper component could be so
 
 ```
-let response: State<IperUser, string> =
-    await repository.update(id, iperUser);
-```
+import { useContext, useState } from "react";
+import reactLogo from './assets/react.svg'
+import { SocialLoginButtons, SocialLoginContextLogout, SocialLoginContextRefresh, SocialLogoutButton, useSocialToken, useSocialUser } from "rystem.authentication.social.react";
 
-### Exist
-
-```
-let response: State<IperUser, string> =
-    await repository.exist(id);
-```
-
-### Delete
-
-```
-let response: State<IperUser, string> =
-    await repository.delete(id);
-```
-
-### Batch operations
-
-```
-const batcher = repository.batch();
-batcher
-    .addInsert(id1, iperUser1)
-    .addUpdate(id2, iperUser2)
-    .addDelete(id3);
-    const batchResults: BatchResults<IperUser, string> =
-        await batcher.execute();
-```
-
-### Query operations
-- get all elements
-```
-let queryResults = await repository.query().execute();
-```
-- filter as string
-```
-let id = "someId";
-let queryResults = await repository
-    .query()
-    .filter(`x => x.id == "${id}"`)
-    .execute();
-```
-- build a filter (similar to the previous example with addiction of ordering by ascending all retrieved elements)
-```
-let queryResults = await repository
-    .query()
-    .where()
-    .select(x => x.id)
-    .equal(id)
-    .build()
-    .orderBy(x => x.name)
-    .execute();
-```
-- build a filter and count all elements
-```
-const count = await repository
-    .query()
-    .where()
-    .select(x => x.id)
-    .equal(id)
-    .count();
-```
-- build a filter and sum a column of all elements
-```
-const sum = await repository
-    .query()
-    .where()
-    .select(x => x.id)
-    .equal(id)
-    .sum(x => x.port);
-```
-- build a filter with greaterThanOrEqual for instance
-```
-const portGreaterThanZero = await repository
-    .query()
-    .where()
-    .openRoundBracket()
-    .select(x => x.port)
-    .greaterThanOrEqual(0)
-    .count();
-```
-- same of previous but ordered by a column
-```
-const portGreaterThanZeroOrderedByName = await repository
-    .query()
-    .where()
-    .select(x => x.port)
-    .greaterThanOrEqual(0)
-    .build()
-    .orderBy(x => x.name)
-    .execute();
+export const Wrapper = () => {
+    const token = useSocialToken();
+    const [count, setCount] = useState(0);
+    const user = useSocialUser();
+    const forceRefresh = useContext(SocialLoginContextRefresh);
+    const logout = useContext(SocialLoginContextLogout);
+    return (
+        <>
+            <div>
+                <a href="https://react.dev" target="_blank">
+                    <img src={reactLogo} className="logo react" alt="React logo" />
+                </a>
+            </div>
+            <h1>Vite + React</h1>
+            <div className="card">
+                <button onClick={() => setCount((count) => count + 1)}>
+                    count is {count}
+                </button>
+                <p>
+                    Edit <code>src/App.tsx</code> and save to test HMR
+                </p>
+            </div>
+            <p className="read-the-docs">
+                Click on the Vite and React logos to learn more
+            </p>
+            {token.isExpired && <SocialLoginButtons></SocialLoginButtons>}
+            {!token.isExpired && <div>{token.accessToken}</div>}
+            {user.isAuthenticated && <div>{user.username}</div>}
+            <button onClick={() => forceRefresh()}>force refresh</button>
+            <button onClick={() => logout()}>logout</button>
+            <SocialLogoutButton>
+                logout
+            </SocialLogoutButton>
+        </>
+    );
+}
 ```
