@@ -407,3 +407,5 @@ FodyWeavers.xsd
 /src/Repository/repositoryframework.api.client.typescript/src/rystem/src/index.js
 /src/Repository/repositoryframework.api.client.typescript/package-lock.json
 /.github/workflows/PackageDeploy.Rystem.DependencyInjection.yml.bak
+/src/Repository/repositoryframework.api.client.typescript/src/rystem/src/hooks/hooks.js
+/src/Repository/repositoryframework.api.client.typescript/src/rystem/src/hooks/hooks.js.map
