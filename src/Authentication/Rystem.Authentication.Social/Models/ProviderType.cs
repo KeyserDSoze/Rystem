@@ -6,6 +6,7 @@
         Google,
         Microsoft,
         Facebook,
-        GitHub
+        GitHub,
+        Amazon
     }
 }

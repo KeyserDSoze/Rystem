@@ -9,4 +9,5 @@ export interface SocialLoginSettings {
     microsoft: SocialParameter;
     facebook: SocialParameter;
     github: SocialParameter;
+    amazon: SocialParameter;
 }

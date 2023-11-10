@@ -6,5 +6,6 @@
         public const string FacebookAuthenticationClient = nameof(FacebookAuthenticationClient);
         public const string GitHubAuthenticationClient = nameof(GitHubAuthenticationClient);
         public const string GitHubAuthenticationClientUser = nameof(GitHubAuthenticationClientUser);
+        public const string AmazonAuthenticationClient = nameof(AmazonAuthenticationClient);
     }
 }

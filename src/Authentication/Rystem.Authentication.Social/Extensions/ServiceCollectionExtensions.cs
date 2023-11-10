@@ -1,6 +1,4 @@
-﻿using System.Net.Http;
-using Google.Apis.Auth.OAuth2;
-using Microsoft.AspNetCore.Authentication.BearerToken;
+﻿using Microsoft.AspNetCore.Authentication.BearerToken;
 using Rystem.Authentication.Social;
 
 namespace Microsoft.Extensions.DependencyInjection
@@ -18,6 +16,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddFactory<ITokenChecker, MicrosoftTokenChecker>(ProviderType.Microsoft.ToString());
             services.AddFactory<ITokenChecker, FacebookTokenChecker>(ProviderType.Facebook.ToString());
             services.AddFactory<ITokenChecker, GithubTokenChecker>(ProviderType.GitHub.ToString());
+            services.AddFactory<ITokenChecker, AmazonTokenChecker>(ProviderType.Amazon.ToString());
             services.AddFactory<ITokenChecker, DotNetTokenChecker>(ProviderType.DotNet.ToString());
             SocialLoginBuilder builder = new();
             settings(builder);
@@ -48,6 +47,13 @@ namespace Microsoft.Extensions.DependencyInjection
                     x.BaseAddress = new Uri("https://api.github.com/user/emails");
                     x.DefaultRequestHeaders.Add("Accept", "application/json");
                     x.DefaultRequestHeaders.Add("User-Agent", "Rystem");
+                });
+            }
+            if (builder.Amazon.IsActive)
+            {
+                services.AddHttpClient(Constants.AmazonAuthenticationClient, x =>
+                {
+                    x.BaseAddress = new Uri("https://api.amazon.com/user/profile");
                 });
             }
             return services;

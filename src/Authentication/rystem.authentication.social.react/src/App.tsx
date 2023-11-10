@@ -13,6 +13,7 @@ setupSocialLogin(x => {
     x.automaticRefresh = true;
     x.github.clientId = "97154d062f2bb5d28620"
     x.github.indexOrder = 3;
+    x.amazon.clientId = "amzn1.application-oa2-client.dffbc466d62c44e49d71ad32f4aecb62"
 });
 function App() {
     return (

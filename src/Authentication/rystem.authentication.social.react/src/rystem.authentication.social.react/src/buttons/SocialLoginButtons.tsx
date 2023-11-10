@@ -4,9 +4,11 @@ import {
     LoginSocialMicrosoft,
     LoginSocialFacebook,
     LoginSocialGithub,
+    LoginSocialAmazon
 } from 'reactjs-social-login';
 
 import {
+    AmazonLoginButton,
     FacebookLoginButton,
     GithubLoginButton,
     GoogleLoginButton,
@@ -117,8 +119,7 @@ const getGitHub = (settings: SocialLoginSettings, setProfile: (provider: number,
                         onResolve={(x: any) => {
                             setProfile(4, x.data?.code);
                         }}
-                        onReject={(x: any) => {
-                            console.log(x);
+                        onReject={() => {
                         }}
                         isOnlyGetToken={true}
                         isOnlyGetCode={true}
@@ -131,11 +132,42 @@ const getGitHub = (settings: SocialLoginSettings, setProfile: (provider: number,
     } as SocialButtonValue;
 }
 
+const getAmazon = (settings: SocialLoginSettings, setProfile: (provider: number, code: any) => void): SocialButtonValue => {
+    const redirectUri = `${settings.redirectDomain}/account/login`;
+    return {
+        position: settings.amazon.indexOrder,
+        element: (
+            <div key="a">
+                {settings.amazon.clientId != null &&
+                    <LoginSocialAmazon
+                        client_id={settings.amazon.clientId}
+                        client_secret={""}
+                        scope="profile"
+                        redirect_uri={redirectUri}
+                        onResolve={(x: any) => {
+                            console.log(x.data.access_token);
+                            setProfile(5, x.data?.access_token);
+                        }}
+                        onReject={() => {
+                        }}
+                        isOnlyGetToken={true}
+                        isOnlyGetCode={true}
+                    >
+                        <AmazonLoginButton />
+                    </LoginSocialAmazon>
+                }
+            </div>
+        )
+    } as SocialButtonValue;
+}
+
+
 const getButtons = new Array<(settings: SocialLoginSettings, setProfile: (provider: number, code: any) => void) => SocialButtonValue>;
 getButtons.push(getGoogleButton);
 getButtons.push(getMicrosoftButton);
 getButtons.push(getFacebookButton);
 getButtons.push(getGitHub);
+getButtons.push(getAmazon);
 
 export const SocialLoginButtons = () => {
     const settings = getSocialLoginSettings();
