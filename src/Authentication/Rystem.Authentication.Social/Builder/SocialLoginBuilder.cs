@@ -2,8 +2,9 @@
 {
     public sealed class SocialLoginBuilder
     {
-        public SocialLoginSettings Google { get; set; } = new();
-        public SocialLoginSettings Microsoft { get; set; } = new();
-        public SocialLoginSettings Facebook { get; set; } = new();
+        public SocialLoginWithSecretsAndRedirectSettings Google { get; set; } = new();
+        public SocialDefaultLoginSettings Microsoft { get; set; } = new();
+        public SocialDefaultLoginSettings Facebook { get; set; } = new();
+        public SocialLoginWithSecretsSettings GitHub { get; set; } = new();
     }
 }

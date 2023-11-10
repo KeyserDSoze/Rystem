@@ -11,7 +11,7 @@ namespace Rystem.Authentication.Social
             _options = options.Get(BearerTokenDefaults.AuthenticationScheme);
         }
 
-        public Task<string> CheckTokenAndGetUsernameAsync(IHttpClientFactory clientFactory, SocialLoginBuilder loginBuilder, string code, CancellationToken cancellationToken)
+        public Task<string> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
         {
             var ticket = _options.RefreshTokenProtector.Unprotect(code);
             var expiringTime = ticket?.Properties?.ExpiresUtc ?? DateTime.UtcNow.AddHours(1);

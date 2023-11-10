@@ -1,4 +1,5 @@
-﻿using Google.Apis.Auth.OAuth2;
+﻿using System.Net.Http;
+using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Rystem.Authentication.Social;
 
@@ -16,22 +17,37 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddFactory<ITokenChecker, GoogleTokenChecker>(ProviderType.Google.ToString());
             services.AddFactory<ITokenChecker, MicrosoftTokenChecker>(ProviderType.Microsoft.ToString());
             services.AddFactory<ITokenChecker, FacebookTokenChecker>(ProviderType.Facebook.ToString());
+            services.AddFactory<ITokenChecker, GithubTokenChecker>(ProviderType.GitHub.ToString());
             services.AddFactory<ITokenChecker, DotNetTokenChecker>(ProviderType.DotNet.ToString());
             SocialLoginBuilder builder = new();
             settings(builder);
             services.AddSingleton(builder);
-            if (builder.Google.HasValue)
+            if (builder.Google.IsActive)
             {
                 services.AddHttpClient(Constants.GoogleAuthenticationClient, x =>
                 {
                     x.BaseAddress = new Uri("https://oauth2.googleapis.com/token");
                 });
             }
-            if (builder.Facebook.HasValue)
+            if (builder.Facebook.IsActive)
             {
                 services.AddHttpClient(Constants.FacebookAuthenticationClient, x =>
                 {
                     x.BaseAddress = new Uri("https://graph.facebook.com/v18.0/me/");
+                });
+            }
+            if (builder.GitHub.IsActive)
+            {
+                services.AddHttpClient(Constants.GitHubAuthenticationClient, x =>
+                {
+                    x.BaseAddress = new Uri("https://github.com/");
+                    x.DefaultRequestHeaders.Add("Accept", "application/json");
+                });
+                services.AddHttpClient(Constants.GitHubAuthenticationClientUser, x =>
+                {
+                    x.BaseAddress = new Uri("https://api.github.com/user/emails");
+                    x.DefaultRequestHeaders.Add("Accept", "application/json");
+                    x.DefaultRequestHeaders.Add("User-Agent", "Rystem");
                 });
             }
             return services;

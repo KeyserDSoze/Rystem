@@ -33,7 +33,7 @@ namespace Rystem.Authentication.Social
             return validationParameters;
         }
         private const string Email = "email";
-        public async Task<string> CheckTokenAndGetUsernameAsync(IHttpClientFactory clientFactory, SocialLoginBuilder loginBuilder, string code, CancellationToken cancellationToken)
+        public async Task<string> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
         {
             var token = new JwtSecurityToken(code);
             var issuer = token.Payload.Iss;

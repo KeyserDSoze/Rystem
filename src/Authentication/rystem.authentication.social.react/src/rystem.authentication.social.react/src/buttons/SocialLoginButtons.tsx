@@ -3,10 +3,12 @@ import {
     LoginSocialGoogle,
     LoginSocialMicrosoft,
     LoginSocialFacebook,
+    LoginSocialGithub,
 } from 'reactjs-social-login';
 
 import {
     FacebookLoginButton,
+    GithubLoginButton,
     GoogleLoginButton,
     MicrosoftLoginButton,
 } from 'react-social-login-buttons';
@@ -100,10 +102,40 @@ const getFacebookButton = (settings: SocialLoginSettings, setProfile: (provider:
     } as SocialButtonValue;
 }
 
+const getGitHub = (settings: SocialLoginSettings, setProfile: (provider: number, code: any) => void): SocialButtonValue => {
+    const redirectUri = `${settings.redirectDomain}/account/login`;
+    return {
+        position: settings.github.indexOrder,
+        element: (
+            <div key="h">
+                {settings.github.clientId != null &&
+                    <LoginSocialGithub
+                        client_id={settings.github.clientId}
+                        client_secret={""}
+                        scope="user:email"
+                        redirect_uri={redirectUri}
+                        onResolve={(x: any) => {
+                            setProfile(4, x.data?.code);
+                        }}
+                        onReject={(x: any) => {
+                            console.log(x);
+                        }}
+                        isOnlyGetToken={true}
+                        isOnlyGetCode={true}
+                    >
+                        <GithubLoginButton />
+                    </LoginSocialGithub>
+                }
+            </div>
+        )
+    } as SocialButtonValue;
+}
+
 const getButtons = new Array<(settings: SocialLoginSettings, setProfile: (provider: number, code: any) => void) => SocialButtonValue>;
 getButtons.push(getGoogleButton);
 getButtons.push(getMicrosoftButton);
 getButtons.push(getFacebookButton);
+getButtons.push(getGitHub);
 
 export const SocialLoginButtons = () => {
     const settings = getSocialLoginSettings();

@@ -5,6 +5,7 @@
         DotNet,
         Google,
         Microsoft,
-        Facebook
+        Facebook,
+        GitHub
     }
 }

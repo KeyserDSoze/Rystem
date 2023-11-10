@@ -18,8 +18,6 @@ namespace Microsoft.Extensions.DependencyInjection
             if (app is IEndpointRouteBuilder endpointBuilder)
             {
                 endpointBuilder.Map("api/Authentication/Social/Token", async (
-                    [FromServices] SocialLoginBuilder socialSettings,
-                    [FromServices] IHttpClientFactory clientFactory,
                     [FromServices] ISocialUserProvider? claimProvider,
                     [FromServices] IFactory<ITokenChecker> tokenCheckerFactory,
                     [FromQuery] ProviderType provider,
@@ -30,7 +28,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     var tokenChecker = tokenCheckerFactory.Create(provider.ToString());
                     if (tokenChecker != null)
                     {
-                        username = await tokenChecker.CheckTokenAndGetUsernameAsync(clientFactory, socialSettings, code, cancellationToken);
+                        username = await tokenChecker.CheckTokenAndGetUsernameAsync(code, cancellationToken);
                     }
                     if (!string.IsNullOrWhiteSpace(username))
                     {

@@ -11,6 +11,8 @@ setupSocialLogin(x => {
     x.facebook.clientId = "345885718092912";
     x.facebook.indexOrder = 2;
     x.automaticRefresh = true;
+    x.github.clientId = "97154d062f2bb5d28620"
+    x.github.indexOrder = 3;
 });
 function App() {
     return (

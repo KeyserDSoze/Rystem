@@ -5,11 +5,16 @@ namespace Rystem.Authentication.Social
 {
     internal sealed class FacebookTokenChecker : ITokenChecker
     {
-        public async Task<string> CheckTokenAndGetUsernameAsync(IHttpClientFactory clientFactory, SocialLoginBuilder loginBuilder, string code, CancellationToken cancellationToken)
+        private readonly IHttpClientFactory _clientFactory;
+        public FacebookTokenChecker(IHttpClientFactory clientFactory)
+        {
+            _clientFactory = clientFactory;
+        }
+        public async Task<string> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
         {
             if (!string.IsNullOrWhiteSpace(code))
             {
-                var client = clientFactory.CreateClient(Constants.FacebookAuthenticationClient);
+                var client = _clientFactory.CreateClient(Constants.FacebookAuthenticationClient);
                 var response = await client.GetAsync($"?fields=email,name&access_token={code}");
                 if (response.IsSuccessStatusCode)
                 {

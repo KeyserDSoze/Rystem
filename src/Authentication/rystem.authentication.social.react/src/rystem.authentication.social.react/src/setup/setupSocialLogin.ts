@@ -12,7 +12,8 @@ export const setupSocialLogin = function (settings: (settings: SocialLoginSettin
         redirectDomain: baseUri,
         google: { indexOrder: 0 } as SocialParameter,
         microsoft: { indexOrder: 1 } as SocialParameter,
-        facebook: { indexOrder: 2 } as SocialParameter
+        facebook: { indexOrder: 2 } as SocialParameter,
+        github: { indexOrder: 3 } as SocialParameter
     } as SocialLoginSettings;
     settings(parameters);
     return SocialLoginManager.Instance(parameters);

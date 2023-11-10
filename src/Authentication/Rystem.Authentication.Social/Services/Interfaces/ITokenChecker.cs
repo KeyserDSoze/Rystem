@@ -2,6 +2,6 @@
 {
     public interface ITokenChecker
     {
-        Task<string> CheckTokenAndGetUsernameAsync(IHttpClientFactory clientFactory, SocialLoginBuilder loginBuilder, string code, CancellationToken cancellationToken);
+        Task<string> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken);
     }
 }
