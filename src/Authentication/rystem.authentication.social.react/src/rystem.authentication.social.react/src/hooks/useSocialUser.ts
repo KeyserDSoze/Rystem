@@ -1,5 +1,4 @@
-﻿import { useSocialToken } from "./useSocialToken";
-import { SocialUser } from "../models/SocialUser";
+﻿import { useSocialToken, SocialUser } from "..";
 export const useSocialUser = function (): SocialUser {
     const token = useSocialToken();
     if (!token.isExpired) {

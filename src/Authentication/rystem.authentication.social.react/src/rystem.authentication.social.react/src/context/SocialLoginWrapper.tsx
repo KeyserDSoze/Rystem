@@ -1,7 +1,5 @@
 ﻿import { useReducer } from "react";
-import { useSocialToken } from "../hooks/useSocialToken";
-import { SocialLoginContextLogout, SocialLoginContextRefresh, SocialLoginContextUpdate, removeSocialLogin } from "../index";
-import { SocialLoginManager } from "../setup/SocialLoginManager";
+import { useSocialToken, SocialLoginContextLogout, SocialLoginContextRefresh, SocialLoginContextUpdate, removeSocialLogin, SocialLoginManager } from "..";
 
 const forceRefresh = () => {
     const oldToken = useSocialToken();

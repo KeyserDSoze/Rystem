@@ -1,5 +1,4 @@
-﻿import { SocialLoginSettings } from "../models/setup/SocialLoginSettings";
-import { SocialLoginManager } from "./SocialLoginManager";
+﻿import { SocialLoginSettings, SocialLoginManager } from "..";
 
 export const getSocialLoginSettings = function(): SocialLoginSettings {
     return SocialLoginManager.Instance(null).settings;

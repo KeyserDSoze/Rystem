@@ -1,7 +1,4 @@
-﻿import { SocialLoginSettings } from "../models/setup/SocialLoginSettings";
-import { SocialToken } from "../models/SocialToken";
-import { Token } from "../models/Token";
-
+﻿import { ProviderType, SocialLoginSettings, SocialToken, Token } from "..";
 
 export class SocialLoginManager {
     private static instance: SocialLoginManager | null;
@@ -16,7 +13,7 @@ export class SocialLoginManager {
             SocialLoginManager.instance = new SocialLoginManager(settings);
         return SocialLoginManager.instance;
     }
-    public updateToken(provider: number, code: string): Promise<SocialToken> {
+    public updateToken(provider: ProviderType, code: string): Promise<SocialToken> {
         return fetch(`${this.settings.apiUri}/api/Authentication/Social/Token?provider=${provider}&code=${code}`)
             .then(t => {
                 return t.json();
@@ -37,10 +34,14 @@ export class SocialLoginManager {
                     .then(x => {
                         localStorage.setItem("socialUser", JSON.stringify(x));
                         this.refresher();
+                    })
+                    .catch(() => {
+                        this.settings.onLoginFailure({ code: 10, message: "error getting user.", provider: provider });
                     });
                 return tok;
             })
             .catch(() => {
+                this.settings.onLoginFailure({ code: 15, message: "error getting token.", provider: provider });
                 return {} as SocialToken;
             })
     }

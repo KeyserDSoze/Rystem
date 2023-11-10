@@ -1,7 +1,4 @@
-﻿import { SocialLoginSettings } from "../models/setup/SocialLoginSettings";
-import { SocialParameter } from "../models/setup/SocialParameter";
-import { SocialLoginManager } from "./SocialLoginManager";
-
+﻿import { SocialLoginErrorResponse, SocialLoginSettings, SocialParameter, SocialLoginManager } from "..";
 
 export const setupSocialLogin = function (settings: (settings: SocialLoginSettings) => void): SocialLoginManager {
     const url = new URL(window.location.href);
@@ -9,6 +6,7 @@ export const setupSocialLogin = function (settings: (settings: SocialLoginSettin
     const parameters = {
         apiUri: baseUri,
         title: null,
+        onLoginFailure: (data: SocialLoginErrorResponse) => { console.log(data.code); },
         redirectDomain: baseUri,
         google: { indexOrder: 0 } as SocialParameter,
         microsoft: { indexOrder: 1 } as SocialParameter,

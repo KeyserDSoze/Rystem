@@ -1,4 +1,4 @@
-import { getSocialLoginSettings } from "../setup/getSocialLoginSettings";
+import { getSocialLoginSettings, SocialLoginManager, SocialLoginSettings, ProviderType } from "..";
 import {
     LoginSocialGoogle,
     LoginSocialMicrosoft,
@@ -14,15 +14,13 @@ import {
     GoogleLoginButton,
     MicrosoftLoginButton,
 } from 'react-social-login-buttons';
-import { SocialLoginManager } from "../setup/SocialLoginManager";
-import { SocialLoginSettings } from "../models/setup/SocialLoginSettings";
 
 interface SocialButtonValue {
     element: JSX.Element,
     position: number
 }
 
-const getGoogleButton = (settings: SocialLoginSettings, setProfile: (provider: number, code: any) => void): SocialButtonValue => {
+const getGoogleButton = (settings: SocialLoginSettings, setProfile: (provider: ProviderType, code: any) => void): SocialButtonValue => {
     const redirectUri = `${settings.redirectDomain}/account/login`;
     return {
         position: settings.google.indexOrder,
@@ -37,9 +35,10 @@ const getGoogleButton = (settings: SocialLoginSettings, setProfile: (provider: n
                         access_type="offline"
                         isOnlyGetToken={true}
                         onResolve={(x: any) => {
-                            setProfile(1, x.data?.code);
+                            setProfile(ProviderType.Google, x.data?.code);
                         }}
-                        onReject={function (): void {
+                        onReject={() => {
+                            settings.onLoginFailure({ code: 3, message: "error clicking social button.", provider: ProviderType.Google });
                         }}>
                         <GoogleLoginButton />
                     </LoginSocialGoogle>
@@ -61,10 +60,10 @@ const getMicrosoftButton = (settings: SocialLoginSettings, setProfile: (provider
                         tenant="consumers"
                         redirect_uri={redirectUri}
                         onResolve={(x: any) => {
-                            setProfile(2, x.data?.id_token);
+                            setProfile(ProviderType.Microsoft, x.data?.id_token);
                         }}
-                        onReject={(err: any) => {
-                            console.log(err);
+                        onReject={() => {
+                            settings.onLoginFailure({ code: 3, message: "error clicking social button.", provider: ProviderType.Microsoft });
                         }}
                         isOnlyGetToken={true}
                     >
@@ -90,9 +89,10 @@ const getFacebookButton = (settings: SocialLoginSettings, setProfile: (provider:
                         }
                         redirect_uri={redirectUri}
                         onResolve={(x: any) => {
-                            setProfile(3, x.data?.accessToken);
+                            setProfile(ProviderType.Facebook, x.data?.accessToken);
                         }}
                         onReject={() => {
+                            settings.onLoginFailure({ code: 3, message: "error clicking social button.", provider: ProviderType.Facebook });
                         }}
                         isOnlyGetToken={true}
                     >
@@ -117,9 +117,10 @@ const getGitHub = (settings: SocialLoginSettings, setProfile: (provider: number,
                         scope="user:email"
                         redirect_uri={redirectUri}
                         onResolve={(x: any) => {
-                            setProfile(4, x.data?.code);
+                            setProfile(ProviderType.GitHub, x.data?.code);
                         }}
                         onReject={() => {
+                            settings.onLoginFailure({ code: 3, message: "error clicking social button.", provider: ProviderType.GitHub });
                         }}
                         isOnlyGetToken={true}
                         isOnlyGetCode={true}
@@ -145,10 +146,10 @@ const getAmazon = (settings: SocialLoginSettings, setProfile: (provider: number,
                         scope="profile"
                         redirect_uri={redirectUri}
                         onResolve={(x: any) => {
-                            console.log(x.data.access_token);
-                            setProfile(5, x.data?.access_token);
+                            setProfile(ProviderType.Amazon, x.data?.access_token);
                         }}
                         onReject={() => {
+                            settings.onLoginFailure({ code: 3, message: "error clicking social button.", provider: ProviderType.Amazon });
                         }}
                         isOnlyGetToken={true}
                         isOnlyGetCode={true}

@@ -1,7 +1,4 @@
-﻿import { SocialLoginManager } from "../setup/SocialLoginManager";
-import { Token } from "../models/Token";
-import { getSocialLoginSettings } from "../setup/getSocialLoginSettings";
-
+﻿import { ProviderType, SocialLoginManager, Token, getSocialLoginSettings } from "..";
 
 export const useSocialToken = function (): Token {
     const settings = getSocialLoginSettings();
@@ -11,7 +8,7 @@ export const useSocialToken = function (): Token {
         currentToken.expiresIn = new Date(currentToken.expiresIn);
         currentToken.isExpired = currentToken.expiresIn.getTime() < new Date().getTime();
         if (currentToken.isExpired && settings.automaticRefresh) {
-            SocialLoginManager.Instance(null).updateToken(0, currentToken.refreshToken);
+            SocialLoginManager.Instance(null).updateToken(ProviderType.DotNet, currentToken.refreshToken);
         }
         return currentToken;
     }

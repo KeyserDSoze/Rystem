@@ -1,9 +1,10 @@
-﻿import { SocialParameter } from "./SocialParameter";
+﻿import { SocialLoginErrorResponse, SocialParameter } from "../..";
 
 export interface SocialLoginSettings {
     apiUri: string;
     redirectDomain: string;
     automaticRefresh: boolean;
+    onLoginFailure: (data: SocialLoginErrorResponse) => void;
     title: string | null;
     google: SocialParameter;
     microsoft: SocialParameter;
