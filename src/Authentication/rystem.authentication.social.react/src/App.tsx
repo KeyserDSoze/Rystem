@@ -10,10 +10,11 @@ setupSocialLogin(x => {
     x.microsoft.indexOrder = 0;
     x.facebook.clientId = "345885718092912";
     x.facebook.indexOrder = 2;
-    x.automaticRefresh = true;
     x.github.clientId = "97154d062f2bb5d28620"
     x.github.indexOrder = 3;
     x.amazon.clientId = "amzn1.application-oa2-client.dffbc466d62c44e49d71ad32f4aecb62"
+    x.onLoginFailure = (data) => alert(data.message);
+    x.automaticRefresh = true;
 });
 function App() {
     return (

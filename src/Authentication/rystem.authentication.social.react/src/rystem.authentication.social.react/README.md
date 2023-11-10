@@ -17,6 +17,10 @@ setupSocialLogin(x => {
     x.microsoft.indexOrder = 0;
     x.facebook.clientId = "345885718092912";
     x.facebook.indexOrder = 2;
+    x.github.clientId = "97154d062f2bb5d28620"
+    x.github.indexOrder = 3;
+    x.amazon.clientId = "amzn1.application-oa2-client.dffbc466d62c44e49d71ad32f4aecb62"
+    x.onLoginFailure = (data) => alert(data.message); //set the callback for error during request.
     x.automaticRefresh = true; //this one help to autorefresh the token if expired during getting it.
 });
 
@@ -32,6 +36,14 @@ function App() {
 
 export default App
 ```
+
+### onLoginFailure callback
+On error you can receive:
+- code: 3, for error during clicking the social login button
+- code: 15, for error during retrieve of the token
+- code: 10, for error during retrieve of the user
+
+Furthermore, you will receive a message and the social provider. When you see DotNet or 0, it means it's the integration with .Net api.
 
 ### Usage for token
 Get current token to use for example in http request to your api services.
