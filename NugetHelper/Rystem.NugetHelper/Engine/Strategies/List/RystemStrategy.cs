@@ -12,7 +12,7 @@
                 .CreateSon()
             .AddProject("Rystem.DependencyInjection")
             .CreateSon()
-            .AddProject("Rystem.Concurrency", "Rystem.RepositoryFramework.Abstractions", "Rystem.Content.Abstractions", "Rystem.Api")
+            .AddProject("Rystem.Concurrency", "Rystem.RepositoryFramework.Abstractions", "Rystem.Content.Abstractions", "Rystem.Api", "Rystem.Authentication.Social")
             .CreateSon()
             .AddProject("Rystem.BackgroundJob",
                         "Rystem.RepositoryFramework.Api.Client", "Rystem.RepositoryFramework.Api.Server",
