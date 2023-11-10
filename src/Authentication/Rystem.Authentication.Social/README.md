@@ -58,6 +58,7 @@ internal sealed class SocialUserProvider : ISocialUserProvider
         yield return new Claim(ClaimTypes.Upn, "something");
     }
 }
+
 public sealed class SuperSocialUser : SocialUser
 {
     public string Email { get; set; }
