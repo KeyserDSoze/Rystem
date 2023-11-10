@@ -36,12 +36,6 @@ namespace Microsoft.Extensions.DependencyInjection
             }
             return services;
         }
-        public static IServiceCollection AddSocialLoginStorage<TStorage>(this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Transient)
-            where TStorage : class, IClaimsCreator
-        {
-            services.AddService<IClaimsCreator, TStorage>(lifetime);
-            return services;
-        }
         public static IServiceCollection AddSocialUserProvider<TProvider>(this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TProvider : class, ISocialUserProvider
         {

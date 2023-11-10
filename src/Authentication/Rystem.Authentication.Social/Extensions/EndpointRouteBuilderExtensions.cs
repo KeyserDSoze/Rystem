@@ -11,7 +11,7 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static partial class EndpointRouteBuilderExtensions
     {
-        public static IApplicationBuilder UseSocialLoginEndpoint(this IApplicationBuilder app)
+        public static IApplicationBuilder UseSocialLoginEndpoints(this IApplicationBuilder app)
         {
             app.UseAuthentication();
             app.UseAuthorization();
@@ -20,7 +20,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 endpointBuilder.Map("api/Authentication/Social/Token", async (
                     [FromServices] SocialLoginBuilder socialSettings,
                     [FromServices] IHttpClientFactory clientFactory,
-                    [FromServices] IClaimsCreator? claimCreator,
+                    [FromServices] ISocialUserProvider? claimProvider,
                     [FromServices] IFactory<ITokenChecker> tokenCheckerFactory,
                     [FromQuery] ProviderType provider,
                     [FromQuery] string code,
@@ -34,7 +34,16 @@ namespace Microsoft.Extensions.DependencyInjection
                     }
                     if (!string.IsNullOrWhiteSpace(username))
                     {
-                        var claims = claimCreator == null ? new[] { new Claim(ClaimTypes.Name, username) } : await claimCreator.GetClaimsAsync(username, cancellationToken);
+                        var claims = new List<Claim>();
+                        if (claimProvider != null)
+                        {
+                            await foreach (var claim in claimProvider.GetClaimsAsync(username, cancellationToken))
+                            {
+                                claims.Add(claim);
+                            }
+                        }
+                        else
+                            claims.Add(new Claim(ClaimTypes.Name, username));
                         var claimsPrincipal = new ClaimsPrincipal(
                          new ClaimsIdentity(claims,
                            BearerTokenDefaults.AuthenticationScheme
