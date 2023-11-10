@@ -113,7 +113,7 @@ namespace Rystem.NugetHelper.Engine
                             if (_versionType != VersionType.Specific)
                                 version.NextVersion(_versionType, _addingValueForVersion);
                             else
-                                version.SetVersion(_versionType, specificVersion);
+                                version.SetVersion(_versionType, specificVersion!);
                             Console.WriteLine($"{file.Name} from {currentVersion} to {version.V}");
                             content = content.Replace(currentVersion, $"<Version>{version.V}</Version>");
                             _newVersionOfLibraries.Add(library.LibraryName!, version.V);
