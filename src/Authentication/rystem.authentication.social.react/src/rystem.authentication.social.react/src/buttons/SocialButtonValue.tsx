@@ -1,5 +1,4 @@
-﻿
-export interface SocialButtonValue {
+﻿export interface SocialButtonValue {
     element: JSX.Element;
     position: number;
 }

@@ -9,6 +9,9 @@ builder.Services.AddSocialLogin(x =>
     x.Google.RedirectDomain = builder.Configuration["SocialLogin:Google:RedirectDomain"];
     x.GitHub.ClientId = builder.Configuration["SocialLogin:GitHub:ClientId"];
     x.GitHub.ClientSecret = builder.Configuration["SocialLogin:GitHub:ClientSecret"];
+    x.Linkedin.ClientId = builder.Configuration["SocialLogin:Linkedin:ClientId"];
+    x.Linkedin.ClientSecret = builder.Configuration["SocialLogin:Linkedin:ClientSecret"];
+    x.Linkedin.RedirectDomain = builder.Configuration["SocialLogin:Linkedin:RedirectDomain"];
 },
 x =>
 {

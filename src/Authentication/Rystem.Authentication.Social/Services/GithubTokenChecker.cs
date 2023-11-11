@@ -54,7 +54,7 @@ namespace Rystem.Authentication.Social
             public required string Scope { get; set; }
         }
 
-        public class SingleEmail
+        private sealed class SingleEmail
         {
             [JsonPropertyName("email")]
             public required string Email { get; set; }

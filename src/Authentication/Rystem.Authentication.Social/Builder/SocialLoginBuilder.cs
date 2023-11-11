@@ -7,5 +7,6 @@
         public SocialDefaultLoginSettings Facebook { get; set; } = new();
         public SocialDefaultLoginSettings Amazon { get; set; } = new();
         public SocialLoginWithSecretsSettings GitHub { get; set; } = new();
+        public SocialLoginWithSecretsAndRedirectSettings Linkedin { get; set; } = new();
     }
 }

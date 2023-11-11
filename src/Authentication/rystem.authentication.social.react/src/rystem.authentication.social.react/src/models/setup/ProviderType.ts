@@ -4,5 +4,6 @@
     Microsoft = 2,
     Facebook = 3,
     GitHub = 4,
-    Amazon = 5
+    Amazon = 5,
+    Linkedin = 6
 }

@@ -7,5 +7,7 @@
         public const string GitHubAuthenticationClient = nameof(GitHubAuthenticationClient);
         public const string GitHubAuthenticationClientUser = nameof(GitHubAuthenticationClientUser);
         public const string AmazonAuthenticationClient = nameof(AmazonAuthenticationClient);
+        public const string LinkedinAuthenticationClient = nameof(LinkedinAuthenticationClient);
+        public const string LinkedinAuthenticationClientUser = nameof(LinkedinAuthenticationClientUser);
     }
 }

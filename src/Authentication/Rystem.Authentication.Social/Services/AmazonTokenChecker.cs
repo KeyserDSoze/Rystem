@@ -28,8 +28,7 @@ namespace Rystem.Authentication.Social
             }
             return string.Empty;
         }
-
-        public class AuthenticationResponse
+        private sealed class AuthenticationResponse
         {
             [JsonPropertyName("user_id")]
             public required string UserId { get; set; }

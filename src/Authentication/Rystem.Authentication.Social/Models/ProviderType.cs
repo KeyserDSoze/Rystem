@@ -7,6 +7,7 @@
         Microsoft,
         Facebook,
         GitHub,
-        Amazon
+        Amazon,
+        Linkedin
     }
 }
