@@ -4,7 +4,7 @@ on:
     branches:
       - master
     paths:
-      - src/Authentication/rystem.authentication.social.react/src/rystem.authentication.social.react/
+      - src/Authentication/rystem.authentication.social.react/src/rystem.authentication.social.react/package.json
       - reload.txt
 jobs:
   publish:
