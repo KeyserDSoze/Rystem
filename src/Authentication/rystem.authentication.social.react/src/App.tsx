@@ -14,6 +14,7 @@ setupSocialLogin(x => {
     x.github.indexOrder = 3;
     x.amazon.clientId = "amzn1.application-oa2-client.dffbc466d62c44e49d71ad32f4aecb62"
     x.linkedin.clientId = "77cegp267wifhs";
+    x.x.clientId = "a1VMWE84S0I2ZFZRMmxzSmN3bVE6MTpjaQ";
     x.onLoginFailure = (data) => alert(data.message);
     x.automaticRefresh = true;
 });

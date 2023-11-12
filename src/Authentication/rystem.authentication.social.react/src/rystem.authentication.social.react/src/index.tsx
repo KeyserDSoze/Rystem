@@ -4,6 +4,7 @@ export { getMicrosoftButton } from "./buttons/singles/getMicrosoftButton";
 export { getFacebookButton } from "./buttons/singles/getFacebookButton";
 export { getGitHubButton } from "./buttons/singles/getGitHubButton";
 export { getLinkedinButton } from "./buttons/singles/getLinkedinButton";
+export { getXButton } from "./buttons/singles/getXButton";
 export { SocialLogoutButton } from './buttons/SocialLogoutButton'
 export { SocialLoginWrapper } from './context/SocialLoginWrapper'
 export { SocialLoginContextUpdate, SocialLoginContextRefresh, SocialLoginContextLogout } from './context/SocialLoginContext'

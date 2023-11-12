@@ -12,6 +12,9 @@ builder.Services.AddSocialLogin(x =>
     x.Linkedin.ClientId = builder.Configuration["SocialLogin:Linkedin:ClientId"];
     x.Linkedin.ClientSecret = builder.Configuration["SocialLogin:Linkedin:ClientSecret"];
     x.Linkedin.RedirectDomain = builder.Configuration["SocialLogin:Linkedin:RedirectDomain"];
+    x.X.ClientId = builder.Configuration["SocialLogin:X:ClientId"];
+    x.X.ClientSecret = builder.Configuration["SocialLogin:X:ClientSecret"];
+    x.X.RedirectDomain = builder.Configuration["SocialLogin:X:RedirectDomain"];
 },
 x =>
 {

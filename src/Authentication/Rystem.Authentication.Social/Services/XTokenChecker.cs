@@ -1,0 +1,75 @@
+﻿using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace Rystem.Authentication.Social
+{
+    internal sealed class XTokenChecker : ITokenChecker
+    {
+        private const string GetMessage = "client_id={0}&redirect_uri={1}/account/login&code={2}&grant_type=authorization_code&code_verifier=challenge";
+        private static readonly MediaTypeHeaderValue s_mediaTypeHeaderValue = new("application/x-www-form-urlencoded");
+        private const string TokenUri = "oauth2/token";
+        private const string MeUri = "users/me";
+        private readonly IHttpClientFactory _clientFactory;
+        private readonly SocialLoginBuilder _loginBuilder;
+        public XTokenChecker(IHttpClientFactory clientFactory, SocialLoginBuilder loginBuilder)
+        {
+            _clientFactory = clientFactory;
+            _loginBuilder = loginBuilder;
+        }
+        private const string Bearer = nameof(Bearer);
+        private const string Basic = nameof(Basic);
+        public async Task<string> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
+        {
+            var settings = _loginBuilder.X;
+            var client = _clientFactory.CreateClient(Constants.XAuthenticationClient);
+            var content = new StringContent(string.Format(GetMessage, settings.ClientId, settings.RedirectDomain, code), s_mediaTypeHeaderValue);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(Basic, $"{settings.ClientId}:{settings.ClientSecret}".ToBase64());
+            var response = await client.PostAsync(TokenUri, content, cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var message = await response.Content.ReadAsStringAsync();
+                if (message != null)
+                {
+                    var authResponse = message.FromJson<AuthenticationResponse>();
+                    client = _clientFactory.CreateClient(Constants.XAuthenticationClient);
+                    using var requestMessage = new HttpRequestMessage(HttpMethod.Get, MeUri);
+                    requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Bearer, authResponse.AccessToken);
+                    var responseFromUser = await client.SendAsync(requestMessage, cancellationToken);
+                    if (responseFromUser.IsSuccessStatusCode)
+                    {
+                        message = await responseFromUser.Content.ReadAsStringAsync();
+                        var data = message.FromJson<DataResponse>();
+                        return data.Data.Username;
+                    }
+                }
+            }
+            return string.Empty;
+        }
+        private sealed class AuthenticationResponse
+        {
+            [JsonPropertyName("access_token")]
+            public required string AccessToken { get; set; }
+            [JsonPropertyName("token_type")]
+            public required string TokenType { get; set; }
+            [JsonPropertyName("scope")]
+            public required string Scope { get; set; }
+        }
+        private sealed class DataResponse
+        {
+            [JsonPropertyName("data")]
+            public required UserInformation Data { get; set; }
+        }
+        private sealed class UserInformation
+        {
+            [JsonPropertyName("id")]
+            public required string Id { get; set; }
+            [JsonPropertyName("name")]
+            public required string Name { get; set; }
+            [JsonPropertyName("username")]
+            public required string Username { get; set; }
+        }
+    }
+}

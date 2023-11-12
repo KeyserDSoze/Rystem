@@ -12,4 +12,5 @@ export interface SocialLoginSettings {
     github: SocialParameter;
     amazon: SocialParameter;
     linkedin: SocialParameter;
+    x: SocialParameter;
 }

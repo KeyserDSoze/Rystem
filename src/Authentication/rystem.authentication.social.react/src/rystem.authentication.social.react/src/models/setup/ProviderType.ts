@@ -5,5 +5,6 @@
     Facebook = 3,
     GitHub = 4,
     Amazon = 5,
-    Linkedin = 6
+    Linkedin = 6,
+    X = 7
 }

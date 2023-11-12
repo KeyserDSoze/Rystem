@@ -8,6 +8,7 @@
         Facebook,
         GitHub,
         Amazon,
-        Linkedin
+        Linkedin,
+        X
     }
 }

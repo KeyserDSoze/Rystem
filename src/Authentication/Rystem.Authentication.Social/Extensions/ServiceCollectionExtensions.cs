@@ -18,6 +18,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddFactory<ITokenChecker, GithubTokenChecker>(ProviderType.GitHub.ToString());
             services.AddFactory<ITokenChecker, AmazonTokenChecker>(ProviderType.Amazon.ToString());
             services.AddFactory<ITokenChecker, LinkedinTokenChecker>(ProviderType.Linkedin.ToString());
+            services.AddFactory<ITokenChecker, XTokenChecker>(ProviderType.X.ToString());
             services.AddFactory<ITokenChecker, DotNetTokenChecker>(ProviderType.DotNet.ToString());
             SocialLoginBuilder builder = new();
             settings(builder);
@@ -66,6 +67,13 @@ namespace Microsoft.Extensions.DependencyInjection
                 services.AddHttpClient(Constants.LinkedinAuthenticationClientUser, x =>
                 {
                     x.BaseAddress = new Uri("https://api.linkedin.com/v2/userinfo");
+                });
+            }
+            if (builder.X.IsActive)
+            {
+                services.AddHttpClient(Constants.XAuthenticationClient, x =>
+                {
+                    x.BaseAddress = new Uri("https://api.twitter.com/2/");
                 });
             }
             return services;

@@ -1,8 +1,9 @@
-﻿namespace Rystem.Authentication.Social
+﻿using Google.Apis.Auth.OAuth2;
+
+namespace Rystem.Authentication.Social
 {
     public class SocialLoginWithSecretsAndRedirectSettings : SocialLoginWithSecretsSettings
     {
-        public string? ClientSecret { get; set; }
         public string? RedirectDomain { get; set; }
         public override bool IsActive => ClientId != null && ClientSecret != null && RedirectDomain != null;
     }

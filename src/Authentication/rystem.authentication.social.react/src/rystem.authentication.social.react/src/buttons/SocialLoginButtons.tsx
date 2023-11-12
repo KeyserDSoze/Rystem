@@ -1,4 +1,4 @@
-import { getSocialLoginSettings, getAmazonButton, getGoogleButton, getMicrosoftButton, getFacebookButton, getGitHubButton, getLinkedinButton, SocialButtonValue } from "..";
+import { getSocialLoginSettings, getAmazonButton, getGoogleButton, getMicrosoftButton, getFacebookButton, getGitHubButton, getLinkedinButton, getXButton, SocialButtonValue } from "..";
 
 const getButtons = new Array<() => SocialButtonValue>;
 getButtons.push(getGoogleButton);
@@ -7,6 +7,7 @@ getButtons.push(getFacebookButton);
 getButtons.push(getGitHubButton);
 getButtons.push(getAmazonButton);
 getButtons.push(getLinkedinButton);
+getButtons.push(getXButton);
 
 export const SocialLoginButtons = () => {
     const settings = getSocialLoginSettings();
