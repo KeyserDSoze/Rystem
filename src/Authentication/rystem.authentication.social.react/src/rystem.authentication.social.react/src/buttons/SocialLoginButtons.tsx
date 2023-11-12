@@ -1,22 +1,22 @@
-import { getSocialLoginSettings, getAmazonButton, getGoogleButton, getMicrosoftButton, getFacebookButton, getGitHubButton, getLinkedinButton, getXButton, SocialButtonValue } from "..";
+import { getSocialLoginSettings, AmazonButton, GoogleButton, MicrosoftButton, FacebookButton, GitHubButton, LinkedinButton, XButton, PinterestButton, InstagramButton, SocialButtonsProps } from "..";
 
-const getButtons = new Array<() => SocialButtonValue>;
-getButtons.push(getGoogleButton);
-getButtons.push(getMicrosoftButton);
-getButtons.push(getFacebookButton);
-getButtons.push(getGitHubButton);
-getButtons.push(getAmazonButton);
-getButtons.push(getLinkedinButton);
-getButtons.push(getXButton);
+const defaulButtons = [
+    GoogleButton,
+    MicrosoftButton,
+    FacebookButton,
+    LinkedinButton,
+    GitHubButton,
+    AmazonButton,
+    XButton,
+    InstagramButton,
+    PinterestButton];
 
-export const SocialLoginButtons = () => {
+export const SocialLoginButtons = ({ className = '', buttons }: SocialButtonsProps) => {
     const settings = getSocialLoginSettings();
     return (
         <>
             {settings.title != null && <h1 className="title">{settings.title}</h1>}
-            {getButtons
-                .sort((x1, x2) => x1().position - x2().position)
-                .map(value => value().element)}
+            {(buttons ?? defaulButtons).map(value => value({ className }))}
         </>
     );
 }

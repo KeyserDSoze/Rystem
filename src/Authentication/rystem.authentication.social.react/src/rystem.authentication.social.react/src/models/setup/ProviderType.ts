@@ -6,5 +6,7 @@
     GitHub = 4,
     Amazon = 5,
     Linkedin = 6,
-    X = 7
+    X = 7,
+    Instagram = 8,
+    Pinterest = 9
 }

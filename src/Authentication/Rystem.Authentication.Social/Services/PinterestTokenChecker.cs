@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 namespace Rystem.Authentication.Social
 {
-    internal sealed class XTokenChecker : ITokenChecker
+    internal sealed class PinterestTokenChecker : ITokenChecker
     {
         private const string PostMessage = "client_id={0}&redirect_uri={1}/account/login&code={2}&grant_type=authorization_code&code_verifier=challenge";
         private static readonly MediaTypeHeaderValue s_mediaTypeHeaderValue = new("application/x-www-form-urlencoded");
@@ -13,7 +13,7 @@ namespace Rystem.Authentication.Social
         private const string MeUri = "users/me";
         private readonly IHttpClientFactory _clientFactory;
         private readonly SocialLoginBuilder _loginBuilder;
-        public XTokenChecker(IHttpClientFactory clientFactory, SocialLoginBuilder loginBuilder)
+        public PinterestTokenChecker(IHttpClientFactory clientFactory, SocialLoginBuilder loginBuilder)
         {
             _clientFactory = clientFactory;
             _loginBuilder = loginBuilder;

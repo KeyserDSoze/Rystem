@@ -19,6 +19,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddFactory<ITokenChecker, AmazonTokenChecker>(ProviderType.Amazon.ToString());
             services.AddFactory<ITokenChecker, LinkedinTokenChecker>(ProviderType.Linkedin.ToString());
             services.AddFactory<ITokenChecker, XTokenChecker>(ProviderType.X.ToString());
+            services.AddFactory<ITokenChecker, InstagreamTokenChecker>(ProviderType.X.ToString());
             services.AddFactory<ITokenChecker, DotNetTokenChecker>(ProviderType.DotNet.ToString());
             SocialLoginBuilder builder = new();
             settings(builder);
@@ -74,6 +75,17 @@ namespace Microsoft.Extensions.DependencyInjection
                 services.AddHttpClient(Constants.XAuthenticationClient, x =>
                 {
                     x.BaseAddress = new Uri("https://api.twitter.com/2/");
+                });
+            }
+            if (builder.Instagram.IsActive)
+            {
+                services.AddHttpClient(Constants.InstagramAuthenticationClient, x =>
+                {
+                    x.BaseAddress = new Uri("https://api.instagram.com/oauth/access_token");
+                });
+                services.AddHttpClient(Constants.InstagramAuthenticationClientUser, x =>
+                {
+                    x.BaseAddress = new Uri("https://graph.instagram.com/me");
                 });
             }
             return services;

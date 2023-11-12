@@ -13,4 +13,6 @@ export interface SocialLoginSettings {
     amazon: SocialParameter;
     linkedin: SocialParameter;
     x: SocialParameter;
+    instagram: SocialParameter;
+    pinterest: SocialParameter;
 }

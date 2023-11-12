@@ -9,6 +9,7 @@
         GitHub,
         Amazon,
         Linkedin,
-        X
+        X,
+        Instagram
     }
 }

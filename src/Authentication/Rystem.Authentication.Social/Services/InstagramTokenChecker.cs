@@ -5,15 +5,13 @@ using System.Text.Json.Serialization;
 
 namespace Rystem.Authentication.Social
 {
-    internal sealed class XTokenChecker : ITokenChecker
+    internal sealed class InstagreamTokenChecker : ITokenChecker
     {
-        private const string PostMessage = "client_id={0}&redirect_uri={1}/account/login&code={2}&grant_type=authorization_code&code_verifier=challenge";
+        private const string PostMessage = "client_id={0}&client_secret={1}&grant_type=authorization_code&code={2}&redirect_uri={3}/account/login";
         private static readonly MediaTypeHeaderValue s_mediaTypeHeaderValue = new("application/x-www-form-urlencoded");
-        private const string TokenUri = "oauth2/token";
-        private const string MeUri = "users/me";
         private readonly IHttpClientFactory _clientFactory;
         private readonly SocialLoginBuilder _loginBuilder;
-        public XTokenChecker(IHttpClientFactory clientFactory, SocialLoginBuilder loginBuilder)
+        public InstagreamTokenChecker(IHttpClientFactory clientFactory, SocialLoginBuilder loginBuilder)
         {
             _clientFactory = clientFactory;
             _loginBuilder = loginBuilder;
@@ -22,11 +20,10 @@ namespace Rystem.Authentication.Social
         private const string Basic = nameof(Basic);
         public async Task<string> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
         {
-            var settings = _loginBuilder.X;
-            var client = _clientFactory.CreateClient(Constants.XAuthenticationClient);
-            var content = new StringContent(string.Format(PostMessage, settings.ClientId, settings.RedirectDomain, code), s_mediaTypeHeaderValue);
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(Basic, $"{settings.ClientId}:{settings.ClientSecret}".ToBase64());
-            var response = await client.PostAsync(TokenUri, content, cancellationToken);
+            var settings = _loginBuilder.Instagram;
+            var client = _clientFactory.CreateClient(Constants.InstagramAuthenticationClient);
+            var content = new StringContent(string.Format(PostMessage, settings.ClientId, settings.ClientSecret, code, settings.RedirectDomain), s_mediaTypeHeaderValue);
+            var response = await client.PostAsync(string.Empty, content, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {
@@ -34,9 +31,8 @@ namespace Rystem.Authentication.Social
                 if (message != null)
                 {
                     var authResponse = message.FromJson<AuthenticationResponse>();
-                    client = _clientFactory.CreateClient(Constants.XAuthenticationClient);
-                    using var requestMessage = new HttpRequestMessage(HttpMethod.Get, MeUri);
-                    requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Bearer, authResponse.AccessToken);
+                    client = _clientFactory.CreateClient(Constants.InstagramAuthenticationClientUser);
+                    using var requestMessage = new HttpRequestMessage(HttpMethod.Get, $"access_token={authResponse.AccessToken}");
                     var responseFromUser = await client.SendAsync(requestMessage, cancellationToken);
                     if (responseFromUser.IsSuccessStatusCode)
                     {

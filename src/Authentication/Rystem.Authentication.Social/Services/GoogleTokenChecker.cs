@@ -7,7 +7,7 @@ namespace Rystem.Authentication.Social
 {
     internal sealed class GoogleTokenChecker : ITokenChecker
     {
-        private const string GooglePostMessage = "client_id={0}&client_secret={1}&grant_type=authorization_code&code={2}&redirect_uri={3}";
+        private const string PostMessage = "client_id={0}&client_secret={1}&grant_type=authorization_code&code={2}&redirect_uri={3}";
         private static readonly MediaTypeHeaderValue s_mediaTypeHeaderValue = new("application/x-www-form-urlencoded");
         private readonly IHttpClientFactory _clientFactory;
         private readonly SocialLoginBuilder _loginBuilder;
@@ -20,7 +20,7 @@ namespace Rystem.Authentication.Social
         {
             var settings = _loginBuilder.Google;
             var client = _clientFactory.CreateClient(Constants.GoogleAuthenticationClient);
-            var content = new StringContent(string.Format(GooglePostMessage, settings.ClientId, settings.ClientSecret, code, settings.RedirectDomain), s_mediaTypeHeaderValue);
+            var content = new StringContent(string.Format(PostMessage, settings.ClientId, settings.ClientSecret, code, settings.RedirectDomain), s_mediaTypeHeaderValue);
             var response = await client.PostAsync(string.Empty, content);
             if (response.IsSuccessStatusCode)
             {

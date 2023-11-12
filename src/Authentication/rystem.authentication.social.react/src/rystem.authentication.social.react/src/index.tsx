@@ -1,10 +1,12 @@
-export { getAmazonButton } from "./buttons/singles/getAmazonButton";
-export { getGoogleButton } from "./buttons/singles/getGoogleButton";
-export { getMicrosoftButton } from "./buttons/singles/getMicrosoftButton";
-export { getFacebookButton } from "./buttons/singles/getFacebookButton";
-export { getGitHubButton } from "./buttons/singles/getGitHubButton";
-export { getLinkedinButton } from "./buttons/singles/getLinkedinButton";
-export { getXButton } from "./buttons/singles/getXButton";
+export { AmazonButton } from "./buttons/singles/AmazonButton";
+export { GoogleButton } from "./buttons/singles/GoogleButton";
+export { MicrosoftButton } from "./buttons/singles/MicrosoftButton";
+export { FacebookButton } from "./buttons/singles/FacebookButton";
+export { GitHubButton } from "./buttons/singles/GitHubButton";
+export { LinkedinButton } from "./buttons/singles/LinkedinButton";
+export { XButton } from "./buttons/singles/XButton";
+export { InstagramButton } from "./buttons/singles/InstagramButton";
+export { PinterestButton } from "./buttons/singles/PinterestButton";
 export { SocialLogoutButton } from './buttons/SocialLogoutButton'
 export { SocialLoginWrapper } from './context/SocialLoginWrapper'
 export { SocialLoginContextUpdate, SocialLoginContextRefresh, SocialLoginContextLogout } from './context/SocialLoginContext'
@@ -22,5 +24,7 @@ export { setupSocialLogin } from './setup/setupSocialLogin'
 export { SocialLoginManager } from './setup/SocialLoginManager'
 export { ProviderType } from './models/setup/ProviderType'
 export type { SocialLoginErrorResponse } from './models/setup/SocialLoginErrorResponse'
-export type { SocialButtonValue } from "./buttons/SocialButtonValue";
+export { CreateSocialButton } from "./buttons/CreateSocialButton";
 export { SocialLoginButtons } from './buttons/SocialLoginButtons'
+export type { SocialButtonProps } from './models/SocialButtonProps'
+export type { SocialButtonsProps } from "./models/SocialButtonsProps";

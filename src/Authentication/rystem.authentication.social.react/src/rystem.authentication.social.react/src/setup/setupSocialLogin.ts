@@ -14,7 +14,9 @@ export const setupSocialLogin = function (settings: (settings: SocialLoginSettin
         github: { indexOrder: 3 } as SocialParameter,
         amazon: { indexOrder: 4 } as SocialParameter,
         linkedin: { indexOrder: 5 } as SocialParameter,
-        x: { indexOrder: 6 } as SocialParameter
+        x: { indexOrder: 6 } as SocialParameter,
+        instagram: { indexOrder: 7 } as SocialParameter,
+        pinterest: { indexOrder: 8 } as SocialParameter,
     } as SocialLoginSettings;
     settings(parameters);
     return SocialLoginManager.Instance(parameters);

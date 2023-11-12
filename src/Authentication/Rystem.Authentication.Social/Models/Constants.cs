@@ -10,5 +10,7 @@
         public const string LinkedinAuthenticationClient = nameof(LinkedinAuthenticationClient);
         public const string LinkedinAuthenticationClientUser = nameof(LinkedinAuthenticationClientUser);
         public const string XAuthenticationClient = nameof(XAuthenticationClient);
+        public const string InstagramAuthenticationClient = nameof(InstagramAuthenticationClient);
+        public const string InstagramAuthenticationClientUser = nameof(InstagramAuthenticationClientUser);
     }
 }
