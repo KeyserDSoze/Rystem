@@ -1,4 +1,5 @@
-﻿using System.Security.Claims;
+﻿using System.Runtime.CompilerServices;
+using System.Security.Claims;
 
 namespace Rystem.Authentication.Social.TestApi.Services
 {
@@ -6,14 +7,14 @@ namespace Rystem.Authentication.Social.TestApi.Services
     {
         public Task<SocialUser> GetAsync(string username, IEnumerable<Claim> claims, CancellationToken cancellationToken)
         {
-            return Task.FromResult(new SuperSocialUser
+            return Task.FromResult((new SuperSocialUser
             {
                 Username = $"a {username}",
                 Email = username
-            } as SocialUser);
+            } as SocialUser)!);
         }
 
-        public async IAsyncEnumerable<Claim> GetClaimsAsync(string? username, CancellationToken cancellationToken)
+        public async IAsyncEnumerable<Claim> GetClaimsAsync(string? username, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             await Task.CompletedTask;
             yield return new Claim(ClaimTypes.Name, username!);
@@ -22,6 +23,6 @@ namespace Rystem.Authentication.Social.TestApi.Services
     }
     public sealed class SuperSocialUser : SocialUser
     {
-        public string Email { get; set; }
+        public required string Email { get; set; }
     }
 }
