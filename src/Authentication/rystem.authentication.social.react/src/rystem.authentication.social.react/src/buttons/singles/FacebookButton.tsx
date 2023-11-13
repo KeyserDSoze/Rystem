@@ -6,7 +6,7 @@ const _window: any = window;
 
 export const FacebookButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();
-    if (settings.amazon.clientId) {
+    if (settings.facebook.clientId) {
         const redirectUri = `${settings.redirectDomain}/account/login`;
         const scope = "email,public_profile";
         const return_scopes = true;

@@ -1,28 +1,22 @@
-﻿import { ProviderType, SocialLoginManager, getSocialLoginSettings } from "../..";
-import { LoginSocialInstagram } from 'reactjs-social-login';
+﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
 import { InstagramLoginButton } from 'react-social-login-buttons';
 
-export const InstagramButton = (): JSX.Element => {
+export const InstagramButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();
-    const redirectUri = `${settings.redirectDomain}/account/login`;
-    return (
-        <div key="x">
-            {settings.instagram.clientId != null &&
-                <LoginSocialInstagram
-                    client_id={settings.instagram.clientId}
-                    scope="user_profile,user_media"
-                    redirect_uri={redirectUri}
-                    onResolve={(x: any) => {
-                        SocialLoginManager.Instance(null).updateToken(ProviderType.Instagram, x.data?.code);
-                    }}
-                    onReject={() => {
-                        settings.onLoginFailure({ code: 3, message: "error clicking social button.", provider: ProviderType.Instagram });
-                    }}
-                    isOnlyGetToken={true}
-                    isOnlyGetCode={true}
-                >
-                    <InstagramLoginButton />
-                </LoginSocialInstagram>}
-        </div>
-    );
+    if (settings.instagram.clientId) {
+        const redirectUri = `${settings.redirectDomain}/account/login`;
+        const oauthUrl = `https://api.instagram.com/oauth/authorize?response_type=code&client_id=${settings.instagram.clientId}&scope=user_profile,user_media&state=${ProviderType.Instagram}&redirect_uri=${redirectUri}`;
+        return (
+            <CreateSocialButton
+                key="i"
+                provider={ProviderType.Instagram}
+                redirect_uri={oauthUrl}
+                className={className}
+            >
+                <InstagramLoginButton />
+            </CreateSocialButton>
+        );
+    } else {
+        return (<></>);
+    }
 };

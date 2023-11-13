@@ -1,27 +1,30 @@
-﻿import { ProviderType, SocialLoginManager, getSocialLoginSettings } from "../..";
-import { LoginSocialMicrosoft } from 'reactjs-social-login';
+﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
 import { MicrosoftLoginButton } from 'react-social-login-buttons';
 
-export const MicrosoftButton = (): JSX.Element => {
+export const MicrosoftButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();
-    const redirectUri = `${settings.redirectDomain}/account/login`;
-    return (
-        <div key="m">
-            {settings.microsoft.clientId &&
-                <LoginSocialMicrosoft
-                    client_id={settings.microsoft.clientId}
-                    tenant="consumers"
-                    redirect_uri={redirectUri}
-                    onResolve={(x: any) => {
-                        SocialLoginManager.Instance(null).updateToken(ProviderType.Microsoft, x.data?.id_token);
-                    }}
-                    onReject={() => {
-                        settings.onLoginFailure({ code: 3, message: "error clicking social button.", provider: ProviderType.Microsoft });
-                    }}
-                    isOnlyGetToken={true}
-                >
-                    <MicrosoftLoginButton />
-                </LoginSocialMicrosoft>}
-        </div>
-    );
+    if (settings.microsoft.clientId) {
+        const redirectUri = `${settings.redirectDomain}/account/login`;
+        const oauthUrl = `https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?client_id=${settings.microsoft.clientId}
+                &response_type=code
+                &redirect_uri=${redirectUri}
+                &response_mode=query
+                &scope=profile%20openid%20email
+                &state=${ProviderType.Microsoft}
+                &prompt=select_account
+                &code_challenge=19cfc47c216dacba8ca23eeee817603e2ba34fe0976378662ba31688ed302fa9
+                &code_challenge_method=plain`;
+        return (
+            <CreateSocialButton
+                key="m"
+                provider={ProviderType.Microsoft}
+                redirect_uri={oauthUrl}
+                className={className}
+            >
+                <MicrosoftLoginButton />
+            </CreateSocialButton>
+        );
+    } else {
+        return (<></>);
+    }
 };

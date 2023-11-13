@@ -7,12 +7,13 @@ interface Props {
     redirect_uri: string;
     children?: React.ReactNode;
     queryCode?: string;
+    queryState?: string;
     scriptUri?: string;
     onScriptLoad?: () => void;
     onClick?: (handleResponse: (code: string) => void, handleError: (error: string) => void) => void;
 }
 
-const social_code = "social_code";
+const social_code_base = "social_code";
 
 export const CreateSocialButton = ({
     provider,
@@ -20,15 +21,22 @@ export const CreateSocialButton = ({
     redirect_uri,
     children,
     queryCode = 'code',
+    queryState = 'state',
     scriptUri,
     onScriptLoad,
     onClick
 }: Props) => {
     const settings = getSocialLoginSettings();
+    const social_code = `${social_code_base}_${provider}`;
+    useEffect(() => {
+        localStorage
+            .removeItem(social_code);
+    }, []);
     useEffect(() => {
         const popupWindowURL = new URL(window.location.href);
         const code = popupWindowURL.searchParams.get(queryCode);
-        if (code) {
+        const state = popupWindowURL.searchParams.get(queryState);
+        if (code && state && parseInt(state) == provider) {
             localStorage.setItem(social_code, code);
             window.close();
         }
@@ -43,7 +51,8 @@ export const CreateSocialButton = ({
 
     useEffect(
         () => () => {
-            if (scriptNodeRef.current) scriptNodeRef.current.remove();
+            if (scriptNodeRef.current)
+                scriptNodeRef.current.remove();
         },
         [],
     );
@@ -65,6 +74,7 @@ export const CreateSocialButton = ({
             sdkScriptTag.src = jsSrc;
             sdkScriptTag.async = true;
             sdkScriptTag.defer = true;
+            sdkScriptTag.crossorigin = "anonymous";
             const scriptNode = document.getElementsByTagName('script')![0];
             scriptNodeRef.current = sdkScriptTag;
             scriptNode &&

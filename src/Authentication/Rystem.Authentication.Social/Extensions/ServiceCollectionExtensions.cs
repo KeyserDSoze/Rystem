@@ -19,7 +19,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddFactory<ITokenChecker, AmazonTokenChecker>(ProviderType.Amazon.ToString());
             services.AddFactory<ITokenChecker, LinkedinTokenChecker>(ProviderType.Linkedin.ToString());
             services.AddFactory<ITokenChecker, XTokenChecker>(ProviderType.X.ToString());
-            services.AddFactory<ITokenChecker, InstagreamTokenChecker>(ProviderType.X.ToString());
+            services.AddFactory<ITokenChecker, InstagreamTokenChecker>(ProviderType.Instagram.ToString());
             services.AddFactory<ITokenChecker, DotNetTokenChecker>(ProviderType.DotNet.ToString());
             SocialLoginBuilder builder = new();
             settings(builder);
@@ -29,6 +29,18 @@ namespace Microsoft.Extensions.DependencyInjection
                 services.AddHttpClient(Constants.GoogleAuthenticationClient, x =>
                 {
                     x.BaseAddress = new Uri("https://oauth2.googleapis.com/token");
+                });
+            }
+            if (builder.Microsoft.IsActive)
+            {
+                services.AddHttpClient(Constants.MicrosoftAuthenticationClient, x =>
+                {
+                    x.BaseAddress = new Uri("https://login.microsoftonline.com/consumers/oauth2/v2.0/token");
+                    x.DefaultRequestHeaders.Add("Origin", builder.Microsoft.RedirectDomain);
+                });
+                services.AddHttpClient(Constants.MicrosoftAuthenticationClientUser, x =>
+                {
+                    x.BaseAddress = new Uri("https://graph.microsoft.com/v1.0/me");
                 });
             }
             if (builder.Facebook.IsActive)

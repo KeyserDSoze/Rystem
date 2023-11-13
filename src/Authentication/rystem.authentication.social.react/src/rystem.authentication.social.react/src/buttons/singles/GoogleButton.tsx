@@ -1,28 +1,51 @@
-﻿import { ProviderType, SocialLoginManager, getSocialLoginSettings } from "../..";
-import { LoginSocialGoogle } from 'reactjs-social-login';
+﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
 import { GoogleLoginButton } from 'react-social-login-buttons';
 
-export const GoogleButton = (): JSX.Element => {
+const SDK_URL: string = "https://accounts.google.com/gsi/client";
+const _window = window as any;
+
+export const GoogleButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();
-    const redirectUri = `${settings.redirectDomain}/account/login`;
-    return (
-        <div key="g">
-            {settings.google.clientId != null &&
-                <LoginSocialGoogle
-                    client_id={settings.google.clientId}
-                    redirect_uri={redirectUri}
-                    scope="openid profile email"
-                    discoveryDocs="claims_supported"
-                    access_type="offline"
-                    isOnlyGetToken={true}
-                    onResolve={(x: any) => {
-                        SocialLoginManager.Instance(null).updateToken(ProviderType.Google, x.data?.code);
-                    }}
-                    onReject={() => {
-                        settings.onLoginFailure({ code: 3, message: "error clicking social button.", provider: ProviderType.Google });
-                    }}>
-                    <GoogleLoginButton />
-                </LoginSocialGoogle>}
-        </div>
-    );
+    if (settings.google.clientId) {
+        const redirectUri = `${settings.redirectDomain}/account/login`;
+        const onClick = (handleResponse: (code: string) => void, handleError: (message: string) => void) => {
+            const params = {
+                client_id: settings.google.clientId,
+                ux_mode: "",
+            };
+            var client: any = null!;
+            const payload = {
+                ...params,
+                scope: "openid profile email",
+                prompt: "select_account",
+                login_hint: "",
+                access_type: "offline",
+                hosted_domain: "",
+                redirect_uri: redirectUri,
+                cookie_policy: "single_host_origin",
+                discoveryDocs: "",
+                immediate: true,
+                fetch_basic_profile: true,
+                callback: (x: any) => handleResponse(x.code),
+                error_callback: (x: any) => handleError(x),
+            };
+            client = _window.google.accounts.oauth2.initCodeClient(payload);
+            if (client != null)
+                client.requestCode();
+        }
+        return (
+            <CreateSocialButton key="g"
+                provider={ProviderType.Google}
+                className={className}
+                redirect_uri={""}
+                scriptUri={SDK_URL}
+                onClick={onClick}
+            >
+                <GoogleLoginButton />
+            </CreateSocialButton>
+        );
+    }
+    else {
+        return (<></>);
+    }
 };

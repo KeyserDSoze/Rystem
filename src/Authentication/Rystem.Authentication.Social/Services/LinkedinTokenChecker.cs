@@ -6,7 +6,7 @@ namespace Rystem.Authentication.Social
 {
     internal sealed class LinkedinTokenChecker : ITokenChecker
     {
-        private const string GetMessage = "client_id={0}&client_secret={1}&grant_type=authorization_code&code={2}&redirect_uri={3}/account/login";
+        private const string PostMessage = "client_id={0}&client_secret={1}&grant_type=authorization_code&code={2}&redirect_uri={3}/account/login";
         private static readonly MediaTypeHeaderValue s_mediaTypeHeaderValue = new("application/x-www-form-urlencoded");
         private readonly IHttpClientFactory _clientFactory;
         private readonly SocialLoginBuilder _loginBuilder;
@@ -23,7 +23,7 @@ namespace Rystem.Authentication.Social
             {
                 var settings = _loginBuilder.Linkedin;
                 var client = _clientFactory.CreateClient(Constants.LinkedinAuthenticationClient);
-                var content = new StringContent(string.Format(GetMessage, settings.ClientId, settings.ClientSecret, code, settings.RedirectDomain), s_mediaTypeHeaderValue);
+                var content = new StringContent(string.Format(PostMessage, settings.ClientId, settings.ClientSecret, code, settings.RedirectDomain), s_mediaTypeHeaderValue);
                 var response = await client.PostAsync(string.Empty, content, cancellationToken);
                 if (response.IsSuccessStatusCode)
                 {

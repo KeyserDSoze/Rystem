@@ -6,8 +6,7 @@ export const GitHubButton = ({ className = '', }: SocialButtonProps): JSX.Elemen
     const redirectUri = `${settings.redirectDomain}/account/login`;
     if (settings.github.clientId) {
         const scope = "user:email";
-        const state = "_github";
-        const oauthUrl = `https://github.com/login/oauth/authorize?client_id=${settings.github.clientId}&scope=${scope}&state=${state}&redirect_uri=${redirectUri}&allow_signup=true`;
+        const oauthUrl = `https://github.com/login/oauth/authorize?client_id=${settings.github.clientId}&scope=${scope}&state=${ProviderType.GitHub}&redirect_uri=${redirectUri}&allow_signup=true`;
         return (
             <div key="h">
                 <CreateSocialButton

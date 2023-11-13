@@ -3,6 +3,8 @@
     internal static class Constants
     {
         public const string GoogleAuthenticationClient = nameof(GoogleAuthenticationClient);
+        public const string MicrosoftAuthenticationClient = nameof(MicrosoftAuthenticationClient);
+        public const string MicrosoftAuthenticationClientUser = nameof(MicrosoftAuthenticationClientUser);
         public const string FacebookAuthenticationClient = nameof(FacebookAuthenticationClient);
         public const string GitHubAuthenticationClient = nameof(GitHubAuthenticationClient);
         public const string GitHubAuthenticationClientUser = nameof(GitHubAuthenticationClientUser);

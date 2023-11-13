@@ -9,7 +9,8 @@ const defaulButtons = [
     AmazonButton,
     XButton,
     InstagramButton,
-    PinterestButton];
+    PinterestButton
+];
 
 export const SocialLoginButtons = ({ className = '', buttons }: SocialButtonsProps) => {
     const settings = getSocialLoginSettings();
