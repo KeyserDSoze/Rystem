@@ -1,29 +1,26 @@
-﻿import { ProviderType, SocialLoginManager, getSocialLoginSettings } from "../..";
-import { LoginSocialGithub } from 'reactjs-social-login';
+﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
 import { GithubLoginButton } from 'react-social-login-buttons';
 
-export const GitHubButton = (): JSX.Element => {
+export const GitHubButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();
     const redirectUri = `${settings.redirectDomain}/account/login`;
-    return (
-        <div key="h">
-            {settings.github.clientId != null &&
-                <LoginSocialGithub
-                    client_id={settings.github.clientId}
-                    client_secret={""}
-                    scope="user:email"
-                    redirect_uri={redirectUri}
-                    onResolve={(x: any) => {
-                        SocialLoginManager.Instance(null).updateToken(ProviderType.GitHub, x.data?.code);
-                    }}
-                    onReject={() => {
-                        settings.onLoginFailure({ code: 3, message: "error clicking social button.", provider: ProviderType.GitHub });
-                    }}
-                    isOnlyGetToken={true}
-                    isOnlyGetCode={true}
+    if (settings.github.clientId) {
+        const scope = "user:email";
+        const state = "_github";
+        const oauthUrl = `https://github.com/login/oauth/authorize?client_id=${settings.github.clientId}&scope=${scope}&state=${state}&redirect_uri=${redirectUri}&allow_signup=true`;
+        return (
+            <div key="h">
+                <CreateSocialButton
+                    provider={ProviderType.GitHub}
+                    redirect_uri={oauthUrl}
+                    className={className}
                 >
                     <GithubLoginButton />
-                </LoginSocialGithub>}
-        </div>
-    );
+                </CreateSocialButton>
+            </div>
+        );
+    }
+    else {
+        return (<></>);
+    }
 };
