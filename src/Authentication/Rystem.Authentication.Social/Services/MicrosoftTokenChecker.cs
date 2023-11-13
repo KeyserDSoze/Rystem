@@ -102,10 +102,5 @@ namespace Rystem.Authentication.Social
             [JsonPropertyName("id_token")]
             public required string IdToken { get; set; }
         }
-        private sealed class ProfileResponse
-        {
-            [JsonPropertyName("email")]
-            public required string Email { get; set; }
-        }
     }
 }
