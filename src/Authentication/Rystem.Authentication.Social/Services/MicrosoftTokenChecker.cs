@@ -92,7 +92,6 @@ namespace Rystem.Authentication.Social
                     }
                 }
             }
-
             return string.Empty;
         }
         private sealed class AuthenticationResponse
