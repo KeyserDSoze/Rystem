@@ -1,5 +1,4 @@
-﻿import { ProviderType, SocialLoginManager, getSocialLoginSettings } from "../..";
-import { LoginSocialPinterest } from 'reactjs-social-login';
+﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
 import { createButton } from 'react-social-login-buttons';
 
 const config = {
@@ -11,27 +10,26 @@ const config = {
 };
 const PinterestLoginButton = createButton(config);
 
-export const PinterestButton = (): JSX.Element => {
+export const PinterestButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();
-    const redirectUri = `${settings.redirectDomain}/account/login`;
-    return (
-        <div key="p">
-            {settings.pinterest.clientId != null &&
-                <LoginSocialPinterest
-                    client_id={settings.pinterest.clientId}
-                    scope="users.read tweet.read"
-                    redirect_uri={redirectUri}
-                    onResolve={(x: any) => {
-                        SocialLoginManager.Instance(null).updateToken(ProviderType.Pinterest, x.data?.code);
-                    }}
-                    onReject={() => {
-                        settings.onLoginFailure({ code: 3, message: "error clicking social button.", provider: ProviderType.Pinterest });
-                    }}
-                    isOnlyGetToken={true}
-                    isOnlyGetCode={true}
-                >
-                    <PinterestLoginButton />
-                </LoginSocialPinterest>}
-        </div>
-    );
+    if (settings.pinterest.clientId) {
+        const redirectUri = `${settings.redirectDomain}/account/login`;
+        const oauthUrl = `https://www.pinterest.com/oauth/?client_id=${settings.pinterest.clientId}
+            &scope=boards:read,pins:read,user_accounts:read
+            &state=${ProviderType.Pinterest}
+            &redirect_uri=${redirectUri}
+            &response_type=code`;
+        return (
+            <CreateSocialButton
+                key="pi"
+                provider={ProviderType.Pinterest}
+                redirect_uri={oauthUrl}
+                className={className}
+            >
+                <PinterestLoginButton />
+            </CreateSocialButton>
+        );
+    } else {
+        return (<></>);
+    }
 };

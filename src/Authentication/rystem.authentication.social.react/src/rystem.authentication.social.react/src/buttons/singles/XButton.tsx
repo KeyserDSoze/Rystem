@@ -1,28 +1,28 @@
-﻿import { ProviderType, SocialLoginManager, getSocialLoginSettings } from "../..";
-import { LoginSocialTwitter } from 'reactjs-social-login';
+﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
 import { TwitterLoginButton } from 'react-social-login-buttons';
 
-export const XButton = (): JSX.Element => {
+export const XButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();
-    const redirectUri = `${settings.redirectDomain}/account/login`;
-    return (
-        <div key="tr">
-            {settings.x.clientId != null &&
-                <LoginSocialTwitter
-                    client_id={settings.x.clientId}
-                    scope="users.read tweet.read"
-                    redirect_uri={redirectUri}
-                    onResolve={(x: any) => {
-                        SocialLoginManager.Instance(null).updateToken(ProviderType.X, x.data?.code);
-                    }}
-                    onReject={() => {
-                        settings.onLoginFailure({ code: 3, message: "error clicking social button.", provider: ProviderType.X });
-                    }}
-                    isOnlyGetToken={true}
-                    isOnlyGetCode={true}
-                >
-                    <TwitterLoginButton />
-                </LoginSocialTwitter>}
-        </div>
-    );
+    if (settings.x.clientId) {
+        const redirectUri = `${settings.redirectDomain}/account/login`;
+        const oauthUrl = `https://twitter.com/i/oauth2/authorize?response_type=code
+            &client_id=${settings.x.clientId}
+            &redirect_uri=${redirectUri}
+            &scope=users.read%20tweet.read
+            &state=${ProviderType.X}
+            &code_challenge=challenge
+            &code_challenge_method=plain`;
+        return (
+            <CreateSocialButton
+                key="x"
+                provider={ProviderType.X}
+                redirect_uri={oauthUrl}
+                className={className}
+            >
+                <TwitterLoginButton />
+            </CreateSocialButton>
+        );
+    } else {
+        return (<></>);
+    }
 };
