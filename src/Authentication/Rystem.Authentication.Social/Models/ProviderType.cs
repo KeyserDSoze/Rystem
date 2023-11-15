@@ -10,6 +10,8 @@
         Amazon,
         Linkedin,
         X,
-        Instagram
+        Instagram,
+        Pinterest,
+        TikTok
     }
 }

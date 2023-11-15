@@ -17,6 +17,7 @@ export const setupSocialLogin = function (settings: (settings: SocialLoginSettin
         x: {} as SocialParameter,
         instagram: {} as SocialParameter,
         pinterest: {} as SocialParameter,
+        tiktok: {} as SocialParameter,
     } as SocialLoginSettings;
     settings(parameters);
     return SocialLoginManager.Instance(parameters);

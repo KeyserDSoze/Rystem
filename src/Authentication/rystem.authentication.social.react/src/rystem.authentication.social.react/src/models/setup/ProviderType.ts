@@ -8,5 +8,6 @@
     Linkedin = 6,
     X = 7,
     Instagram = 8,
-    Pinterest = 9
+    Pinterest = 9,
+    TikTok = 10
 }

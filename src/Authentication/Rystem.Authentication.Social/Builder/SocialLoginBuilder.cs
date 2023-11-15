@@ -10,5 +10,7 @@
         public SocialLoginWithSecretsAndRedirectSettings Linkedin { get; set; } = new();
         public SocialLoginWithSecretsAndRedirectSettings X { get; set; } = new();
         public SocialLoginWithSecretsAndRedirectSettings Instagram { get; set; } = new();
+        public SocialLoginWithSecretsAndRedirectSettings Pinterest { get; set; } = new();
+        public SocialLoginWithSecretsAndRedirectSettings TikTok { get; set; } = new();
     }
 }

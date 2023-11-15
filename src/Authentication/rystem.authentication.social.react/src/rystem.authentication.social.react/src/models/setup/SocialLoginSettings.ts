@@ -15,4 +15,5 @@ export interface SocialLoginSettings {
     x: SocialParameter;
     instagram: SocialParameter;
     pinterest: SocialParameter;
+    tiktok: SocialParameter;
 }

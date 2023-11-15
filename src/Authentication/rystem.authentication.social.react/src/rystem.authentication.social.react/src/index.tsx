@@ -5,6 +5,7 @@ export { FacebookButton } from "./buttons/singles/FacebookButton";
 export { GitHubButton } from "./buttons/singles/GitHubButton";
 export { LinkedinButton } from "./buttons/singles/LinkedinButton";
 export { XButton } from "./buttons/singles/XButton";
+export { TikTokButton } from "./buttons/singles/TikTokButton";
 export { InstagramButton } from "./buttons/singles/InstagramButton";
 export { PinterestButton } from "./buttons/singles/PinterestButton";
 export { SocialLogoutButton } from './buttons/SocialLogoutButton'

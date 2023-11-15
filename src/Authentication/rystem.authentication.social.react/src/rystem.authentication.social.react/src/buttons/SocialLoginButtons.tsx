@@ -1,4 +1,4 @@
-import { getSocialLoginSettings, AmazonButton, GoogleButton, MicrosoftButton, FacebookButton, GitHubButton, LinkedinButton, XButton, PinterestButton, InstagramButton, SocialButtonsProps } from "..";
+import { getSocialLoginSettings, AmazonButton, GoogleButton, MicrosoftButton, FacebookButton, GitHubButton, LinkedinButton, XButton, TikTokButton, PinterestButton, InstagramButton, SocialButtonsProps } from "..";
 
 const defaulButtons = [
     GoogleButton,
@@ -9,7 +9,8 @@ const defaulButtons = [
     AmazonButton,
     XButton,
     InstagramButton,
-    PinterestButton
+    PinterestButton,
+    TikTokButton
 ];
 
 export const SocialLoginButtons = ({ className = '', buttons }: SocialButtonsProps) => {

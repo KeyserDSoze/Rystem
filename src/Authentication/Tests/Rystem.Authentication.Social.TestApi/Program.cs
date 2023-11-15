@@ -21,6 +21,9 @@ builder.Services.AddSocialLogin(x =>
     x.Instagram.ClientId = builder.Configuration["SocialLogin:Instagram:ClientId"];
     x.Instagram.ClientSecret = builder.Configuration["SocialLogin:Instagram:ClientSecret"];
     x.Instagram.RedirectDomain = builder.Configuration["SocialLogin:Instagram:RedirectDomain"];
+    x.Pinterest.ClientId = builder.Configuration["SocialLogin:Pinterest:ClientId"];
+    x.Pinterest.ClientSecret = builder.Configuration["SocialLogin:Pinterest:ClientSecret"];
+    x.Pinterest.RedirectDomain = builder.Configuration["SocialLogin:Pinterest:RedirectDomain"];
 },
 x =>
 {

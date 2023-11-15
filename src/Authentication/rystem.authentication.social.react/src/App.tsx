@@ -12,6 +12,8 @@ setupSocialLogin(x => {
     x.linkedin.clientId = "77cegp267wifhs";
     x.x.clientId = "a1VMWE84S0I2ZFZRMmxzSmN3bVE6MTpjaQ";
     x.instagram.clientId = "2316623861862040";
+    x.pinterest.clientId = "1492670";
+    x.tiktok.clientId = "aw2jon58in6azihv";
     x.onLoginFailure = (data) => alert(data.message);
     x.automaticRefresh = true;
 });

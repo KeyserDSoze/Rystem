@@ -6,7 +6,7 @@ const config = {
     icon: "pinterest",
     iconFormat: (name: string) => `fa fa-${name}`,
     style: { background: "#E60023" },
-    activeStyle: { background: "#fff" }
+    activeStyle: { background: "#F60023" }
 };
 const PinterestLoginButton = createButton(config);
 

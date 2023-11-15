@@ -1,5 +1,6 @@
 ﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
-import { AmazonLoginButton } from 'react-social-login-buttons';
+import { AmazonLoginButton } from '../graphics/AmazonLoginButton';
+import { NullStyle } from '../graphics/NullStyle';
 
 const SDK_URL = 'https://assets.loginwithamazon.com/sdk/na/login1.js';
 const _window = window as any;
@@ -34,7 +35,7 @@ export const AmazonButton = ({ className = '', }: SocialButtonProps): JSX.Elemen
                 onScriptLoad={() => _window.amazon.Login.setClientId(settings.amazon.clientId)}
                 onClick={onClick}
             >
-                <AmazonLoginButton />
+                <AmazonLoginButton {...NullStyle} />
             </CreateSocialButton>
         );
     }

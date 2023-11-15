@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 namespace Rystem.Authentication.Social
 {
-    internal sealed class PinterestTokenChecker : ITokenChecker
+    internal sealed class TikTokTokenChecker : ITokenChecker
     {
         private const string PostMessage = "code={0}&redirect_uri={1}/account/login&grant_type=authorization_code";
         private static readonly MediaTypeHeaderValue s_mediaTypeHeaderValue = new("application/x-www-form-urlencoded");
@@ -13,7 +13,7 @@ namespace Rystem.Authentication.Social
         private const string MeUri = "/user_account";
         private readonly IHttpClientFactory _clientFactory;
         private readonly SocialLoginBuilder _loginBuilder;
-        public PinterestTokenChecker(IHttpClientFactory clientFactory, SocialLoginBuilder loginBuilder)
+        public TikTokTokenChecker(IHttpClientFactory clientFactory, SocialLoginBuilder loginBuilder)
         {
             _clientFactory = clientFactory;
             _loginBuilder = loginBuilder;
@@ -31,7 +31,7 @@ namespace Rystem.Authentication.Social
             if (!string.IsNullOrWhiteSpace(code))
             {
                 var settings = _loginBuilder.Pinterest;
-                var client = _clientFactory.CreateClient(Constants.PinterestAuthenticationClient);
+                var client = _clientFactory.CreateClient(Constants.TikTokAuthenticationClient);
                 var content = new StringContent(string.Format(PostMessage, code, settings.RedirectDomain), s_mediaTypeHeaderValue);
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(Basic, Btoa($"{settings.ClientId}:{settings.ClientSecret}"));
                 var response = await client.PostAsync(TokenUri, content, cancellationToken);
@@ -42,7 +42,7 @@ namespace Rystem.Authentication.Social
                     if (message != null)
                     {
                         var authResponse = message.FromJson<AuthenticationResponse>();
-                        client = _clientFactory.CreateClient(Constants.PinterestAuthenticationClient);
+                        client = _clientFactory.CreateClient(Constants.TikTokAuthenticationClient);
                         using var requestMessage = new HttpRequestMessage(HttpMethod.Get, MeUri);
                         requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Bearer, authResponse.AccessToken);
                         var responseFromUser = await client.SendAsync(requestMessage, cancellationToken);

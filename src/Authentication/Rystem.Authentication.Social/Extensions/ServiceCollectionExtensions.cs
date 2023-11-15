@@ -20,6 +20,8 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddFactory<ITokenChecker, LinkedinTokenChecker>(ProviderType.Linkedin.ToString());
             services.AddFactory<ITokenChecker, XTokenChecker>(ProviderType.X.ToString());
             services.AddFactory<ITokenChecker, InstagreamTokenChecker>(ProviderType.Instagram.ToString());
+            services.AddFactory<ITokenChecker, PinterestTokenChecker>(ProviderType.Pinterest.ToString());
+            services.AddFactory<ITokenChecker, TikTokTokenChecker>(ProviderType.TikTok.ToString());
             services.AddFactory<ITokenChecker, DotNetTokenChecker>(ProviderType.DotNet.ToString());
             SocialLoginBuilder builder = new();
             settings(builder);
@@ -37,10 +39,6 @@ namespace Microsoft.Extensions.DependencyInjection
                 {
                     x.BaseAddress = new Uri("https://login.microsoftonline.com/consumers/oauth2/v2.0/token");
                     x.DefaultRequestHeaders.Add("Origin", builder.Microsoft.RedirectDomain);
-                });
-                services.AddHttpClient(Constants.MicrosoftAuthenticationClientUser, x =>
-                {
-                    x.BaseAddress = new Uri("https://graph.microsoft.com/v1.0/me");
                 });
             }
             if (builder.Facebook.IsActive)
@@ -98,6 +96,20 @@ namespace Microsoft.Extensions.DependencyInjection
                 services.AddHttpClient(Constants.InstagramAuthenticationClientUser, x =>
                 {
                     x.BaseAddress = new Uri("https://graph.instagram.com/me");
+                });
+            }
+            if (builder.Pinterest.IsActive)
+            {
+                services.AddHttpClient(Constants.PinterestAuthenticationClient, x =>
+                {
+                    x.BaseAddress = new Uri("https://api.pinterest.com/v5");
+                });
+            }
+            if (builder.TikTok.IsActive)
+            {
+                services.AddHttpClient(Constants.TikTokAuthenticationClient, x =>
+                {
+                    x.BaseAddress = new Uri("https://open.tiktokapis.com/v2/");
                 });
             }
             return services;
