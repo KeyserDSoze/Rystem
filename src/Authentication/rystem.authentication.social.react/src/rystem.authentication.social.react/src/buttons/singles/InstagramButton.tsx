@@ -1,5 +1,5 @@
 ﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
-import { InstagramLoginButton } from 'react-social-login-buttons';
+import { InstagramLoginButton } from "../graphics/InstagramLoginButton";
 
 export const InstagramButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();

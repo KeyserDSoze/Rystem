@@ -1,14 +1,5 @@
 ﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
-import { createButton } from 'react-social-login-buttons';
-
-const config = {
-    text: "Log in with TikTok",
-    icon: "TikTok",
-    iconFormat: (name: string) => `fa fa-${name}`,
-    style: { background: "#000" },
-    activeStyle: { background: "#666" }
-};
-const TikTokLoginButton = createButton(config);
+import { TikTokLoginButton } from "../graphics/TikTokLoginButton";
 
 export const TikTokButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();

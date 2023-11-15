@@ -1,5 +1,5 @@
 ﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
-import { GithubLoginButton } from 'react-social-login-buttons';
+import { GitHubLoginButton } from "../graphics/GithubLoginButton";
 
 export const GitHubButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();
@@ -14,7 +14,7 @@ export const GitHubButton = ({ className = '', }: SocialButtonProps): JSX.Elemen
                     redirect_uri={oauthUrl}
                     className={className}
                 >
-                    <GithubLoginButton />
+                    <GitHubLoginButton />
                 </CreateSocialButton>
             </div>
         );

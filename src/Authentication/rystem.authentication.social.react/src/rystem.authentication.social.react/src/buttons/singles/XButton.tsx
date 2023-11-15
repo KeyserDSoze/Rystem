@@ -1,5 +1,5 @@
 ﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
-import { TwitterLoginButton } from 'react-social-login-buttons';
+import { XLoginButton } from "../graphics/XLoginButton";
 
 export const XButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();
@@ -19,7 +19,7 @@ export const XButton = ({ className = '', }: SocialButtonProps): JSX.Element => 
                 redirect_uri={oauthUrl}
                 className={className}
             >
-                <TwitterLoginButton />
+                <XLoginButton />
             </CreateSocialButton>
         );
     } else {

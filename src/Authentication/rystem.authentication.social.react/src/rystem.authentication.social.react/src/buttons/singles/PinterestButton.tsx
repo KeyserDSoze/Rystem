@@ -1,14 +1,5 @@
 ﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
-import { createButton } from 'react-social-login-buttons';
-
-const config = {
-    text: "Log in with Pinterest",
-    icon: "pinterest",
-    iconFormat: (name: string) => `fa fa-${name}`,
-    style: { background: "#E60023" },
-    activeStyle: { background: "#F60023" }
-};
-const PinterestLoginButton = createButton(config);
+import { PinterestLoginButton } from "../graphics/PinterestLoginButton";
 
 export const PinterestButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();

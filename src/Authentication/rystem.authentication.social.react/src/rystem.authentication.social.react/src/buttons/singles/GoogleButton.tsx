@@ -1,5 +1,5 @@
 ﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
-import { GoogleLoginButton } from 'react-social-login-buttons';
+import { GoogleLoginButton } from "../graphics/GoogleLoginButton";
 
 const SDK_URL: string = "https://accounts.google.com/gsi/client";
 const _window = window as any;

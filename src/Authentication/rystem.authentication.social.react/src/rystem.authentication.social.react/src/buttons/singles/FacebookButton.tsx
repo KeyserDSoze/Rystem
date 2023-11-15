@@ -1,5 +1,5 @@
 ﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
-import { FacebookLoginButton } from 'react-social-login-buttons';
+import { FacebookLoginButton } from "../graphics/FacebookLoginButton";
 
 const SDK_URL: string = 'https://connect.facebook.net/en_EN/sdk.js';
 const _window: any = window;

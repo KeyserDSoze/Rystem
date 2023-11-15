@@ -34,7 +34,6 @@ const styles = {
             background: config.background,
             cursor: 'pointer',
             fontSize: '1.2em',
-            fontWeight: "bolder",
             margin: '5px',
             width: 'calc(100% - 10px)',
             overflow: 'hidden',
@@ -58,6 +57,7 @@ const styles = {
         float: "left",
         width: "85%",
         textAlign: "left",
-        marginLeft: "5%"
+        marginLeft: "5%",
+        marginTop: "3px"
     }
 } as socialStyles;

@@ -1,5 +1,5 @@
 ﻿import { ProviderType, SocialButtonProps, getSocialLoginSettings, CreateSocialButton } from "../..";
-import { LinkedInLoginButton } from 'react-social-login-buttons';
+import { LinkedInLoginButton } from "../graphics/LinkedInLoginButton";
 
 export const LinkedinButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();
