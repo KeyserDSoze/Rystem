@@ -1,6 +1,6 @@
 {
   "name": "rystem.authentication.social.react",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "author": "Alessandro Rapiti <alessandro.rapiti44@gmail.com>",
   "license": "MIT",
   "description": "It can simplify the integration with social identities and .Net.",

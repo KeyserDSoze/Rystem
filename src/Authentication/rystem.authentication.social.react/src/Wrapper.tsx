@@ -1,6 +1,20 @@
 import { useContext, useState } from "react";
 import reactLogo from './assets/react.svg'
 import { SocialLoginButtons, SocialLoginContextLogout, SocialLoginContextRefresh, SocialLogoutButton, useSocialToken, useSocialUser } from "./rystem.authentication.social.react/src/index";
+import { AmazonButton, GoogleButton, MicrosoftButton, FacebookButton, GitHubButton, LinkedinButton, XButton, TikTokButton, PinterestButton, InstagramButton } from "./rystem.authentication.social.react/src/index";
+
+const newOrderButtons = [
+    MicrosoftButton,
+    GoogleButton,
+    LinkedinButton,
+    FacebookButton,
+    AmazonButton,
+    GitHubButton,
+    XButton,
+    TikTokButton,
+    InstagramButton,
+    PinterestButton
+];
 
 export const Wrapper = () => {
     const token = useSocialToken();
@@ -27,7 +41,7 @@ export const Wrapper = () => {
             <p className="read-the-docs">
                 Click on the Vite and React logos to learn more
             </p>
-            {token.isExpired && <SocialLoginButtons></SocialLoginButtons>}
+            {token.isExpired && <SocialLoginButtons buttons={newOrderButtons}></SocialLoginButtons>}
             {!token.isExpired && <div>{token.accessToken}</div>}
             {user.isAuthenticated && <div>{user.username}</div>}
             <button onClick={() => forceRefresh()}>force refresh</button>

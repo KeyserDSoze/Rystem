@@ -12,13 +12,9 @@ import { SocialLoginWrapper, setupSocialLogin } from 'rystem.authentication.soci
 setupSocialLogin(x => {
     x.apiUri = "https://localhost:7017";
     x.google.clientId = "23769141170-lfs24avv5qrj00m4cbmrm202c0fc6gcg.apps.googleusercontent.com";
-    x.google.indexOrder = 1;
     x.microsoft.clientId = "0b90db07-be9f-4b29-b673-9e8ee9265927";
-    x.microsoft.indexOrder = 0;
     x.facebook.clientId = "345885718092912";
-    x.facebook.indexOrder = 2;
     x.github.clientId = "97154d062f2bb5d28620"
-    x.github.indexOrder = 3;
     x.amazon.clientId = "amzn1.application-oa2-client.dffbc466d62c44e49d71ad32f4aecb62"
     x.onLoginFailure = (data) => alert(data.message); //set the callback for error during request.
     x.automaticRefresh = true; //this one help to autorefresh the token if expired during getting it.
@@ -75,12 +71,24 @@ const logout = useContext(SocialLoginContextLogout);
 
 
 ### Example
-For example the Wrapper component could be so
+For example the Wrapper component could be so, in this example you may find the way to change the login buttons order too.
 
 ```
-import { useContext, useState } from "react";
-import reactLogo from './assets/react.svg'
 import { SocialLoginButtons, SocialLoginContextLogout, SocialLoginContextRefresh, SocialLogoutButton, useSocialToken, useSocialUser } from "rystem.authentication.social.react";
+import { AmazonButton, GoogleButton, MicrosoftButton, FacebookButton, GitHubButton, LinkedinButton, XButton, TikTokButton, PinterestButton, InstagramButton } from "rystem.authentication.social.react";
+
+const newOrderButtons = [
+    MicrosoftButton,
+    GoogleButton,
+    LinkedinButton,
+    FacebookButton,
+    AmazonButton,
+    GitHubButton,
+    XButton,
+    TikTokButton,
+    InstagramButton,
+    PinterestButton
+];
 
 export const Wrapper = () => {
     const token = useSocialToken();
@@ -90,24 +98,7 @@ export const Wrapper = () => {
     const logout = useContext(SocialLoginContextLogout);
     return (
         <>
-            <div>
-                <a href="https://react.dev" target="_blank">
-                    <img src={reactLogo} className="logo react" alt="React logo" />
-                </a>
-            </div>
-            <h1>Vite + React</h1>
-            <div className="card">
-                <button onClick={() => setCount((count) => count + 1)}>
-                    count is {count}
-                </button>
-                <p>
-                    Edit <code>src/App.tsx</code> and save to test HMR
-                </p>
-            </div>
-            <p className="read-the-docs">
-                Click on the Vite and React logos to learn more
-            </p>
-            {token.isExpired && <SocialLoginButtons></SocialLoginButtons>}
+            {token.isExpired && <SocialLoginButtons buttons={newOrderButtons}></SocialLoginButtons>}
             {!token.isExpired && <div>{token.accessToken}</div>}
             {user.isAuthenticated && <div>{user.username}</div>}
             <button onClick={() => forceRefresh()}>force refresh</button>
