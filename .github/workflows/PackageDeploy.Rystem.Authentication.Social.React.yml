@@ -19,12 +19,12 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: '14.x'
+          node-version: '16.x'
           registry-url: 'https://registry.npmjs.org'
       - run: npm install -g typescript
       - run: tsc --build --clean
       - run: npm install
-      - run: npm run build --if-present
+      - run: tsc
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
