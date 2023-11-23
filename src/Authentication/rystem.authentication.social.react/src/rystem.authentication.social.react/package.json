@@ -6,11 +6,11 @@
   "description": "It can simplify the integration with social identities and .Net.",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
-  "dependencies": {
-  },
   "devDependencies": {
-    "react": "^18.2.0",
-    "react-scripts": "^5.0.1"
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@typescript-eslint/parser": "^6.0.0",
+    "typescript": "^5.0.2"
   },
   "files": [
     "lib/"
