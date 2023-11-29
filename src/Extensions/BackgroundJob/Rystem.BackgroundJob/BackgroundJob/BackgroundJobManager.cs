@@ -22,16 +22,16 @@ namespace System.Timers
             return _lockService
                 .ExecuteAsync(async () =>
                 {
-                    if (Actions.ContainsKey(key))
+                    if (Actions.TryGetValue(key, out var action))
                     {
-                        Actions[key].Stop();
+                        action.Stop();
                         Actions.TryRemove(key, out _);
                     }
                     if (options.RunImmediately)
                     {
                         try
                         {
-                            await job.ActionToDoAsync().NoContext();
+                            await job.ActionToDoAsync(cancellationToken).NoContext();
                         }
                         catch (Exception ex)
                         {
@@ -59,21 +59,23 @@ namespace System.Timers
                             job = factory?.Invoke() ?? job;
                             nextTimeTimer.Stop();
                             Actions.TryRemove(key, out _);
-                            if (!(cancellationToken != default && cancellationToken.IsCancellationRequested))
+                            if (cancellationToken != default && cancellationToken.IsCancellationRequested)
                             {
-                                if (runAction)
-                                {
-                                    try
-                                    {
-                                        await job.ActionToDoAsync().NoContext();
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        await job.OnException(ex).NoContext();
-                                    }
-                                }
-                                NewTimer();
+                                cancellationToken.ThrowIfCancellationRequested();
                             }
+
+                            if (runAction)
+                            {
+                                try
+                                {
+                                    await job.ActionToDoAsync(cancellationToken).NoContext();
+                                }
+                                catch (Exception ex)
+                                {
+                                    await job.OnException(ex).NoContext();
+                                }
+                            }
+                            NewTimer();
                         };
                         nextTimeTimer.Start();
                         Actions.TryAdd(key, nextTimeTimer);
