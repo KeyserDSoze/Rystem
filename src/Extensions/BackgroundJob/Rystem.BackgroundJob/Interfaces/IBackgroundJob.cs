@@ -2,7 +2,7 @@
 {
     public interface IBackgroundJob
     {
-        Task ActionToDoAsync();
+        Task ActionToDoAsync(CancellationToken cancellationToken = default);
         Task OnException(Exception exception);
     }
 }
