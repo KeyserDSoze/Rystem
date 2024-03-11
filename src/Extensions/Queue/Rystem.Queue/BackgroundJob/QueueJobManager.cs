@@ -16,7 +16,7 @@ namespace Rystem.Queue
             _property = property;
             _serviceProvider = serviceProvider;
         }
-        public async Task ActionToDoAsync()
+        public async Task ActionToDoAsync(CancellationToken cancellationToken = default)
         {
             if (await _queue.CountAsync().NoContext() > _property.MaximumBuffer || _nextFlush < DateTime.UtcNow)
             {

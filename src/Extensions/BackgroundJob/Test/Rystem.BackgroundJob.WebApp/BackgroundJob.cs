@@ -38,7 +38,7 @@ namespace Rystem.Test.WebApp
             _transient = transient;
             _transient1 = transient1;
         }
-        public Task ActionToDoAsync()
+        public Task ActionToDoAsync(CancellationToken cancellationToken = default)
         {
             if (LastScoped != null && LastScoped == _scoped.Id)
                 throw new ArgumentException("Scope service is not correct.");
