@@ -11,7 +11,11 @@ namespace Microsoft.Extensions.DependencyInjection
             services.TryAddSingleton<IRaceCodition, RaceConditionExecutor>();
             return services;
         }
-
+        public static IServiceCollection AddRaceConditionExecutor(this IServiceCollection services)
+        {
+            services.TryAddSingleton<IRaceCodition, RaceConditionExecutor>();
+            return services;
+        }
         public static IServiceCollection AddRaceConditionExecutor<TRaceCondition>(this IServiceCollection services)
             where TRaceCondition : class, IRaceCodition
             => services.AddSingleton<IRaceCodition, TRaceCondition>();

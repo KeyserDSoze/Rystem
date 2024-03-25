@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -17,8 +17,8 @@
 		<Copyright>2023</Copyright>
 		<PackageIcon>rystem.concurrency.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/Concurrency/Rystem.Concurrency</RepositoryUrl>
-		<PackageId>Rystem.Concurrency</PackageId>
+		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/Concurrency/Rystem.Concurrency.Redis</RepositoryUrl>
+		<PackageId>Rystem.Concurrency.Redis</PackageId>
 		<Version>6.0.2</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
@@ -32,15 +32,19 @@
 		<None Include="README.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
 	
+	<ItemGroup>
+	  <PackageReference Include="StackExchange.Redis" Version="2.7.33" />
+	</ItemGroup>
+
     <Choose>
         <When Condition=" '$(Configuration)'=='Debug' ">
             <ItemGroup>
-                <ProjectReference Include="..\..\..\Core\Rystem.DependencyInjection\Rystem.DependencyInjection.csproj" />
+                <ProjectReference Include="..\Rystem.Concurrency\Rystem.Concurrency.csproj" />
             </ItemGroup>
         </When>
         <When Condition=" '$(Configuration)'!='Debug' ">
             <ItemGroup>
-                <PackageReference Include="Rystem.DependencyInjection" Version="6.0.2" />
+                <PackageReference Include="Rystem.Concurrency" Version="6.0.2" />
             </ItemGroup>
         </When>
     </Choose>

@@ -126,6 +126,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Workflows", "Workflows", "{
 		.github\workflows\PackageDeploy.Rystem.Api.Server.yml = .github\workflows\PackageDeploy.Rystem.Api.Server.yml
 		.github\workflows\PackageDeploy.Rystem.Api.yml = .github\workflows\PackageDeploy.Rystem.Api.yml
 		.github\workflows\PackageDeploy.Rystem.BackgroundJob.yml = .github\workflows\PackageDeploy.Rystem.BackgroundJob.yml
+		.github\workflows\PackageDeploy.Rystem.Concurrency.Redis.yml = .github\workflows\PackageDeploy.Rystem.Concurrency.Redis.yml
 		.github\workflows\PackageDeploy.Rystem.Concurrency.yml = .github\workflows\PackageDeploy.Rystem.Concurrency.yml
 		.github\workflows\PackageDeploy.Rystem.Content.Abstractions.yml = .github\workflows\PackageDeploy.Rystem.Content.Abstractions.yml
 		.github\workflows\PackageDeploy.Rystem.Content.Infrastructure.Azure.Storage.Blob.yml = .github\workflows\PackageDeploy.Rystem.Content.Infrastructure.Azure.Storage.Blob.yml
@@ -287,6 +288,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Authentication", "Authentic
 	EndProjectSection
 EndProject
 Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "rystem.authentication.social.react", "src\Authentication\rystem.authentication.social.react\rystem.authentication.social.react.esproj", "{0AFE97B4-BB80-46C5-9C48-DA5681715D65}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Concurrency.Redis", "src\Extensions\Concurrency\Rystem.Concurrency.Redis\Rystem.Concurrency.Redis.csproj", "{22600B6E-6DDA-411E-82B1-1F5637DA2170}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -542,6 +545,10 @@ Global
 		{0AFE97B4-BB80-46C5-9C48-DA5681715D65}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0AFE97B4-BB80-46C5-9C48-DA5681715D65}.Release|Any CPU.Build.0 = Release|Any CPU
 		{0AFE97B4-BB80-46C5-9C48-DA5681715D65}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{22600B6E-6DDA-411E-82B1-1F5637DA2170}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{22600B6E-6DDA-411E-82B1-1F5637DA2170}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{22600B6E-6DDA-411E-82B1-1F5637DA2170}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{22600B6E-6DDA-411E-82B1-1F5637DA2170}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -637,6 +644,7 @@ Global
 		{31D3C78A-6F66-4CC3-A944-68C0661C942A} = {21EA88B3-A513-4C01-8EB2-0E537C31EA07}
 		{9A85031E-8A37-4E47-8F70-C2D5BEFADC97} = {21EA88B3-A513-4C01-8EB2-0E537C31EA07}
 		{0AFE97B4-BB80-46C5-9C48-DA5681715D65} = {685F643C-C2A2-4499-821A-00C732CE7FBB}
+		{22600B6E-6DDA-411E-82B1-1F5637DA2170} = {B4F0532A-1BB3-413E-AFCA-C0ADFDFA50F0}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {35C6ADE0-7E70-48ED-A810-A71B2BC94F57}

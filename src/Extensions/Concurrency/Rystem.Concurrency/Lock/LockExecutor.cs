@@ -12,13 +12,13 @@
         public async Task<LockResponse> ExecuteAsync(Func<Task> action, string? key = null)
         {
             key ??= string.Empty;
-            DateTime start = DateTime.UtcNow;
+            var start = DateTime.UtcNow;
             _lastExecutionPlusExpirationTime = start.AddDays(1);
             while (true)
             {
                 if (await _lockable.AcquireAsync(key).NoContext())
                     break;
-                await Task.Delay(2).NoContext();
+                await Task.Delay(20).NoContext();
             }
             Exception exception = default!;
             try

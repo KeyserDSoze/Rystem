@@ -14,7 +14,7 @@
             .CreateSon()
             .AddProject("Rystem.Concurrency", "Rystem.RepositoryFramework.Abstractions", "Rystem.Content.Abstractions", "Rystem.Api", "Rystem.Authentication.Social")
             .CreateSon()
-            .AddProject("Rystem.BackgroundJob",
+            .AddProject("Rystem.BackgroundJob", "Rystem.Concurrency.Redis",
                         "Rystem.RepositoryFramework.Api.Client", "Rystem.RepositoryFramework.Api.Server",
                         "Rystem.RepositoryFramework.Infrastructure.InMemory", "Rystem.RepositoryFramework.MigrationTools",
                         "Rystem.RepositoryFramework.Cache", "Rystem.RepositoryFramework.Infrastructure.Azure.Cosmos.Sql",

@@ -5,12 +5,16 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static partial class ServiceCollectionExtensions
     {
+        public static IServiceCollection AddLockExecutor(this IServiceCollection services)
+        {
+            services.TryAddSingleton<ILock, LockExecutor>();
+            return services;
+        }
         public static IServiceCollection AddLock(this IServiceCollection services)
         {
             services.TryAddSingleton<ILock, LockExecutor>();
             return services.AddInMemoryLockable();
         }
-
         public static IServiceCollection AddLockExecutor<TLock>(this IServiceCollection services)
             where TLock : class, ILock
             => services.AddSingleton<ILock, TLock>();
