@@ -7,7 +7,10 @@ A lock keyword is used in C# to lock a memory address to have a sort of executio
 With async lock you also may have the lock behavior for your async methods.
 In DI you have to add the lock service
 
-	services.AddLock();
+	services.AddRedisLock(x =>
+                {
+                    x.ConnectionString = configuration["ConnectionString:Redis"]!;
+                });
 
 Inject ILock and use it
 
@@ -20,7 +23,10 @@ You have the method to execute, a key for more than one concurrent lock.
 First of all, you have to understand the race condition [here](https://en.wikipedia.org/wiki/Race_condition)
 In DI you have to add the lock service
 
-	services.AddRaceCondition();
+	services.AddRaceConditionWithRedis(x =>
+                {
+                    x.ConnectionString = configuration["ConnectionString:Redis"]!;
+                });
 	
 Inject IRaceCodition and use it
 
@@ -28,9 +34,4 @@ Inject IRaceCodition and use it
 	 raceCondition!.ExecuteAsync(() => CountAsync(2), (i % 2).ToString(), TimeSpan.FromSeconds(2));
 
 You have the method to execute, a key for more than one concurrent race, and a time span for time window, if you put 2 seconds, you block the execution of further methods for 2 seconds from when first method started.
-
-### ILockable
-You can inject the ILockable interface for your purpose, like a distributed lock with Blob storage, or redis cache for instance.
-
-	services.AddLockableIntegration<BlobLockIntegration>();
 	
