@@ -31,7 +31,7 @@
 	<ItemGroup>
 		<PackageReference Include="Azure.Identity" Version="1.10.4" />
 		<PackageReference Include="Microsoft.Azure.Cosmos" Version="3.38.1" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1" />
 	</ItemGroup>
 
 	<Choose>
