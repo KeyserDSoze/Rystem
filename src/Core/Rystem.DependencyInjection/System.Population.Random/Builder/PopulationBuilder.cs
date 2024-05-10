@@ -28,7 +28,7 @@ namespace System.Population.Random
         public IPopulationBuilder<T> WithSpecificNumberOfElements<TProperty>(Expression<Func<T, TProperty>> navigationPropertyPath, int numberOfElements)
         {
             var nameOfProperty = GetNameOfProperty(navigationPropertyPath);
-            var dictionary = _settings.NumberOfElements;
+            var dictionary = _settings.ForcedNumberOfElementsForEnumerable;
             if (dictionary.ContainsKey(nameOfProperty))
                 dictionary[nameOfProperty] = numberOfElements;
             else
@@ -87,6 +87,27 @@ namespace System.Population.Random
                 dictionary.Add(nameOfProperty, start!);
             return this;
         }
+        public IPopulationBuilder<T> WithRandomValueFromRystem<TProperty>(Expression<Func<T, TProperty>> navigationPropertyPath, bool useTheSameRandomValuesForTheSameType, Func<TProperty>? valueCreator = null)
+            => WithRandomValueFromRystem(navigationPropertyPath, useTheSameRandomValuesForTheSameType, valueCreator, null);
+        public IPopulationBuilder<T> WithRandomValueFromRystemWithSpecificQueue<TProperty>(Expression<Func<T, TProperty>> navigationPropertyPath, string forcedValuesKey, Func<TProperty>? valueCreator = null)
+            => WithRandomValueFromRystem(navigationPropertyPath, true, valueCreator, forcedValuesKey);
+        private IPopulationBuilder<T> WithRandomValueFromRystem<TProperty>(Expression<Func<T, TProperty>> navigationPropertyPath, bool useTheSameRandomValuesForTheSameType, Func<TProperty>? valueCreator, string? forcedKey)
+        {
+            var nameOfProperty = GetNameOfProperty(navigationPropertyPath);
+            var dictionary = _settings.RandomValueFromRystem;
+            var value = new RandomPopulationFromRystemSettings()
+            {
+                UseTheSameRandomValuesForTheSameType = useTheSameRandomValuesForTheSameType,
+                StartingType = typeof(T),
+                Creator = valueCreator != null ? () => valueCreator.Invoke()! : null,
+                ForcedKey = forcedKey
+            };
+            if (dictionary.ContainsKey(nameOfProperty))
+                dictionary[nameOfProperty] = value;
+            else
+                dictionary.Add(nameOfProperty, value);
+            return this;
+        }
         public IPopulationBuilder<T> WithImplementation<TProperty>(Expression<Func<T, TProperty>> navigationPropertyPath, Type implementationType)
         {
             var nameOfProperty = GetNameOfProperty(navigationPropertyPath);
@@ -99,7 +120,10 @@ namespace System.Population.Random
         }
         public IPopulationBuilder<T> WithImplementation<TProperty, TEntity>(Expression<Func<T, TProperty>> navigationPropertyPath)
             => WithImplementation(navigationPropertyPath, typeof(TEntity));
-        public List<T> Populate(int numberOfElements = 100, int numberOfElementsWhenEnumerableIsFound = 10) 
-            => _populationStrategy.Populate(_settings, numberOfElements, numberOfElementsWhenEnumerableIsFound);
+        public List<T> Populate(int numberOfElements = 100, int numberOfElementsWhenEnumerableIsFound = 10)
+        {
+            _settings.NumberOfElements = numberOfElements;
+            return _populationStrategy.Populate(_settings, numberOfElements, numberOfElementsWhenEnumerableIsFound);
+        }
     }
 }

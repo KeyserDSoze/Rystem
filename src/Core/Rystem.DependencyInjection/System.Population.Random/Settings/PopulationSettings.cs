@@ -7,7 +7,9 @@
         public Dictionary<string, Func<IServiceProvider, Task<dynamic>>> DelegatedMethodForValueRetrieving { get; set; } = new();
         public Dictionary<string, Func<IServiceProvider, Task<IEnumerable<dynamic>>>> DelegatedMethodWithRandomForValueRetrieving { get; set; } = new();
         public Dictionary<string, dynamic> AutoIncrementations { get; set; } = new();
+        public Dictionary<string, RandomPopulationFromRystemSettings> RandomValueFromRystem { get; set; } = new();
         public Dictionary<string, Type> ImplementationForValueCreation { get; set; } = new();
-        public Dictionary<string, int> NumberOfElements { get; set; } = new();
+        public Dictionary<string, int> ForcedNumberOfElementsForEnumerable { get; set; } = new();
+        public int NumberOfElements { get; set; } = new();
     }
 }

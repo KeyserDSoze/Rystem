@@ -17,7 +17,51 @@ namespace System.Population.Random
             _randomPopulationServices = randomPopulationServices;
             _regexService = regexService;
         }
-
+        private static readonly Dictionary<string, int> s_indexes = new();
+        private static readonly Dictionary<string, List<dynamic>> s_randomValuesFromRystem = new();
+        private string GetRandomValueFromRystem(RandomPopulationFromRystemSettings randomSettings, PopulationSettings settings, Type type, string treeName)
+        {
+            var numberOfElements = settings.NumberOfElements;
+            var treeNameForType = $"{randomSettings.StartingType.FullName}_{treeName}";
+            var randomValueKey = randomSettings.ForcedKey;
+            if (randomValueKey == null)
+                randomValueKey = randomSettings.UseTheSameRandomValuesForTheSameType ? type.FullName! : treeNameForType;
+            if (!s_randomValuesFromRystem.ContainsKey(randomValueKey) || s_randomValuesFromRystem[randomValueKey].Count < numberOfElements)
+            {
+                var startingFrom = 0;
+                if (s_randomValuesFromRystem.ContainsKey(randomValueKey) && s_randomValuesFromRystem[randomValueKey].Count < numberOfElements)
+                {
+                    startingFrom = s_randomValuesFromRystem[randomValueKey].Count;
+                }
+                else
+                {
+                    s_randomValuesFromRystem.Add(randomValueKey, new());
+                }
+                for (var i = startingFrom; i < numberOfElements; i++)
+                {
+                    if (randomSettings.Creator == null)
+                    {
+                        var service = _randomPopulationServices.OrderByDescending(x => x.Priority).FirstOrDefault(x => x.IsValid(type));
+                        if (service != default)
+                            s_randomValuesFromRystem[randomValueKey].Add(service.GetValue(settings, new RandomPopulationOptions(type, this, numberOfElements, treeName, null!)));
+                    }
+                    else
+                    {
+                        s_randomValuesFromRystem[randomValueKey].Add(randomSettings.Creator.Invoke());
+                    }
+                }
+            }
+            if (!s_indexes.ContainsKey(treeNameForType))
+            {
+                s_indexes.Add(treeNameForType, 0);
+            }
+            var s_ids = s_randomValuesFromRystem[randomValueKey];
+            var id = s_ids[s_indexes[treeNameForType]];
+            s_indexes[treeNameForType]++;
+            if (s_indexes[treeNameForType] >= numberOfElements)
+                s_indexes[treeNameForType] = 0;
+            return id;
+        }
         public dynamic? Construct(PopulationSettings settings, Type type, int numberOfEntities, string treeName, string name, List<Type>? notCompletelyConstructedNonPrimitiveTypes)
         {
             try
@@ -34,7 +78,7 @@ namespace System.Population.Random
                     treeName = name;
 
                 int? overridedNumberOfEntities = null;
-                var numberOfEntitiesDictionary = settings.NumberOfElements;
+                var numberOfEntitiesDictionary = settings.ForcedNumberOfElementsForEnumerable;
                 if (numberOfEntitiesDictionary.ContainsKey(treeName))
                     overridedNumberOfEntities = numberOfEntitiesDictionary[treeName];
                 numberOfEntities = overridedNumberOfEntities ?? numberOfEntities;
@@ -62,6 +106,9 @@ namespace System.Population.Random
 
                 if (settings.AutoIncrementations.ContainsKey(treeName))
                     return settings.AutoIncrementations[treeName]++;
+
+                if (settings.RandomValueFromRystem.ContainsKey(treeName))
+                    return GetRandomValueFromRystem(settings.RandomValueFromRystem[treeName], settings, type, treeName);
 
                 if (settings.ImplementationForValueCreation.ContainsKey(treeName) && !string.IsNullOrWhiteSpace(name))
                     return Construct(settings, settings.ImplementationForValueCreation[treeName], numberOfEntities,

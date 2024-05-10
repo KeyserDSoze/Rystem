@@ -13,6 +13,8 @@ namespace System.Population.Random
         IPopulationBuilder<T> WithRandomValue<TProperty>(Expression<Func<T, TProperty>> navigationPropertyPath,
             Func<IServiceProvider, Task<IEnumerable<TProperty>>> valuesRetriever);
         IPopulationBuilder<T> WithAutoIncrement<TProperty>(Expression<Func<T, TProperty>> navigationPropertyPath, TProperty start);
+        IPopulationBuilder<T> WithRandomValueFromRystem<TProperty>(Expression<Func<T, TProperty>> navigationPropertyPath, bool useTheSameRandomValuesForTheSameType, Func<TProperty>? valueCreator = null);
+        IPopulationBuilder<T> WithRandomValueFromRystemWithSpecificQueue<TProperty>(Expression<Func<T, TProperty>> navigationPropertyPath, string forcedValuesKey, Func<TProperty>? valueCreator = null);
         IPopulationBuilder<T> WithImplementation<TProperty>(Expression<Func<T, TProperty>> navigationPropertyPath, Type implementationType);
         IPopulationBuilder<T> WithImplementation<TProperty, TEntity>(Expression<Func<T, TProperty>> navigationPropertyPath);
         List<T> Populate(int numberOfElements = 100, int numberOfElementsWhenEnumerableIsFound = 10);
