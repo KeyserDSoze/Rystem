@@ -12,6 +12,9 @@
         public IPopulationBuilder<T> Setup(PopulationSettings<T>? settings = null)
             => new PopulationBuilder<T>(_strategy, settings ?? _settings);
         public List<T> Populate(int numberOfElements = 100, int numberOfElementsWhenEnumerableIsFound = 10)
-            => _strategy.Populate(_settings, numberOfElements, numberOfElementsWhenEnumerableIsFound);
+        {
+            _settings.NumberOfElements = numberOfElements;
+            return _strategy.Populate(_settings, numberOfElements, numberOfElementsWhenEnumerableIsFound);
+        }
     }
 }

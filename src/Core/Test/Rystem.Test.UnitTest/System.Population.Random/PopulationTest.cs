@@ -574,38 +574,41 @@ namespace Rystem.Test.UnitTest.Population
             IServiceCollection services = new ServiceCollection();
             services.AddPopulationService();
             var serviceProvider = services.BuildServiceProvider().CreateScope().ServiceProvider;
-            var populatedModelForSomethingA = serviceProvider.GetService<IPopulation<SomethingA>>();
+            var populatedModelForSomethingA = serviceProvider.GetService<IPopulation<Entity<SomethingA, string>>>();
             var allPrepopulationForSomethingA = populatedModelForSomethingA!
                 .Setup()
-                .WithRandomValueFromRystem(x => x.Id, true, () => Guid.NewGuid().ToString())
-                .WithRandomValueFromRystem(x => x.DifferentId, false, () => Guid.NewGuid().ToString())
-                .WithRandomValueFromRystemWithSpecificQueue(x => x.SameKeyQueue, "samequeue", () => Guid.NewGuid().ToString())
-                .WithRandomValueFromRystemWithSpecificQueue(x => x.NotSameKeyQueue, "samequeue2", () => Guid.NewGuid().ToString())
-                .WithRandomValueFromRystemWithSpecificQueue(x => x.WithoutFunctionCreationA, "samequeue6")
-                .WithRandomValueFromRystem(x => x.WithoutFunctionCreationA2, true)
-                .WithRandomValueFromRystem(x => x.WithoutFunctionCreationA3, false);
+                .WithRandomValueFromRystem(x => x.Key, true, () => Guid.NewGuid().ToString())
+                .WithRandomValueFromRystem(x => x.Value.Id, true, () => Guid.NewGuid().ToString())
+                .WithRandomValueFromRystem(x => x.Value.DifferentId, false, () => Guid.NewGuid().ToString())
+                .WithRandomValueFromRystemWithSpecificQueue(x => x.Value.SameKeyQueue, "samequeue", () => Guid.NewGuid().ToString())
+                .WithRandomValueFromRystemWithSpecificQueue(x => x.Value.NotSameKeyQueue, "samequeue2", () => Guid.NewGuid().ToString())
+                .WithRandomValueFromRystemWithSpecificQueue(x => x.Value.WithoutFunctionCreationA, "samequeue6")
+                .WithRandomValueFromRystem(x => x.Value.WithoutFunctionCreationA2, true)
+                .WithRandomValueFromRystem(x => x.Value.WithoutFunctionCreationA3, false);
             var allA = allPrepopulationForSomethingA.Populate();
-            var populatedModelForSomethingB = serviceProvider.GetService<IPopulation<SomethingB>>();
+            var populatedModelForSomethingB = serviceProvider.GetService<IPopulation<Entity<SomethingB, string>>>();
             var allPrepopulationForSomethingB = populatedModelForSomethingB!
                 .Setup()
-                .WithRandomValueFromRystem(x => x.Id, true, () => Guid.NewGuid().ToString())
-                .WithRandomValueFromRystem(x => x.DifferentId, false, () => Guid.NewGuid().ToString())
-                .WithRandomValueFromRystemWithSpecificQueue(x => x.SameKeyQueue, "samequeue", () => Guid.NewGuid().ToString())
-                .WithRandomValueFromRystemWithSpecificQueue(x => x.NotSameKeyQueue, "samequeue3", () => Guid.NewGuid().ToString())
-                .WithRandomValueFromRystemWithSpecificQueue(x => x.WithoutFunctionCreationB, "samequeue6")
-                .WithRandomValueFromRystem(x => x.WithoutFunctionCreationB2, true)
-                .WithRandomValueFromRystem(x => x.WithoutFunctionCreationB3, false);
+                .WithRandomValueFromRystem(x => x.Key, true, () => Guid.NewGuid().ToString())
+                .WithRandomValueFromRystem(x => x.Value.Id, true, () => Guid.NewGuid().ToString())
+                .WithRandomValueFromRystem(x => x.Value.DifferentId, false, () => Guid.NewGuid().ToString())
+                .WithRandomValueFromRystemWithSpecificQueue(x => x.Value.SameKeyQueue, "samequeue", () => Guid.NewGuid().ToString())
+                .WithRandomValueFromRystemWithSpecificQueue(x => x.Value.NotSameKeyQueue, "samequeue3", () => Guid.NewGuid().ToString())
+                .WithRandomValueFromRystemWithSpecificQueue(x => x.Value.WithoutFunctionCreationB, "samequeue6")
+                .WithRandomValueFromRystem(x => x.Value.WithoutFunctionCreationB2, true)
+                .WithRandomValueFromRystem(x => x.Value.WithoutFunctionCreationB3, false);
             var allB = allPrepopulationForSomethingB.Populate(200, 40);
             for (var i = 0; i < allA.Count; i++)
             {
-                Assert.Equal(allA[i].Id, allB[i].Id);
-                Assert.NotEqual(allA[i].Name, allB[i].Name);
-                Assert.NotEqual(allA[i].DifferentId, allB[i].DifferentId);
-                Assert.Equal(allA[i].SameKeyQueue, allB[i].SameKeyQueue);
-                Assert.NotEqual(allA[i].NotSameKeyQueue, allB[i].NotSameKeyQueue);
-                Assert.Equal(allA[i].WithoutFunctionCreationA, allB[i].WithoutFunctionCreationB);
-                Assert.Equal(allA[i].WithoutFunctionCreationA2, allB[i].WithoutFunctionCreationB2);
-                Assert.NotEqual(allA[i].WithoutFunctionCreationA3, allB[i].WithoutFunctionCreationB3);
+                Assert.Equal(allA[i].Key, allB[i].Key);
+                Assert.Equal(allA[i].Value.Id, allB[i].Value.Id);
+                Assert.NotEqual(allA[i].Value.Name, allB[i].Value.Name);
+                Assert.NotEqual(allA[i].Value.DifferentId, allB[i].Value.DifferentId);
+                Assert.Equal(allA[i].Value.SameKeyQueue, allB[i].Value.SameKeyQueue);
+                Assert.NotEqual(allA[i].Value.NotSameKeyQueue, allB[i].Value.NotSameKeyQueue);
+                Assert.Equal(allA[i].Value.WithoutFunctionCreationA, allB[i].Value.WithoutFunctionCreationB);
+                Assert.Equal(allA[i].Value.WithoutFunctionCreationA2, allB[i].Value.WithoutFunctionCreationB2);
+                Assert.NotEqual(allA[i].Value.WithoutFunctionCreationA3, allB[i].Value.WithoutFunctionCreationB3);
             }
         }
     }
