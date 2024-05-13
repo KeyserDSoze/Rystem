@@ -1,0 +1,25 @@
+﻿<button type="button"
+        class="socialButton" style="color:@Color;background:@Background;">
+    <div>
+        <div class="socialButtonIconContainer">
+            @Icon
+        </div>
+        <div class="socialButtonDivider" />
+        <div class="socialButtonTextContainer">@Text</div>
+    </div>
+</button>
+
+@code {
+    [Parameter]
+    public RenderFragment Icon { get; set; }
+    [Parameter]
+    public string? Text { get; set; }
+    [Parameter]
+    public string ActiveBackground { get; set; }
+    [Parameter]
+    public string Background { get; set; }
+    [Parameter]
+    public string IconColor { get; set; }
+    [Parameter]
+    public string Color { get; set; }
+}

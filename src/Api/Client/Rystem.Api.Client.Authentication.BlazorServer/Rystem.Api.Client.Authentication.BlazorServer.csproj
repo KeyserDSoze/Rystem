@@ -14,7 +14,7 @@
 		<Company>Alessandro Rapiti</Company>
 		<Product>Rystem.Api</Product>
         <Description>Rystem.Api helps you to integrate Api Server and Automated Client for Aspect-Oriented programming.</Description>
-		<Copyright>2023</Copyright>
+		<Copyright>2024</Copyright>
 		<PackageIcon>rystem.api.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Api/Rystem.Api.Client.Authentication.BlazorServer</RepositoryUrl>

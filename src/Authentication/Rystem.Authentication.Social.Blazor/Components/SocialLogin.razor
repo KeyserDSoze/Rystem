@@ -1,0 +1,18 @@
+﻿@using Microsoft.Extensions.DependencyInjection
+@using Rystem.Authentication.Social.Blazor.Components.Buttons
+
+<div class="centered">
+@if (Settings != null)
+{
+    @if (Settings.Google.ClientId != null)
+    {
+        <GoogleButton />
+    }
+}
+</div>
+
+@code {
+    [Inject]
+    public required SocialLoginAppSettings Settings { get; set; }
+
+}

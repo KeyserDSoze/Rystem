@@ -1,0 +1,13 @@
+﻿/* Base styles for the div */
+.centered {
+    width: 100%; /* Default to full width */
+    margin: 0 auto; /* Centering horizontally */
+}
+
+/* Media query for desktop screens with a minimum width of 801px */
+@media (min-width: 801px) {
+    .centered {
+        max-width: 60%; /* Max width for larger screens */
+        margin-left: 20%;
+    }
+}

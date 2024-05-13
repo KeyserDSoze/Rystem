@@ -1,0 +1,19 @@
+﻿@using Microsoft.AspNetCore.Components.Routing
+@using System.Reflection
+
+<Router AppAssembly="AppAssembly" AdditionalAssemblies="[typeof(SocialAuthenticationRouter).Assembly]">
+    <Found Context="routeData">
+        <SocialAuthentication>
+            <RouteView RouteData="routeData" DefaultLayout="DefaultLayout" />
+        </SocialAuthentication>
+    </Found>
+</Router>
+
+@code {
+    [Parameter]
+    public required Assembly AppAssembly { get; set; }
+    [Parameter]
+    public required RenderFragment ChildContent { get; set; }
+    [Parameter]
+    public required Type DefaultLayout { get; set; }
+}

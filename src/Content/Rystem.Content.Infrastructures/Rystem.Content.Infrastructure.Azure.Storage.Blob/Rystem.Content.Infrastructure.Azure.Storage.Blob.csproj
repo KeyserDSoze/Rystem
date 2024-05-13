@@ -14,7 +14,7 @@
 		<Company>Alessandro Rapiti</Company>
 		<Product>Rystem.Content</Product>
 		<Description>Rystem.Content helps you to integrate with azure services or to create an abstraction layer among your infrastructure and your business.</Description>
-		<Copyright>2023</Copyright>
+		<Copyright>2024</Copyright>
 		<PackageIcon>rystem.content.infrastructure.azure.storage.blob.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/File/File.Infrastructures/Rystem.Content.Infrastructure.Storage</RepositoryUrl>
