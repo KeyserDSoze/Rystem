@@ -1,5 +1,6 @@
 ﻿<button type="button"
-        class="socialButton" style="color:@Color;background:@Background;">
+        class="socialButton" style="color:@Color;background:@Background;"
+        onclick="window.navigation.navigate('@Uri')">
     <div>
         <div class="socialButtonIconContainer">
             @Icon
@@ -11,15 +12,19 @@
 
 @code {
     [Parameter]
-    public RenderFragment Icon { get; set; }
+    public required RenderFragment Icon { get; set; }
     [Parameter]
     public string? Text { get; set; }
     [Parameter]
-    public string ActiveBackground { get; set; }
+    public required string ActiveBackground { get; set; }
     [Parameter]
-    public string Background { get; set; }
+    public required string Background { get; set; }
     [Parameter]
-    public string IconColor { get; set; }
+    public required string IconColor { get; set; }
     [Parameter]
-    public string Color { get; set; }
+    public required string Color { get; set; }
+    [Parameter]
+    public required EventCallback Clicked { get; set; }
+    [Parameter]
+    public required string Uri { get; set; }
 }

@@ -35,6 +35,12 @@
         "Rystem.Authentication.Social.TestApi": {},
         "rystem.authentication.social.react": {}
       }
+    },
+    "Authentication.Social.Blazor": {
+      "Projects": {
+        "Rystem.Authentication.Social.TestApi": {},
+        "RystemAuthentication.Social.TestBlazorApp": {}
+      }
     }
   }
 }

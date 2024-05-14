@@ -18,19 +18,34 @@
         <Copyright>2024</Copyright>
         <PackageIcon>rystem.social.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Web/RepositoryFramework.Web.Components</RepositoryUrl>
+        <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Authentication</RepositoryUrl>
         <PackageId>Rystem.Authentication.Social.Blazor</PackageId>
         <Version>6.0.6</Version>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
         <StaticWebAssetBasePath>_content/$(PackageId)</StaticWebAssetBasePath>
     </PropertyGroup>
-
     <ItemGroup>
-      <PackageReference Include="Microsoft.AspNetCore.Components" Version="8.0.4" />
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+    <ItemGroup>
+      <!--<PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.4" />-->
+      <!--<PackageReference Include="Microsoft.AspNetCore.Components" Version="8.0.4" />-->
       <PackageReference Include="Microsoft.JSInterop" Version="8.0.4" />
     </ItemGroup>
-
+    <Choose>
+        <When Condition=" '$(Configuration)'=='Debug' ">
+            <ItemGroup>
+                <ProjectReference Include="..\..\Core\Rystem\Rystem.csproj" />
+            </ItemGroup>
+        </When>
+        <When Condition=" '$(Configuration)'!='Debug' ">
+            <ItemGroup>
+                <PackageReference Include="Rystem" Version="6.0.6" />
+            </ItemGroup>
+        </When>
+    </Choose>
+   
 
     <ItemGroup>
         <SupportedPlatform Include="browser" />

@@ -1,8 +1,4 @@
-﻿@using Microsoft.AspNetCore.Components.Routing
-@using Microsoft.JSInterop
-@inject IJSRuntime JSRuntime
-
-@if (IsAuthenticated)
+﻿@if (IsAuthenticated)
 {
     @ChildContent
 }
@@ -13,28 +9,15 @@ else
 @code {
     [Parameter]
     public required RenderFragment ChildContent { get; set; }
-    private const string Key = "socialauth";
     private bool IsAuthenticated { get; set; }
-    protected override Task OnParametersSetAsync()
+    protected override void OnInitialized()
     {
-        return base.OnParametersSetAsync();
-    }
-    protected override Task OnInitializedAsync()
-    {
-        return base.OnInitializedAsync();
+        base.OnInitialized();
     }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var value = await GetItemAsync(Key);
+        var value = await LocalStorage.GetTokenAsync();
         IsAuthenticated = value != null;
         await base.OnAfterRenderAsync(firstRender);
-    }
-    private async Task SetItemAsync(string key, string value)
-    {
-        await JSRuntime.InvokeVoidAsync("localStorageFunctions.setItem", key, value);
-    }
-    private async Task<string> GetItemAsync(string key)
-    {
-        return await JSRuntime.InvokeAsync<string>("localStorageFunctions.getItem", key);
     }
 }

@@ -1,4 +1,4 @@
-﻿<SocialButton Text="Log in with Google" ActiveBackground="#EFF0EE" Background="white" IconColor="#fff" Color="black">
+﻿<SocialButton Uri="@Uri" Clicked="() => LoginAsync()" Text="Log in with Google" ActiveBackground="#EFF0EE" Background="white" IconColor="#fff" Color="black">
     <Icon>
         <svg xmlns="http://www.w3.org/2000/svg"
              viewBox="0 0 64 64"
@@ -65,3 +65,35 @@
         </svg>
     </Icon>
 </SocialButton>
+
+@code {
+    private const string SDK_URL = "https://accounts.google.com/o/oauth2/v2/auth?scope={0}&access_type={1}&include_granted_scopes={2}&response_type={3}&state={4}&redirect_uri={5}&client_id={6}";
+    private string Uri { get; set; }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {   
+        var scope = "openid profile email";
+        var accessType = "offline";
+        var includeGrantedScopes = "true";
+        var responseType = "code";
+        var state = Guid.NewGuid().ToString();
+        var redirectUri = $"{NavigationManager.BaseUri}login/confirm";
+        var clientId = Settings.Google.ClientId;
+        await LocalStorage.SetStateAsync(state);
+        var url = string.Format(SDK_URL, scope, accessType, includeGrantedScopes, responseType, state, redirectUri, clientId);
+        Uri = url;
+        await base.OnAfterRenderAsync(firstRender);
+    }
+    private async ValueTask LoginAsync()
+    {
+        var scope = "openid profile email";
+        var accessType = "offline";
+        var includeGrantedScopes = "true";
+        var responseType = "code";
+        var state = Guid.NewGuid().ToString();
+        var redirectUri = $"{NavigationManager.BaseUri}login/confirm";
+        var clientId = Settings.Google.ClientId;
+        await LocalStorage.SetStateAsync(state);
+        var url = string.Format(SDK_URL, scope, accessType, includeGrantedScopes, responseType, state, redirectUri, clientId);
+        NavigationManager.NavigateTo(url);
+    }
+}

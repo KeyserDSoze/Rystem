@@ -17,7 +17,7 @@
         <Copyright>2024</Copyright>
         <PackageIcon>rystem.social.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Api</RepositoryUrl>
+        <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Authentication</RepositoryUrl>
         <PackageId>Rystem.Authentication.Social</PackageId>
         <Version>6.0.6</Version>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
