@@ -1,36 +1,39 @@
-﻿@if (IsAuthenticated)
+﻿@if (HasMe)
 {
-    <CascadingValue Name="User" Value="User">
+    <CascadingValue Name="User" Value="HasMe">
         @ChildContent
     </CascadingValue>
 }
-else
+else if (Rendered)
 {
     <SocialLogin></SocialLogin>
 }
 @code {
     [Parameter]
     public required RenderFragment ChildContent { get; set; }
-    private bool IsAuthenticated { get; set; }
-    private string User { get; set; }
+    private bool HasMe { get; set; }
+    private bool Rendered { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!IsAuthenticated)
+        if (!HasMe)
         {
-            var value = await LocalStorage.GetTokenAsync();
-            User = value?.AccessToken;
-            IsAuthenticated = value != null;
-            if (IsAuthenticated)
-                StateHasChanged();
-        }
-        if (!IsAuthenticated)
-        {
-            IsAuthenticated = await Manager.FetchTokenAsync();
-            if (IsAuthenticated)
+            var isAuthenticated = await Manager.FetchTokenAsync();
+            if (isAuthenticated)
             {
                 await LocalStorage.DeleteStateAsync();
             }
+            if (isAuthenticated)
+            {
+                HasMe = await Manager.MeAsync();
+                if (HasMe)
+                    StateHasChanged();
+            }
+        }
+        if (!Rendered)
+        {
+            Rendered = true;
+            StateHasChanged();
         }
         await base.OnAfterRenderAsync(firstRender);
     }

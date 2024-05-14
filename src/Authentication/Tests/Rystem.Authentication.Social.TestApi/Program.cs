@@ -1,4 +1,6 @@
-﻿using Rystem.Authentication.Social.TestApi.Services;
+﻿using RepositoryFramework.InMemory;
+using Rystem.Authentication.Social.TestApi.Models;
+using Rystem.Authentication.Social.TestApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,8 +33,19 @@ x =>
     x.RefreshTokenExpiration = TimeSpan.FromDays(10);
 });
 builder.Services.AddSocialUserProvider<SocialUserProvider>();
-builder.Services.AddAuthorization();
-
+builder.Services.AddRepository<SocialRole, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithInMemory(x =>
+    {
+        x.PopulateWithRandomData(100);
+    });
+});
+builder.Services.AddApiFromRepositoryFramework()
+    .WithSwagger()
+    .WithModelsApi()
+    .WithMapApi()
+    .WithDocumentation()
+    .WithDescriptiveName("Social Api");
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -43,18 +56,20 @@ builder.Services.AddCors(x =>
         t.AllowAnyHeader().AllowAnyOrigin();
     });
 });
-var app = builder.Build();
-if (app.Environment.IsDevelopment())
+builder.Services.AddAuthorization(x =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    x.AddPolicy("all", t => { t.RequireClaim("name"); });
+});
+var app = builder.Build();
+await app.Services.WarmUpAsync();
+
 app.UseCors("all");
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.UseApiFromRepositoryFramework().WithDefaultAuthorization();
 app.UseSocialLoginEndpoints();
 
 app.Run();

@@ -1,4 +1,8 @@
 ﻿@page "/"
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using Microsoft.AspNetCore.Components.Authorization
+@using RepositoryFramework
+@using Rystem.Authentication.Social.TestApi.Models
 
 <PageTitle>Home</PageTitle>
 
@@ -7,10 +11,24 @@
 Welcome to your new app.
 
 @User
+@if (Roles != null)
+{
+    @foreach (var role in Roles)
+    {
+        <p>@role.Name</p>
+    }
+}
 
 
 @code {
+    [Inject]
+    public IRepository<SocialRole, string> Repository { get; set; }
     [CascadingParameter]
     public string User { get; set; }
+    public List<SocialRole> Roles { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        Roles = await Repository.ToListAsEntityAsync();
+    }
 }
 

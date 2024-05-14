@@ -14,6 +14,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Repository\RepositoryFramework.Api.Server\RepositoryFramework.Api.Server.csproj" />
+    <ProjectReference Include="..\..\..\Repository\RepositoryFramework.Infrastructure.InMemory\RepositoryFramework.Infrastructure.InMemory.csproj" />
     <ProjectReference Include="..\..\Rystem.Authentication.Social\Rystem.Authentication.Social.csproj" />
   </ItemGroup>
 
