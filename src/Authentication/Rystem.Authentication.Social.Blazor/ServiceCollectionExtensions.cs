@@ -1,12 +1,10 @@
-﻿using System.Net.Http.Json;
+﻿using System.Linq.Dynamic.Core.Tokenizer;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.JSInterop;
-using Rystem.Authentication.Social.Blazor.Components;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -63,7 +61,9 @@ namespace Microsoft.Extensions.DependencyInjection
         [JsonPropertyName("isExpired")]
         public bool IsExpired { get; set; }
         [JsonPropertyName("expiresIn")]
-        public DateTime ExpiresIn { get; set; }
+        public long ExpiresIn { get; set; }
+        [JsonPropertyName("exping")]
+        public DateTime Expiring { get; set; }
     }
     public sealed class SocialLoginManager
     {
@@ -81,72 +81,123 @@ namespace Microsoft.Extensions.DependencyInjection
             _navigationManager = navigationManager;
             _client = httpClientFactory.CreateClient(nameof(SocialLoginManager));
         }
-        public ValueTask<bool> FetchTokenAsync(string provider)
-            => FetchTokenAsync(Enum.Parse<SocialLoginProvider>(provider, true));
-        public async ValueTask<bool> FetchTokenAsync(SocialLoginProvider provider)
+        public string GetRedirectUri()
+            => _navigationManager.BaseUri.Trim('/');
+        public async ValueTask<bool> FetchTokenAsync()
         {
             var uri = new Uri(_navigationManager.Uri);
             var queryStrings = System.Web.HttpUtility.ParseQueryString(uri.Query);
             var code = string.Empty;
             var state = string.Empty;
-            if (queryStrings.AllKeys.Any(x => x == "state"))
+            var localState = await _localStorage.GetStateAsync();
+            if (localState != null)
             {
-                state = queryStrings["state"];
-            }
-            if (!string.IsNullOrWhiteSpace(state))
-            {
-                if (state != await _localStorage.GetStateAsync())
+                if (queryStrings.AllKeys.Any(x => x == "state"))
+                {
+                    state = queryStrings["state"];
+                }
+                if (!string.IsNullOrWhiteSpace(state))
+                {
+                    if (state != localState?.Value)
+                    {
+                        return false;
+                    }
+                }
+                if (queryStrings.AllKeys.Any(x => x == "code"))
+                {
+                    code = queryStrings["code"];
+                }
+                if (string.IsNullOrWhiteSpace(code))
+                    return false;
+                try
+                {
+                    var token = await _client.GetFromJsonAsync<Token>($"/api/Authentication/Social/Token?provider={localState.Provider}&code={code}");
+                    if (token is not null)
+                    {
+                        await _localStorage.SetTokenAsync(token);
+                        _navigationManager.NavigateTo(localState.Path);
+                        return true;
+                    }
+                }
+                catch (Exception)
                 {
                     return false;
                 }
             }
-            if (queryStrings.AllKeys.Any(x => x == "code"))
-            {
-                code = queryStrings["code"];
-            }
-            try
-            {
-                var token = await _client.GetFromJsonAsync<Token>($"/api/Authentication/Social/Token?provider=${(int)provider}&code=${code}");
-                if (token is not null)
-                {
-                    await _localStorage.SetTokenAsync(token.ToJson());
-                    return true;
-                }
-            }
-            catch (Exception)
-            {
-                return false;
-            }
             return false;
         }
+    }
+    public sealed class State
+    {
+        public required SocialLoginProvider Provider { get; set; }
+        public required string Value { get; set; }
+        public required DateTime ExpiringTime { get; set; }
+        public required string Path { get; set; }
     }
     public sealed class SocialLoginLocalStorageService
     {
         private readonly IJSRuntime _jSRuntime;
-        public SocialLoginLocalStorageService(IJSRuntime jSRuntime)
+        private readonly NavigationManager _navigationManager;
+
+        public SocialLoginLocalStorageService(IJSRuntime jSRuntime, NavigationManager navigationManager)
         {
             _jSRuntime = jSRuntime;
+            _navigationManager = navigationManager;
         }
         private const string TokenKey = nameof(TokenKey);
         private const string StateForToken = nameof(StateForToken);
         private const string LocalStorageGetterName = "localStorageFunctions.getItem";
         private const string LocalStorageSetterName = "localStorageFunctions.setItem";
-        public ValueTask<string?> GetTokenAsync()
-            => _jSRuntime.InvokeAsync<string?>(LocalStorageGetterName, TokenKey);
-        public ValueTask SetTokenAsync(string token)
-            => _jSRuntime.InvokeVoidAsync(LocalStorageSetterName, TokenKey, token);
-        public ValueTask<string?> GetStateAsync()
-            => _jSRuntime.InvokeAsync<string?>(LocalStorageGetterName, StateForToken);
-        public ValueTask SetStateAsync(string state)
-            => _jSRuntime.InvokeVoidAsync(LocalStorageSetterName, StateForToken, state);
-    }
-    public static class WebApplicationExtensions
-    {
-        public static T UseSocialLogin<T>(this T builder)
-            where T : IEndpointRouteBuilder
+        public async ValueTask<Token?> GetTokenAsync()
         {
-            builder.MapRazorComponents<LoginConfirmation>().AddInteractiveServerRenderMode();
-            return builder;
+            var token = await _jSRuntime.InvokeAsync<string?>(LocalStorageGetterName, TokenKey);
+            if (token != null)
+            {
+                try
+                {
+                    var tokenFromJson = token.FromJson<Token>();
+                    if (tokenFromJson.Expiring > DateTime.UtcNow)
+                        return tokenFromJson;
+                }
+                catch { }
+            }
+            return default;
         }
+        public ValueTask SetTokenAsync(Token token)
+        {
+            token.Expiring = DateTime.UtcNow.AddSeconds(token.ExpiresIn).AddSeconds(-3);
+            return _jSRuntime.InvokeVoidAsync(LocalStorageSetterName, TokenKey, token.ToJson());
+        }
+
+        public async ValueTask<State?> GetStateAsync()
+        {
+            var state = await _jSRuntime.InvokeAsync<string?>(LocalStorageGetterName, StateForToken);
+            if (state != null)
+            {
+                try
+                {
+                    var stateFromJson = state.FromJson<State>();
+                    if (stateFromJson.ExpiringTime > DateTime.UtcNow)
+                        return stateFromJson;
+                }
+                catch { }
+            }
+            return default;
+        }
+        public async ValueTask<string> SetStateAsync(SocialLoginProvider provider)
+        {
+            var state = new State
+            {
+                Provider = provider,
+                Value = Guid.NewGuid().ToString(),
+                ExpiringTime = DateTime.UtcNow.AddMinutes(5),
+                Path = _navigationManager.Uri
+            };
+            await _jSRuntime.InvokeVoidAsync(LocalStorageSetterName, StateForToken, state.ToJson());
+            return state.Value;
+        }
+
+        public ValueTask DeleteStateAsync()
+            => _jSRuntime.InvokeVoidAsync(LocalStorageSetterName, StateForToken, null);
     }
 }

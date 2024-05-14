@@ -1,6 +1,10 @@
-﻿<button type="button"
+﻿@using Microsoft.AspNetCore.Components.Web
+@rendermode RenderMode.InteractiveServer
+
+<button type="button"
         class="socialButton" style="color:@Color;background:@Background;"
-        onclick="window.navigation.navigate('@Uri')">
+        @onclick=@Clicked
+        >
     <div>
         <div class="socialButtonIconContainer">
             @Icon

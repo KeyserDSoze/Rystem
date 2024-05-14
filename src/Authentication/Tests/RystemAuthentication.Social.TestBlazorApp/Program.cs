@@ -8,7 +8,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddSocialLoginUI(x =>
 {
     x.ApiUrl = "https://localhost:7017";
-    x.Google.ClientId = "224823396805-9nih8454lspd7lkbsiv46j8i1i77sbbg.apps.googleusercontent.com";
+    x.Google.ClientId = "23769141170-lfs24avv5qrj00m4cbmrm202c0fc6gcg.apps.googleusercontent.com";
 });
 
 var app = builder.Build();
@@ -26,8 +26,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
-app.UseSocialLogin()
+app
     .MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-
 app.Run();

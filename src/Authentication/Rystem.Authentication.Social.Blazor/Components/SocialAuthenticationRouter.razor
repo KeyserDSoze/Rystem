@@ -2,19 +2,27 @@
 @using System.Reflection
 @using Microsoft.AspNetCore.Components.Web
 
-<Router AppAssembly="AppAssembly" AdditionalAssemblies="[typeof(SocialAuthenticationRouter).Assembly]">
+<Router AppAssembly="typeof(SocialAuthenticationRouter).Assembly" AdditionalAssemblies="[AppAssembly]">
     <Found Context="routeData">
         <SocialAuthentication>
             <RouteView RouteData="routeData" DefaultLayout="DefaultLayout" />
         </SocialAuthentication>
     </Found>
+    <NotFound>
+        <LayoutView Layout="@(NotFoundLayout ?? DefaultLayout)">
+            @NotFound
+        </LayoutView>
+    </NotFound>
 </Router>
 
 @code {
     [Parameter]
     public required Assembly AppAssembly { get; set; }
-    [Parameter]
-    public required RenderFragment ChildContent { get; set; }
+
     [Parameter]
     public required Type DefaultLayout { get; set; }
+    [Parameter]
+    public Type? NotFoundLayout { get; set; }
+    [Parameter]
+    public RenderFragment? NotFound { get; set; }
 }
