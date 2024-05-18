@@ -2,18 +2,17 @@
 @rendermode RenderMode.InteractiveServer
 
 <button type="button"
-        class="socialButton" style="color:@Color;background:@Background;"
-        @onclick=@(() => LogoutAsync())>
+        class="logout-socialButton" style="color:@Color;background-color:@Background;"
+        @onclick=@(() => _ = LogoutAsync())>
     <div>
-        <div class="socialButtonDivider" />
-        <div class="socialButtonTextContainer">@Text</div>
+        @Text
     </div>
 </button>
 
 @code {
-    private const string LogoutText = "Log out";
-    private const string LogoutBackground = "#ccc";
-    private const string LogoutColor = "#222";
+    private const string LogoutText = "Logout";
+    private const string LogoutBackground = "#606060";
+    private const string LogoutColor = "#fefefe";
     [Parameter]
     public string? Text { get; set; } = LogoutText;
     [Parameter]

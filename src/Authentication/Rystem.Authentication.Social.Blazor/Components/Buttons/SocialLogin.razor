@@ -5,13 +5,13 @@
 <div class="centered">
     @if (Settings != null)
     {
-        @if (Settings.Google.ClientId != null)
-        {
-            <GoogleButton />
-        }
         @if (Settings.Microsoft.ClientId != null)
         {
             <MicrosoftButton />
+        }
+        @if (Settings.Google.ClientId != null)
+        {
+            <GoogleButton />
         }
     }
 </div>

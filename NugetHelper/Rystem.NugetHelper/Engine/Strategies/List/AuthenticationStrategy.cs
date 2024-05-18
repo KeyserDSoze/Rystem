@@ -8,6 +8,8 @@
         {
             var updateTree = new Package()
             .AddProject("Rystem.Authentication.Social", "rystem.authentication.social.react");
+            updateTree.CreateSon()
+                .AddProject("Rystem.Authentication.Social.Blazor");
             return updateTree;
         }
     }

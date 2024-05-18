@@ -1,4 +1,13 @@
-﻿.centered {
-    width: 400px;
-    margin-left: calc(50% - 200px)
+﻿.logout-socialButton {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.3s;
 }
+
+    .logout-socialButton:hover {
+        background-color: #505050; /* Darker shade of grey on hover */
+    }
