@@ -7,7 +7,7 @@ const _window = window as any;
 export const GoogleButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();
     if (settings.google.clientId) {
-        const redirectUri = `${settings.redirectDomain}/account/login`;
+        const redirectUri = `${settings.redirectDomain}`;
         const onClick = (handleResponse: (code: string) => void, handleError: (message: string) => void) => {
             const params = {
                 client_id: settings.google.clientId,

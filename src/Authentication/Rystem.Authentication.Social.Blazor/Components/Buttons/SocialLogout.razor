@@ -1,0 +1,33 @@
+﻿@using Microsoft.AspNetCore.Components.Web
+@rendermode RenderMode.InteractiveServer
+
+<button type="button"
+        class="socialButton" style="color:@Color;background:@Background;"
+        @onclick=@(() => LogoutAsync())>
+    <div>
+        <div class="socialButtonDivider" />
+        <div class="socialButtonTextContainer">@Text</div>
+    </div>
+</button>
+
+@code {
+    private const string LogoutText = "Log out";
+    private const string LogoutBackground = "#ccc";
+    private const string LogoutColor = "#222";
+    [Parameter]
+    public string? Text { get; set; } = LogoutText;
+    [Parameter]
+    public required string ActiveBackground { get; set; }
+    [Parameter]
+    public required string Background { get; set; } = LogoutBackground;
+    [Parameter]
+    public required string Color { get; set; } = LogoutColor;
+    [CascadingParameter(Name = "SocialUser")]
+    public SocialUserWrapper? SocialUser { get; set; }
+
+    private async ValueTask LogoutAsync()
+    {
+        if (SocialUser != null)
+            await SocialUser.LogoutAsync(false);
+    }
+}

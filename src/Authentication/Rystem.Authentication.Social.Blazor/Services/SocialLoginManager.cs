@@ -26,7 +26,7 @@ namespace Rystem.Authentication.Social.Blazor
         }
         public string GetRedirectUri()
             => _navigationManager.BaseUri.Trim('/');
-        public async ValueTask<bool> MeAsync()
+        public async Task<SocialUserWrapper?> MeAsync()
         {
             var token = await _localStorage.GetTokenAsync();
             if (token != null)
@@ -51,7 +51,7 @@ namespace Rystem.Authentication.Social.Blazor
                     }
                     catch (Exception)
                     {
-                        return false;
+                        return default;
                     }
                 }
                 using var stream = await response.Content.ReadAsStreamAsync(default);
@@ -61,12 +61,15 @@ namespace Rystem.Authentication.Social.Blazor
                     if (_authorizationHeaderProvider is SocialLoginAuthorizationHeaderProvider authorizationHeaderProvider)
                     {
                         authorizationHeaderProvider.SetToken(token.AccessToken);
-                        return true;
                     }
-                    return true;
+                    return new SocialUserWrapper
+                    {
+                        User = user,
+                        CurrentToken = token.AccessToken
+                    };
                 }
             }
-            return false;
+            return default;
         }
         public async ValueTask<bool> FetchTokenAsync()
         {
@@ -128,7 +131,7 @@ namespace Rystem.Authentication.Social.Blazor
                 {
                 }
             }
-            return false;
+            return token?.Expiring >= DateTime.UtcNow;
         }
     }
 }

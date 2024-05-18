@@ -21,7 +21,7 @@ namespace Rystem.Authentication.Social.Blazor
         public async ValueTask<Token?> GetTokenAsync()
         {
             var token = await _jSRuntime.InvokeAsync<string?>(LocalStorageGetterName, TokenKey);
-            if (token != null)
+            if (token != null && token != NullString)
             {
                 try
                 {
@@ -37,11 +37,11 @@ namespace Rystem.Authentication.Social.Blazor
             token.Expiring = DateTime.UtcNow.AddSeconds(token.ExpiresIn).AddSeconds(-3);
             return _jSRuntime.InvokeVoidAsync(LocalStorageSetterName, TokenKey, token.ToJson());
         }
-
+        private const string NullString = "null";
         public async ValueTask<State?> GetStateAsync()
         {
             var state = await _jSRuntime.InvokeAsync<string?>(LocalStorageGetterName, StateForToken);
-            if (state != null)
+            if (state != null && state != NullString)
             {
                 try
                 {
@@ -68,5 +68,8 @@ namespace Rystem.Authentication.Social.Blazor
 
         public ValueTask DeleteStateAsync()
             => _jSRuntime.InvokeVoidAsync(LocalStorageSetterName, StateForToken, null);
+
+        public ValueTask DeleteTokenAsync()
+            => _jSRuntime.InvokeVoidAsync(LocalStorageSetterName, TokenKey, null);
     }
 }

@@ -1,6 +1,6 @@
-﻿@if (HasMe)
+﻿@if (User != null)
 {
-    <CascadingValue Name="User" Value="HasMe">
+    <CascadingValue Name="SocialUser" Value="User">
         @ChildContent
     </CascadingValue>
 }
@@ -11,12 +11,12 @@ else if (Rendered)
 @code {
     [Parameter]
     public required RenderFragment ChildContent { get; set; }
-    private bool HasMe { get; set; }
+    private SocialUserWrapper? User { get; set; }
     private bool Rendered { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!HasMe)
+        if (User == null && !Rendered)
         {
             var isAuthenticated = await Manager.FetchTokenAsync();
             if (isAuthenticated)
@@ -25,9 +25,12 @@ else if (Rendered)
             }
             if (isAuthenticated)
             {
-                HasMe = await Manager.MeAsync();
-                if (HasMe)
+                User = await Manager.MeAsync();
+                if (User != null)
+                {
+                    User.LogoutAsync = LogoutAsync;
                     StateHasChanged();
+                }
             }
         }
         if (!Rendered)
@@ -36,5 +39,17 @@ else if (Rendered)
             StateHasChanged();
         }
         await base.OnAfterRenderAsync(firstRender);
+    }
+    private async ValueTask LogoutAsync(bool forceReload)
+    {
+        await LocalStorage.DeleteTokenAsync();
+        await LocalStorage.DeleteStateAsync();
+        if (forceReload)
+            NavigationManager.Refresh(true);
+        else
+        {
+            User = null;
+            StateHasChanged();
+        }
     }
 }

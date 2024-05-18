@@ -1,0 +1,4 @@
+﻿.centered {
+    width: 400px;
+    margin-left: calc(50% - 200px)
+}

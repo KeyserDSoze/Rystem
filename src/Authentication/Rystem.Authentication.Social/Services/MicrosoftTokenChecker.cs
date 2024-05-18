@@ -13,7 +13,7 @@ namespace Rystem.Authentication.Social
         private readonly IHttpClientFactory _clientFactory;
         private readonly SocialLoginBuilder _loginBuilder;
         private static readonly MediaTypeHeaderValue s_mediaTypeHeaderValue = new("application/x-www-form-urlencoded");
-        private const string PostMessage = "code={0}&scope=profile openid email&client_id={1}&redirect_uri={2}/account/login&code_verifier=19cfc47c216dacba8ca23eeee817603e2ba34fe0976378662ba31688ed302fa9&grant_type=authorization_code";
+        private const string PostMessage = "code={0}&scope=profile openid email&client_id={1}&redirect_uri={2}&code_verifier=19cfc47c216dacba8ca23eeee817603e2ba34fe0976378662ba31688ed302fa9&grant_type=authorization_code";
         public MicrosoftTokenChecker(IHttpClientFactory clientFactory, SocialLoginBuilder loginBuilder)
         {
             _clientFactory = clientFactory;
@@ -52,7 +52,7 @@ namespace Rystem.Authentication.Social
             {
                 var settings = _loginBuilder.Microsoft;
                 var client = _clientFactory.CreateClient(Constants.MicrosoftAuthenticationClient);
-                var content = new StringContent(string.Format(PostMessage, code, settings.ClientId, settings.RedirectDomain), s_mediaTypeHeaderValue);
+                var content = new StringContent(string.Format(PostMessage, code, settings.ClientId, $"{settings.RedirectDomain?.Trim('/')}/"), s_mediaTypeHeaderValue);
                 var response = await client.PostAsync(string.Empty, content, cancellationToken);
                 if (response.IsSuccessStatusCode)
                 {

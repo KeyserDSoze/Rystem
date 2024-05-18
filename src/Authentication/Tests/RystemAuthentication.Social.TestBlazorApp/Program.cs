@@ -9,7 +9,8 @@ builder.Services.AddRazorComponents()
 builder.Services.AddSocialLoginUI(x =>
 {
     x.ApiUrl = "https://localhost:7017";
-    x.Google.ClientId = "23769141170-lfs24avv5qrj00m4cbmrm202c0fc6gcg.apps.googleusercontent.com";
+    x.Google.ClientId = builder.Configuration["SocialLogin:Google:ClientId"];
+    x.Microsoft.ClientId = builder.Configuration["SocialLogin:Microsoft:ClientId"];
 });
 builder.Services.AddRepository<SocialRole, string>(repositoryBuilder =>
 {

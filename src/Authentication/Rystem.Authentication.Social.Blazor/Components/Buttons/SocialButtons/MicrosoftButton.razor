@@ -1,0 +1,18 @@
+﻿<SocialButton Clicked="() => LoginAsync()" Text="Log in with Microsoft" ActiveBackground="#EFF0EE" Background="white" Color="black">
+    <Icon>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="#fff" x="0px" y="0px" viewBox="0 0 48 48" style="width: 100%; height: auto;"><path fill="#ff5722" d="M6 6H22V22H6z" transform="rotate(-180 14 14)"></path><path fill="#4caf50" d="M26 6H42V22H26z" transform="rotate(-180 34 14)"></path><path fill="#ffc107" d="M26 26H42V42H26z" transform="rotate(-180 34 34)"></path><path fill="#03a9f4" d="M6 26H22V42H6z" transform="rotate(-180 14 34)"></path></svg>
+    </Icon>
+</SocialButton>
+
+@code {
+    private const string SDK_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?client_id={0}&response_type=code&redirect_uri={1}/&response_mode=query&scope=profile%20openid%20email&state={2}&prompt=select_account&code_challenge=19cfc47c216dacba8ca23eeee817603e2ba34fe0976378662ba31688ed302fa9&code_challenge_method=plain";
+
+    private async ValueTask LoginAsync()
+    {
+        var state = await LocalStorage.SetStateAsync(SocialLoginProvider.Microsoft);
+        var redirectUri = Manager.GetRedirectUri();
+        var clientId = Settings.Microsoft.ClientId;
+        var url = string.Format(SDK_URL, clientId, redirectUri, state);
+        NavigationManager.NavigateTo(url);
+    }
+}

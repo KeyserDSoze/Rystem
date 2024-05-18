@@ -1,5 +1,6 @@
 ﻿@using Microsoft.Extensions.DependencyInjection
 @using Rystem.Authentication.Social.Blazor.Components.Buttons
+@using Rystem.Authentication.Social.Blazor.Components.Buttons.SocialButtons
 
 <div class="centered">
     @if (Settings != null)
@@ -7,6 +8,10 @@
         @if (Settings.Google.ClientId != null)
         {
             <GoogleButton />
+        }
+        @if (Settings.Microsoft.ClientId != null)
+        {
+            <MicrosoftButton />
         }
     }
 </div>
