@@ -283,6 +283,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Content", "Content", "{31D3
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Authentication", "Authentication", "{9A85031E-8A37-4E47-8F70-C2D5BEFADC97}"
 	ProjectSection(SolutionItems) = preProject
+		.github\workflows\PackageDeploy.Rystem.Authentication.Social.Blazor.yml = .github\workflows\PackageDeploy.Rystem.Authentication.Social.Blazor.yml
 		.github\workflows\PackageDeploy.Rystem.Authentication.Social.React.yml = .github\workflows\PackageDeploy.Rystem.Authentication.Social.React.yml
 		.github\workflows\PackageDeploy.Rystem.Authentication.Social.yml = .github\workflows\PackageDeploy.Rystem.Authentication.Social.yml
 	EndProjectSection
