@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -18,7 +18,7 @@
         <PackageIcon>rystem.social.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Authentication</RepositoryUrl>
-        <PackageId>Rystem.Authentication.Social</PackageId>
+        <PackageId>Rystem.Authentication.Social.Abstractions</PackageId>
         <Version>6.0.7</Version>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
@@ -34,13 +34,11 @@
         <When Condition=" '$(Configuration)'=='Debug' ">
             <ItemGroup>
                 <ProjectReference Include="..\..\Core\Rystem.DependencyInjection\Rystem.DependencyInjection.csproj" />
-                <ProjectReference Include="..\Rystem.Authentication.Social.Abstractions\Rystem.Authentication.Social.Abstractions.csproj" />
             </ItemGroup>
         </When>
         <When Condition=" '$(Configuration)'!='Debug' ">
             <ItemGroup>
                 <PackageReference Include="Rystem.DependencyInjection" Version="6.0.7" />
-                <PackageReference Include="Rystem.Authentication.Social.Abstractions" Version="6.0.7" />
             </ItemGroup>
         </When>
     </Choose>

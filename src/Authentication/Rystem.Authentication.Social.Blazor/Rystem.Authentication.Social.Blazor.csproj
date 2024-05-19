@@ -36,11 +36,13 @@
         <When Condition=" '$(Configuration)'=='Debug' ">
             <ItemGroup>
                 <ProjectReference Include="..\..\Core\Rystem\Rystem.csproj" />
+                <ProjectReference Include="..\Rystem.Authentication.Social.Abstractions\Rystem.Authentication.Social.Abstractions.csproj" />
             </ItemGroup>
         </When>
         <When Condition=" '$(Configuration)'!='Debug' ">
             <ItemGroup>
                 <PackageReference Include="Rystem" Version="6.0.7" />
+                <PackageReference Include="Rystem.Authentication.Social.Abstractions" Version="6.0.7" />
             </ItemGroup>
         </When>
     </Choose>

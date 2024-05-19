@@ -283,6 +283,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Content", "Content", "{31D3
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Authentication", "Authentication", "{9A85031E-8A37-4E47-8F70-C2D5BEFADC97}"
 	ProjectSection(SolutionItems) = preProject
+		.github\workflows\PackageDeploy.Rystem.Authentication.Social.Abstractions.yml = .github\workflows\PackageDeploy.Rystem.Authentication.Social.Abstractions.yml
 		.github\workflows\PackageDeploy.Rystem.Authentication.Social.Blazor.yml = .github\workflows\PackageDeploy.Rystem.Authentication.Social.Blazor.yml
 		.github\workflows\PackageDeploy.Rystem.Authentication.Social.React.yml = .github\workflows\PackageDeploy.Rystem.Authentication.Social.React.yml
 		.github\workflows\PackageDeploy.Rystem.Authentication.Social.yml = .github\workflows\PackageDeploy.Rystem.Authentication.Social.yml
@@ -295,6 +296,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Authentication.Social.Blazor", "src\Authentication\Rystem.Authentication.Social.Blazor\Rystem.Authentication.Social.Blazor.csproj", "{AD7C5B32-2C94-481A-8902-8DBDD2830A2B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RystemAuthentication.Social.TestBlazorApp", "src\Authentication\Tests\RystemAuthentication.Social.TestBlazorApp\RystemAuthentication.Social.TestBlazorApp.csproj", "{15B4FAED-6281-427B-BD7F-31F7948E1ED6}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Authentication.Social.Abstractions", "src\Authentication\Rystem.Authentication.Social.Abstractions\Rystem.Authentication.Social.Abstractions.csproj", "{EB8535F8-51BD-4F43-8B0B-43ED12B8A54B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -562,6 +565,10 @@ Global
 		{15B4FAED-6281-427B-BD7F-31F7948E1ED6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{15B4FAED-6281-427B-BD7F-31F7948E1ED6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{15B4FAED-6281-427B-BD7F-31F7948E1ED6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EB8535F8-51BD-4F43-8B0B-43ED12B8A54B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EB8535F8-51BD-4F43-8B0B-43ED12B8A54B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EB8535F8-51BD-4F43-8B0B-43ED12B8A54B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EB8535F8-51BD-4F43-8B0B-43ED12B8A54B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -660,6 +667,7 @@ Global
 		{22600B6E-6DDA-411E-82B1-1F5637DA2170} = {B4F0532A-1BB3-413E-AFCA-C0ADFDFA50F0}
 		{AD7C5B32-2C94-481A-8902-8DBDD2830A2B} = {685F643C-C2A2-4499-821A-00C732CE7FBB}
 		{15B4FAED-6281-427B-BD7F-31F7948E1ED6} = {034E0E48-3CB6-46EF-A2D0-C556A032FCF1}
+		{EB8535F8-51BD-4F43-8B0B-43ED12B8A54B} = {685F643C-C2A2-4499-821A-00C732CE7FBB}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {35C6ADE0-7E70-48ED-A810-A71B2BC94F57}
