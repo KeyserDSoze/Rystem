@@ -4,7 +4,7 @@
 
 <Router AppAssembly="typeof(SocialAuthenticationRouter).Assembly" AdditionalAssemblies="[AppAssembly]">
     <Found Context="routeData">
-        <SocialAuthentication>
+        <SocialAuthentication SetUser="SetUser">
             <RouteView RouteData="routeData" DefaultLayout="DefaultLayout" />
         </SocialAuthentication>
     </Found>
@@ -24,4 +24,6 @@
     public Type? NotFoundLayout { get; set; }
     [Parameter]
     public RenderFragment? NotFound { get; set; }
+    [Parameter]
+    public SetUser? SetUser { get; set; }
 }

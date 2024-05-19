@@ -11,6 +11,8 @@ else if (Rendered)
 @code {
     [Parameter]
     public required RenderFragment ChildContent { get; set; }
+    [Parameter]
+    public SetUser? SetUser { get; set; }
     private SocialUserWrapper? User { get; set; }
     private bool Rendered { get; set; }
 
@@ -29,6 +31,8 @@ else if (Rendered)
                 if (User != null)
                 {
                     User.LogoutAsync = LogoutAsync;
+                    if (SetUser != null)
+                        await SetUser(User.User);
                     StateHasChanged();
                 }
             }
