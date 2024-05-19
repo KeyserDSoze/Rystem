@@ -6,10 +6,9 @@
         public string Label => "Authentication";
         public Package GetStrategy()
         {
-            var updateTree = new Package()
-            .AddProject("Rystem.Authentication.Social", "rystem.authentication.social.react");
+            var updateTree = new Package().AddProject("Rystem.Authentication.Social.Abstractions");
             updateTree.CreateSon()
-                .AddProject("Rystem.Authentication.Social.Blazor");
+                .AddProject("Rystem.Authentication.Social", "rystem.authentication.social.react", "Rystem.Authentication.Social.Blazor");
             return updateTree;
         }
     }
