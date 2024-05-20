@@ -1,7 +1,11 @@
-﻿@if (User != null)
+﻿@typeparam TUser where TUser : SocialUser, new()
+
+@if (User != null)
 {
     <CascadingValue Name="SocialUser" Value="User">
-        @ChildContent
+        <CascadingValue Name="LogoutCallback" Value="LogoutAsync">
+            @ChildContent
+        </CascadingValue>
     </CascadingValue>
 }
 else if (Rendered)
@@ -12,8 +16,8 @@ else if (Rendered)
     [Parameter]
     public required RenderFragment ChildContent { get; set; }
     [Parameter]
-    public SetUser? SetUser { get; set; }
-    private SocialUserWrapper? User { get; set; }
+    public SetUser<TUser>? SetUser { get; set; }
+    private SocialUserWrapper<TUser>? User { get; set; }
     private bool Rendered { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -27,7 +31,7 @@ else if (Rendered)
             }
             if (isAuthenticated)
             {
-                User = await Manager.MeAsync();
+                User = await Manager.MeAsync<TUser>();
                 if (User != null)
                 {
                     User.LogoutAsync = LogoutAsync;

@@ -21,12 +21,12 @@
     public required string Background { get; set; } = LogoutBackground;
     [Parameter]
     public required string Color { get; set; } = LogoutColor;
-    [CascadingParameter(Name = "SocialUser")]
-    public SocialUserWrapper? SocialUser { get; set; }
+    [CascadingParameter(Name = "LogoutCallback")]
+    public Func<bool, ValueTask>? Logout { get; set; }
 
     private async ValueTask LogoutAsync()
     {
-        if (SocialUser != null)
-            await SocialUser.LogoutAsync(false);
+        if (Logout != null)
+            await Logout(false);
     }
 }

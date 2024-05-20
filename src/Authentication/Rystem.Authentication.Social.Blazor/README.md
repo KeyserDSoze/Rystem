@@ -3,6 +3,13 @@
 ## Rystem.Authentication.Social.Blazor
 This project would be a super project to help the api creator to have fast api behind business interfaces and services dispatched through dependency injection.
 
+## Install javascript
+Setup js in app.razor in head or at the end
+```
+   <script src="_content/Rystem.Authentication.Social.Blazor/socialauthentications.js"></script>
+```
+
+
 ## DI - Example
 
 ```csharp

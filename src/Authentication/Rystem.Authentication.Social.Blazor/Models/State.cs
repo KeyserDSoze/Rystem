@@ -7,5 +7,6 @@
         public required DateTime ExpiringTime { get; set; }
         public required string Path { get; set; }
     }
-    public delegate ValueTask SetUser(SocialUser user);
+    public delegate ValueTask SetUser<TUser>(TUser user)
+        where TUser : SocialUser, new();
 }
