@@ -2,10 +2,9 @@
 
 namespace Rystem.Authentication.Social
 {
-    public class SocialUser
+    internal sealed class DefaultSocialUser : ISocialUser
     {
         [JsonPropertyName("username")]
         public string? Username { get; set; }
-        public static SocialUser Empty { get; } = new();
     }
 }

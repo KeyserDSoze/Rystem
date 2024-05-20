@@ -1,4 +1,5 @@
-﻿using RepositoryFramework;
+﻿using System.Text.Json.Serialization;
+using RepositoryFramework;
 using RepositoryFramework.Api.Client;
 
 namespace Rystem.Authentication.Social.TestApi.Models
@@ -19,5 +20,10 @@ namespace Rystem.Authentication.Social.TestApi.Models
         {
             throw new NotImplementedException();
         }
+    }
+    public sealed class SocialUser : ISocialUser
+    {
+        [JsonPropertyName("u")]
+        public string? Username { get; set; }
     }
 }

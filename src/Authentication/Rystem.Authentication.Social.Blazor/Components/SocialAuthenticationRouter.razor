@@ -1,7 +1,7 @@
 ﻿@using Microsoft.AspNetCore.Components.Routing
 @using System.Reflection
 @using Microsoft.AspNetCore.Components.Web
-@typeparam TUser where TUser: SocialUser, new()
+@typeparam TUser where TUser: ISocialUser, new()
 
 <Router AppAssembly="typeof(SocialAuthenticationRouter<TUser>).Assembly" AdditionalAssemblies="[AppAssembly]">
     <Found Context="routeData">

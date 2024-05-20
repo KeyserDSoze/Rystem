@@ -27,7 +27,7 @@ namespace Rystem.Authentication.Social.Blazor
         public string GetRedirectUri()
             => _navigationManager.BaseUri.Trim('/');
         public async Task<SocialUserWrapper<TUser>?> MeAsync<TUser>()
-            where TUser : SocialUser, new()
+            where TUser : ISocialUser, new()
         {
             var token = await _localStorage.GetTokenAsync();
             if (token != null)

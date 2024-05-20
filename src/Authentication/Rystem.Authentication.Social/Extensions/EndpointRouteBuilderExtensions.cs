@@ -66,7 +66,7 @@ namespace Microsoft.Extensions.DependencyInjection
                             if (socialUserProvider != null)
                                 return Results.Json(await socialUserProvider.GetAsync(context.User.Identity.Name, context.User.Claims, cancellationToken));
                             else
-                                return Results.Json(new SocialUser { Username = context.User.Identity.Name });
+                                return Results.Json(ISocialUser.OnlyUsername(context.User.Identity?.Name));
                         }
                         else
                             return Results.Unauthorized();

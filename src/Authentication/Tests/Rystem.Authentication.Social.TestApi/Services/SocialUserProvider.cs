@@ -1,17 +1,18 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 
 namespace Rystem.Authentication.Social.TestApi.Services
 {
     internal sealed class SocialUserProvider : ISocialUserProvider
     {
-        public Task<SocialUser> GetAsync(string username, IEnumerable<Claim> claims, CancellationToken cancellationToken)
+        public Task<ISocialUser> GetAsync(string username, IEnumerable<Claim> claims, CancellationToken cancellationToken)
         {
             return Task.FromResult((new SuperSocialUser
             {
                 Username = $"a {username}",
                 Email = username
-            } as SocialUser)!);
+            } as ISocialUser)!);
         }
 
         public async IAsyncEnumerable<Claim> GetClaimsAsync(string? username, [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -21,8 +22,11 @@ namespace Rystem.Authentication.Social.TestApi.Services
             yield return new Claim(ClaimTypes.Upn, "something");
         }
     }
-    public sealed class SuperSocialUser : SocialUser
+    public sealed class SuperSocialUser : ISocialUser
     {
+        [JsonPropertyName("e")]
         public required string Email { get; set; }
+        [JsonPropertyName("u")]
+        public string? Username { get; set; }
     }
 }
