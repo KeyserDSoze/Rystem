@@ -68,17 +68,24 @@ namespace Microsoft.Extensions.DependencyInjection
                     .Map("api/Authentication/Social/User", async (
                             HttpContext context,
                             [FromServices] ISocialUserProvider? socialUserProvider,
+                            [FromServices] ILogger<ITokenChecker>? logger,
                             CancellationToken cancellationToken) =>
                     {
                         if (context?.User?.Identity?.IsAuthenticated == true)
                         {
-                            if (socialUserProvider != null)
-                                return Results.Json(await socialUserProvider.GetAsync(context.User.Identity.Name, context.User.Claims, cancellationToken));
-                            else
-                                return Results.Json(ISocialUser.OnlyUsername(context.User.Identity?.Name));
+                            try
+                            {
+                                if (socialUserProvider != null)
+                                    return Results.Json(await socialUserProvider.GetAsync(context.User.Identity.Name, context.User.Claims, cancellationToken));
+                                else
+                                    return Results.Json(ISocialUser.OnlyUsername(context.User.Identity?.Name));
+                            }
+                            catch (Exception ex)
+                            {
+                                logger?.LogError(ex, "Error getting user.");
+                            }
                         }
-                        else
-                            return Results.Unauthorized();
+                        return Results.Unauthorized();
                     })
                     .WithName("/Social/User")
                     .WithDisplayName("/Social/User")
