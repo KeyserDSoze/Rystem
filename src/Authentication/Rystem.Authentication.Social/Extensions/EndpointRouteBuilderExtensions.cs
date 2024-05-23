@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Logging;
 using Rystem.Authentication.Social;
 using System.Security.Claims;
 
@@ -20,6 +21,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 endpointBuilder.Map("api/Authentication/Social/Token", async (
                     [FromServices] ISocialUserProvider? claimProvider,
                     [FromServices] IFactory<ITokenChecker> tokenCheckerFactory,
+                    [FromServices] ILogger<ITokenChecker>? logger,
                     [FromQuery] ProviderType provider,
                     [FromQuery] string code,
                     CancellationToken cancellationToken) =>
@@ -28,7 +30,14 @@ namespace Microsoft.Extensions.DependencyInjection
                     var tokenChecker = tokenCheckerFactory.Create(provider.ToString());
                     if (tokenChecker != null)
                     {
-                        username = await tokenChecker.CheckTokenAndGetUsernameAsync(code, cancellationToken);
+                        try
+                        {
+                            username = await tokenChecker.CheckTokenAndGetUsernameAsync(code, cancellationToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            logger?.LogError(ex, "Error checking token.");
+                        }
                     }
                     if (!string.IsNullOrWhiteSpace(username))
                     {
