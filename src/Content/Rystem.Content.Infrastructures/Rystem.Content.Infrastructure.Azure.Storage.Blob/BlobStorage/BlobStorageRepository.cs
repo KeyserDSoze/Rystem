@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,7 +53,13 @@ namespace Rystem.Content.Infrastructure.Storage
         public async ValueTask<bool> UploadAsync(string path, byte[] data, ContentRepositoryOptions? options = default, bool overwrite = true, CancellationToken cancellationToken = default)
         {
             var blobClient = Client.GetBlobClient(GetFileName(path));
-            var response = await blobClient.UploadAsync(new BinaryData(data), overwrite, cancellationToken).NoContext();
+            var uploadOptions = Options?.UploadOptions;
+            if (uploadOptions != null)
+            {
+                if (uploadOptions.Conditions != null && overwrite)
+                    uploadOptions.Conditions = null;
+            }
+            var response = await blobClient.UploadAsync(new BinaryData(data), uploadOptions, cancellationToken).NoContext();
             var result = response.Value != null;
             if (result)
             {

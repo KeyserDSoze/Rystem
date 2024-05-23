@@ -1,6 +1,7 @@
 ﻿using Azure.Core;
 using Azure.Identity;
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 
 namespace Rystem.Content.Infrastructure.Storage
 {
@@ -12,18 +13,18 @@ namespace Rystem.Content.Infrastructure.Storage
             {
                 var containerClient = new BlobContainerClient(settings.ConnectionString,
                     settings.ContainerName?.ToLower(), settings.ClientOptions);
-                return GetClientFactoryAsync(containerClient, settings.Prefix, settings.IsPublic);
+                return GetClientFactoryAsync(containerClient, settings.Prefix, settings.IsPublic, settings.UploadOptions);
             }
             else if (settings.EndpointUri != null)
             {
                 TokenCredential defaultCredential = settings.ManagedIdentityClientId == null ? new DefaultAzureCredential() : new ManagedIdentityCredential(settings.ManagedIdentityClientId);
                 var containerClient = new BlobContainerClient(settings.EndpointUri, defaultCredential, settings.ClientOptions);
-                return GetClientFactoryAsync(containerClient, settings.Prefix, settings.IsPublic);
+                return GetClientFactoryAsync(containerClient, settings.Prefix, settings.IsPublic, settings.UploadOptions);
             }
             throw new ArgumentException($"Wrong installation. You lack for connection string or managed identity.");
         }
 
-       private static async Task<Func<IServiceProvider, BlobServiceClientWrapper>> GetClientFactoryAsync(BlobContainerClient containerClient, string? prefix, bool isPublic)
+        private static async Task<Func<IServiceProvider, BlobServiceClientWrapper>> GetClientFactoryAsync(BlobContainerClient containerClient, string? prefix, bool isPublic, BlobUploadOptions? blobUploadOptions)
         {
             _ = await containerClient.CreateIfNotExistsAsync().NoContext();
             if (isPublic)
@@ -31,7 +32,8 @@ namespace Rystem.Content.Infrastructure.Storage
             return (serviceProvider) => new BlobServiceClientWrapper
             {
                 ContainerClient = containerClient,
-                Prefix = prefix
+                Prefix = prefix,
+                UploadOptions = blobUploadOptions
             };
         }
     }

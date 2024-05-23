@@ -21,6 +21,10 @@ namespace File.UnitTest
                     x.ContainerName = "supertest";
                     x.Prefix = "site/";
                     x.ConnectionString = configuration["ConnectionString:Storage"];
+                    x.UploadOptions = new Azure.Storage.Blobs.Models.BlobUploadOptions()
+                    {
+                        AccessTier = Azure.Storage.Blobs.Models.AccessTier.Cool
+                    };
                 },
                 "blobstorage")
                 .ToResult()
