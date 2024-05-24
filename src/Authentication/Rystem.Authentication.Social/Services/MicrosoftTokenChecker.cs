@@ -46,6 +46,7 @@ namespace Rystem.Authentication.Social
             return validationParameters;
         }
         private const string Email = "email";
+        private const string PreferredUser = "preferred_username";
         public async Task<string> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
         {
             if (!string.IsNullOrWhiteSpace(code))
@@ -74,6 +75,11 @@ namespace Rystem.Authentication.Social
                                     var tokenHandler = new JwtSecurityTokenHandler();
                                     tokenHandler.ValidateToken(authResponse.IdToken, validationParameters, out SecurityToken validatedToken);
                                     var jwt = (JwtSecurityToken)validatedToken;
+                                    var preferredUser = jwt.Claims.FirstOrDefault(x => x.Type == PreferredUser);
+                                    if (preferredUser != null)
+                                    {
+                                        return preferredUser.Value;
+                                    }
                                     return jwt.Claims.First(x => x.Type == Email).Value;
                                 }
                                 catch (SecurityTokenValidationException)
