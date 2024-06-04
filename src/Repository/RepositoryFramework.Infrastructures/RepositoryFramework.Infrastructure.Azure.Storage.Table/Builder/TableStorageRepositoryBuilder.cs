@@ -96,14 +96,14 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
             {
                 var serviceClient = new TableServiceClient(Settings.ConnectionString, Settings.ClientOptions);
                 var tableClient = new TableClient(Settings.ConnectionString, Settings.TableName ?? Settings.ModelType.Name, Settings.ClientOptions);
-                return AddAsync(Settings.ModelType.Name, serviceClient, tableClient);
+                return AddAsync(Settings.TableName ?? Settings.ModelType.Name, serviceClient, tableClient);
             }
             else if (Settings.EndpointUri != null)
             {
                 TokenCredential defaultCredential = Settings.ManagedIdentityClientId == null ? new DefaultAzureCredential() : new ManagedIdentityCredential(Settings.ManagedIdentityClientId);
                 var serviceClient = new TableServiceClient(Settings.EndpointUri, defaultCredential, Settings.ClientOptions);
                 var tableClient = new TableClient(Settings.EndpointUri, Settings.TableName ?? Settings.ModelType.Name, defaultCredential, Settings.ClientOptions);
-                return AddAsync(Settings.ModelType.Name, serviceClient, tableClient);
+                return AddAsync(Settings.TableName ?? Settings.ModelType.Name, serviceClient, tableClient);
             }
             throw new ArgumentException($"Wrong installation for {Settings.ModelType.Name} model in your repository table storage. Use managed identity or a connection string.");
         }

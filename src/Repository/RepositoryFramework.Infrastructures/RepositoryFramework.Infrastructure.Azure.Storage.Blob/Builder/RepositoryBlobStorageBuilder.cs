@@ -30,7 +30,6 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
                 var containerClient = new BlobContainerClient(Settings.EndpointUri, defaultCredential, Settings.ClientOptions);
                 return AddAsync(containerClient);
             }
-            
             throw new ArgumentException($"Wrong installation for {Settings.ModelType.Name} model in your repository blob storage. Use managed identity or a connection string.");
         }
         private async Task<Func<IServiceProvider, BlobContainerClientWrapper>> AddAsync(BlobContainerClient containerClient)
