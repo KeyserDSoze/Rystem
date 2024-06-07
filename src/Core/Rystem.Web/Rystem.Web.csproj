@@ -1,7 +1,6 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
@@ -12,41 +11,35 @@
         <DebugType>portable</DebugType>
         <Authors>Alessandro Rapiti</Authors>
         <Company>Alessandro Rapiti</Company>
-        <Product>Rystem.Api</Product>
-        <Description>Rystem.Authentication.Social helps you to integrate with new .Net Identity system and social logins.</Description>
+        <Product>Rystem</Product>
+        <Description>Rystem is a open-source framework to improve the System namespace in .Net</Description>
         <Copyright>2024</Copyright>
-        <PackageIcon>rystem.social.png</PackageIcon>
+        <PackageIcon>rystem.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Authentication</RepositoryUrl>
-        <PackageId>Rystem.Authentication.Social</PackageId>
+        <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Core/Rystem.DependencyInjection</RepositoryUrl>
+        <PackageId>Rystem.Web</PackageId>
         <Version>6.0.14</Version>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     </PropertyGroup>
+
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
-        <PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
-        <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="7.6.0" />
-        <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="7.6.0" />
-        <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.6.0" />
     </ItemGroup>
     <Choose>
         <When Condition=" '$(Configuration)'=='Debug' ">
             <ItemGroup>
-                <ProjectReference Include="..\..\Core\Rystem.DependencyInjection\Rystem.DependencyInjection.csproj" />
-                <ProjectReference Include="..\Rystem.Authentication.Social.Abstractions\Rystem.Authentication.Social.Abstractions.csproj" />
+                <ProjectReference Include="..\Rystem.DependencyInjection\Rystem.DependencyInjection.csproj" />
             </ItemGroup>
         </When>
         <When Condition=" '$(Configuration)'!='Debug' ">
             <ItemGroup>
                 <PackageReference Include="Rystem.DependencyInjection" Version="6.0.14" />
-                <PackageReference Include="Rystem.Authentication.Social.Abstractions" Version="6.0.14" />
             </ItemGroup>
         </When>
     </Choose>
-
     <ItemGroup>
-        <None Update="rystem.social.png">
+        <None Update="rystem.png">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>
