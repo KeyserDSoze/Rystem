@@ -47,6 +47,9 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
                 foreach (var service in _services.Where(x => x.Lifetime == ServiceLifetime.Singleton && !x.IsKeyedService).GroupBy(x => x.ServiceType))
                 {
+
+                    if (service.Key.ContainsGenericParameters && service.Key.GenericTypeArguments.Length == 0)
+                        continue;
                     var values = _oldServiceProvider?.GetServices(service.Key);
                     var allServices = service.GetEnumerator();
                     if (values != null)
@@ -56,15 +59,10 @@ namespace Microsoft.Extensions.DependencyInjection
                             if (allServices.MoveNext())
                             {
                                 var actualService = allServices.Current;
-                                try
-                                {
-                                    if (value != null && actualService != null)
-                                        s_implementationInstanceField.SetValue(actualService, value);
-                                }
-                                catch (Exception ex)
-                                {
-                                    string olaf = ex.Message;
-                                }
+
+                                if (value != null && actualService != null)
+                                    s_implementationInstanceField.SetValue(actualService, value);
+
                             }
                             else
                             {
@@ -72,7 +70,6 @@ namespace Microsoft.Extensions.DependencyInjection
                             }
                         }
                     }
-
                 }
             }
             _serviceProvider = _services.BuildServiceProvider();

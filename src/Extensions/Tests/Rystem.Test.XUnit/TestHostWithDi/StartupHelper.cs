@@ -8,8 +8,9 @@ namespace Rystem.Test.XUnit
     public abstract class StartupHelper
     {
         protected abstract string? AppSettingsFileName { get; }
-        protected abstract ValueTask ConfigureServerServicesAsync(IServiceCollection services, IConfiguration configuration);
-        protected abstract ValueTask ConfigureServerMiddlewaresAsync(IApplicationBuilder applicationBuilder, IServiceProvider serviceProvider);
+        protected abstract bool HasTestHost { get; }
+        protected virtual ValueTask ConfigureServerServicesAsync(IServiceCollection services, IConfiguration configuration) => ValueTask.CompletedTask;
+        protected virtual ValueTask ConfigureServerMiddlewaresAsync(IApplicationBuilder applicationBuilder, IServiceProvider serviceProvider) => ValueTask.CompletedTask;
         protected virtual bool AddHealthCheck => true;
         protected abstract Type? TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration { get; }
         protected abstract Type? TypeToChooseTheRightAssemblyWithControllersToMap { get; }
@@ -32,15 +33,18 @@ namespace Rystem.Test.XUnit
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2012:Use ValueTasks correctly", Justification = "Test purposes.")]
         public void ConfigureServices(IServiceCollection services, HostBuilderContext context)
         {
-            var exception = HostTester.CreateHostServerAsync(context.Configuration,
-                TypeToChooseTheRightAssemblyWithControllersToMap,
-                ConfigureServerServicesAsync,
-                ConfigureServerMiddlewaresAsync,
-                AddHealthCheck).ToResult();
-            if (exception != null)
-                throw exception;
-            services.AddSingleton(context.Configuration);
-            services.AddSingleton<IHttpClientFactory>(TestHttpClientFactory.Instance);
+            if (HasTestHost)
+            {
+                var exception = HostTester.CreateHostServerAsync(context.Configuration,
+                    TypeToChooseTheRightAssemblyWithControllersToMap,
+                    ConfigureServerServicesAsync,
+                    ConfigureServerMiddlewaresAsync,
+                    AddHealthCheck).ToResult();
+                if (exception != null)
+                    throw exception;
+                services.AddSingleton(context.Configuration);
+                services.AddSingleton<IHttpClientFactory>(TestHttpClientFactory.Instance);
+            }
             ConfigureCientServices(services);
         }
     }

@@ -24,8 +24,7 @@ namespace Rystem.Test.UnitTest
                 PropertyNameCaseInsensitive = true
             });
             Assert.Null(jsonContent.AddedService);
-         
-            var response2 = await _httpClient.GetAsync("hello");
+            var response2 = await _httpClient.GetAsync("Service/Get");
             var responseAsString2 = await response2.Content.ReadAsStringAsync();
             var jsonContent2 = responseAsString2.FromJson<ServiceWrapper>(new JsonSerializerOptions
             {

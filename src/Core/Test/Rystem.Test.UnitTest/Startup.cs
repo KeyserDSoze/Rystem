@@ -12,6 +12,7 @@ namespace Rystem.Test.UnitTest
     public class Startup : StartupHelper
     {
         protected override string? AppSettingsFileName => "appsettings.test.json";
+        protected override bool HasTestHost => true;
         protected override Type? TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration => typeof(Startup);
         protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => typeof(ServiceController);
         protected override IServiceCollection ConfigureCientServices(IServiceCollection services)

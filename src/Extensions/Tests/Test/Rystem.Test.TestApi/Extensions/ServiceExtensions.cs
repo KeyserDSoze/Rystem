@@ -19,6 +19,7 @@ namespace Rystem.Test.TestApi.Extensions
         }
         public static IApplicationBuilder UseTestApplication(this IApplicationBuilder app)
         {
+            app.UseRuntimeServiceProvider();
             app.UseRouting();
             app.UseAuthorization();
             app.UseEndpoints(x =>
