@@ -32,6 +32,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\..\Extensions\Tests\Rystem.Test.XUnit\Rystem.Test.XUnit.csproj" />
+        <ProjectReference Include="..\..\..\Extensions\Tests\Test\Rystem.Test.TestApi\Rystem.Test.TestApi.csproj" />
         <ProjectReference Include="..\..\Rystem.DependencyInjection\Rystem.DependencyInjection.csproj" />
         <ProjectReference Include="..\..\Rystem.Web\Rystem.Web.csproj" />
         <ProjectReference Include="..\..\Rystem.XUnitTest\Rystem.XUnitTest.csproj" />

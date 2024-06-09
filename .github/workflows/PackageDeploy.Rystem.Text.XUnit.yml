@@ -4,7 +4,7 @@ on:
     branches:
       - master
     paths:
-      - src/Extensions/Rystem.Test.XUnit/Rystem.Test.XUnit.csproj
+      - src/Extensions/Tests/Rystem.Test.XUnit/Rystem.Test.XUnit.csproj
       - reload.txt
 jobs:
   publish:
@@ -17,5 +17,5 @@ jobs:
         uses: KeyserDSoze/DefaultAction/pushing_nuget_with_symbols@v1.0.1
         with:
           dotnet-version: ${{ secrets.NET_VERSION }}
-          path: src/Extensions/Rystem.Test.XUnit/Rystem.Test.XUnit.csproj
+          path: src/Extensions/Tests/Rystem.Test.XUnit/Rystem.Test.XUnit.csproj
           api-key: ${{ secrets.NUGET_API_KEY }}
