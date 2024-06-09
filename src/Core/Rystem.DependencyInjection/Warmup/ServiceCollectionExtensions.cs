@@ -24,7 +24,6 @@ namespace Microsoft.Extensions.DependencyInjection
             where TServiceProvider : IServiceProvider
         {
             await ServiceProviderUtility.Instance.AfterBuildAsync(serviceProvider);
-            ServiceProviderUtility.Instance.AfterBuildEvents.Clear();
             return serviceProvider;
         }
     }

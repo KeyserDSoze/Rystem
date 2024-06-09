@@ -7,6 +7,7 @@ namespace Microsoft.Extensions.DependencyInjection
     {
         private static IServiceCollection? _services;
         private static IServiceProvider? _serviceProvider;
+        private static IServiceProvider? _oldServiceProvider;
         private static IApplicationBuilder? _webApplication;
         private static FieldInfo? _fieldInfoForReadOnlySetter;
         private static Action<IServiceProvider>? _updater;
@@ -24,25 +25,70 @@ namespace Microsoft.Extensions.DependencyInjection
             _fieldInfoForReadOnlySetter?.SetValue(_services, false);
             return _services;
         }
-        public static async ValueTask ReBuildAsync(this IServiceCollection services)
+        private static readonly FieldInfo s_implementationInstanceField = typeof(ServiceDescriptor).GetField("_implementationInstance", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        public static async ValueTask ReBuildAsync(this IServiceCollection services, bool preserveValueForSingletonServices = true)
         {
             if (_services == null)
                 throw new ArgumentException($"Please setup in Dependency injection the {nameof(AddRuntimeServiceProvider)} method.");
+            var oldServiceProvider = _serviceProvider;
+            if (preserveValueForSingletonServices)
+            {
+                foreach (var service in _services)
+                {
+                    if (service.Lifetime == ServiceLifetime.Singleton)
+                    {
+                        if (service.IsKeyedService)
+                        {
+                            var value = _oldServiceProvider?.GetKeyedServices(service.ServiceType, service.ServiceKey);
+                            if (value != null)
+                            {
+                                var entity = value.FirstOrDefault();
+                                if (entity != null)
+                                {
+                                    s_implementationInstanceField.SetValue(service, value);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            var value = _oldServiceProvider?.GetService(service.ServiceType);
+                            if (value != null)
+                                s_implementationInstanceField.SetValue(service, value);
+                        }
+                    }
+                }
+            }
             _serviceProvider = _services.BuildServiceProvider();
+            _oldServiceProvider = oldServiceProvider;
             _fieldInfoForReadOnlySetter?.SetValue(_services, true);
             _updater?.Invoke(_serviceProvider);
             await _serviceProvider.WarmUpAsync();
         }
-        public static T UseRuntimeServiceProvider<T>(this T webApplication)
+        public static T UseRuntimeServiceProvider<T>(this T webApplication, bool disposeOldServiceProvider = true)
             where T : IApplicationBuilder
         {
             if (_webApplication == null)
             {
                 _webApplication = webApplication;
+                _oldServiceProvider = _webApplication.ApplicationServices;
                 webApplication.Use((context, next) =>
                 {
                     if (_serviceProvider != null)
+                    {
+                        var services = context.RequestServices;
                         context.RequestServices = _serviceProvider.CreateScope().ServiceProvider;
+                        if (disposeOldServiceProvider)
+                        {
+                            try
+                            {
+                                if (services is IDisposable disposable)
+                                    disposable?.Dispose();
+                                if (services is IAsyncDisposable asyncDisposable)
+                                    _ = asyncDisposable?.DisposeAsync();
+                            }
+                            catch { }
+                        }
+                    }
                     return next(context);
                 });
                 if (_updater == null)

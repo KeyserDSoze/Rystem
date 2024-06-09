@@ -2,22 +2,22 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
-namespace Whistleblowing.Tests
+namespace Rystem.Test.XUnit
 {
-    internal sealed class HttpClientFactory : IHttpClientFactory
+    internal sealed class TestHttpClientFactory : IHttpClientFactory
     {
-        public static HttpClientFactory Instance { get; } = new HttpClientFactory();
+        public static TestHttpClientFactory Instance { get; } = new TestHttpClientFactory();
         public IHost? Host { get; set; }
         public IConfiguration Configuration { get; set; } = null!;
         private HttpClient? _httpClient;
-        private HttpClientFactory() { }
+        private TestHttpClientFactory() { }
         public HttpClient CreateClient(string name)
-            => _httpClient!;
+            => CreateServerAndClient();
         public HttpClient CreateServerAndClient()
         {
             var server = Host!.GetTestServer();
             _httpClient = server.CreateClient();
-            _httpClient.DefaultRequestHeaders.Add("Origin", "http://example.com");
+            _httpClient.DefaultRequestHeaders.Add("Origin", "https://localhost");
             _httpClient.DefaultRequestHeaders.Add("Access-Control-Request-Method", "POST");
             _httpClient.DefaultRequestHeaders.Add("Access-Control-Request-Headers", "X-Requested-With");
             return _httpClient;

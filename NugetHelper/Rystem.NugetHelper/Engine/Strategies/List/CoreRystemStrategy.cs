@@ -12,7 +12,7 @@
                 .CreateSon()
                     .AddProject("Rystem.Concurrency", "Rystem.Web")
                 .CreateSon()
-                    .AddProject("Rystem.BackgroundJob", "Rystem.Concurrency.Redis")
+                    .AddProject("Rystem.BackgroundJob", "Rystem.Concurrency.Redis", "Rystem.Test.XUnit")
                 .CreateSon()
                     .AddProject("Rystem.Queue");
             return onlyRystemTree;
