@@ -1,10 +1,10 @@
-name: Rystem.Web.Nuget
+name: Rystem.DependencyInjection.Web.Nuget
 on:
   push:
     branches:
       - master
     paths:
-      - src/Core/Rystem.Web/Rystem.Web.csproj
+      - src/Core/Rystem.DependencyInjection.Web/Rystem.DependencyInjection.Web.csproj
       - reload.txt
 jobs:
   publish:
@@ -17,5 +17,5 @@ jobs:
         uses: KeyserDSoze/DefaultAction/pushing_nuget_with_symbols@v1.0.1
         with:
           dotnet-version: ${{ secrets.NET_VERSION }}
-          path: src/Core/Rystem.Web/Rystem.Web.csproj
+          path: src/Core/Rystem.DependencyInjection.Web/Rystem.DependencyInjection.Web.csproj
           api-key: ${{ secrets.NUGET_API_KEY }}

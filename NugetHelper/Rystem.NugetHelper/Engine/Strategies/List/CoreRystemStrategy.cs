@@ -10,7 +10,7 @@
                .AddProject("Rystem.DependencyInjection");
             onlyRystemTree
                 .CreateSon()
-                    .AddProject("Rystem.Concurrency", "Rystem.Web")
+                    .AddProject("Rystem.Concurrency", "Rystem.DependencyInjection.Web")
                 .CreateSon()
                     .AddProject("Rystem.BackgroundJob", "Rystem.Concurrency.Redis", "Rystem.Test.XUnit")
                 .CreateSon()

@@ -16,25 +16,31 @@
         <Copyright>2024</Copyright>
         <PackageIcon>rystem.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Core/Rystem.Web</RepositoryUrl>
-        <PackageId>Rystem.Web</PackageId>
+        <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/Tests/Rystem.Test.XUnit</RepositoryUrl>
+        <PackageId>Rystem.Test.XUnit</PackageId>
         <Version>6.0.15</Version>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+        <IsPackable>true</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>
-        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
+        <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="8.0.6" />
+        <PackageReference Include="xunit" Version="2.8.1" />
+        <PackageReference Include="Xunit.DependencyInjection" Version="9.3.0" />
     </ItemGroup>
     <Choose>
         <When Condition=" '$(Configuration)'=='Debug' ">
             <ItemGroup>
-                <ProjectReference Include="..\Rystem.DependencyInjection\Rystem.DependencyInjection.csproj" />
+                <ProjectReference Include="..\..\..\Core\Rystem.DependencyInjection.Web\Rystem.DependencyInjection.Web.csproj" />
+                <ProjectReference Include="..\..\Concurrency\Rystem.Concurrency\Rystem.Concurrency.csproj" />
             </ItemGroup>
         </When>
         <When Condition=" '$(Configuration)'!='Debug' ">
             <ItemGroup>
-                <PackageReference Include="Rystem.DependencyInjection" Version="6.0.15" />
+                <PackageReference Include="Rystem.Web" Version="6.0.15" />
+                <PackageReference Include="Rystem.Concurrency" Version="6.0.15" />
             </ItemGroup>
         </When>
     </Choose>
