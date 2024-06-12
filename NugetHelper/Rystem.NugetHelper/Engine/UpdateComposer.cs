@@ -19,47 +19,73 @@ namespace Rystem.NugetHelper.Engine
         private static readonly Regex s_include = new("Include=");
         private static readonly Regex s_versionRegex = new(@"Version=\""[^\""]*\""");
         private static readonly Regex s_repo = new(@"\\repos\\");
-        public void ConfigurePackage()
+        public void ConfigurePackage(int? forcedPackage)
         {
-            Console.WriteLine("Do you want to update?");
-            foreach (var strategy in UpdateStrategyList.Updates)
-                Console.WriteLine($"{strategy.Value}) {strategy.Label}");
-            Console.WriteLine();
-            var choosenStrategyValue = int.Parse(Console.ReadLine()!);
-            _choosenStrategy = UpdateStrategyList.Updates.Find(x => x.Value == choosenStrategyValue)!.GetStrategy();
-        }
-        public void ConfigureVersion()
-        {
-            Console.WriteLine("Do you want to update? (as default the patch)");
-            foreach (var value in Enum.GetValues(typeof(VersionType)))
+            if (forcedPackage == null)
             {
-                Console.WriteLine($"{(int)value}) {value}");
+                Console.WriteLine("Do you want to update?");
+                foreach (var strategy in UpdateStrategyList.Updates)
+                    Console.WriteLine($"{strategy.Value}) {strategy.Label}");
+                Console.WriteLine();
+                forcedPackage = int.Parse(Console.ReadLine()!);
             }
-            var choosenVersion = Console.ReadLine();
-            if (int.TryParse(choosenVersion, out var number))
-                _versionType = (VersionType)number;
+            _choosenStrategy = UpdateStrategyList.Updates.Find(x => x.Value == forcedPackage)!.GetStrategy();
         }
-        public void Configure()
+        public void ConfigureVersion(VersionType? chosenVersion)
+        {
+            if (chosenVersion == null)
+            {
+                Console.WriteLine("Do you want to update? (as default the patch)");
+                foreach (var value in Enum.GetValues(typeof(VersionType)))
+                {
+                    Console.WriteLine($"{(int)value}) {value}");
+                }
+                var chosenVersionFromInput = Console.ReadLine();
+                if (int.TryParse(chosenVersionFromInput, out var number))
+                    _versionType = (VersionType)number;
+            }
+            else
+                _versionType = chosenVersion.Value;
+        }
+        public void Configure(bool isAutomatic, int? minutesToWait, int? addingNumberToCurrentVersion, string? specificVersion)
         {
             if (_versionType == VersionType.Specific)
             {
-                Console.WriteLine("Insert your new version");
-                _specificVersion = Console.ReadLine();
+                if (specificVersion == null)
+                {
+                    Console.WriteLine("Insert your new version");
+                    _specificVersion = Console.ReadLine();
+                }
+                else
+                    _specificVersion = specificVersion;
                 if (_specificVersion != null && !_specificVersion.ContainsAtLeast(2, '.'))
                     throw new ArgumentException("You set a wrong version");
             }
-            Console.WriteLine("Do you want to pause each step? y or everythingelse");
-            _pauseEachStep = Console.ReadLine() == "y";
-            Console.WriteLine("Do you want to run in debug? y or everythingelse");
-            _isDebug = Console.ReadLine() == "y";
-            Console.WriteLine("Do you want to change version by 1 or ? (1) is default");
-            var versionAdder = Console.ReadLine();
-            if (int.TryParse(versionAdder, out var number))
-                _addingValueForVersion = number;
-            Console.WriteLine("Do you want to wait for each round 5 minutes as default or?");
-            var minutesToWait = Console.ReadLine();
-            if (int.TryParse(minutesToWait, out var minutes))
-                _minutesToWait = minutes;
+            if (isAutomatic)
+            {
+                Console.WriteLine("Do you want to pause each step? y or everythingelse");
+                _pauseEachStep = Console.ReadLine() == "y";
+                Console.WriteLine("Do you want to run in debug? y or everythingelse");
+                _isDebug = Console.ReadLine() == "y";
+            }
+            if (addingNumberToCurrentVersion == null && !isAutomatic)
+            {
+                Console.WriteLine("Do you want to change version by 1 or ? (1) is default");
+                var versionAdder = Console.ReadLine();
+                if (int.TryParse(versionAdder, out var number))
+                    _addingValueForVersion = number;
+            }
+            else if (addingNumberToCurrentVersion != null)
+                _addingValueForVersion = addingNumberToCurrentVersion.Value;
+            if (minutesToWait == null && !isAutomatic)
+            {
+                Console.WriteLine("Do you want to wait for each round 5 minutes as default or?");
+                var minutesToWaitFromUser = Console.ReadLine();
+                if (int.TryParse(minutesToWaitFromUser, out var minutes))
+                    _minutesToWait = minutes;
+            }
+            else if (minutesToWait != null)
+                _minutesToWait = minutesToWait.Value;
         }
         public async Task ExecuteUpdateAsync()
         {

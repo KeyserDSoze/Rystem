@@ -1,0 +1,34 @@
+﻿// See https://aka.ms/new-console-template for more information
+using Rystem.NugetHelper;
+
+namespace Rystem.Nuget
+{
+    internal sealed class UpdateComposerParameters
+    {
+        public int? Package { get; set; }
+        public VersionType? Versioning { get; set; }
+        public bool IsAutomatic { get; set; }
+        public int? MinutesToWait { get; set; }
+        public int? AddingNumberToCurrentVersion { get; set; }
+        public string? SpecificVersion { get; set; }
+        public UpdateComposerParameters(string[] args)
+        {
+            if (args != null && args.Length > 0)
+            {
+                var parametersAsDictionary = args.ToDictionary(x => x.Split("=").First(), x => x.Split("=").Last());
+                if (parametersAsDictionary.ContainsKey(nameof(Package)))
+                    Package = int.Parse(parametersAsDictionary[nameof(Package)]);
+                if (parametersAsDictionary.ContainsKey(nameof(Versioning)))
+                    Versioning = (VersionType)Enum.Parse(typeof(VersionType), parametersAsDictionary[nameof(Versioning)]);
+                if (parametersAsDictionary.ContainsKey(nameof(IsAutomatic)))
+                    IsAutomatic = bool.Parse(parametersAsDictionary[nameof(IsAutomatic)]);
+                if (parametersAsDictionary.ContainsKey(nameof(MinutesToWait)))
+                    MinutesToWait = int.Parse(parametersAsDictionary[nameof(MinutesToWait)]);
+                if (parametersAsDictionary.ContainsKey(nameof(AddingNumberToCurrentVersion)))
+                    AddingNumberToCurrentVersion = int.Parse(parametersAsDictionary[nameof(AddingNumberToCurrentVersion)]);
+                if (parametersAsDictionary.ContainsKey(nameof(SpecificVersion)))
+                    SpecificVersion = parametersAsDictionary[nameof(SpecificVersion)];
+            }
+        }
+    }
+}
