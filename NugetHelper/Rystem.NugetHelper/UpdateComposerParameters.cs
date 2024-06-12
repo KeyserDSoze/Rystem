@@ -11,6 +11,7 @@ namespace Rystem.Nuget
         public int? MinutesToWait { get; set; }
         public int? AddingNumberToCurrentVersion { get; set; }
         public string? SpecificVersion { get; set; }
+        public bool? IsDebug { get; set; }
         public UpdateComposerParameters(string[] args)
         {
             if (args != null && args.Length > 0)
@@ -28,6 +29,8 @@ namespace Rystem.Nuget
                     AddingNumberToCurrentVersion = int.Parse(parametersAsDictionary[nameof(AddingNumberToCurrentVersion)]);
                 if (parametersAsDictionary.ContainsKey(nameof(SpecificVersion)))
                     SpecificVersion = parametersAsDictionary[nameof(SpecificVersion)];
+                if (parametersAsDictionary.ContainsKey(nameof(IsDebug)))
+                    IsDebug = bool.Parse(parametersAsDictionary[nameof(IsDebug)]);
             }
         }
     }

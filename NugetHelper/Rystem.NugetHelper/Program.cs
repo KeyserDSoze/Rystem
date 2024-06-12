@@ -11,7 +11,7 @@ namespace Rystem.Nuget
             var composer = new UpdateComposer();
             composer.ConfigurePackage(parameters.Package);
             composer.ConfigureVersion(parameters.Versioning);
-            composer.Configure(parameters.IsAutomatic, parameters.MinutesToWait, parameters.AddingNumberToCurrentVersion, parameters.SpecificVersion);
+            composer.Configure(parameters.IsAutomatic, parameters.MinutesToWait, parameters.AddingNumberToCurrentVersion, parameters.SpecificVersion, parameters.IsDebug);
             await composer.ExecuteUpdateAsync();
         }
     }

@@ -47,7 +47,7 @@ namespace Rystem.NugetHelper.Engine
             else
                 _versionType = chosenVersion.Value;
         }
-        public void Configure(bool isAutomatic, int? minutesToWait, int? addingNumberToCurrentVersion, string? specificVersion)
+        public void Configure(bool isAutomatic, int? minutesToWait, int? addingNumberToCurrentVersion, string? specificVersion, bool? isDebug)
         {
             if (_versionType == VersionType.Specific)
             {
@@ -61,10 +61,15 @@ namespace Rystem.NugetHelper.Engine
                 if (_specificVersion != null && !_specificVersion.ContainsAtLeast(2, '.'))
                     throw new ArgumentException("You set a wrong version");
             }
-            if (isAutomatic)
+            if (!isAutomatic)
             {
                 Console.WriteLine("Do you want to pause each step? y or everythingelse");
                 _pauseEachStep = Console.ReadLine() == "y";
+            }
+            if (isDebug != null)
+                _isDebug = isDebug.Value;
+            else if (!isAutomatic)
+            {
                 Console.WriteLine("Do you want to run in debug? y or everythingelse");
                 _isDebug = Console.ReadLine() == "y";
             }
