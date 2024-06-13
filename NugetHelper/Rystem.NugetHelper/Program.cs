@@ -12,7 +12,7 @@ namespace Rystem.Nuget
             composer.ConfigurePackage(parameters.Package);
             composer.ConfigureVersion(parameters.Versioning);
             composer.Configure(parameters.IsAutomatic, parameters.MinutesToWait, parameters.AddingNumberToCurrentVersion, parameters.SpecificVersion, parameters.IsDebug);
-            await composer.ExecuteUpdateAsync();
+            await composer.ExecuteUpdateAsync(parameters.GitHubToken);
         }
     }
 }

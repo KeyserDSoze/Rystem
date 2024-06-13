@@ -12,6 +12,7 @@ namespace Rystem.Nuget
         public int? AddingNumberToCurrentVersion { get; set; }
         public string? SpecificVersion { get; set; }
         public bool? IsDebug { get; set; }
+        public string? GitHubToken { get; set; }
         public UpdateComposerParameters(string[] args)
         {
             if (args != null && args.Length > 0)
@@ -31,6 +32,8 @@ namespace Rystem.Nuget
                     SpecificVersion = parametersAsDictionary[nameof(SpecificVersion)];
                 if (parametersAsDictionary.ContainsKey(nameof(IsDebug)))
                     IsDebug = bool.Parse(parametersAsDictionary[nameof(IsDebug)]);
+                if (parametersAsDictionary.ContainsKey(nameof(GitHubToken)))
+                    GitHubToken = parametersAsDictionary[nameof(GitHubToken)];
             }
         }
     }

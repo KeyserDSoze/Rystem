@@ -92,7 +92,7 @@ namespace Rystem.NugetHelper.Engine
             else if (minutesToWait != null)
                 _minutesToWait = minutesToWait.Value;
         }
-        public async Task ExecuteUpdateAsync()
+        public async Task ExecuteUpdateAsync(string? githubToken)
         {
             var library = _choosenStrategy;
             while (library != null)
@@ -109,7 +109,7 @@ namespace Rystem.NugetHelper.Engine
                 {
                     Console.WriteLine($"repo to update {toUpdate}");
                     if (!_isDebug)
-                        await CommitAndPushAsync(toUpdate, context.Version.V);
+                        await CommitAndPushAsync(toUpdate, context.Version.V, githubToken);
                 }
                 if (_pauseEachStep)
                 {
@@ -182,7 +182,7 @@ namespace Rystem.NugetHelper.Engine
                     await ReadInDeepAndChangeAsync(directory, context, update, isDebug, specificVersion);
                 }
         }
-        async Task CommitAndPushAsync(string path, string newVersion)
+        async Task CommitAndPushAsync(string path, string newVersion, string? githubToken)
         {
             var process = new Process
             {
@@ -198,6 +198,8 @@ namespace Rystem.NugetHelper.Engine
             process.Start();
             using (var writer = process.StandardInput)
             {
+                if (githubToken != null)
+                    writer.WriteLine($"git remote set-url origin https://KeyserDSoze:{githubToken}@github.com/KeyserDSoze/Rystem.git");
                 writer.WriteLine("git init");
                 writer.WriteLine("git add .");
                 writer.WriteLine($"git commit --author=\"alessandro rapiti <alessandro.rapiti44@gmail.com>\" -m \"new version v.{newVersion}\"");
