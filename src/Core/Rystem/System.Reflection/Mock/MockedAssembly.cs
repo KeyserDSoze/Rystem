@@ -1,4 +1,5 @@
-﻿using System.Reflection.Emit;
+﻿using System.Collections.Concurrent;
+using System.Reflection.Emit;
 using static System.Collections.Specialized.BitVector32;
 
 namespace System.Reflection
@@ -15,28 +16,37 @@ namespace System.Reflection
             var assembly = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
             Builder = assembly.DefineDynamicModule(assemblyName.Name!);
         }
-        private static readonly Dictionary<Type, MockedType> s_types = new();
-        public Type? GetMockedType(Type baseType)
+        private static readonly ConcurrentDictionary<Type, MockedType> s_types = new();
+        public Type? GetMockedType(Type baseType, Action<MockingConfiguration>? configuration)
         {
+            var mockConfiguration = new MockingConfiguration();
+            configuration?.Invoke(mockConfiguration);
             if (!s_types.ContainsKey(baseType))
-                s_types.Add(baseType, new(DefineNewImplementation(baseType)));
+                s_types.TryAdd(baseType, new(DefineNewImplementation(baseType, mockConfiguration)));
+            else if (mockConfiguration.CreateNewOneIfExists)
+                s_types[baseType] = new(DefineNewImplementation(baseType, mockConfiguration));
             return s_types[baseType].Type;
         }
-        public Type? GetMockedType<T>()
-            => GetMockedType(typeof(T));
-        public object CreateInstance(Type type, params object[]? args)
-            => Activator.CreateInstance(GetMockedType(type)!, args)!;
-        public T CreateInstance<T>(params object[]? args)
-            => (T)Activator.CreateInstance(GetMockedType<T>()!, args)!;
+        public Type? GetMockedType<T>(Action<MockingConfiguration>? configuration)
+            => GetMockedType(typeof(T), configuration);
+        public object CreateInstance(Type type, Action<MockingConfiguration>? configuration, params object[]? args)
+            => Activator.CreateInstance(GetMockedType(type, configuration)!, args)!;
+        public T CreateInstance<T>(Action<MockingConfiguration>? configuration, params object[]? args)
+            => (T)Activator.CreateInstance(GetMockedType<T>(configuration)!, args)!;
         private static string ToSignature(MethodInfo methodInfo)
             => $"{methodInfo.Name}_{methodInfo.ReturnType.Name}_{string.Join(',', methodInfo.GetParameters().Select(x => x.Name))}";
         private static string GetPrivateFieldForPropertyName(string propertyName)
             => $"<{propertyName}>k__BackingField";
-        private Type DefineNewImplementation(Type type)
+        private Type DefineNewImplementation(Type type, MockingConfiguration configuration)
         {
-            var name = $"{type.Name}{string.Join('_', type.GetGenericArguments().Select(x => x.Name))}Concretization";
+            var name = configuration.CreateNewOneIfExists ?
+                $"{type.Name}{string.Join('_', type.GetGenericArguments().Select(x => x.Name))}{Guid.NewGuid():N}Concretization" :
+                $"{type.Name}{string.Join('_', type.GetGenericArguments().Select(x => x.Name))}Concretization";
             var createdNames = new Dictionary<string, bool>();
-            var typeBuilder = Builder.DefineType(name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed);
+            var typeBuilder =
+                configuration.IsSealed ?
+                Builder.DefineType(name, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed) :
+                Builder.DefineType(name, TypeAttributes.Public | TypeAttributes.Class);
             if (!type.IsInterface)
                 typeBuilder.SetParent(type);
             if (type.IsInterface)

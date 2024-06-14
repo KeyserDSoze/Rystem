@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using Xunit;
 
 namespace Rystem.Test.UnitTest.Reflection
@@ -30,6 +30,32 @@ namespace Rystem.Test.UnitTest.Reflection
             mocked.A = "rrrr";
             Assert.Equal("AAA", mocked.O);
             Assert.Equal("rrrr", mocked.A);
+        }
+        [Fact]
+        public void TestWithConfiguration()
+        {
+            Alzio alzio = null!;
+            var mocked = alzio.CreateInstance((configuration) =>
+            {
+                configuration.IsSealed = false;
+                configuration.CreateNewOneIfExists = true;
+            }, "AAA");
+            mocked.A = "rrrr";
+            Assert.Equal("AAA", mocked.O);
+            Assert.Equal("rrrr", mocked.A);
+            Assert.False(mocked.GetType().IsSealed);
+            var oldName = mocked.GetType().FullName;
+            mocked = mocked.CreateInstance((configuration) =>
+            {
+                configuration.IsSealed = false;
+                configuration.CreateNewOneIfExists = true;
+            }, "AAA");
+            mocked.A = "rrrr";
+            Assert.Equal("AAA", mocked.O);
+            Assert.Equal("rrrr", mocked.A);
+            Assert.False(mocked.GetType().IsSealed);
+            var newName = mocked.GetType().FullName;
+            Assert.NotEqual(newName, oldName);
         }
     }
 }
