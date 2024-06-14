@@ -10,11 +10,11 @@ namespace Rystem.Test.XUnit
         protected abstract string? AppSettingsFileName { get; }
         protected abstract bool HasTestHost { get; }
         protected virtual ValueTask ConfigureServerServicesAsync(IServiceCollection services, IConfiguration configuration) => ValueTask.CompletedTask;
-        protected virtual ValueTask ConfigureServerMiddlewaresAsync(IApplicationBuilder applicationBuilder, IServiceProvider serviceProvider) => ValueTask.CompletedTask;
+        protected virtual ValueTask ConfigureServerMiddlewareAsync(IApplicationBuilder applicationBuilder, IServiceProvider serviceProvider) => ValueTask.CompletedTask;
         protected virtual bool AddHealthCheck => true;
         protected abstract Type? TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration { get; }
         protected abstract Type? TypeToChooseTheRightAssemblyWithControllersToMap { get; }
-        protected abstract IServiceCollection ConfigureCientServices(IServiceCollection services);
+        protected abstract IServiceCollection ConfigureClientServices(IServiceCollection services);
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "It's necessary to have this method as a non-static method because the dependency injection package needs a non-static method.")]
         public void ConfigureHost(IHostBuilder hostBuilder) =>
         hostBuilder
@@ -38,14 +38,14 @@ namespace Rystem.Test.XUnit
                 var exception = HostTester.CreateHostServerAsync(context.Configuration,
                     TypeToChooseTheRightAssemblyWithControllersToMap,
                     ConfigureServerServicesAsync,
-                    ConfigureServerMiddlewaresAsync,
+                    ConfigureServerMiddlewareAsync,
                     AddHealthCheck).ToResult();
                 if (exception != null)
                     throw exception;
                 services.AddSingleton(context.Configuration);
                 services.AddSingleton<IHttpClientFactory>(TestHttpClientFactory.Instance);
             }
-            ConfigureCientServices(services);
+            ConfigureClientServices(services);
         }
     }
 }

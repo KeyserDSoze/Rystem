@@ -15,7 +15,7 @@ namespace Rystem.Test.UnitTest
         protected override bool HasTestHost => true;
         protected override Type? TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration => typeof(Startup);
         protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => typeof(ServiceController);
-        protected override IServiceCollection ConfigureCientServices(IServiceCollection services)
+        protected override IServiceCollection ConfigureClientServices(IServiceCollection services)
         {
             services.AddHttpClient("client", x =>
             {
@@ -23,7 +23,7 @@ namespace Rystem.Test.UnitTest
             });
             return services;
         }
-        protected override ValueTask ConfigureServerMiddlewaresAsync(IApplicationBuilder applicationBuilder, IServiceProvider serviceProvider)
+        protected override ValueTask ConfigureServerMiddlewareAsync(IApplicationBuilder applicationBuilder, IServiceProvider serviceProvider)
         {
             applicationBuilder.UseTestApplication();
             return ValueTask.CompletedTask;
