@@ -37,36 +37,22 @@ namespace Microsoft.Extensions.DependencyInjection
             var oldServiceProvider = _serviceProvider;
             if (preserveValueForSingletonServices)
             {
-                foreach (var service in _services.Where(x => x.Lifetime == ServiceLifetime.Singleton && x.IsKeyedService))
+                foreach (var serviceByTypeAndByKey in _services.Where(x => x.Lifetime == ServiceLifetime.Singleton).GroupBy(x => (x.ServiceType, x.IsKeyedService ? x.ServiceKey : null)))
                 {
-                    var value = _oldServiceProvider?.GetKeyedServices(service.ServiceType, service.ServiceKey);
-                    if (value != null)
-                    {
-                        var entity = value.FirstOrDefault();
-                        if (entity != null)
-                        {
-                            s_implementationInstanceField.SetValue(service, value);
-                        }
-                    }
-                }
-                foreach (var service in _services.Where(x => x.Lifetime == ServiceLifetime.Singleton && !x.IsKeyedService).GroupBy(x => x.ServiceType))
-                {
-
-                    if (service.Key.ContainsGenericParameters && service.Key.GenericTypeArguments.Length == 0)
+                    if (serviceByTypeAndByKey.Key.ServiceType.ContainsGenericParameters && serviceByTypeAndByKey.Key.ServiceType.GenericTypeArguments.Length == 0)
                         continue;
-                    var values = _oldServiceProvider?.GetServices(service.Key);
-                    var allServices = service.GetEnumerator();
-                    if (values != null)
+                    var values = serviceByTypeAndByKey.Key.Item2 == null ? _oldServiceProvider?.GetServices(serviceByTypeAndByKey.Key.ServiceType) :
+                        _oldServiceProvider?.GetKeyedServices(serviceByTypeAndByKey.Key.ServiceType, serviceByTypeAndByKey.Key.Item2);
+                    if (values?.IsEmpty() == false)
                     {
+                        var allServices = serviceByTypeAndByKey.GetEnumerator();
                         foreach (var value in values)
                         {
                             if (allServices.MoveNext())
                             {
                                 var actualService = allServices.Current;
-
                                 if (value != null && actualService != null)
                                     s_implementationInstanceField.SetValue(actualService, value);
-
                             }
                             else
                             {
