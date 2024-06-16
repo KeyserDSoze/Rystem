@@ -55,5 +55,11 @@ namespace Rystem.Test.TestApi.Controllers
                 AddedService = value
             };
         }
+        [HttpGet]
+        public bool Factory([FromQuery] string? name = null)
+        {
+            var factory = _serviceProvider.GetRequiredService<IFactory<Factorized>>();
+            return factory.Create(name) != null;
+        }
     }
 }

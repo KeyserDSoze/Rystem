@@ -1,6 +1,4 @@
-﻿using System;
-using System.Reflection;
-using System.Text;
+﻿using System.Reflection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection
@@ -42,6 +40,13 @@ namespace Microsoft.Extensions.DependencyInjection
             return Generics
                 .WithStatic(typeof(ServiceCollectionExtensions), nameof(AddEngineFactory), serviceType, implementationType ?? serviceType)
                 .Invoke(services, name!, canOverrideConfiguration, lifetime, implementationInstance!, implementationFactory!, whenExists!, fromDecoration, doNotRemoveExisting);
+        }
+        public static IServiceCollection AddEngineFactory<TService>(this IServiceCollection services)
+            where TService : class
+        {
+            services.TryAddTransient<IFactory<TService>, Factory<TService>>();
+            services.TryAddSingletonAndGetService<ServiceFactoryMap>();
+            return services;
         }
         private static IServiceCollection AddEngineFactory<TService, TImplementation>(this IServiceCollection services,
             string? name,

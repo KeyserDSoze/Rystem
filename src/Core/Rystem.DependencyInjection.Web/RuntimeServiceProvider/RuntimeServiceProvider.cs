@@ -16,6 +16,10 @@ namespace Microsoft.Extensions.DependencyInjection
             _services = services;
             return _services;
         }
+        public static IServiceProvider GetServiceProvider()
+        {
+            return _serviceProvider ?? _oldServiceProvider ?? throw new ArgumentException($"Please setup in Dependency injection the {nameof(UseRuntimeServiceProvider)} method."); ;
+        }
         public static IServiceCollection GetServiceCollection()
         {
             if (_services == null)
@@ -26,7 +30,7 @@ namespace Microsoft.Extensions.DependencyInjection
             return _services;
         }
         private static readonly FieldInfo s_implementationInstanceField = typeof(ServiceDescriptor).GetField("_implementationInstance", BindingFlags.NonPublic | BindingFlags.Instance)!;
-        public static async ValueTask ReBuildAsync(this IServiceCollection services, bool preserveValueForSingletonServices = true)
+        public static async ValueTask<IServiceProvider> ReBuildAsync(this IServiceCollection services, bool preserveValueForSingletonServices = true)
         {
             if (_services == null)
                 throw new ArgumentException($"Please setup in Dependency injection the {nameof(AddRuntimeServiceProvider)} method.");
@@ -77,6 +81,7 @@ namespace Microsoft.Extensions.DependencyInjection
             _fieldInfoForReadOnlySetter?.SetValue(_services, true);
             _updater?.Invoke(_serviceProvider);
             await _serviceProvider.WarmUpAsync();
+            return _serviceProvider;
         }
         public static T UseRuntimeServiceProvider<T>(this T webApplication, bool disposeOldServiceProvider = true)
             where T : IApplicationBuilder

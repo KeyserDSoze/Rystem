@@ -4,9 +4,11 @@
         where TService : class
     {
         private readonly IServiceProvider _serviceProvider;
-        public Factory(IServiceProvider serviceProvider)
+        private readonly IFactoryFallback<TService>? _fallback;
+        public Factory(IServiceProvider serviceProvider, IFactoryFallback<TService>? fallback = null)
         {
             _serviceProvider = serviceProvider;
+            _fallback = fallback;
         }
         public TService? Create(string? name = null)
         {
@@ -36,6 +38,10 @@
                 services = _serviceProvider.GetKeyedServices<TService>(factoryName);
             else
                 services = new List<TService>() { _serviceProvider.GetKeyedService<TService>(factoryName)! };
+            if (services.FirstOrDefault() == null && _fallback != null)
+            {
+                services = new List<TService>() { _fallback.Create(name)! };
+            }
             if (services != null)
             {
                 foreach (var service in services)

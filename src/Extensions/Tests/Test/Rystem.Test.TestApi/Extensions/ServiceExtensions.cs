@@ -15,6 +15,14 @@ namespace Rystem.Test.TestApi.Extensions
             services.AddScoped<Scoped2Service>();
             services.AddTransient<TransientService>();
             services.AddTransient<Transient2Service>();
+            //services.AddFactory<Factorized>("1");
+            services.AddActionAsFallbackWithServiceCollectionRebuilding<Factorized>(async x =>
+            {
+                await Task.Delay(1);
+                var singletonService = x.ServiceProvider.GetService<SingletonService>();
+                if (singletonService != null)
+                    x.Services.AddFactory<Factorized>(x.Name);
+            });
             return services;
         }
         public static IApplicationBuilder UseTestApplication(this IApplicationBuilder app)

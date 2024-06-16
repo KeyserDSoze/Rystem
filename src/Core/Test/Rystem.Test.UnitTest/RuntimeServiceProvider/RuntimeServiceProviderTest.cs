@@ -38,5 +38,23 @@ namespace Rystem.Test.UnitTest
             Assert.NotEqual(jsonContent.Transient2Service.Id, jsonContent2.Transient2Service.Id);
             Assert.NotEqual(jsonContent.TransientService.Id, jsonContent2.TransientService.Id);
         }
+        [Fact]
+        public async Task AddFactoryAtRuntime()
+        {
+            var response = await _httpClient.GetAsync("Service/Factory?name=xx");
+            var responseAsString = await response.Content.ReadAsStringAsync();
+            var jsonContent = responseAsString.FromJson<bool>(new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+            Assert.True(jsonContent);
+            var response2 = await _httpClient.GetAsync("Service/Factory?name=xxy");
+            var responseAsString2 = await response2.Content.ReadAsStringAsync();
+            var jsonContent2 = responseAsString2.FromJson<bool>(new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+            Assert.True(jsonContent);
+        }
     }
 }
