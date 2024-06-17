@@ -56,5 +56,19 @@ namespace Rystem.Test.UnitTest
             });
             Assert.True(jsonContent);
         }
+        [Theory]
+        [InlineData(100)]
+        [InlineData(1_000)]
+        [InlineData(10_000)]
+        public async Task MultipleRebuildAtRuntime(int max)
+        {
+            var response = await _httpClient.GetAsync($"Service/MultipleRebuild?max={max}");
+            var responseAsString = await response.Content.ReadAsStringAsync();
+            var jsonContent = responseAsString.FromJson<bool>(new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+            Assert.True(jsonContent);
+        }
     }
 }

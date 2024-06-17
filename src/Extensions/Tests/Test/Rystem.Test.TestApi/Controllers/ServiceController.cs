@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Reflection;
+using Microsoft.AspNetCore.Mvc;
 using Rystem.Test.TestApi.Models;
 
 namespace Rystem.Test.TestApi.Controllers
@@ -60,6 +61,36 @@ namespace Rystem.Test.TestApi.Controllers
         {
             var factory = _serviceProvider.GetRequiredService<IFactory<Factorized>>();
             return factory.Create(name) != null;
+        }
+        [HttpGet]
+        public async Task<bool> MultipleRebuildAsync([FromQuery] int max)
+        {
+            var services = new List<Type>();
+            for (var i = 0; i < max; i++)
+            {
+                services.Add(typeof(AddedService).Mock(configuration =>
+                {
+                    configuration.IsSealed = false;
+                    configuration.CreateNewOneIfExists = true;
+                })!);
+            }
+            var result = Parallel.ForEach(services, async service =>
+            {
+                await RuntimeServiceProvider.GetServiceCollection()
+                    .AddSingleton(service)
+                    .ReBuildAsync();
+            });
+            while (!result.IsCompleted)
+            {
+                await Task.Delay(100);
+            }
+            var counter = 0;
+            foreach (var service in services)
+            {
+                if (RuntimeServiceProvider.GetServiceProvider().GetService(service) != null)
+                    counter++;
+            }
+            return result.IsCompleted && counter == max;
         }
     }
 }
