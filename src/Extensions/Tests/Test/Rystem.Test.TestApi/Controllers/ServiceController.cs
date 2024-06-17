@@ -63,7 +63,7 @@ namespace Rystem.Test.TestApi.Controllers
             return factory.Create(name) != null;
         }
         [HttpGet]
-        public async Task<bool> MultipleRebuildAsync([FromQuery] int max)
+        public async Task<int> MultipleRebuildAsync([FromQuery] int max)
         {
             var services = new List<Type>();
             for (var i = 0; i < max; i++)
@@ -90,7 +90,7 @@ namespace Rystem.Test.TestApi.Controllers
                 if (RuntimeServiceProvider.GetServiceProvider().GetService(service) != null)
                     counter++;
             }
-            return result.IsCompleted && counter == max;
+            return counter;
         }
     }
 }

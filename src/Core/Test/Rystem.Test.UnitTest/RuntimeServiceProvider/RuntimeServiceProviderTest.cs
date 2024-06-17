@@ -64,11 +64,11 @@ namespace Rystem.Test.UnitTest
         {
             var response = await _httpClient.GetAsync($"Service/MultipleRebuild?max={max}");
             var responseAsString = await response.Content.ReadAsStringAsync();
-            var jsonContent = responseAsString.FromJson<bool>(new JsonSerializerOptions
+            var jsonContent = responseAsString.FromJson<int>(new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             });
-            Assert.True(jsonContent);
+            Assert.Equal(max, jsonContent);
         }
     }
 }

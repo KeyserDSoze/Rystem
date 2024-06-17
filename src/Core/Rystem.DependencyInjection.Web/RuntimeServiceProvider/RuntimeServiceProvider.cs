@@ -52,14 +52,13 @@ namespace Microsoft.Extensions.DependencyInjection
                 if (!token.IsCancellationRequested)
                 {
                     await token.CancelAsync();
-                    token.Dispose();
                 }
             }
             var tokenSource = new CancellationTokenSource();
             s_cancellationTokenSources.TryAdd(rebuildId, tokenSource);
             var oldServiceProvider = _serviceProvider;
             if (preserveValueForSingletonServices)
-                _services.PreserveValueForSingleton(tokenSource.Token);
+                _ = Try.WithDefaultOnCatch(() => _services.PreserveValueForSingleton(tokenSource.Token));
             if (!tokenSource.Token.IsCancellationRequested)
                 _oldServiceProvider = oldServiceProvider;
             if (!tokenSource.Token.IsCancellationRequested)
@@ -75,8 +74,8 @@ namespace Microsoft.Extensions.DependencyInjection
             if (disposableToken?.IsCancellationRequested == false)
             {
                 await disposableToken.CancelAsync();
-                disposableToken.Dispose();
             }
+            disposableToken?.Dispose();
             _fieldInfoForReadOnlySetter?.SetValue(_services, true);
             return _serviceProvider!;
         }
