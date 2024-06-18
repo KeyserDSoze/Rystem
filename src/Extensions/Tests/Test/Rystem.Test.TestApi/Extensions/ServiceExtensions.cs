@@ -15,7 +15,7 @@ namespace Rystem.Test.TestApi.Extensions
             services.AddScoped<Scoped2Service>();
             services.AddTransient<TransientService>();
             services.AddTransient<Transient2Service>();
-            //services.AddFactory<Factorized>("1");
+            services.AddFactory<Factorized>("1");
             services.AddActionAsFallbackWithServiceCollectionRebuilding<Factorized>(async x =>
             {
                 await Task.Delay(1);

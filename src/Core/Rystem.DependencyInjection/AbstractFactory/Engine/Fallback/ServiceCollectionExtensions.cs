@@ -14,17 +14,17 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <summary>
         /// Add an action that works as fallback for your factory for every name you use during Create method in IFactory<T>.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="TService"></typeparam>
         /// <param name="services"></param>
         /// <param name="fallbackBuilder"></param>
         /// <returns></returns>
-        public static IServiceCollection AddActionAsFallbackWithServiceProvider<T>(this IServiceCollection services,
-            Func<FallbackBuilderForServiceProvider, T> fallbackBuilder)
-            where T : class
+        public static IServiceCollection AddActionAsFallbackWithServiceProvider<TService>(this IServiceCollection services,
+            Func<FallbackBuilderForServiceProvider, TService> fallbackBuilder)
+            where TService : class
         {
-            services.TryAddTransient<IFactoryFallback<T>>(x =>
+            services.TryAddTransient<IFactoryFallback<TService>>(x =>
             {
-                return new ActionFallback<T>(x)
+                return new ActionFallback<TService>(x)
                 {
                     BuilderWithServiceProvider = fallbackBuilder
                 };

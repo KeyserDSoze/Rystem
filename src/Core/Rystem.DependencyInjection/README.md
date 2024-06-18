@@ -271,6 +271,21 @@ Usage
     var decorator = decoratorFactory.Create(factoryName);
     var previousService = decoratorFactory.CreateWithoutDecoration(factoryName);
 
+## Factory Fallback
+You may add a fallback for your factory integration. The fallback service is called when the factory service key is not found.
+
+```csharp
+services.AddFactoryFallback<TService, TFactoryFallback>();
+```
+
+where TFactoryFallback is class and an IFactoryFallback<TService>
+
+You may add a fallback with an action fallback too.
+    
+```csharp
+services.AddActionAsFallbackWithServiceProvider<TService>(Func<FallbackBuilderForServiceProvider, TService> fallbackBuilder);
+```
+
 ## Scan dependency injection
 You may scan your assemblies in search of types you need to add to dependency injection.
 For instance I have an interface IAnything and I need to add all classes which implements it.
