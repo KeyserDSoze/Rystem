@@ -17,5 +17,5 @@ and after the build use the runtime provider
 ```csharp
 await RuntimeServiceProvider.GetServiceCollection()
        .AddSingleton<Service2>()
-       .ReBuildAsync();
+       .RebuildAsync();
 ```
