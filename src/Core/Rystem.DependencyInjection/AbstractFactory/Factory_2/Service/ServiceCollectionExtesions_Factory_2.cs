@@ -4,6 +4,14 @@
     {
         public static IServiceCollection AddFactory(this IServiceCollection services,
             Type serviceType,
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Transient)
+        {
+            services.AddEngineFactoryWithoutGenerics(serviceType, serviceType, name, true, lifetime, null, null, null, false, true);
+            return services;
+        }
+        public static IServiceCollection AddFactory(this IServiceCollection services,
+            Type serviceType,
             Type implementationType,
             string? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)

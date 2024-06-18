@@ -15,7 +15,7 @@ namespace Rystem.Test.UnitTest
             _httpClient = httpClientFactory.CreateClient("client");
         }
         [Fact]
-        public async Task AddOneServiceAtRuntime()
+        public async Task AddOneServiceAtRuntimeAsync()
         {
             var response = await _httpClient.GetAsync("Service/Get");
             var responseAsString = await response.Content.ReadAsStringAsync();
@@ -39,7 +39,7 @@ namespace Rystem.Test.UnitTest
             Assert.NotEqual(jsonContent.TransientService.Id, jsonContent2.TransientService.Id);
         }
         [Fact]
-        public async Task AddFactoryAtRuntime()
+        public async Task AddFactoryAtRuntimeAsync()
         {
             var response = await _httpClient.GetAsync("Service/Factory?name=xx");
             var responseAsString = await response.Content.ReadAsStringAsync();
@@ -57,12 +57,49 @@ namespace Rystem.Test.UnitTest
             Assert.True(jsonContent);
         }
         [Theory]
-        [InlineData(100)]
-        [InlineData(1_000)]
-        [InlineData(10_000)]
-        public async Task MultipleRebuildAtRuntime(int max)
+        [InlineData(100, false)]
+        [InlineData(1_000, false)]
+        [InlineData(20, false)]
+        [InlineData(20, true)]
+        [InlineData(100, true)]
+        [InlineData(1_000, true)]
+        public async Task MultipleRebuildAtRuntimeAsync(int max, bool withParallel)
         {
-            var response = await _httpClient.GetAsync($"Service/MultipleRebuild?max={max}");
+            var response = await _httpClient.GetAsync($"Service/MultipleRebuild?max={max}&withParallel={withParallel}");
+            var responseAsString = await response.Content.ReadAsStringAsync();
+            var jsonContent = responseAsString.FromJson<int>(new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+            Assert.Equal(max, jsonContent);
+        } 
+        [Theory]
+        [InlineData(100, false)]
+        [InlineData(1_000, false)]
+        [InlineData(20, false)]
+        [InlineData(20, true)]
+        [InlineData(100, true)]
+        [InlineData(1_000, true)]
+        public async Task MultipleFactoryAtRuntimeAsync(int max, bool withParallel)
+        {
+            var response = await _httpClient.GetAsync($"Service/MultipleFactory?max={max}&withParallel={withParallel}");
+            var responseAsString = await response.Content.ReadAsStringAsync();
+            var jsonContent = responseAsString.FromJson<int>(new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+            Assert.Equal(max, jsonContent);
+        }
+        [Theory]
+        [InlineData(100, false)]
+        [InlineData(1_000, false)]
+        [InlineData(20, false)]
+        [InlineData(20, true)]
+        [InlineData(100, true)]
+        [InlineData(1_000, true)]
+        public async Task MultipleFactoryWithMultipleServicesAsync(int max, bool withParallel)
+        {
+            var response = await _httpClient.GetAsync($"Service/MultipleFactoryWithMultipleServices?max={max}&withParallel={withParallel}");
             var responseAsString = await response.Content.ReadAsStringAsync();
             var jsonContent = responseAsString.FromJson<int>(new JsonSerializerOptions
             {

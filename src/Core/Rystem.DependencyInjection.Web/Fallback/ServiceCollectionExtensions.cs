@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection.Extensions;
+﻿using System.Reflection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -20,6 +21,27 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 BuilderWithRebuilding = fallbackBuilder
             });
+            return services;
+        }
+        /// <summary>
+        /// Add an action that works as fallback for your factory for every name you use during Create method in IFactory<T>.
+        /// </summary>
+        /// <param name="services"></param>
+        /// <param name="fallbackBuilder"></param>
+        /// <returns></returns>
+        public static IServiceCollection AddActionAsFallbackWithServiceCollectionRebuilding(this IServiceCollection services,
+            Type serviceType,
+            Func<FallbackBuilderForServiceCollection, ValueTask> fallbackBuilder)
+        {
+            services.AddEngineFactory(serviceType);
+            var factoryFallbackInterfaceType = typeof(IFactoryFallback<>).MakeGenericType(serviceType);
+            var factoryFallbackType = typeof(ActionFallback<>).MakeGenericType(serviceType);
+            var factoryFallback = Activator.CreateInstance(factoryFallbackType) as IActionFallback;
+            if (factoryFallback is IActionFallback actionFallback)
+            {
+                actionFallback.BuilderWithRebuilding = fallbackBuilder;
+                services.AddSingleton(factoryFallbackInterfaceType, actionFallback);
+            }
             return services;
         }
     }

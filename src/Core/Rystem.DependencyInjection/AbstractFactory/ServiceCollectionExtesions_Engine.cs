@@ -48,6 +48,14 @@ namespace Microsoft.Extensions.DependencyInjection
             services.TryAddSingletonAndGetService<ServiceFactoryMap>();
             return services;
         }
+        public static IServiceCollection AddEngineFactory(this IServiceCollection services, Type serviceType)
+        {
+            var factoryInterfaceType = typeof(IFactory<>).MakeGenericType(serviceType);
+            var factoryType = typeof(Factory<>).MakeGenericType(serviceType);
+            services.TryAddTransient(factoryInterfaceType, factoryType);
+            services.TryAddSingletonAndGetService<ServiceFactoryMap>();
+            return services;
+        }
         private static IServiceCollection AddEngineFactory<TService, TImplementation>(this IServiceCollection services,
             string? name,
             bool canOverrideConfiguration,

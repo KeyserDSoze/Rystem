@@ -21,7 +21,7 @@ namespace Rystem.Test.TestApi.Extensions
                 await Task.Delay(1);
                 var singletonService = x.ServiceProvider.GetService<SingletonService>();
                 if (singletonService != null)
-                    x.Services.AddFactory<Factorized>(x.Name);
+                    x.ServiceColletionBuilder = (serviceCollection => serviceCollection.AddFactory<Factorized>(x.Name));
             });
             return services;
         }

@@ -1,7 +1,5 @@
-﻿using Microsoft.AspNetCore.Builder;
-using System.Collections.Concurrent;
-using System.Reflection;
-using System.Threading;
+﻿using System.Reflection;
+using Microsoft.AspNetCore.Builder;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -31,85 +29,85 @@ namespace Microsoft.Extensions.DependencyInjection
             _fieldInfoForReadOnlySetter?.SetValue(_services, false);
             return _services;
         }
+        private static readonly object s_addingServicesLock = new();
+        public static IServiceCollection AddServicesToServiceCollectionWithLock(Action<IServiceCollection> configureFurtherServices)
+        {
+            GetServiceCollection();
+            lock (s_addingServicesLock)
+                configureFurtherServices(_services!);
+            return _services!;
+        }
         private static readonly FieldInfo s_implementationInstanceField = typeof(ServiceDescriptor).GetField("_implementationInstance", BindingFlags.NonPublic | BindingFlags.Instance)!;
-        private static readonly ConcurrentDictionary<string, CancellationTokenSource> s_cancellationTokenSources = new();
-        private static int s_rebuildTimes = 0;
-        public static async ValueTask<IServiceProvider> ReBuildAsync(this IServiceCollection services, bool preserveValueForSingletonServices = true)
+        private static readonly object s_lock = new();
+        private static int s_numberOfServices = 0;
+        public static async ValueTask<IServiceProvider> RebuildAsync(this IServiceCollection services, bool preserveValueForSingletonServices = true)
         {
             if (_services == null)
                 throw new ArgumentException($"Please setup in Dependency injection the {nameof(AddRuntimeServiceProvider)} method.");
-            Interlocked.Increment(ref s_rebuildTimes);
-            var rebuildId = Guid.NewGuid().ToString();
-            var tokens = new List<CancellationTokenSource>();
-            foreach (var token in s_cancellationTokenSources)
+            var numberOfServices = 0;
+            lock (s_lock)
             {
-                if (token.Value.IsCancellationRequested)
-                    continue;
-                tokens.Add(token.Value);
+                numberOfServices = services.Count;
             }
-            foreach (var token in tokens)
-            {
-                if (!token.IsCancellationRequested)
-                {
-                    await token.CancelAsync();
-                }
-            }
-            var tokenSource = new CancellationTokenSource();
-            s_cancellationTokenSources.TryAdd(rebuildId, tokenSource);
             var oldServiceProvider = _serviceProvider;
             if (preserveValueForSingletonServices)
-                _ = Try.WithDefaultOnCatch(() => _services.PreserveValueForSingleton(tokenSource.Token));
-            if (!tokenSource.Token.IsCancellationRequested)
-                _oldServiceProvider = oldServiceProvider;
-            if (!tokenSource.Token.IsCancellationRequested)
-                _serviceProvider = _services.BuildServiceProvider();
-            if (!tokenSource.Token.IsCancellationRequested)
-                _updater?.Invoke(_serviceProvider!);
-            Interlocked.Decrement(ref s_rebuildTimes);
-            while (s_rebuildTimes > 0)
             {
-                await Task.Delay(100);
-            }
-            s_cancellationTokenSources.TryRemove(rebuildId, out var disposableToken);
-            if (disposableToken?.IsCancellationRequested == false)
-            {
-                await disposableToken.CancelAsync();
-            }
-            disposableToken?.Dispose();
-            _fieldInfoForReadOnlySetter?.SetValue(_services, true);
-            return _serviceProvider!;
-        }
-        private static void PreserveValueForSingleton(this IServiceCollection services, CancellationToken cancellationToken)
-        {
-            foreach (var serviceByTypeAndByKey in services.Where(x => x.Lifetime == ServiceLifetime.Singleton).GroupBy(x => (x.ServiceType, x.IsKeyedService ? x.ServiceKey : null)))
-            {
-                if (cancellationToken.IsCancellationRequested)
-                    break;
-                if (serviceByTypeAndByKey.Key.ServiceType.ContainsGenericParameters && serviceByTypeAndByKey.Key.ServiceType.GenericTypeArguments.Length == 0)
-                    continue;
-                var values = serviceByTypeAndByKey.Key.Item2 == null ? _oldServiceProvider?.GetServices(serviceByTypeAndByKey.Key.ServiceType) :
-                    _oldServiceProvider?.GetKeyedServices(serviceByTypeAndByKey.Key.ServiceType, serviceByTypeAndByKey.Key.Item2);
-                if (values?.IsEmpty() == false)
+                var descriptors = new List<ServiceDescriptor>();
+                lock (s_lock)
                 {
-                    var allServices = serviceByTypeAndByKey.GetEnumerator();
-                    foreach (var value in values)
+                    for (var i = 0; i < services.Count; i++)
                     {
-                        if (cancellationToken.IsCancellationRequested)
-                            break;
-                        if (allServices.MoveNext())
+                        var descriptor = services[i];
+                        if (descriptor != null && descriptor.Lifetime == ServiceLifetime.Singleton)
                         {
-                            var actualService = allServices.Current;
-                            if (value != null && actualService != null)
-                                s_implementationInstanceField.SetValue(actualService, value);
+                            descriptors.Add(descriptor);
                         }
-                        else
+                    }
+                }
+                foreach (var serviceByTypeAndByKey in descriptors.GroupBy(x => (x.ServiceType, x.IsKeyedService ? x.ServiceKey : null)))
+                {
+                    if (serviceByTypeAndByKey.Key.ServiceType.ContainsGenericParameters && serviceByTypeAndByKey.Key.ServiceType.GenericTypeArguments.Length == 0)
+                        continue;
+                    var values = serviceByTypeAndByKey.Key.Item2 == null ? _oldServiceProvider?.GetServices(serviceByTypeAndByKey.Key.ServiceType) :
+                        _oldServiceProvider?.GetKeyedServices(serviceByTypeAndByKey.Key.ServiceType, serviceByTypeAndByKey.Key.Item2);
+                    if (values?.IsEmpty() == false)
+                    {
+                        var allServices = serviceByTypeAndByKey.GetEnumerator();
+                        foreach (var value in values)
                         {
-                            break;
+                            if (allServices.MoveNext())
+                            {
+                                var actualService = allServices.Current;
+                                if (value != null && actualService != null)
+                                    s_implementationInstanceField.SetValue(actualService, value);
+                            }
+                            else
+                            {
+                                break;
+                            }
                         }
                     }
                 }
             }
+            if (numberOfServices > s_numberOfServices)
+            {
+                var serviceProvider = _services.BuildServiceProvider();
+                lock (s_lock)
+                {
+                    if (numberOfServices > s_numberOfServices)
+                    {
+                        s_numberOfServices = numberOfServices;
+                        _serviceProvider = serviceProvider;
+                        _oldServiceProvider = oldServiceProvider;
+                        _updater?.Invoke(_serviceProvider);
+                    }
+                }
+            }
+            await _serviceProvider!.WarmUpAsync().NoContext();
+            return _serviceProvider!;
         }
+        public static ValueTask<IServiceProvider> RebuildAsync(bool preserveValueForSingletonServices = true)
+            => _services!.RebuildAsync(preserveValueForSingletonServices);
         public static T UseRuntimeServiceProvider<T>(this T webApplication, bool disposeOldServiceProvider = true)
             where T : IApplicationBuilder
         {

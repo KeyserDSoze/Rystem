@@ -2,8 +2,9 @@
 {
     public sealed class FallbackBuilderForServiceCollection
     {
-        public IServiceCollection Services { get; internal init; } = null!;
+        public Action<IServiceCollection> ServiceColletionBuilder { get; set; } = AddEmpty;
         public IServiceProvider ServiceProvider { get; internal init; } = null!;
         public string? Name { get; internal init; }
+        private static void AddEmpty(IServiceCollection services) { }
     }
 }

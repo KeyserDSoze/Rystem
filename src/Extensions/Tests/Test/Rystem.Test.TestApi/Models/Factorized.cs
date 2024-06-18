@@ -1,6 +1,6 @@
 ﻿namespace Rystem.Test.TestApi.Models
 {
-    public sealed class Factorized : TestService
+    public class Factorized : TestService
     {
     }
 }
