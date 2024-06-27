@@ -23,10 +23,10 @@ jobs:
           dotnet-version: ${{ secrets.NET_VERSION }}
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore ./NugetHelper/Rystem.NugetHelper/Rystem.NugetHelper.csproj
 
       - name: Build
-        run: dotnet build --no-restore -c Release
+        run: dotnet build ./NugetHelper/Rystem.NugetHelper/Rystem.NugetHelper.csproj --no-restore -c Release
 
       - name: Commit and Push changes
         run: |
