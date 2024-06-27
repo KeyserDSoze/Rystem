@@ -19,7 +19,6 @@ namespace Rystem.NugetHelper.Engine
         private static readonly Regex s_packageReference = new("<PackageReference[^>]*>");
         private static readonly Regex s_include = new("Include=");
         private static readonly Regex s_versionRegex = new(@"Version=\""[^\""]*\""");
-        private static readonly Regex s_repo = new(@"\\repos\\");
         public void ConfigurePackage(int? forcedPackage)
         {
             if (forcedPackage == null)
@@ -106,14 +105,11 @@ namespace Rystem.NugetHelper.Engine
                     await ReadInDeepAndChangeAsync(new DirectoryInfo(path), context, library, _isDebug, _specificVersion);
                 }
                 Console.WriteLine($"Current major version is {context.Version.V}");
-                foreach (var toUpdate in context.RepoToUpdate)
-                {
-                    Console.WriteLine($"repo to update {toUpdate}");
-                    if (!_isDebug)
-                        await CommitAndPushAsync(toUpdate, context.Version.V, githubToken);
-                    else
-                        Console.WriteLine($"Commit for toUpdate: {toUpdate} with version: {context.Version.V} and token is not null: {(githubToken != null)}");
-                }
+                Console.WriteLine($"repo to update {path}");
+                if (!_isDebug)
+                    await CommitAndPushAsync(path, context.Version.V, githubToken);
+                else
+                    Console.WriteLine($"Commit for toUpdate: {path} with version: {context.Version.V} and token is not null: {(githubToken != null)}");
                 if (_pauseEachStep)
                 {
                     Console.WriteLine("Do you want to go ahead with next step of publish? (0) not ok, (other) ok");
@@ -168,9 +164,6 @@ namespace Rystem.NugetHelper.Engine
                             Console.WriteLine(content);
                             Console.WriteLine("------------------------");
                             Console.WriteLine("------------------------");
-                            var path = @$"{s_repo.Split(file.FullName).First()}\repos\{s_repo.Split(file.FullName).Last().Split('\\').First()}";
-                            if (!context.RepoToUpdate.Contains(path))
-                                context.RepoToUpdate.Add(path);
                             if (!isDebug)
                                 await File.WriteAllTextAsync(file.FullName, content);
                         }
