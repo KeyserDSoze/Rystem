@@ -92,13 +92,13 @@ namespace Rystem.NugetHelper.Engine
             else if (minutesToWait != null)
                 _minutesToWait = minutesToWait.Value;
         }
-        public async Task ExecuteUpdateAsync(string? githubToken)
+        public async Task ExecuteUpdateAsync(string? path, string? githubToken)
         {
             var library = _choosenStrategy;
             while (library != null)
             {
                 var splittedDirectory = Directory.GetCurrentDirectory().Split('\\');
-                var path = string.Join('\\', splittedDirectory.Take(splittedDirectory.Length - 5));
+                path ??= string.Join('\\', splittedDirectory.Take(splittedDirectory.Length - 5));
                 var context = new LibraryContext("0.0.0");
                 foreach (var updateTree in library.Libraries)
                 {
