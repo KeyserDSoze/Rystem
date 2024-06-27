@@ -110,6 +110,8 @@ namespace Rystem.NugetHelper.Engine
                     Console.WriteLine($"repo to update {toUpdate}");
                     if (!_isDebug)
                         await CommitAndPushAsync(toUpdate, context.Version.V, githubToken);
+                    else
+                        Console.WriteLine($"Commit for toUpdate: {toUpdate} with version: {context.Version.V} and token is not null: {(githubToken != null)}");
                 }
                 if (_pauseEachStep)
                 {
@@ -198,9 +200,9 @@ namespace Rystem.NugetHelper.Engine
             process.Start();
             using (var writer = process.StandardInput)
             {
+                writer.WriteLine("git init");
                 if (githubToken != null)
                     writer.WriteLine($"git remote set-url origin https://KeyserDSoze:{githubToken}@github.com/KeyserDSoze/Rystem.git");
-                writer.WriteLine("git init");
                 writer.WriteLine("git add .");
                 writer.WriteLine($"git commit --author=\"alessandro rapiti <alessandro.rapiti44@gmail.com>\" -m \"new version v.{newVersion}\"");
                 writer.WriteLine("git push");
