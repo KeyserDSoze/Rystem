@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -92,13 +93,13 @@ namespace Rystem.NugetHelper.Engine
             else if (minutesToWait != null)
                 _minutesToWait = minutesToWait.Value;
         }
-        public async Task ExecuteUpdateAsync(string? path, string? githubToken)
+        public async Task ExecuteUpdateAsync(string? githubToken, int? backPath)
         {
             var library = _choosenStrategy;
             while (library != null)
             {
                 var splittedDirectory = Directory.GetCurrentDirectory().Split('\\');
-                path ??= string.Join('\\', splittedDirectory.Take(splittedDirectory.Length - 5));
+                var path = string.Join('\\', splittedDirectory.Take(splittedDirectory.Length - (backPath ?? 5)));
                 var context = new LibraryContext("0.0.0");
                 foreach (var updateTree in library.Libraries)
                 {

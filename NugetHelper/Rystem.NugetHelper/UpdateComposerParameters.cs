@@ -13,7 +13,7 @@ namespace Rystem.Nuget
         public string? SpecificVersion { get; set; }
         public bool? IsDebug { get; set; }
         public string? GitHubToken { get; set; }
-        public string Path { get; set; }
+        public int? Path { get; set; }
         private const string NullString = nameof(NullString);
         public UpdateComposerParameters(string[] args)
         {
@@ -37,7 +37,7 @@ namespace Rystem.Nuget
                 if (parametersAsDictionary.ContainsKey(nameof(GitHubToken)))
                     GitHubToken = parametersAsDictionary[nameof(GitHubToken)];
                 if (parametersAsDictionary.ContainsKey(nameof(Path)))
-                    Path = parametersAsDictionary[nameof(Path)];
+                    Path = int.Parse(parametersAsDictionary[nameof(Path)]);
                 if (SpecificVersion == NullString)
                     SpecificVersion = null;
             }

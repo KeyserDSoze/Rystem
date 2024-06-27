@@ -39,6 +39,6 @@ jobs:
             git remote add origin https://KeyserDSoze:${{ secrets.TOKEN }}@github.com/KeyserDSoze/Rystem.git
             git remote set-url origin https://KeyserDSoze:${{ secrets.TOKEN }}@github.com/KeyserDSoze/Rystem.git
             ls
-            ./Rystem.NugetHelper.exe ${{ github.event.commits[0].message }} Path=../ GitHubToken=${{ secrets.TOKEN }}
+            ./Rystem.NugetHelper.exe ${{ github.event.commits[0].message }} Path=1 GitHubToken=${{ secrets.TOKEN }}
             
       
