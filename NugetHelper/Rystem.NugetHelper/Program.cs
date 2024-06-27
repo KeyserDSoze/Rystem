@@ -1,5 +1,4 @@
 ﻿using Rystem.NugetHelper.Engine;
-
 namespace Rystem.Nuget
 {
     public class Program
