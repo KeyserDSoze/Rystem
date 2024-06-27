@@ -31,7 +31,8 @@ jobs:
       - name: Commit and Push changes
         run: |
             git config --global user.email "alessandro.rapiti44@gmail.com"    
-            cd NugetHelper/Rystem.NugetHelper/bin/Release/net${{ secrets.NET_VERSION }}/
+            cd NugetHelper/Rystem.NugetHelper/bin/Release/
+            cd "$(ls -d */ | head -n 1)"
             git remote remove origin
             git remote add origin https://KeyserDSoze:${{ secrets.TOKEN }}@github.com/KeyserDSoze/Rystem.git
             git remote set-url origin https://KeyserDSoze:${{ secrets.TOKEN }}@github.com/KeyserDSoze/Rystem.git
