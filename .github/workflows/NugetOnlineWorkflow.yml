@@ -1,0 +1,41 @@
+name: Commit to Rystem with new versions
+on:
+  push:
+    branches:
+      - master
+    
+jobs:
+  committer:
+    if: ${{ startsWith(github.event.commits[0].message, 'goownv=1 Package') }}
+    name: build, pack & publish
+    runs-on: windows-latest
+    environment: Rystem.Nuget
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+         token: ${{ secrets.TOKEN }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: '8.0'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Commit and Push changes
+        run: |
+            git config --global user.email "alessandro.rapiti44@gmail.com"    
+            cd NugetHelper/Rystem.NugetHelper/bin/Release/net8.0/
+            git remote remove origin
+            git remote add origin https://KeyserDSoze:${{ secrets.TOKEN }}@github.com/KeyserDSoze/Rystem.git
+            git remote set-url origin https://KeyserDSoze:${{ secrets.TOKEN }}@github.com/KeyserDSoze/Rystem.git
+            ls
+            ./Rystem.NugetHelper.exe ${{ github.event.commits[0].message }} Path=../../../../../ GitHubToken=${{ secrets.TOKEN }}
+            
+      

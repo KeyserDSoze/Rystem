@@ -15,4 +15,11 @@
     <ProjectReference Include="..\..\src\Core\Rystem\Rystem.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="README.md">
+      <PackagePath>\</PackagePath>
+      <Pack>true</Pack>
+    </None>
+  </ItemGroup>
+
 </Project>

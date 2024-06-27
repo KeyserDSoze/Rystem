@@ -109,6 +109,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RepositoryFramework.Web.Tes
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Workflows", "Workflows", "{21EA88B3-A513-4C01-8EB2-0E537C31EA07}"
 	ProjectSection(SolutionItems) = preProject
+		.github\workflows\NugetOnlineWorkflow.yml = .github\workflows\NugetOnlineWorkflow.yml
 		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.CosmosSql.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.CosmosSql.yml
 		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.Storage.Blob.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.Storage.Blob.yml
 		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.Storage.Table.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.Storage.Table.yml
@@ -263,8 +264,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{0B8C2C27-2
 	ProjectSection(SolutionItems) = preProject
 		.github\workflows\PackageDeploy.Rystem.BackgroundJob.yml = .github\workflows\PackageDeploy.Rystem.BackgroundJob.yml
 		.github\workflows\PackageDeploy.Rystem.Concurrency.yml = .github\workflows\PackageDeploy.Rystem.Concurrency.yml
-		.github\workflows\PackageDeploy.Rystem.DependencyInjection.yml = .github\workflows\PackageDeploy.Rystem.DependencyInjection.yml
 		.github\workflows\PackageDeploy.Rystem.DependencyInjection.Web.yml = .github\workflows\PackageDeploy.Rystem.DependencyInjection.Web.yml
+		.github\workflows\PackageDeploy.Rystem.DependencyInjection.yml = .github\workflows\PackageDeploy.Rystem.DependencyInjection.yml
 		.github\workflows\PackageDeploy.Rystem.Queue.yml = .github\workflows\PackageDeploy.Rystem.Queue.yml
 		.github\workflows\PackageDeploy.Rystem.Text.XUnit.yml = .github\workflows\PackageDeploy.Rystem.Text.XUnit.yml
 		.github\workflows\PackageDeploy.Rystem.yml = .github\workflows\PackageDeploy.Rystem.yml

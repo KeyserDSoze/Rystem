@@ -119,7 +119,7 @@ namespace Rystem.NugetHelper.Engine
                         break;
                     }
                 }
-                if (library.Son != null && !_isDebug)
+                if (library.Son != null && _minutesToWait > 0)
                     await Task.Delay(_minutesToWait * 60 * 1000);
                 library = library.Son;
             }

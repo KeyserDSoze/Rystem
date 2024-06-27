@@ -1,5 +1,4 @@
-﻿// See https://aka.ms/new-console-template for more information
-using Rystem.NugetHelper.Engine;
+﻿using Rystem.NugetHelper.Engine;
 
 namespace Rystem.Nuget
 {
