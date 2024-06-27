@@ -15,4 +15,6 @@ goownv=1 Package=0 Versioning=Patch IsAutomatic=true MinutesToWait=5 AddingNumbe
 
 goownv: 1 or 0 is the command to go online with new version.
 
-Package, Versioning, IsAutomatic, MinutesToWait, AddingNumberToCurrentVersion, SpecificVersion, IsDebug: are the parameters to set up the new version.
+Package, Versioning, IsAutomatic, MinutesToWait, AddingNumberToCurrentVersion, SpecificVersion: are the parameters to set up the new version.
+
+IsDebug, if true: the command will not go online, just show the new version.
