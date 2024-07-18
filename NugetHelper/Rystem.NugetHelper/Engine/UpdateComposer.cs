@@ -199,7 +199,7 @@ namespace Rystem.NugetHelper.Engine
                     writer.WriteLine($"git remote set-url origin https://KeyserDSoze:{githubToken}@github.com/KeyserDSoze/Rystem.git");
                 writer.WriteLine("git add .");
                 writer.WriteLine($"git commit --author=\"alessandro rapiti <alessandro.rapiti44@gmail.com>\" -m \"new version v.{newVersion}\"");
-                writer.WriteLine("git push");
+                writer.WriteLine("git push --set-upstream origin master");
             }
             await process.WaitForExitAsync();
         }
