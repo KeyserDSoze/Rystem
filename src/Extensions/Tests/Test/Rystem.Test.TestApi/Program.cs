@@ -1,4 +1,5 @@
 ﻿using Rystem.Test.TestApi.Extensions;
+using Rystem.Test.TestApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 

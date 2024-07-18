@@ -3,6 +3,7 @@ using System.Xml.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Rystem.Test.TestApi.Models;
+using Rystem.Test.TestApi.Services;
 
 namespace Rystem.Test.TestApi.Controllers
 {
@@ -63,6 +64,12 @@ namespace Rystem.Test.TestApi.Controllers
         {
             var factory = _serviceProvider.GetRequiredService<IFactory<Factorized>>();
             return factory.Create(name) != null;
+        }
+        [HttpGet]
+        public bool FactoryWithoutRebuild()
+        {
+            var bigBangService = _serviceProvider.GetRequiredService<BigBangService>();
+            return bigBangService?.Id != null;
         }
         [HttpGet]
         public async Task<int> MultipleRebuildAsync([FromQuery] int max, [FromQuery] bool withParallel = false)

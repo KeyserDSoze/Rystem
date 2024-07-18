@@ -1,4 +1,5 @@
 ﻿using Rystem.Test.TestApi.Models;
+using Rystem.Test.TestApi.Services;
 
 namespace Rystem.Test.TestApi.Extensions
 {
@@ -23,6 +24,7 @@ namespace Rystem.Test.TestApi.Extensions
                 if (singletonService != null)
                     x.ServiceColletionBuilder = (serviceCollection => serviceCollection.AddFactory<Factorized>(x.Name));
             });
+            services.AddSingleton<BigBangService>();
             return services;
         }
         public static IApplicationBuilder UseTestApplication(this IApplicationBuilder app)

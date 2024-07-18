@@ -7,7 +7,6 @@ namespace Microsoft.Extensions.DependencyInjection
     {
         private static IServiceCollection? _services;
         private static IServiceProvider? _serviceProvider;
-        private static IServiceProvider? _oldServiceProvider;
         private static IApplicationBuilder? _webApplication;
         private static FieldInfo? _fieldInfoForReadOnlySetter;
         private static Action<IServiceProvider>? _updater;
@@ -18,7 +17,7 @@ namespace Microsoft.Extensions.DependencyInjection
         }
         public static IServiceProvider GetServiceProvider()
         {
-            return _serviceProvider ?? _oldServiceProvider ?? throw new ArgumentException($"Please setup in Dependency injection the {nameof(UseRuntimeServiceProvider)} method."); ;
+            return _serviceProvider ?? throw new ArgumentException($"Please setup in Dependency injection the {nameof(UseRuntimeServiceProvider)} method."); ;
         }
         public static IServiceCollection GetServiceCollection()
         {
@@ -68,8 +67,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 {
                     if (serviceByTypeAndByKey.Key.ServiceType.ContainsGenericParameters && serviceByTypeAndByKey.Key.ServiceType.GenericTypeArguments.Length == 0)
                         continue;
-                    var values = serviceByTypeAndByKey.Key.Item2 == null ? _oldServiceProvider?.GetServices(serviceByTypeAndByKey.Key.ServiceType) :
-                        _oldServiceProvider?.GetKeyedServices(serviceByTypeAndByKey.Key.ServiceType, serviceByTypeAndByKey.Key.Item2);
+                    var values = serviceByTypeAndByKey.Key.Item2 == null ? oldServiceProvider?.GetServices(serviceByTypeAndByKey.Key.ServiceType) :
+                        oldServiceProvider?.GetKeyedServices(serviceByTypeAndByKey.Key.ServiceType, serviceByTypeAndByKey.Key.Item2);
                     if (values?.IsEmpty() == false)
                     {
                         var allServices = serviceByTypeAndByKey.GetEnumerator();
@@ -98,7 +97,6 @@ namespace Microsoft.Extensions.DependencyInjection
                     {
                         s_numberOfServices = numberOfServices;
                         _serviceProvider = serviceProvider;
-                        _oldServiceProvider = oldServiceProvider;
                         _updater?.Invoke(_serviceProvider);
                     }
                 }
@@ -114,7 +112,7 @@ namespace Microsoft.Extensions.DependencyInjection
             if (_webApplication == null)
             {
                 _webApplication = webApplication;
-                _oldServiceProvider = _webApplication.ApplicationServices;
+                _serviceProvider = _webApplication.ApplicationServices;
                 webApplication.Use((context, next) =>
                 {
                     if (_serviceProvider != null)

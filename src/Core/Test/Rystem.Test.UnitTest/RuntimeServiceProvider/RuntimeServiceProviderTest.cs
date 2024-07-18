@@ -39,6 +39,17 @@ namespace Rystem.Test.UnitTest
             Assert.NotEqual(jsonContent.TransientService.Id, jsonContent2.TransientService.Id);
         }
         [Fact]
+        public async Task AddFactoryAtRuntimeWithoutRebuildAsync()
+        {
+            var response = await _httpClient.GetAsync("Service/FactoryWithoutRebuild");
+            var responseAsString = await response.Content.ReadAsStringAsync();
+            var jsonContent = responseAsString.FromJson<bool>(new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+            Assert.True(jsonContent);
+        }
+        [Fact]
         public async Task AddFactoryAtRuntimeAsync()
         {
             var response = await _httpClient.GetAsync("Service/Factory?name=xx");
