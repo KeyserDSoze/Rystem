@@ -16,8 +16,8 @@ You may find the documentation at [this link](https://github.com/KeyserDSoze/Rys
 ### Rystem.DependencyInjection (core library)
 You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Core/Rystem.DependencyInjection)
 
-### Rystem.Web (core library)
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Core/Rystem.Web)
+### Rystem.DependencyInjection.Web (core library)
+You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Core/Rystem.DependencyInjection.Web)
 
 ### Concurrency (Deal with async Lock and Race Condition)
 You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/Concurrency/Rystem.Concurrency)
