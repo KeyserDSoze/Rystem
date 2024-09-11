@@ -5,7 +5,9 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
     </PropertyGroup>
-
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Identity.Abstractions" Version="7.0.0" />
+    </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\..\Repository\RepositoryFramework.Api.Client.Authentication.BlazorServer\RepositoryFramework.Api.Client.Authentication.BlazorServer.csproj" />
         <ProjectReference Include="..\..\..\Repository\RepositoryFramework.Api.Client\RepositoryFramework.Api.Client.csproj" />

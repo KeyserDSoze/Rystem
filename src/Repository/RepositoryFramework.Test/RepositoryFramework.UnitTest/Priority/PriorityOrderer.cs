@@ -1,11 +1,12 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Xunit;
 using Xunit.Abstractions;
 using Xunit.Sdk;
 
 namespace RepositoryFramework.UnitTest
 {
-    public class PriorityOrderer : ITestCaseOrderer
+    public class PriorityOrderer : ITestCaseOrderer, ITestCollectionOrderer
     {
         public IEnumerable<TTestCase> OrderTestCases<TTestCase>(
             IEnumerable<TTestCase> testCases)
@@ -39,5 +40,10 @@ namespace RepositoryFramework.UnitTest
             dictionary.TryGetValue(key, out var result)
                 ? result
                 : (dictionary[key] = new TValue());
+
+        public IEnumerable<ITestCollection> OrderTestCollections(IEnumerable<ITestCollection> testCollections)
+        {
+            return testCollections.OrderBy(x => x.DisplayName);
+        }
     }
 }

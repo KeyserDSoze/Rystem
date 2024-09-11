@@ -1,51 +1,52 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-		<TargetFramework>net8.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<IncludeSymbols>true</IncludeSymbols>
-		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
-		<DebugSymbols>true</DebugSymbols>
-		<EmbedAllSources>true</EmbedAllSources>
-		<DebugType>portable</DebugType>
-		<Authors>Alessandro Rapiti</Authors>
-		<Company>Alessandro Rapiti</Company>
-		<Product>Rystem.RepositoryFramework</Product>
-		<Description>Rystem.RepositoryFramework allows you to use correctly concepts like repository pattern, CQRS and DDD. You have interfaces for your domains, auto-generated api, auto-generated HttpClient to simplify connection "api to front-end", a functionality for auto-population in memory of your models, a functionality to simulate exceptions and waiting time from external sources to improve your implementation/business test and load test.</Description>
-		<Copyright>2024</Copyright>
-		<PackageIcon>rystem.repositoryframework.api.client.png</PackageIcon>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer</RepositoryUrl>
-		<PackageId>Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer</PackageId>
-		<Version>6.0.23</Version>
-		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-	</PropertyGroup>
+    <PropertyGroup>
+        <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <DebugSymbols>true</DebugSymbols>
+        <EmbedAllSources>true</EmbedAllSources>
+        <DebugType>portable</DebugType>
+        <Authors>Alessandro Rapiti</Authors>
+        <Company>Alessandro Rapiti</Company>
+        <Product>Rystem.RepositoryFramework</Product>
+        <Description>Rystem.RepositoryFramework allows you to use correctly concepts like repository pattern, CQRS and DDD. You have interfaces for your domains, auto-generated api, auto-generated HttpClient to simplify connection "api to front-end", a functionality for auto-population in memory of your models, a functionality to simulate exceptions and waiting time from external sources to improve your implementation/business test and load test.</Description>
+        <Copyright>2024</Copyright>
+        <PackageIcon>rystem.repositoryframework.api.client.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer</RepositoryUrl>
+        <PackageId>Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer</PackageId>
+        <Version>6.0.23</Version>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    </PropertyGroup>
 
-	<ItemGroup>
-		<None Include="rystem.repositoryframework.api.client.png">
-			<Pack>True</Pack>
-			<PackagePath>\</PackagePath>
-		</None>
-		<None Include="README.md" Pack="true" PackagePath="\" />
-	</ItemGroup>
+    <ItemGroup>
+        <None Include="rystem.repositoryframework.api.client.png">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
 
-	<ItemGroup>
-		<PackageReference Include="Microsoft.Identity.Web" Version="3.0.0" />
-	</ItemGroup>
-	
-	<Choose>
-		<When Condition=" '$(Configuration)'=='Debug' ">
-			<ItemGroup>
-				<ProjectReference Include="..\RepositoryFramework.Api.Client\RepositoryFramework.Api.Client.csproj" />
-			</ItemGroup>
-		</When>
-		<When Condition=" '$(Configuration)'!='Debug' ">
-			<ItemGroup>
-				<PackageReference Include="Rystem.RepositoryFramework.Api.Client" Version="6.0.23" />
-			</ItemGroup>
-		</When>
-	</Choose>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Identity.Web" Version="3.1.0" />
+        <PackageReference Include="Microsoft.Identity.Abstractions" Version="7.0.0" />
+    </ItemGroup>
+
+    <Choose>
+        <When Condition=" '$(Configuration)'=='Debug' ">
+            <ItemGroup>
+                <ProjectReference Include="..\RepositoryFramework.Api.Client\RepositoryFramework.Api.Client.csproj" />
+            </ItemGroup>
+        </When>
+        <When Condition=" '$(Configuration)'!='Debug' ">
+            <ItemGroup>
+                <PackageReference Include="Rystem.RepositoryFramework.Api.Client" Version="6.0.23" />
+            </ItemGroup>
+        </When>
+    </Choose>
 </Project>

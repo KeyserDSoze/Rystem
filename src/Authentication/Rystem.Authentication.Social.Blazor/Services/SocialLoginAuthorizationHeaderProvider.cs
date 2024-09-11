@@ -19,5 +19,10 @@ namespace Rystem.Authentication.Social.Blazor
         {
             return Task.FromResult(_token ?? string.Empty);
         }
+
+        public Task<string> CreateAuthorizationHeaderAsync(IEnumerable<string> scopes, AuthorizationHeaderProviderOptions? options = null, ClaimsPrincipal? claimsPrincipal = null, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_token ?? string.Empty);
+        }
     }
 }
