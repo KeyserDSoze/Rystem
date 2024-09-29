@@ -4,7 +4,7 @@ namespace Rystem.Authentication.Social
 {
     public interface ISocialUserProvider
     {
-        Task<ISocialUser> GetAsync(string? username, IEnumerable<Claim> claims, CancellationToken cancellationToken);
-        IAsyncEnumerable<Claim> GetClaimsAsync(string? username, CancellationToken cancellationToken);
+        Task<ISocialUser> GetAsync(string username, IEnumerable<Claim> claims, CancellationToken cancellationToken);
+        IAsyncEnumerable<Claim> GetClaimsAsync(TokenResponse response, CancellationToken cancellationToken);
     }
 }

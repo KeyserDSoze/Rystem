@@ -2,6 +2,6 @@
 {
     public interface ITokenChecker
     {
-        Task<string> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken);
+        Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken);
     }
 }

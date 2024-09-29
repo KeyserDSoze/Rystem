@@ -26,31 +26,31 @@ namespace Microsoft.Extensions.DependencyInjection
                     [FromQuery] string code,
                     CancellationToken cancellationToken) =>
                 {
-                    string? username = null;
+                    TokenResponse? response = null;
                     var tokenChecker = tokenCheckerFactory.Create(provider.ToString());
                     if (tokenChecker != null)
                     {
                         try
                         {
-                            username = await tokenChecker.CheckTokenAndGetUsernameAsync(code, cancellationToken);
+                            response = await tokenChecker.CheckTokenAndGetUsernameAsync(code, cancellationToken);
                         }
                         catch (Exception ex)
                         {
                             logger?.LogError(ex, "Error checking token.");
                         }
                     }
-                    if (!string.IsNullOrWhiteSpace(username))
+                    if (response != null && !string.IsNullOrWhiteSpace(response.Username))
                     {
                         var claims = new List<Claim>();
                         if (claimProvider != null)
                         {
-                            await foreach (var claim in claimProvider.GetClaimsAsync(username, cancellationToken))
+                            await foreach (var claim in claimProvider.GetClaimsAsync(response, cancellationToken))
                             {
                                 claims.Add(claim);
                             }
                         }
                         else
-                            claims.Add(new Claim(ClaimTypes.Name, username));
+                            claims.Add(new Claim(ClaimTypes.Name, response.Username));
                         var claimsPrincipal = new ClaimsPrincipal(
                          new ClaimsIdentity(claims,
                            BearerTokenDefaults.AuthenticationScheme

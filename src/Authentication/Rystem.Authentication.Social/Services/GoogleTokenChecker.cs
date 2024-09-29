@@ -1,6 +1,7 @@
 ﻿using Google.Apis.Auth;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using System.Text.Json.Serialization;
 
 namespace Rystem.Authentication.Social
@@ -16,7 +17,7 @@ namespace Rystem.Authentication.Social
             _clientFactory = clientFactory;
             _loginBuilder = loginBuilder;
         }
-        public async Task<string> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
+        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
         {
             var settings = _loginBuilder.Google;
             var client = _clientFactory.CreateClient(Constants.GoogleAuthenticationClient);
@@ -28,10 +29,22 @@ namespace Rystem.Authentication.Social
                 if (message != null)
                 {
                     var payload = await GoogleJsonWebSignature.ValidateAsync(message.IdToken);
-                    return payload.Email;
+                    return new TokenResponse
+                    {
+                        Username = payload.Email,
+                        Claims =
+                        [
+                            new Claim(ClaimTypes.Email, payload.Email),
+                            new Claim(ClaimTypes.Name, payload.Name),
+                            new Claim(ClaimTypes.GivenName, payload.FamilyName),
+                            new Claim(ClaimTypes.Locality, payload.Locale),
+                            new Claim(ClaimTypes.NameIdentifier, payload.Subject),
+                            new Claim(ClaimTypes.Thumbprint, payload.Picture),
+                        ]
+                    };
                 }
             }
-            return string.Empty;
+            return TokenResponse.Empty;
         }
         private sealed class AuthenticationResponse
         {

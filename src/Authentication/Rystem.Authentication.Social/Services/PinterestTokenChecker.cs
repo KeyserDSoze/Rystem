@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -26,7 +27,7 @@ namespace Rystem.Authentication.Social
             var toReturn = Convert.ToBase64String(bytes);
             return toReturn;
         }
-        public async Task<string> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
+        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
         {
             if (!string.IsNullOrWhiteSpace(code))
             {
@@ -50,12 +51,21 @@ namespace Rystem.Authentication.Social
                         {
                             message = await responseFromUser.Content.ReadAsStringAsync();
                             var data = message.FromJson<UserInformation>();
-                            return data.Email;
+                            return new TokenResponse
+                            {
+                                Username = data.Email,
+                                Claims =
+                                [
+                                    new Claim(ClaimTypes.Email, data.Email),
+                                    new Claim(ClaimTypes.Name, data.Name),
+                                    new Claim(ClaimTypes.NameIdentifier, data.Id),
+                                ]
+                            };
                         }
                     }
                 }
             }
-            return string.Empty;
+            return TokenResponse.Empty;
         }
         private sealed class AuthenticationResponse
         {

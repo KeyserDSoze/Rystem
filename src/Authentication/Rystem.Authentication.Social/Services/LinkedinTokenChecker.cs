@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -17,7 +18,7 @@ namespace Rystem.Authentication.Social
             _loginBuilder = loginBuilder;
         }
         private const string Bearer = nameof(Bearer);
-        public async Task<string> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
+        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
         {
             if (!string.IsNullOrWhiteSpace(code))
             {
@@ -40,13 +41,26 @@ namespace Rystem.Authentication.Social
                             message = await responseFromUser.Content.ReadAsStringAsync();
                             var profile = message.FromJson<ProfileResponse>();
                             if (profile.EmailVerified)
-                                return profile.Email;
+                            {
+                                return new TokenResponse
+                                {
+                                    Username = profile.Email,
+                                    Claims =
+                                    [
+                                        new Claim(ClaimTypes.Email, profile.Email),
+                                        new Claim(ClaimTypes.Name, profile.Name),
+                                        new Claim(ClaimTypes.GivenName, profile.GivenName),
+                                        new Claim(ClaimTypes.Locality, profile.Locale.Language),
+                                        new Claim(ClaimTypes.NameIdentifier, profile.Sub),
+                                        new Claim(ClaimTypes.Thumbprint, profile.Picture),
+                                    ]
+                                };
+                            }
                         }
                     }
                 }
-                return string.Empty;
             }
-            return string.Empty;
+            return TokenResponse.Empty;
         }
 
         private sealed class AuthenticationResponse

@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -17,7 +18,7 @@ namespace Rystem.Authentication.Social
             _loginBuilder = loginBuilder;
         }
         private const string Bearer = nameof(Bearer);
-        public async Task<string> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
+        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
         {
             var settings = _loginBuilder.GitHub;
             var client = _clientFactory.CreateClient(Constants.GitHubAuthenticationClient);
@@ -38,11 +39,22 @@ namespace Rystem.Authentication.Social
                     {
                         message = await responseFromUser.Content.ReadAsStringAsync();
                         var emails = message.FromJson<SingleEmail[]>();
-                        return emails.FirstOrDefault(x => x.Primary && x.Verified)?.Email ?? string.Empty;
+                        var email = emails.FirstOrDefault(x => x.Primary && x.Verified);
+                        if (email != null)
+                        {
+                            return new TokenResponse
+                            {
+                                Username = email.Email,
+                                Claims =
+                                [
+                                    new Claim(ClaimTypes.Email, email.Email),
+                                ]
+                            };
+                        }
                     }
                 }
             }
-            return string.Empty;
+            return TokenResponse.Empty;
         }
         private sealed class AuthenticationResponse
         {

@@ -15,10 +15,10 @@ namespace Rystem.Authentication.Social.TestApi.Services
             } as ISocialUser)!);
         }
 
-        public async IAsyncEnumerable<Claim> GetClaimsAsync(string? username, [EnumeratorCancellation] CancellationToken cancellationToken)
+        public async IAsyncEnumerable<Claim> GetClaimsAsync(TokenResponse response, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             await Task.CompletedTask;
-            yield return new Claim(ClaimTypes.Name, username!);
+            yield return new Claim(ClaimTypes.Name, response.Username!);
             yield return new Claim(ClaimTypes.Upn, "something");
         }
     }

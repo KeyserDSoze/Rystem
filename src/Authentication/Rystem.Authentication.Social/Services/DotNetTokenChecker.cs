@@ -11,15 +11,19 @@ namespace Rystem.Authentication.Social
             _options = options.Get(BearerTokenDefaults.AuthenticationScheme);
         }
 
-        public Task<string> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
+        public Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
         {
             var ticket = _options.RefreshTokenProtector.Unprotect(code);
             var expiringTime = ticket?.Properties?.ExpiresUtc ?? DateTime.UtcNow.AddHours(1);
             var identity = ticket?.Principal?.Identity;
             if (identity?.IsAuthenticated == true && DateTime.UtcNow < expiringTime)
-                return Task.FromResult(identity.Name ?? string.Empty);
+                return Task.FromResult(identity?.Name != null ? new TokenResponse
+                {
+                    Username = identity.Name,
+                    Claims = ticket?.Principal?.Claims.ToList() ?? new()
+                } : TokenResponse.Empty);
             else
-                return Task.FromResult(string.Empty);
+                return Task.FromResult(TokenResponse.Empty);
         }
     }
 }
