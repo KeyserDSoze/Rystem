@@ -19,7 +19,7 @@
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Api.Client</RepositoryUrl>
 		<PackageId>Rystem.RepositoryFramework.Api.Client</PackageId>
-		<Version>6.0.24</Version>
+		<Version>6.1.0</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	</PropertyGroup>
@@ -46,7 +46,7 @@
 		</When>
 		<When Condition=" '$(Configuration)'!='Debug' ">
 			<ItemGroup>
-				<PackageReference Include="Rystem.RepositoryFramework.Abstractions" Version="6.0.24" />
+				<PackageReference Include="Rystem.RepositoryFramework.Abstractions" Version="6.1.0" />
 			</ItemGroup>
 		</When>
 	</Choose>
