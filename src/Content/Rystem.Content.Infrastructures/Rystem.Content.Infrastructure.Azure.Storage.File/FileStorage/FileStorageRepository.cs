@@ -87,7 +87,7 @@ namespace Rystem.Content.Infrastructure.Storage
             if (!await fileClient.ExistsAsync(cancellationToken).NoContext())
                 await fileClient.CreateAsync(data.Length, cancellationToken: cancellationToken).NoContext();
             else
-                await fileClient.SetHttpHeadersAsync(data.Length, cancellationToken: cancellationToken).NoContext();
+                await fileClient.SetHttpHeadersAsync(new ShareFileSetHttpHeadersOptions { NewSize = data.Length }, cancellationToken: cancellationToken).NoContext();
             var response = await fileClient.UploadAsync(data.ToStream(), cancellationToken: cancellationToken).NoContext();
             var result = response.Value != null;
             if (result)
@@ -195,14 +195,17 @@ namespace Rystem.Content.Infrastructure.Storage
             var blobClient = await GetFileClientAsync(path, false);
             if (options?.HttpHeaders != null)
             {
-                await blobClient.SetHttpHeadersAsync(null, new ShareFileHttpHeaders
+                await blobClient.SetHttpHeadersAsync(new ShareFileSetHttpHeadersOptions
                 {
-                    CacheControl = options?.HttpHeaders?.CacheControl,
-                    ContentDisposition = options?.HttpHeaders?.ContentDisposition,
-                    ContentEncoding = new string[] { options?.HttpHeaders?.ContentEncoding },
-                    ContentHash = options?.HttpHeaders?.ContentHash,
-                    ContentLanguage = new string[] { options?.HttpHeaders?.ContentLanguage },
-                    ContentType = options?.HttpHeaders?.ContentType,
+                    HttpHeaders = new ShareFileHttpHeaders
+                    {
+                        CacheControl = options?.HttpHeaders?.CacheControl,
+                        ContentDisposition = options?.HttpHeaders?.ContentDisposition,
+                        ContentEncoding = new string[] { options?.HttpHeaders?.ContentEncoding },
+                        ContentHash = options?.HttpHeaders?.ContentHash,
+                        ContentLanguage = new string[] { options?.HttpHeaders?.ContentLanguage },
+                        ContentType = options?.HttpHeaders?.ContentType,
+                    }
                 }, cancellationToken: cancellationToken).NoContext();
             }
             if (options?.Metadata != null)
