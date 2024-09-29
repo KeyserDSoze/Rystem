@@ -29,7 +29,7 @@
       <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="8.0.8" />
       <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.8" />
       <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
-      <PackageReference Include="Microsoft.Identity.Abstractions" Version="7.0.0" />
+      <PackageReference Include="Microsoft.Identity.Abstractions" Version="7.1.0" />
       <PackageReference Include="Microsoft.JSInterop" Version="8.0.8" />
     </ItemGroup>
     <Choose>

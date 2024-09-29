@@ -30,8 +30,8 @@
         <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
         <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
         <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="8.0.8" />
-        <PackageReference Include="Microsoft.Identity.Client" Version="4.64.0" />
-        <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.64.0" />
+        <PackageReference Include="Microsoft.Identity.Client" Version="4.65.0" />
+        <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.65.0" />
         <PackageReference Include="Microsoft.NETCore.Platforms" Version="8.0.0-preview.7.23375.6" />
         <PackageReference Include="Microsoft.PowerPlatform.Dataverse.Client" Version="1.1.32" />
 	</ItemGroup>

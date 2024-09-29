@@ -26,9 +26,9 @@
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
         <PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
-        <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.0.2" />
-        <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.0.2" />
-        <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.2" />
+        <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.1.0" />
+        <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.1.0" />
+        <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.1.0" />
     </ItemGroup>
     <Choose>
         <When Condition=" '$(Configuration)'=='Debug' ">
