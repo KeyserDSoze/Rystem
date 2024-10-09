@@ -1,5 +1,4 @@
 ﻿using Microsoft.Identity.Abstractions;
-using Microsoft.Identity.Web;
 using RepositoryFramework.Api.Client.DefaultInterceptor;
 
 namespace RepositoryFramework.Api.Client.Authorization
@@ -7,16 +6,13 @@ namespace RepositoryFramework.Api.Client.Authorization
     internal sealed class TokenManager : ITokenManager
     {
         private readonly AuthenticatorSettings _settings;
-        private readonly MicrosoftIdentityConsentAndConditionalAccessHandler _consentHandler;
         private readonly IAuthorizationHeaderProvider _authorizationHeaderProvider;
 
         public TokenManager(
             AuthenticatorSettings settings,
-            MicrosoftIdentityConsentAndConditionalAccessHandler consentHandler,
             IAuthorizationHeaderProvider authorizationHeaderProvider)
         {
             _settings = settings;
-            _consentHandler = consentHandler;
             _authorizationHeaderProvider = authorizationHeaderProvider;
         }
         public async Task EnrichWithAuthorizationAsync(HttpClient client)
@@ -41,9 +37,8 @@ namespace RepositoryFramework.Api.Client.Authorization
             }
             catch (Exception ex)
             {
-                _consentHandler.HandleException(ex);
+                return null;
             }
-            return null;
         }
     }
 }
