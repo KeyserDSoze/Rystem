@@ -24,12 +24,12 @@ else if (Rendered)
     {
         if (User == null && !Rendered)
         {
-            var isAuthenticated = await Manager.FetchTokenAsync();
-            if (isAuthenticated)
+            var token = await Manager.FetchTokenAsync();
+            if (token != default)
             {
                 await LocalStorage.DeleteStateAsync();
             }
-            if (isAuthenticated)
+            if (token != default)
             {
                 User = await Manager.MeAsync<TUser>();
                 if (User != null)

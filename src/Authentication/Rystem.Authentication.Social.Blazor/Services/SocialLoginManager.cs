@@ -72,7 +72,7 @@ namespace Rystem.Authentication.Social.Blazor
             }
             return default;
         }
-        public async ValueTask<bool> FetchTokenAsync()
+        public async Task<Token?> FetchTokenAsync()
         {
             var token = await _localStorage.GetTokenAsync();
             if (token == null)
@@ -92,7 +92,7 @@ namespace Rystem.Authentication.Social.Blazor
                     {
                         if (state != localState?.Value)
                         {
-                            return false;
+                            return default;
                         }
                     }
                     if (queryStrings.AllKeys.Any(x => x == "code"))
@@ -100,7 +100,7 @@ namespace Rystem.Authentication.Social.Blazor
                         code = queryStrings["code"];
                     }
                     if (string.IsNullOrWhiteSpace(code))
-                        return false;
+                        return default;
                     try
                     {
                         token = await _client.GetFromJsonAsync<Token>($"/api/Authentication/Social/Token?provider={localState.Provider}&code={code}");
@@ -108,12 +108,12 @@ namespace Rystem.Authentication.Social.Blazor
                         {
                             await _localStorage.SetTokenAsync(token);
                             _navigationManager.NavigateTo(localState.Path);
-                            return true;
+                            return token;
                         }
                     }
                     catch (Exception)
                     {
-                        return false;
+                        return default;
                     }
                 }
             }
@@ -125,14 +125,23 @@ namespace Rystem.Authentication.Social.Blazor
                     if (token is not null)
                     {
                         await _localStorage.SetTokenAsync(token);
-                        return true;
+                        return token;
                     }
                 }
                 catch
                 {
                 }
             }
-            return token?.Expiring >= DateTime.UtcNow;
+            return token?.Expiring >= DateTime.UtcNow ? token : default;
+        }
+        public async ValueTask LogoutAsync()
+        {
+            await _localStorage.DeleteTokenAsync();
+            await _localStorage.DeleteTokenAsync();
+            if (_authorizationHeaderProvider is SocialLoginAuthorizationHeaderProvider authorizationHeaderProvider)
+            {
+                authorizationHeaderProvider.SetToken(string.Empty);
+            }
         }
     }
 }

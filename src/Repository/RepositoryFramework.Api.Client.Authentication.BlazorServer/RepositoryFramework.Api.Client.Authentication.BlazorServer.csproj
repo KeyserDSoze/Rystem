@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -40,11 +40,13 @@
         <When Condition=" '$(Configuration)'=='Debug' ">
             <ItemGroup>
                 <ProjectReference Include="..\RepositoryFramework.Api.Client\RepositoryFramework.Api.Client.csproj" />
+                <ProjectReference Include="..\..\Authentication\Rystem.Authentication.Social.Blazor\Rystem.Authentication.Social.Blazor.csproj" />
             </ItemGroup>
         </When>
         <When Condition=" '$(Configuration)'!='Debug' ">
             <ItemGroup>
                 <PackageReference Include="Rystem.RepositoryFramework.Api.Client" Version="6.1.1" />
+                <PackageReference Include="Rystem.Authentication.Social.Blazor" Version="6.1.1" />
             </ItemGroup>
         </When>
     </Choose>

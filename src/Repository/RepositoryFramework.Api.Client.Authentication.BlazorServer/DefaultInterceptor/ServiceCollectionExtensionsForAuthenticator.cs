@@ -18,6 +18,18 @@ namespace Microsoft.Extensions.DependencyInjection
                 authenticatorSettings, ServiceLifetime.Scoped);
         }
         /// <summary>
+        /// Add global JWT interceptor for all repository clients based on social login rystem library. Interceptor runs before every request.
+        /// </summary>
+        /// <param name="services">IServiceCollection</param>
+        /// <returns>IServiceCollection</returns>
+        public static IServiceCollection AddDefaultSocialLoginAuthorizationInterceptorForApiHttpClient(
+            this IServiceCollection services,
+            Action<AuthenticatorSettings>? authenticatorSettings = null)
+        {
+            return services.AddDefaultAuthorizationInterceptorForApiHttpClient<SocialTokenManager>(
+                authenticatorSettings, ServiceLifetime.Scoped);
+        }
+        /// <summary>
         /// Add JWT specific interceptor for your <typeparamref name="T"/> client. Interceptor runs before every request.
         /// </summary>
         /// <typeparam name="T">Model used for your repository</typeparam>

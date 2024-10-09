@@ -19,7 +19,7 @@ builder.Services.AddRepository<SocialRole, string>(repositoryBuilder =>
         apiBuilder.WithHttpClient("https://localhost:7017").WithDefaultRetryPolicy();
     });
 });
-builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient();
+builder.Services.AddDefaultSocialLoginAuthorizationInterceptorForApiHttpClient();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
