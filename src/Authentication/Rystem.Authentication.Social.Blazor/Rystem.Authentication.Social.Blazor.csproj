@@ -26,11 +26,11 @@
         <StaticWebAssetBasePath>_content/$(PackageId)</StaticWebAssetBasePath>
     </PropertyGroup>
     <ItemGroup>
-      <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="8.0.8" />
-      <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.8" />
-      <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+      <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="8.0.10" />
+      <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.10" />
+      <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
       <PackageReference Include="Microsoft.Identity.Abstractions" Version="7.1.0" />
-      <PackageReference Include="Microsoft.JSInterop" Version="8.0.8" />
+      <PackageReference Include="Microsoft.JSInterop" Version="8.0.10" />
     </ItemGroup>
     <Choose>
         <When Condition=" '$(Configuration)'=='Debug' ">
