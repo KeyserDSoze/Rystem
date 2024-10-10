@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Alessandro Rapiti">
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>System.Linq - Rystem</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" disabled>
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" >
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Rystem</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="../.." class="nav-link">Home</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Core</a>
+                                <ul class="dropdown-menu">
+                                    
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Rystem</a>
+    <ul class="dropdown-menu">
+            
+<li>
+    <a href="../../Rystem/System.ProgrammingLanguage/" class="dropdown-item">System.ProgrammingLanguage</a>
+</li>
+            
+<li>
+    <a href="../../Rystem/System/" class="dropdown-item">System</a>
+</li>
+            
+<li>
+    <a href="../../Rystem/System.Collection.Generics/" class="dropdown-item">System.Collection.Generics</a>
+</li>
+            
+<li>
+    <a href="../../Rystem/System.Collections/" class="dropdown-item">System.Collections</a>
+</li>
+            
+<li>
+    <a href="../../Rystem/System.Collections.Concurrent/" class="dropdown-item">System.Collections.Concurrent</a>
+</li>
+            
+<li>
+    <a href="../../Rystem/System.IO/" class="dropdown-item">System.IO</a>
+</li>
+            
+<li>
+    <a href="../../Rystem/System.Linq/" class="dropdown-item">System.Linq</a>
+</li>
+            
+<li>
+    <a href="../../Rystem/System.Linq.Expressions/" class="dropdown-item">System.Linq.Expressions</a>
+</li>
+            
+<li>
+    <a href="../../Rystem/System.Reflection/" class="dropdown-item">System.Reflection</a>
+</li>
+            
+<li>
+    <a href="../../Rystem/Rystem.Reflection/" class="dropdown-item">Rystem.Reflection</a>
+</li>
+            
+<li>
+    <a href="../../Rystem/System.Security.Cryptography/" class="dropdown-item">System.Security.Cryptography</a>
+</li>
+            
+<li>
+    <a href="../../Rystem/System.Text/" class="dropdown-item">System.Text</a>
+</li>
+            
+<li>
+    <a href="../../Rystem/System.Text.Csv/" class="dropdown-item">System.Text.Csv</a>
+</li>
+            
+<li>
+    <a href="../../Rystem/System.Text.Json/" class="dropdown-item">System.Text.Json</a>
+</li>
+            
+<li>
+    <a href="../../Rystem/System.Text.Minimization/" class="dropdown-item">System.Text.Minimization</a>
+</li>
+            
+<li>
+    <a href="../../Rystem/System.Threading.Tasks/" class="dropdown-item">System.Threading.Tasks</a>
+</li>
+    </ul>
+  </li>
+                                    
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Rystem.DependencyInjection</a>
+    <ul class="dropdown-menu">
+            
+<li>
+    <a href="../../Rystem.DependencyInjection/Microsoft.Extensions.DependencyInjection.md" class="dropdown-item">Microsoft.Extensions.DependencyInjection</a>
+</li>
+            
+<li>
+    <a href="../../Rystem.DependencyInjection/System.Population.Random/" class="dropdown-item">System.Population.Random</a>
+</li>
+    </ul>
+  </li>
+                                    
+<li>
+    <a href="../../Rystem.DependencyInjection.Web/" class="dropdown-item">Rystem.DependencyInjection.Web</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Concurrency/" class="dropdown-item">Rystem.Concurrency</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.BackgroundJob.md" class="dropdown-item">Rystem.BackgroundJob</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Concurrency.Redis.md" class="dropdown-item">Rystem.Concurrency.Redis</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Test.XUnit.md" class="dropdown-item">Rystem.Test.XUnit</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Queue.md" class="dropdown-item">Rystem.Queue</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Api</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../Rystem.Api/" class="dropdown-item">Rystem.Api</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Api.Client/" class="dropdown-item">Rystem.Api.Client</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Api.Server/" class="dropdown-item">Rystem.Api.Server</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Api.Client.Authentication.BlazorServer.md" class="dropdown-item">Rystem.Api.Client.Authentication.BlazorServer</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Api.Client.Authentication.BlazorWasm.md" class="dropdown-item">Rystem.Api.Client.Authentication.BlazorWasm</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Social Authentication</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../Rystem.Authentication.Social.Abstractions/" class="dropdown-item">Rystem.Authentication.Social.Abstractions</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Authentication.Social/" class="dropdown-item">Rystem.Authentication.Social</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Authentication.Social.Blazor.md" class="dropdown-item">Rystem.Authentication.Social.Blazor</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Content</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../Rystem.Content.Abstractions/" class="dropdown-item">Rystem.Content.Abstractions</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Content.Infrastructure.Storage.Blob.md" class="dropdown-item">Rystem.Content.Infrastructure.Storage.Blob</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Content.Infrastructure.Storage.File.md" class="dropdown-item">Rystem.Content.Infrastructure.Storage.File</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Content.Infrastructure.InMemory.md" class="dropdown-item">Rystem.Content.Infrastructure.InMemory</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Content.Infrastructure.M365.Sharepoint.md" class="dropdown-item">Rystem.Content.Infrastructure.M365.Sharepoint</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Repository Framework</a>
+                                <ul class="dropdown-menu">
+                                    
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Rystem.RepositoryFramework.Abstractions</a>
+    <ul class="dropdown-menu">
+            
+<li>
+    <a href="../RepositoryFramework.md" class="dropdown-item">RepositoryFramework</a>
+</li>
+            
+<li>
+    <a href="./" class="dropdown-item active" aria-current="page">System.Linq</a>
+</li>
+            
+<li>
+    <a href="../Microsoft.Extensions.DependencyInjection/" class="dropdown-item">Microsoft.Extensions.DependencyInjection</a>
+</li>
+    </ul>
+  </li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Api.Client.md" class="dropdown-item">Rystem.RepositoryFramework.Api.Client</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Api.Server.md" class="dropdown-item">Rystem.RepositoryFramework.Api.Server</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Cache.md" class="dropdown-item">Rystem.RepositoryFramework.Cache</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Infrastructure.InMemory.md" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.InMemory</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Infrastructure.Azure.Cosmos.Sql.md" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.Azure.Cosmos.Sql</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob.md" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Table.md" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Table</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Infrastructure.Dynamics.Dataverse.md" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.Dynamics.Dataverse</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Infrastructure.EntityFramework.md" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.EntityFramework</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Infrastructure.MsSql.md" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.MsSql</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.MigrationTools.md" class="dropdown-item">Rystem.RepositoryFramework.MigrationTools</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Web.Components.md" class="dropdown-item">Rystem.RepositoryFramework.Web.Components</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer.md" class="dropdown-item">Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm.md" class="dropdown-item">Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Cache.Azure.Storage.Blob.md" class="dropdown-item">Rystem.RepositoryFramework.Cache.Azure.Storage.Blob</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../../Rystem.Content.Abstractions/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../Microsoft.Extensions.DependencyInjection/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item dropdown">
+                              <button id="theme-menu" aria-expanded="false" data-bs-toggle="dropdown" data-bs-display="static" aria-label="Toggle theme" class="nav-link dropdown-toggle">
+                                <i class="fa-solid fa-circle-half-stroke fa-fw"></i>
+                                <span class="d-lg-none ms-2">Toggle theme</span>
+                              </button>
+                              <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                  <button class="dropdown-item d-flex align-items-center" data-bs-theme-value="light" aria-pressed="false">
+                                    <i class="fa-solid fa-sun fa-fw"></i>
+                                    <span class="ms-2">Light</span>
+                                    <i class="fa-solid fa-check ms-auto d-none"></i>
+                                  </button>
+                                </li>
+                                <li>
+                                  <button class="dropdown-item d-flex align-items-center" data-bs-theme-value="dark" aria-pressed="true">
+                                    <i class="fa-solid fa-moon fa-fw"></i>
+                                    <span class="ms-2">Dark</span>
+                                    <i class="fa-solid fa-check ms-auto"></i>
+                                  </button>
+                                </li>
+                                <li>
+                                  <button class="dropdown-item d-flex align-items-center" data-bs-theme-value="auto" aria-pressed="false">
+                                    <i class="fa-solid fa-circle-half-stroke fa-fw"></i>
+                                    <span class="ms-2">Auto</span>
+                                    <i class="fa-solid fa-check ms-auto d-none"></i>
+                                  </button>
+                                </li>
+                              </ul>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <script src="../../js/darkmode.js"></script>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#querypatternextensions-class-documentation" class="nav-link">QueryPatternExtensions Class Documentation</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#method-details" class="nav-link">Method Details</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="querypatternextensions-class-documentation">QueryPatternExtensions Class Documentation</h1>
+<p>This class extends the functionality of the <code>IQueryPattern</code> interface, providing a collection of utility methods to perform common querying operations on repositories. </p>
+<h2 id="method-details">Method Details</h2>
+<hr />
+<h3 id="queryasync">QueryAsync()</h3>
+<p><strong>Description</strong>: This method is used to fetch all elements from a repository.</p>
+<p><strong>Parameters</strong>:</p>
+<p><code>entity</code>: This is an instance of <code>IQueryPattern</code> that represents your repository.</p>
+<p><code>cancellationToken</code>: This optional parameter is used to optionally cancel the operation.</p>
+<p><strong>Return Value</strong>: This method returns an <code>IAsyncEnumerable</code> object that contains all elements of your repository.</p>
+<p><strong>Usage Example</strong>:</p>
+<pre><code class="language-csharp">// Assuming repository implements IQueryPattern interface
+var allElements = repository.QueryAsync();
+</code></pre>
+<hr />
+<h3 id="tolistasentityasync">ToListAsEntityAsync()</h3>
+<p><strong>Description</strong>: This method is used to fetch all elements from a repository and return them as a list.</p>
+<p><strong>Parameters</strong>:</p>
+<p><code>entity</code>: This is an instance of <code>IQueryPattern</code> that represents your repository.</p>
+<p><code>cancellationToken</code>: This optional parameter is used to optionally cancel the operation.</p>
+<p><strong>Return Value</strong>: This method returns a <code>ValueTask</code> that results in a <code>List</code> of all elements in your repository.</p>
+<p><strong>Usage Example</strong>:</p>
+<pre><code class="language-csharp">// Assuming repository implements IQueryPattern interface
+var allElementsList = await repository.ToListAsEntityAsync();
+</code></pre>
+<hr />
+<h3 id="queryasentityasync">QueryAsEntityAsync()</h3>
+<p><strong>Description</strong>: This method is used to fetch all elements from a repository and return them as <code>IAsyncEnumerable</code>.</p>
+<p><strong>Parameters</strong>:</p>
+<p><code>entity</code>: This is an instance of <code>IQueryPattern</code> that represents your repository.</p>
+<p><code>cancellationToken</code>: This optional parameter is used to optionally cancel the operation.</p>
+<p><strong>Return Value</strong>: This method returns an <code>IAsyncEnumerable</code> object that contains all elements of your repository.</p>
+<p><strong>Usage Example</strong>:</p>
+<pre><code class="language-csharp">// Assuming repository implements IQueryPattern interface
+var asyncElements = repository.QueryAsEntityAsync();
+</code></pre>
+<hr />
+<h3 id="asquerybuilder">AsQueryBuilder()</h3>
+<p><strong>Description</strong>: This method is used to create a <code>QueryBuilder</code> instance for your repository which can then be used to build complex queries.</p>
+<p><strong>Parameters</strong>:</p>
+<p><code>entity</code>: This is an instance of <code>IQueryPattern</code> that represents your repository.</p>
+<p><strong>Return Value</strong>: This method returns a <code>QueryBuilder</code> instance for the specified repository.</p>
+<p><strong>Usage Example</strong>:</p>
+<pre><code class="language-csharp">// Assuming repository implements IQueryPattern interface
+var queryBuilder = repository.AsQueryBuilder();
+</code></pre>
+<hr />
+<p>For the remaining methods, see the following pattern:</p>
+<p><code>Where()</code>, <code>Take()</code>, <code>Skip()</code>, <code>OrderBy()</code>, and <code>OrderByDescending()</code> are used to construct advanced queries.</p>
+<p><code>GroupByAsync()</code>, <code>AnyAsync()</code>, <code>FirstOrDefaultAsync()</code>, <code>FirstAsync()</code>, <code>PageAsync()</code>, <code>SumAsync()</code>, <code>AverageAsync()</code>, <code>MaxAsync()</code>, <code>MinAsync()</code>, and <code>ToListAsync()</code> fetch data from the repository based on the query parameters, ranging from counting the total elements to performing aggregate operations like sums and averages.</p>
+<p>The parameters include the repository entity, an expression representing the query or property to operate on, the number of elements to take or skip, the cancellation token, etc., depending on the method.</p>
+<p>The methods return an asynchronous task-based result containing the fetched or computed data, which could be a simple boolean, a single element, a list of elements, a count, or an aggregate value.</p>
+<p>Use them as follows:</p>
+<pre><code class="language-csharp">// Assuming repository implements IQueryPattern interface
+var selectedElements = await repository.Where(x =&gt; x.Property &gt; 100).ToListAsync();
+var totalElements = await repository.CountAsync();
+var sumOfElementsProperty = await repository.SumAsync(x =&gt; x.Property);
+</code></pre>
+<p>The above example filters elements based on a property, counts total elements, and calculates a sum.
+In this way, these methods can be combined to create powerful and flexible queries for data retrieval.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+                <p>© 2020</p>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

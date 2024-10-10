@@ -1,0 +1,72 @@
+site_name: Rystem
+site_author: Alessandro Rapiti
+copyright: © 2020
+theme:
+  name: mkdocs
+  color_mode: dark
+  user_color_mode_toggle: true
+nav:
+  - Home: index.md
+  - Core:
+    - Rystem:
+      - System.ProgrammingLanguage: Rystem\System.ProgrammingLanguage.md
+      - System: Rystem\System.md
+      - System.Collection.Generics: Rystem\System.Collection.Generics.md
+      - System.Collections: Rystem\System.Collections.md
+      - System.Collections.Concurrent: Rystem\System.Collections.Concurrent.md
+      - System.IO: Rystem\System.IO.md
+      - System.Linq: Rystem\System.Linq.md
+      - System.Linq.Expressions: Rystem\System.Linq.Expressions.md
+      - System.Reflection: Rystem\System.Reflection.md
+      - Rystem.Reflection: Rystem\Rystem.Reflection.md
+      - System.Security.Cryptography: Rystem\System.Security.Cryptography.md
+      - System.Text: Rystem\System.Text.md
+      - System.Text.Csv: Rystem\System.Text.Csv.md
+      - System.Text.Json: Rystem\System.Text.Json.md
+      - System.Text.Minimization: Rystem\System.Text.Minimization.md
+      - System.Threading.Tasks: Rystem\System.Threading.Tasks.md
+    - Rystem.DependencyInjection:
+      - Microsoft.Extensions.DependencyInjection: Rystem.DependencyInjection\Microsoft.Extensions.DependencyInjection.md
+      - System.Population.Random: Rystem.DependencyInjection\System.Population.Random.md
+    - Rystem.DependencyInjection.Web: Rystem.DependencyInjection.Web.md
+    - Rystem.Concurrency: Rystem.Concurrency.md
+    - Rystem.BackgroundJob: Rystem.BackgroundJob.md
+    - Rystem.Concurrency.Redis: Rystem.Concurrency.Redis.md
+    - Rystem.Test.XUnit: Rystem.Test.XUnit.md
+    - Rystem.Queue: Rystem.Queue.md
+  - Api:
+    - Rystem.Api: Rystem.Api.md
+    - Rystem.Api.Client: Rystem.Api.Client.md
+    - Rystem.Api.Server: Rystem.Api.Server.md
+    - Rystem.Api.Client.Authentication.BlazorServer: Rystem.Api.Client.Authentication.BlazorServer.md
+    - Rystem.Api.Client.Authentication.BlazorWasm: Rystem.Api.Client.Authentication.BlazorWasm.md
+  - Social Authentication:
+    - Rystem.Authentication.Social.Abstractions: Rystem.Authentication.Social.Abstractions.md
+    - Rystem.Authentication.Social: Rystem.Authentication.Social.md
+    - Rystem.Authentication.Social.Blazor: Rystem.Authentication.Social.Blazor.md
+  - Content:
+    - Rystem.Content.Abstractions: Rystem.Content.Abstractions.md
+    - Rystem.Content.Infrastructure.Storage.Blob: Rystem.Content.Infrastructure.Storage.Blob.md
+    - Rystem.Content.Infrastructure.Storage.File: Rystem.Content.Infrastructure.Storage.File.md
+    - Rystem.Content.Infrastructure.InMemory: Rystem.Content.Infrastructure.InMemory.md
+    - Rystem.Content.Infrastructure.M365.Sharepoint: Rystem.Content.Infrastructure.M365.Sharepoint.md
+  - Repository Framework:
+    - Rystem.RepositoryFramework.Abstractions:
+      - RepositoryFramework: Rystem.RepositoryFramework.Abstractions\RepositoryFramework.md
+      - System.Linq: Rystem.RepositoryFramework.Abstractions\System.Linq.md
+      - Microsoft.Extensions.DependencyInjection: Rystem.RepositoryFramework.Abstractions\Microsoft.Extensions.DependencyInjection.md
+    - Rystem.RepositoryFramework.Api.Client: Rystem.RepositoryFramework.Api.Client.md
+    - Rystem.RepositoryFramework.Api.Server: Rystem.RepositoryFramework.Api.Server.md
+    - Rystem.RepositoryFramework.Cache: Rystem.RepositoryFramework.Cache.md
+    - Rystem.RepositoryFramework.Infrastructure.InMemory: Rystem.RepositoryFramework.Infrastructure.InMemory.md
+    - Rystem.RepositoryFramework.Infrastructure.Azure.Cosmos.Sql: Rystem.RepositoryFramework.Infrastructure.Azure.Cosmos.Sql.md
+    - Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob: Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob.md
+    - Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Table: Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Table.md
+    - Rystem.RepositoryFramework.Infrastructure.Dynamics.Dataverse: Rystem.RepositoryFramework.Infrastructure.Dynamics.Dataverse.md
+    - Rystem.RepositoryFramework.Infrastructure.EntityFramework: Rystem.RepositoryFramework.Infrastructure.EntityFramework.md
+    - Rystem.RepositoryFramework.Infrastructure.MsSql: Rystem.RepositoryFramework.Infrastructure.MsSql.md
+    - Rystem.RepositoryFramework.MigrationTools: Rystem.RepositoryFramework.MigrationTools.md
+    - Rystem.RepositoryFramework.Web.Components: Rystem.RepositoryFramework.Web.Components.md
+    - Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer: Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer.md
+    - Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm: Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm.md
+    - Rystem.RepositoryFramework.Cache.Azure.Storage.Blob: Rystem.RepositoryFramework.Cache.Azure.Storage.Blob.md

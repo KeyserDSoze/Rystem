@@ -306,6 +306,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Test.TestApi", "src\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.DependencyInjection.Web", "src\Core\Rystem.DependencyInjection.Web\Rystem.DependencyInjection.Web.csproj", "{93743D56-84CD-4CB7-B6CF-CF568E1479AC}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{47080FEF-C2C8-4065-B9D4-6F9C13CA08E7}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DocsHelper", "DocsHelper", "{C292B79A-792C-4F18-AD20-806A660FF2D0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocsHelper", "DocsHelper\DocsHelper.csproj", "{1CD57EFB-ED35-45C7-AF11-D6D935684872}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -580,6 +586,10 @@ Global
 		{93743D56-84CD-4CB7-B6CF-CF568E1479AC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{93743D56-84CD-4CB7-B6CF-CF568E1479AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{93743D56-84CD-4CB7-B6CF-CF568E1479AC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1CD57EFB-ED35-45C7-AF11-D6D935684872}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1CD57EFB-ED35-45C7-AF11-D6D935684872}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1CD57EFB-ED35-45C7-AF11-D6D935684872}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1CD57EFB-ED35-45C7-AF11-D6D935684872}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -681,6 +691,7 @@ Global
 		{2DB2C530-F450-45CA-BFDF-B4C3AA15A5A4} = {01697CE0-307D-47FA-AC02-D6401D21B803}
 		{9FE81A41-9214-43F6-A017-3A7BD3D37391} = {812A3127-7D58-4D17-B638-981D11CAB62B}
 		{93743D56-84CD-4CB7-B6CF-CF568E1479AC} = {5AB07B65-AC2E-482D-B2AD-2AB7375941C4}
+		{1CD57EFB-ED35-45C7-AF11-D6D935684872} = {C292B79A-792C-4F18-AD20-806A660FF2D0}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {35C6ADE0-7E70-48ED-A810-A71B2BC94F57}

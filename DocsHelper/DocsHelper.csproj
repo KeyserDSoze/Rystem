@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>b83e4849-1411-4a29-808e-42c0974b0dbf</UserSecretsId>
+  </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Azure.AI.OpenAI" Version="2.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="6.0.1" />
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\src\Core\Rystem.DependencyInjection\Rystem.DependencyInjection.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Update="appsettings.test.json">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+</Project>

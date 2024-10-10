@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Alessandro Rapiti">
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>System.Linq.Expressions - Rystem</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" disabled>
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" >
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Rystem</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="../.." class="nav-link">Home</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Core</a>
+                                <ul class="dropdown-menu">
+                                    
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Rystem</a>
+    <ul class="dropdown-menu">
+            
+<li>
+    <a href="../System.ProgrammingLanguage/" class="dropdown-item">System.ProgrammingLanguage</a>
+</li>
+            
+<li>
+    <a href="../System/" class="dropdown-item">System</a>
+</li>
+            
+<li>
+    <a href="../System.Collection.Generics/" class="dropdown-item">System.Collection.Generics</a>
+</li>
+            
+<li>
+    <a href="../System.Collections/" class="dropdown-item">System.Collections</a>
+</li>
+            
+<li>
+    <a href="../System.Collections.Concurrent/" class="dropdown-item">System.Collections.Concurrent</a>
+</li>
+            
+<li>
+    <a href="../System.IO/" class="dropdown-item">System.IO</a>
+</li>
+            
+<li>
+    <a href="../System.Linq/" class="dropdown-item">System.Linq</a>
+</li>
+            
+<li>
+    <a href="./" class="dropdown-item active" aria-current="page">System.Linq.Expressions</a>
+</li>
+            
+<li>
+    <a href="../System.Reflection/" class="dropdown-item">System.Reflection</a>
+</li>
+            
+<li>
+    <a href="../Rystem.Reflection/" class="dropdown-item">Rystem.Reflection</a>
+</li>
+            
+<li>
+    <a href="../System.Security.Cryptography/" class="dropdown-item">System.Security.Cryptography</a>
+</li>
+            
+<li>
+    <a href="../System.Text/" class="dropdown-item">System.Text</a>
+</li>
+            
+<li>
+    <a href="../System.Text.Csv/" class="dropdown-item">System.Text.Csv</a>
+</li>
+            
+<li>
+    <a href="../System.Text.Json/" class="dropdown-item">System.Text.Json</a>
+</li>
+            
+<li>
+    <a href="../System.Text.Minimization/" class="dropdown-item">System.Text.Minimization</a>
+</li>
+            
+<li>
+    <a href="../System.Threading.Tasks/" class="dropdown-item">System.Threading.Tasks</a>
+</li>
+    </ul>
+  </li>
+                                    
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Rystem.DependencyInjection</a>
+    <ul class="dropdown-menu">
+            
+<li>
+    <a href="../../Rystem.DependencyInjection/Microsoft.Extensions.DependencyInjection.md" class="dropdown-item">Microsoft.Extensions.DependencyInjection</a>
+</li>
+            
+<li>
+    <a href="../../Rystem.DependencyInjection/System.Population.Random/" class="dropdown-item">System.Population.Random</a>
+</li>
+    </ul>
+  </li>
+                                    
+<li>
+    <a href="../../Rystem.DependencyInjection.Web/" class="dropdown-item">Rystem.DependencyInjection.Web</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Concurrency/" class="dropdown-item">Rystem.Concurrency</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.BackgroundJob.md" class="dropdown-item">Rystem.BackgroundJob</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Concurrency.Redis.md" class="dropdown-item">Rystem.Concurrency.Redis</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Test.XUnit.md" class="dropdown-item">Rystem.Test.XUnit</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Queue.md" class="dropdown-item">Rystem.Queue</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Api</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../Rystem.Api/" class="dropdown-item">Rystem.Api</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Api.Client/" class="dropdown-item">Rystem.Api.Client</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Api.Server/" class="dropdown-item">Rystem.Api.Server</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Api.Client.Authentication.BlazorServer.md" class="dropdown-item">Rystem.Api.Client.Authentication.BlazorServer</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Api.Client.Authentication.BlazorWasm.md" class="dropdown-item">Rystem.Api.Client.Authentication.BlazorWasm</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Social Authentication</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../Rystem.Authentication.Social.Abstractions/" class="dropdown-item">Rystem.Authentication.Social.Abstractions</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Authentication.Social/" class="dropdown-item">Rystem.Authentication.Social</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Authentication.Social.Blazor.md" class="dropdown-item">Rystem.Authentication.Social.Blazor</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Content</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../Rystem.Content.Abstractions/" class="dropdown-item">Rystem.Content.Abstractions</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Content.Infrastructure.Storage.Blob.md" class="dropdown-item">Rystem.Content.Infrastructure.Storage.Blob</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Content.Infrastructure.Storage.File.md" class="dropdown-item">Rystem.Content.Infrastructure.Storage.File</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Content.Infrastructure.InMemory.md" class="dropdown-item">Rystem.Content.Infrastructure.InMemory</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.Content.Infrastructure.M365.Sharepoint.md" class="dropdown-item">Rystem.Content.Infrastructure.M365.Sharepoint</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Repository Framework</a>
+                                <ul class="dropdown-menu">
+                                    
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Rystem.RepositoryFramework.Abstractions</a>
+    <ul class="dropdown-menu">
+            
+<li>
+    <a href="../../Rystem.RepositoryFramework.Abstractions/RepositoryFramework.md" class="dropdown-item">RepositoryFramework</a>
+</li>
+            
+<li>
+    <a href="../../Rystem.RepositoryFramework.Abstractions/System.Linq/" class="dropdown-item">System.Linq</a>
+</li>
+            
+<li>
+    <a href="../../Rystem.RepositoryFramework.Abstractions/Microsoft.Extensions.DependencyInjection/" class="dropdown-item">Microsoft.Extensions.DependencyInjection</a>
+</li>
+    </ul>
+  </li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Api.Client.md" class="dropdown-item">Rystem.RepositoryFramework.Api.Client</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Api.Server.md" class="dropdown-item">Rystem.RepositoryFramework.Api.Server</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Cache.md" class="dropdown-item">Rystem.RepositoryFramework.Cache</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Infrastructure.InMemory.md" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.InMemory</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Infrastructure.Azure.Cosmos.Sql.md" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.Azure.Cosmos.Sql</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob.md" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Table.md" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Table</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Infrastructure.Dynamics.Dataverse.md" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.Dynamics.Dataverse</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Infrastructure.EntityFramework.md" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.EntityFramework</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Infrastructure.MsSql.md" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.MsSql</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.MigrationTools.md" class="dropdown-item">Rystem.RepositoryFramework.MigrationTools</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Web.Components.md" class="dropdown-item">Rystem.RepositoryFramework.Web.Components</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer.md" class="dropdown-item">Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm.md" class="dropdown-item">Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm</a>
+</li>
+                                    
+<li>
+    <a href="../../Rystem.RepositoryFramework.Cache.Azure.Storage.Blob.md" class="dropdown-item">Rystem.RepositoryFramework.Cache.Azure.Storage.Blob</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../System.Linq/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../System.Reflection/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item dropdown">
+                              <button id="theme-menu" aria-expanded="false" data-bs-toggle="dropdown" data-bs-display="static" aria-label="Toggle theme" class="nav-link dropdown-toggle">
+                                <i class="fa-solid fa-circle-half-stroke fa-fw"></i>
+                                <span class="d-lg-none ms-2">Toggle theme</span>
+                              </button>
+                              <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                  <button class="dropdown-item d-flex align-items-center" data-bs-theme-value="light" aria-pressed="false">
+                                    <i class="fa-solid fa-sun fa-fw"></i>
+                                    <span class="ms-2">Light</span>
+                                    <i class="fa-solid fa-check ms-auto d-none"></i>
+                                  </button>
+                                </li>
+                                <li>
+                                  <button class="dropdown-item d-flex align-items-center" data-bs-theme-value="dark" aria-pressed="true">
+                                    <i class="fa-solid fa-moon fa-fw"></i>
+                                    <span class="ms-2">Dark</span>
+                                    <i class="fa-solid fa-check ms-auto"></i>
+                                  </button>
+                                </li>
+                                <li>
+                                  <button class="dropdown-item d-flex align-items-center" data-bs-theme-value="auto" aria-pressed="false">
+                                    <i class="fa-solid fa-circle-half-stroke fa-fw"></i>
+                                    <span class="ms-2">Auto</span>
+                                    <i class="fa-solid fa-check ms-auto d-none"></i>
+                                  </button>
+                                </li>
+                              </ul>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <script src="../../js/darkmode.js"></script>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#rystem-library-documentation-systemlinqexpressions-namespace" class="nav-link">Rystem Library Documentation - System.Linq.Expressions Namespace</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#1-expressionextensions" class="nav-link">1. ExpressionExtensions</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#2-expressionserializer" class="nav-link">2. ExpressionSerializer</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#3-lambdaexpressionextensions" class="nav-link">3. LambdaExpressionExtensions</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#4-binaryexpressioninterpreter" class="nav-link">4. BinaryExpressionInterpreter</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#5-constantexpressioninterpreter" class="nav-link">5. ConstantExpressionInterpreter</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#conclusion" class="nav-link">Conclusion</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="rystem-library-documentation-systemlinqexpressions-namespace">Rystem Library Documentation - System.Linq.Expressions Namespace</h1>
+<p>This section contains detailed documentation of the <code>System.Linq.Expressions</code> namespace classes and their associated public methods included in the Rystem library.</p>
+<h2 id="1-expressionextensions">1. ExpressionExtensions</h2>
+<p>The <code>ExpressionExtensions</code> class provides a set of methods for extending the functionality of expressions.</p>
+<h3 id="methods">Methods</h3>
+<h4 id="11-serialize">1.1. Serialize</h4>
+<p><strong>Description</strong>: This method serializes the given expression, converting it into a string format.</p>
+<p><strong>Parameters</strong>:
+- <code>expression</code>: The expression object you want to serialize. </p>
+<p><strong>Return Value</strong>: Returns a string representation of the given expression.</p>
+<p><strong>Usage Example</strong>:</p>
+<pre><code class="language-csharp">var serializedExpression = someExpression.Serialize();
+</code></pre>
+<hr />
+<h4 id="12-deserialize">1.2. Deserialize <T, TResult></h4>
+<p><strong>Description</strong>: This method deserializes the given string expression into an Expression of the specified type.</p>
+<p><strong>Parameters</strong>:
+- <code>expressionAsString</code>: The serialized expression to be deserialized.</p>
+<p><strong>Return Value</strong>: Returns a deserialized Expression of given type and result type.</p>
+<p><strong>Usage Example</strong>:</p>
+<pre><code class="language-csharp">var deserializedExpression = serializedExpression.Deserialize&lt;DataType, ResultType&gt;();
+</code></pre>
+<hr />
+<h4 id="13-deserializeandcompile">1.3. DeserializeAndCompile <T, TResult></h4>
+<p><strong>Description</strong>: This method deserializes the given string expression into an Expression of the specified type and compiles it.</p>
+<p><strong>Parameters</strong>:
+- <code>expressionAsString</code>: The expression you want to deserialize and compile.</p>
+<p><strong>Return Value</strong>: Returns a compiled delegate of the deserialized Expression of given type and result type.</p>
+<p><strong>Usage Example</strong>:</p>
+<pre><code class="language-csharp">var compiledExpression = serializedExpression.DeserializeAndCompile&lt;DataType, ResultType&gt;();
+</code></pre>
+<hr />
+<p>This class contains a variety of other methods that allow further functionality, such as Async Invocation and transformation, changing an Expression's return type, and retrieving a property from an Expression.</p>
+<h2 id="2-expressionserializer">2. ExpressionSerializer</h2>
+<p>The <code>ExpressionSerializer</code> class serializes and deserializes <code>Expression</code> objects. </p>
+<h3 id="21-serialize">2.1. Serialize</h3>
+<p><strong>Description</strong>: This method serializes the provided expression.</p>
+<p><strong>Parameters</strong>:
+- <code>expression</code>: The expression object you want to serialize.</p>
+<p><strong>Return Value</strong>: This method a string representation of the provided expression.</p>
+<p><strong>Usage Example</strong>:</p>
+<pre><code class="language-csharp">var serializedExpression = ExpressionSerializer.Serialize(someExpression);
+</code></pre>
+<hr />
+<h3 id="22-deserialize">2.2. Deserialize <T, TResult></h3>
+<p><strong>Description</strong>: This method deserializes the given string expression into an <code>Expression</code> of the specified type.</p>
+<p><strong>Parameters</strong>:
+- <code>expressionAsString</code>: The serialized expression to be deserialized.</p>
+<p><strong>Return Value</strong>: Returns a deserialized <code>Expression</code> of given type and return type.</p>
+<p><strong>Usage Example</strong>:</p>
+<pre><code class="language-csharp">var deserializedExpression = ExpressionSerializer.Deserialize&lt;DataType, ResultType&gt;(serializedExpression);
+</code></pre>
+<hr />
+<h2 id="3-lambdaexpressionextensions">3. LambdaExpressionExtensions</h2>
+<p>The <code>LambdaExpressionExtensions</code> class contains methods for working with Lambda Expressions, such as changing the return type and transforming a generic Lambda Expression into a strongly typed one.</p>
+<h3 id="31-changereturntype">3.1. ChangeReturnType</h3>
+<p><strong>Description</strong>: This method changes the return type of the given Lambda expression.</p>
+<p><strong>Parameters</strong>:
+- <code>expression</code>: The Lambda Expression whose return type needs to be changed.
+- <code>toChange</code>: The new return type.</p>
+<p><strong>Return Value</strong>: Returns a new Lambda Expression with the updated return type.</p>
+<p><strong>Usage Example</strong>:</p>
+<pre><code class="language-csharp">var updatedExpression = originalExpression.ChangeReturnType(newType);
+</code></pre>
+<p>The other methods in this class provide functionalities for casting a Lambda Expression to a specific return type, as well as transforming the same.</p>
+<h2 id="4-binaryexpressioninterpreter">4. BinaryExpressionInterpreter</h2>
+<p>The <code>BinaryExpressionInterpreter</code> class is used to interpret Binary Expressions. Primarily it reads a given Expression and returns a list of sub-expressions.</p>
+<h2 id="5-constantexpressioninterpreter">5. ConstantExpressionInterpreter</h2>
+<p>The <code>ConstantExpressionInterpreter</code> class is used to interpret Constant Expressions. If the expression is a Constant Expression, it replaces the value in the context with the actual value.</p>
+<p>This interpretation and reading of Expressions helps in performing operations and transformations with the Expressions.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>The <code>System.Linq.Expressions</code> namespace in the Rystem library provides a set of functionality to work with different types of expressions. It offers features like serialization, deserialization, modification, invocation and interpretation of expressions. This functionality can be useful in various use cases where managing and manipulating expressions is required.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+                <p>© 2020</p>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
