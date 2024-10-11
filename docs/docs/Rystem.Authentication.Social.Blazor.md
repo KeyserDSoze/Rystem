@@ -97,4 +97,24 @@ This class provides methods to interact with the browser's local storage to mana
 **Return Value**: It returns a `string` representing the state value.
 
 ### Delete Methods: DeleteStateAsync, DeleteTokenAsync
-**Purpose**: These methods delete the state or token from the local st
+**Purpose**: These methods delete the state or token from the local storage.
+
+## Class: SocialLoginManager
+This class represents a manager for handling operations like fetching token, logging out, getting user details.
+
+### Method: GetRedirectUri
+**Purpose**: This method gets the base URI for directing the user for login.
+**Return Value**: It returns a `string` representing the base URL.
+
+### Method: MeAsync
+**Purpose**: This method fetches the user details from the social login provider.
+**Return Value**: It returns a `SocialUserWrapper<TUser>` object representing the user details.
+
+### Method: FetchTokenAsync
+**Purpose**: This method fetches the token either from the local storage, or by redirecting to the social provider's login page.
+**Return Value**: It returns a `Token` object representing the authentication token.
+
+### Method: LogoutAsync
+**Purpose**: This method performs the logout operation by removing the user details and token from the local storage.
+
+These methods and classes facilitate the use of social logins in Blazor applications by managing the login state, user details, and tokens.
