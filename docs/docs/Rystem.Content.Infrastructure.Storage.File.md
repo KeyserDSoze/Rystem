@@ -1,82 +1,88 @@
-# Documentation
-## `ContentRepositoryBuilderExtensions` class
+# Integration with Azure File Storage and Content Repository
 
-**Namespace**: `Microsoft.Extensions.DependencyInjection`
+    await services
+        .AddContentRepository()
+        .WithFileStorageIntegrationAsync(x =>
+        {
+            x.ShareName = "supertest";
+            x.Prefix = "site/";
+            x.ConnectionString = configuration["ConnectionString:Storage"];
+        },
+        "filestorage")
+        .NoContext();
 
-This class provides extension methods to integrate the content repository using different types of storage.
+## How to use in a business class
 
-### `WithFileStorageIntegrationAsync` method
-
-**Method Description**: This method is used to asynchronously add a file storage integration to the content repository.
-
-**Parameters**:
-
-- `builder` (IContentRepositoryBuilder): The builder to use for adding the integration.
-- `connectionSettings` (Action): A method to set specific connection parameters for the file storage.
-- `name` (string): An optional parameter that sets the name of storage integration. If not defined, the default is null.
-- `serviceLifetime` (ServiceLifetime): An optional parameter that sets the life time of the service for the integration. The default is 'Transient'.
-
-**Return Value**: The method returns an IContentRepositoryBuilder object, whose task completion represents the end of the integration setup.
-
-**Usage Example**:
-
-```csharp
-builder.WithFileStorageIntegrationAsync(connectionSettings, "MyFileStorageIntegration", ServiceLifetime.Singleton);
-```
-
-### `WithFileStorageIntegration` method
-
-**Method Description**: This method is used to add a file storage integration to the content repository. 
-
-This is essentially a synchronous version of the `WithFileStorageIntegrationAsync` method. It calls that method and waits for the task to complete.
-
-**Parameters**, **Return Value** and **Usage Example**: These are identical to the `WithFileStorageIntegrationAsync` method.
-
-## `FileServiceClientWrapper` class
-
-**Namespace**: `Rystem.Content.Infrastructure.Storage`
-
-This class provides a wrapper to encapsulate the ShareClient for use with the content repository.
-
-### Properties:
-- `ShareClient` (ShareClient): The Azure Share Client object
-- `Prefix` (string): The optional prefix to be used on all requests that is made through this client.
-
-## `FileStorageConnectionSettings` class
-
-**Namespace**: `Rystem.Content.Infrastructure.Storage`
-    
-This class sets the connection settings for the File Service Client.
-
-### Properties:
-- `EndpointUri` (Uri) : The Endpoint Uri for the connection
-- `ManagedIdentityClientId` (string): Managed Identity client ID
-- `ConnectionString` (string): Connection string
-- `ShareName` (string): Name of the share storage
-- `Prefix` (string): The prefix for the file in the storage. Helps to organize files in a structured manner in the storage
-- `IsPublic` (bool): A flag specifying if it is public or not
-- `ClientOptions` (ShareClientOptions): Options for the share client
-- `ClientCreateOptions` (ShareCreateOptions): Options for creating a share service client 
-- `Permissions` (List): A list that contains permissions (signed identifiers) 
-- `Conditions` (ShareFileRequestConditions): conditions for request to a share file 
-- `BuildAsync` (Task): A task that represents the asynchronous operation, contains a delegate that builds file service client wrapper.
-
-**Usage Example**:
-
-Setting FileStorageConnectionSettings:
-
-```csharp
-FileStorageConnectionSettings settings = new FileStorageConnectionSettings()
-{
-    EndpointUri = new Uri("http://my-end-point-url.com"),
-    ManagedIdentityClientId = "1234",
-    ConnectionString = "...", //some connection string
-    ShareName = "ShareName",
-    Prefix = "site/",
-    IsPublic = true,
-    //...set other properties as per requirement
-};
-```
-
-## Information from Test Classes
-From the test scenarios, it is clear that the package allows content to be stored in multiple storage systems, referred to as "integrations". These are "blobstorage", "inmemory", "sharepoint", and "filestorage". The `WithFileStorageIntegrationAsync` method is used to set up an integration for a file storage system. The file storage integration allows the content repository to store files in a file storage system on the Azure platform.
+    public class AllStorageTest
+    {
+        private readonly IContentRepositoryFactory _contentRepositoryFactory;
+        private readonly Utility _utility;
+        public AllStorageTest(IContentRepositoryFactory contentRepositoryFactory, Utility utility)
+        {
+            _contentRepositoryFactory = contentRepositoryFactory;
+            _utility = utility;
+        }
+        
+        public async Task ExecuteAsync()
+        {
+            var _contentRepository = _contentRepositoryFactory.Create("filestorage");
+            var file = await _utility.GetFileAsync();
+            var name = "folder/file.png";
+            var contentType = "images/png";
+            var metadata = new Dictionary<string, string>()
+            {
+                { "name", "ale" }
+            };
+            var tags = new Dictionary<string, string>()
+            {
+                { "version", "1" }
+            };
+            var response = await _contentRepository.ExistAsync(name).NoContext();
+            if (response)
+            {
+                await _contentRepository.DeleteAsync(name).NoContext();
+                response = await _contentRepository.ExistAsync(name).NoContext();
+            }
+            Assert.False(response);
+            response = await _contentRepository.UploadAsync(name, file.ToArray(), new ContentRepositoryOptions
+            {
+                HttpHeaders = new ContentRepositoryHttpHeaders
+                {
+                    ContentType = contentType
+                },
+                Metadata = metadata,
+                Tags = tags
+            }, true).NoContext();
+            Assert.True(response);
+            response = await _contentRepository.ExistAsync(name).NoContext();
+            Assert.True(response);
+            var options = await _contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
+            Assert.NotNull(options.Uri);
+            foreach (var x in metadata)
+            {
+                Assert.Equal(x.Value, options.Options.Metadata[x.Key]);
+            }
+            foreach (var x in tags)
+            {
+                Assert.Equal(x.Value, options.Options.Tags[x.Key]);
+            }
+            Assert.Equal(contentType, options.Options.HttpHeaders.ContentType);
+            metadata.Add("ale2", "single");
+            response = await _contentRepository.SetPropertiesAsync(name, new ContentRepositoryOptions
+            {
+                HttpHeaders = new ContentRepositoryHttpHeaders
+                {
+                    ContentType = contentType
+                },
+                Metadata = metadata,
+                Tags = tags
+            }).NoContext();
+            Assert.True(response);
+            options = await _contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
+            Assert.Equal("single", options.Options.Metadata["ale2"]);
+            response = await _contentRepository.DeleteAsync(name).NoContext();
+            Assert.True(response);
+            response = await _contentRepository.ExistAsync(name).NoContext();
+            Assert.False(response);
+        }
+    }

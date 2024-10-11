@@ -1,106 +1,94 @@
-# Rystem.Content.Infrastructure.M365.Sharepoint Documentation
+# Get information
+https://<tenant>.sharepoint.com/sites/<site-url>/_api/site/id
 
-This package aids the integration of Sharepoint storage with the Rystem Content Repository.
+# Integration with Sharepoint online and Content Repository
 
-## 1. Class: ContentRepositoryBuilderExtensions
-
-This static class provides extensions to implement Sharepoint storage integration.
-
-### Method: WithSharepointIntegrationAsync
-
-This method adds a Sharepoint storage integration to content repository. You should use an App Registration with Permission Type: Application and Permissions: Files.ReadWrite.All or Sites.ReadWrite.All.
-
-#### Parameters:
-- `IContentRepositoryBuilder builder`: The repository builder where the integration is to be added.
-- `Action<SharepointConnectionSettings> connectionSettings`: Action to configure the connection settings for Sharepoint.
-- `string name`: (Optional) The name of the connection.
-- `ServiceLifetime serviceLifetime`: (Optional) Determines the lifetime of the service in the dependency injection container.
-
-#### Return Value:
-This returns a task that upon execution returns a builder `Task<IContentRepositoryBuilder>`
-
-#### Usage Example:
-
-```
-var configuration = new ConfigurationBuilder()
-   .AddJsonFile("appsettings.test.json")
-   .AddEnvironmentVariables()
-   .Build();
-
-services
+    await services
     .AddContentRepository()
     .WithSharepointIntegrationAsync(x =>
     {
         x.TenantId = configuration["Sharepoint:TenantId"];
         x.ClientId = configuration["Sharepoint:ClientId"];
         x.ClientSecret = configuration["Sharepoint:ClientSecret"];
-    })
-    .ToResult();
-```
+        x.MapWithSiteNameAndDocumentLibraryName("TestNumberOne", "Foglione");
+        //x.MapWithRootSiteAndDocumentLibraryName("Foglione");
+        //x.MapWithSiteIdAndDocumentLibraryId(configuration["Sharepoint:SiteId"],
+        //    configuration["Sharepoint:DocumentLibraryId"]);
+    }, "sharepoint")
+    .NoContext();
 
-### Method: WithSharepointIntegration
+## How to use in a business class
 
-This method adds a Sharepoint storage integration to content repository. It is a non-async version of `WithSharepointIntegrationAsync` method.
-
-#### Parameters:
-- `IContentRepositoryBuilder builder`: The repository builder where the integration is to be added.
-- `Action<SharepointConnectionSettings> connectionSettings`: Action to configure the connection settings for Sharepoint.
-- `string name`: (Optional) The name of the connection.
-- `ServiceLifetime serviceLifetime`: (Optional) Determines the lifetime of the service in the dependency injection container.
-
-#### Return Value:
-Return builder `IContentRepositoryBuilder`.
-
-#### Usage Example:
-
-```
-services
-    .AddContentRepository()
-    .WithSharepointIntegration(x =>
+    public class AllStorageTest
     {
-        x.TenantId = configuration["Sharepoint:TenantId"];
-        x.ClientId = configuration["Sharepoint:ClientId"];
-        x.ClientSecret = configuration["Sharepoint:ClientSecret"];
-    })
-    .ToResult();
-```
-
-## 2. Class: SharepointConnectionSettings
-
-This class provides configurations for Sharepoint integration. 
-
-#### Properties:
-
-##### ClientId, ClientSecret, TenantId
-These are strings used for OpenID Connect authentication to SharePoint.
-
-##### SiteId, DocumentLibraryId
-These are identifiers for the SharePoint Site and Document Library. 
-
-##### SiteName, DocumentLibraryName
-Alternative to using Ids to identify the SharePoint site and document library, you can use the Site Name and Document Library Name.
-
-##### OnlyDocumentLibrary
-This boolean property can be set to true if you want to map only to a Document Library.
-
-#### Methods:
-
-There are a series of mapping methods provided in this class that allows you to setup your connection to SharePoint in various ways depending on if you want to refer to sites and document libraries by name or by ID. They include:
-
-- MapWithSiteIdAndDocumentLibraryId
-- MapWithSiteIdAndDocumentLibraryName
-- MapWithSiteNameAndDocumentLibraryName 
-- MapWithRootSiteAndDocumentLibraryName 
-- MapOnlyDocumentLibraryId 
-- MapOnlyDocumentLibraryName 
-
-
-## 3. Class: SharepointClientWrapper
-This sealed class which implements IFactoryOptions, holds the function to create a GraphServiceClient and ids for SharePoint's site and document library.
-
-#### Properties:
-- `Func<GraphServiceClient> Creator`: Function that creates a GraphServiceClient.
-- `string SiteId`: ID of the SharePoint site.
-- `string DocumentLibraryId`: ID of the SharePoint Document Library.
-
-By referring to the provided test classes, developers can gain insights on how the methods should be used in different use-case scenarios. This is crucial to ensuring that the library functions as expected and that all edge cases are handled appropriately.
+        private readonly IContentRepositoryFactory _contentRepositoryFactory;
+        private readonly Utility _utility;
+        public AllStorageTest(IContentRepositoryFactory contentRepositoryFactory, Utility utility)
+        {
+            _contentRepositoryFactory = contentRepositoryFactory;
+            _utility = utility;
+        }
+        
+        public async Task ExecuteAsync()
+        {
+            var _contentRepository = _contentRepositoryFactory.Create("sharepoint");
+            var file = await _utility.GetFileAsync();
+            var name = "folder/file.png";
+            var contentType = "images/png";
+            var metadata = new Dictionary<string, string>()
+            {
+                { "name", "ale" }
+            };
+            var tags = new Dictionary<string, string>()
+            {
+                { "version", "1" }
+            };
+            var response = await _contentRepository.ExistAsync(name).NoContext();
+            if (response)
+            {
+                await _contentRepository.DeleteAsync(name).NoContext();
+                response = await _contentRepository.ExistAsync(name).NoContext();
+            }
+            Assert.False(response);
+            response = await _contentRepository.UploadAsync(name, file.ToArray(), new ContentRepositoryOptions
+            {
+                HttpHeaders = new ContentRepositoryHttpHeaders
+                {
+                    ContentType = contentType
+                },
+                Metadata = metadata,
+                Tags = tags
+            }, true).NoContext();
+            Assert.True(response);
+            response = await _contentRepository.ExistAsync(name).NoContext();
+            Assert.True(response);
+            var options = await _contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
+            Assert.NotNull(options.Uri);
+            foreach (var x in metadata)
+            {
+                Assert.Equal(x.Value, options.Options.Metadata[x.Key]);
+            }
+            foreach (var x in tags)
+            {
+                Assert.Equal(x.Value, options.Options.Tags[x.Key]);
+            }
+            Assert.Equal(contentType, options.Options.HttpHeaders.ContentType);
+            metadata.Add("ale2", "single");
+            response = await _contentRepository.SetPropertiesAsync(name, new ContentRepositoryOptions
+            {
+                HttpHeaders = new ContentRepositoryHttpHeaders
+                {
+                    ContentType = contentType
+                },
+                Metadata = metadata,
+                Tags = tags
+            }).NoContext();
+            Assert.True(response);
+            options = await _contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
+            Assert.Equal("single", options.Options.Metadata["ale2"]);
+            response = await _contentRepository.DeleteAsync(name).NoContext();
+            Assert.True(response);
+            response = await _contentRepository.ExistAsync(name).NoContext();
+            Assert.False(response);
+        }
+    }

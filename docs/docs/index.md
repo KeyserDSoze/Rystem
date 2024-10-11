@@ -1,17 +1,41 @@
-# Welcome to MkDocs
+# Rystem
+Rystem is a open-source framework to improve .Net
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
+## Help the project
+Reach out us on [Discord](https://discord.gg/tkWvy4WPjt)
 
-## Commands
+### [Contribute](https://www.buymeacoffee.com/keyserdsoze)
+<br />
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
+## Rystem (core library)
+You may find the code at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Core/Rystem)
 
-## Project layout
+## Rystem.DependencyInjection (core library)
+You may find the code at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Core/Rystem.DependencyInjection)
 
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+## Rystem.DependencyInjection.Web (core library)
+You may find the code at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Core/Rystem.DependencyInjection.Web)
+
+## Concurrency (Deal with async Lock and Race Condition)
+You may find the code at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/Concurrency/Rystem.Concurrency)
+
+## Background job
+You may find the code at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/BackgroundJob/Rystem.BackgroundJob)
+
+## Queue
+You may find the code at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/Queue/Rystem.Queue)
+
+## Repository Framework (for Repository pattern or CQRS)
+You may find the code at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository)
+
+## Content Repository (Upload/Download files)
+You may find the code at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Content)
+
+## Social Authentication (Blazor/Typescript)
+You may find the code at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Authentication)
+
+## Api
+You may find the code at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Api)
+
+## XUnitTest helper (Startup and helper for web integration tests)
+You may find the code at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/Tests/Rystem.Test.XUnit)

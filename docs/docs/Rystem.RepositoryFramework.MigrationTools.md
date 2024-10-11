@@ -1,58 +1,45 @@
-# Documentation for Rystem.RepositoryFramework.MigrationTools
+# Migration Tools
 
-## Class: MigrationOptions
+You need to create a base model as a bridge for your migration. After that you can use the two repositories with repository pattern to help yourself with the migration from a old storage to a brand new storage.
 
-Represents options for data migration. This class holds configuration such as the number of concurrent inserts, source factory name, and destination factory name.
+## Sample with in memory integration (From UnitTest)
+For instance you can create two repositories, one as source and one as target.
+In the example we use an easy test integration with two in memory integrations.
 
-### Members
+    .AddRepository<SuperMigrationUser, string>(builder =>
+    {
+        builder.WithInMemory(builder =>
+        {
+            builder
+                .PopulateWithRandomData(NumberOfItems);
+        }, "source");
+    })
+    .AddRepository<SuperMigrationUser, string>(builder =>
+    {
+        builder.WithInMemory(builder =>
+        {
+            builder
+                .PopulateWithRandomData(NumberOfItems);
+        }, "target");
+    })
+        .AddMigrationManager<SuperMigrationUser, string>(settings =>
+        {
+            settings.SourceFactoryName = "source";
+            settings.DestinationFactoryName = "target";
+            settings.NumberOfConcurrentInserts = 10;
+        })
 
-#### NumberOfConcurrentInserts
+Now you may use the interface in DI
 
-- **Desciption**: This property sets the maximum number of simultaneous insert operations on the repository.
-- **Type**: int
-- **Default Value**: 10
+    IMigrationManager<SuperMigrationUser, string> migrationService
 
-#### SourceFactoryName
+and let the sorcery happens
 
-- **Desciption**: This property determines the source from where data will be migrated.
-- **Type**: string
+    var migrationResult = await _migrationService.MigrateAsync(x => x.Id!, true);
 
-#### DestinationFactoryName
-- **Desciption**: This property determines the destination where data will be migrated.
-- **Type**: string
-
----
-
-## Class Extension: ServiceCollectionExtensions
-
-A static extension class for IServiceCollection to aid in setting up the data migration services.
-
-### Method: AddMigrationManager
-
-Sets up the data migration service, injects an instance of IMigrationManager<T, TKey> for migrating data from source to destination repositories.
-
-- **Parameters**
-  1. services: An instance of `IServiceCollection`, represents the .NET Core's Dependency Injection container.
-  2. options: A delegate that configures the `MigrationOptions<T, TKey>`, where T is the model used for the repository and TKey is the key to retrieve, update or delete your data from the repository.
-  3. name: Optional parameter. Represents the factory name.
-
-- **Return Value**: The method returns the updated `IServiceCollection`.
-
-- **Usage Example**
-
-  ```csharp
-  var services = new ServiceCollection();
-  services.AddMigrationManager<RepositoryModel, Guid>(
-      options =>
-      {
-        options.DestinationFactoryName = "destinationRepository";
-        options.SourceFactoryName = "sourceRepository";
-        options.NumberOfConcurrentInserts = 15; 
-      },
-      "migrationFactory"
-  );
-  ```
-
-  **Note**:
-
-  It throws `ArgumentException` if the same value is provided for `SourceFactoryName` and `DestinationFactoryName`, as you cannot migrate from and to the same source. Always set these properties with different values.
+## Parameters
+| Name | Description |
+| ------------------------- | ------------------------------ |
+| Expression<Func<T, TKey>> navigationKey | Explain how to create the TKey from the TValue |
+| bool checkIfExists = false | check existence on target before download from source |
+| bool deleteEverythingBeforeStart = false | delete all items before starting the migration from target |

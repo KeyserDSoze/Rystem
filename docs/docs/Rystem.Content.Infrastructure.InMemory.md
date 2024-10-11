@@ -1,50 +1,81 @@
-# ContentRepositoryBuilderExtensions Class
+# Integration with In Memory and Content Repository
 
-This class belongs to the Microsoft.Extensions.DependencyInjection namespace and serves as an extension for the ContentRepositoryBuilder. It allows developers to add an "In Memory" repository configuration to the content repository.
-
-### WithInMemoryIntegration method
-
-**Method Description**:
-
-This method adds an "In Memory" integration to the content repository. This integration can be used to store data in the application's memory space, useful for testing or rapid data access scenarios not requiring permanent storage.
-
-**Parameters**:
-
-- `IContentRepositoryBuilder builder`: This parameter is the instance of an `IContentRepositoryBuilder` to which we want to add the in-memory integration.
-- `string? name(optional)`: This is an optional parameter that represents the name of the in-memory integration. If not specified, a default name will be used.
-
-**Return Value**:
-
-Returns the builder instance (`IContentRepositoryBuilder`), allowing for continued building operations.
-
-**Usage Example**:
-
-```csharp
-services
-    .AddContentRepository()
-    .WithInMemoryIntegration("inMemorySample");
-```
-
----
-
-# Test Sample Usage
-The `WithInMemoryIntegration` was used in the services configuration method (`ConfigureServices`) within the `Startup` class inside the `File.UnitTest` namespace:
-
-```csharp
-services
+    services
     .AddContentRepository()
     .WithInMemoryIntegration("inmemory");
-```
 
-This implies that an in-memory content repository named "inmemory" is added to the services during the application startup. It could be further used in other parts of the application to perform actions on in-memory data storage.
+## How to use in a business class
 
-The `WithInMemoryIntegration` is also used in integration tests under the `AllStorageTest` class inside the `File.UnitTest` namespace, for example in the `ExecuteAsync` method:
-
-```csharp
-var contentRepository = _contentRepositoryFactory.Create("inMemorySample");
-```
-
-This example shows the repository with name "inMemorySample" being retrieved and used in the testing processes, indicating its usage for performing various operations like file upload, delete, checking if file exist, overriding etc., in an in-memory storage of given repository.
-
-## Note:
-While using "In Memory" integration, keep in mind that data will not persist through different runs of the application since the data is not written to a permanent storage system. This integration is mainly helpful for use cases that involve temporary data storage, such as unit testing.
+    public class AllStorageTest
+    {
+        private readonly IContentRepositoryFactory _contentRepositoryFactory;
+        private readonly Utility _utility;
+        public AllStorageTest(IContentRepositoryFactory contentRepositoryFactory, Utility utility)
+        {
+            _contentRepositoryFactory = contentRepositoryFactory;
+            _utility = utility;
+        }
+        
+        public async Task ExecuteAsync()
+        {
+            var _contentRepository = _contentRepositoryFactory.Create("inmemory");
+            var file = await _utility.GetFileAsync();
+            var name = "file.png";
+            var contentType = "images/png";
+            var metadata = new Dictionary<string, string>()
+            {
+                { "name", "ale" }
+            };
+            var tags = new Dictionary<string, string>()
+            {
+                { "version", "1" }
+            };
+            var response = await _contentRepository.ExistAsync(name).NoContext();
+            if (response)
+            {
+                await _contentRepository.DeleteAsync(name).NoContext();
+                response = await _contentRepository.ExistAsync(name).NoContext();
+            }
+            Assert.False(response);
+            response = await _contentRepository.UploadAsync(name, file.ToArray(), new ContentRepositoryOptions
+            {
+                HttpHeaders = new ContentRepositoryHttpHeaders
+                {
+                    ContentType = contentType
+                },
+                Metadata = metadata,
+                Tags = tags
+            }, true).NoContext();
+            Assert.True(response);
+            response = await _contentRepository.ExistAsync(name).NoContext();
+            Assert.True(response);
+            var options = await _contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
+            Assert.NotNull(options.Uri);
+            foreach (var x in metadata)
+            {
+                Assert.Equal(x.Value, options.Options.Metadata[x.Key]);
+            }
+            foreach (var x in tags)
+            {
+                Assert.Equal(x.Value, options.Options.Tags[x.Key]);
+            }
+            Assert.Equal(contentType, options.Options.HttpHeaders.ContentType);
+            metadata.Add("ale2", "single");
+            response = await _contentRepository.SetPropertiesAsync(name, new ContentRepositoryOptions
+            {
+                HttpHeaders = new ContentRepositoryHttpHeaders
+                {
+                    ContentType = contentType
+                },
+                Metadata = metadata,
+                Tags = tags
+            }).NoContext();
+            Assert.True(response);
+            options = await _contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
+            Assert.Equal("single", options.Options.Metadata["ale2"]);
+            response = await _contentRepository.DeleteAsync(name).NoContext();
+            Assert.True(response);
+            response = await _contentRepository.ExistAsync(name).NoContext();
+            Assert.False(response);
+        }
+    }

@@ -1,47 +1,64 @@
-# Rystem.Authentication.Social.Abstractions
-This NuGet package provides utility for social authentication and includes the following class: `TokenResponse`.
+# Rystem.Authentication.Social
+This project would be a super project to help the api creator to have fast api behind business interfaces and services dispatched through dependency injection.
 
-## Dependencies
-The package requires the following libraries:
-- Google.Apis.Auth (minimum version: 1.68.0)
-- Microsoft.IdentityModel.Protocols.OpenIdConnect (minimum version: 8.1.2)
-- Microsoft.IdentityModel.Tokens (minimum version: 8.1.2)
-- System.IdentityModel.Tokens.Jwt (minimum version: 8.1.2)
-- Rystem.DependencyInjection (minimum version: 6.2.0)
+# How to use it
+You need to configure the social information and token settings, for instance the duration of your token.
+```
+builder.Services.AddSocialLogin(x =>
+{
+    x.Google.ClientId = builder.Configuration["SocialLogin:Google:ClientId"];
+    x.Google.ClientSecret = builder.Configuration["SocialLogin:Google:ClientSecret"];
+    x.Google.RedirectDomain = builder.Configuration["SocialLogin:Google:RedirectDomain"];
+    x.Microsoft.ClientId = builder.Configuration["SocialLogin:Microsoft:ClientId"];
+    x.Microsoft.ClientSecret = builder.Configuration["SocialLogin:Microsoft:ClientSecret"];
+    x.Microsoft.RedirectDomain = builder.Configuration["SocialLogin:Microsoft:RedirectDomain"];
+    x.Facebook.ClientId = builder.Configuration["SocialLogin:Facebook:ClientId"];
+    x.Facebook.ClientSecret = builder.Configuration["SocialLogin:Facebook:ClientSecret"];
+    x.Facebook.RedirectDomain = builder.Configuration["SocialLogin:Facebook:RedirectDomain"];
+},
+x =>
+{
+    x.BearerTokenExpiration = TimeSpan.FromHours(1);
+    x.RefreshTokenExpiration = TimeSpan.FromDays(10);
+});
+```
 
-## Classes
+You need to add in the app builder section the endpoints
 
-### TokenResponse
-This class represents a token response from the social authentication process.
+```
+app.UseSocialLoginEndpoints();
+```
 
-#### Properties:
+You can add your provider for user
 
-- **Username**: Contains the unique string identifier (username) of a user.
-  - **Type**: `string`
-  - **Usage**: This property is used to identify a user in your application.
-  
-    ```csharp
-    var tokenResponse = new TokenResponse();
-    tokenResponse.Username = "user1";
-    ```
+```
+builder.Services.AddSocialUserProvider<SocialUserProvider>();
+```
 
-- **Claims**: Contains user claims obtained during the authentication process.
-  - **Type**: `List<Claim>`
-  - **Usage**: This property is used to store user claims that can be used in your application for access control or personalization.
+SocialUserProvider is a ISocialUserProvider, to call for instance a database or storage to fetch the information about the user with social username/email.
 
-    ```csharp
-    var tokenResponse = new TokenResponse();
-    tokenResponse.Claims = new List<Claim>{new Claim("Role", "Admin")};
-    ```
+```
+internal sealed class SocialUserProvider : ISocialUserProvider
+{
+    public Task<SocialUser> GetAsync(string username, IEnumerable<Claim> claims, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(new SuperSocialUser
+        {
+            Username = $"a {username}",
+            Email = username
+        } as SocialUser);
+    }
 
-#### Static Properties:
+    public async IAsyncEnumerable<Claim> GetClaimsAsync(string? username, CancellationToken cancellationToken)
+    {
+        await Task.CompletedTask;
+        yield return new Claim(ClaimTypes.Name, username!);
+        yield return new Claim(ClaimTypes.Upn, "something");
+    }
+}
 
-- **Empty**: Represents an empty or non-existent `TokenResponse` object.
-  - **Type**: `TokenResponse`
-  - **Usage**: This property can be used to represent the absence of a valid token response.
-
-    ```csharp
-    var tokenResponse = TokenResponse.Empty;
-    ```
-
-This class does not have any public methods. This class can be used to extract identity information from the user's social account after they've been authenticated. It encapsulates the response for easy consumption within your application. Please use the documented properties to manipulate and access this response.
+public sealed class SuperSocialUser : SocialUser
+{
+    public string Email { get; set; }
+}
+```

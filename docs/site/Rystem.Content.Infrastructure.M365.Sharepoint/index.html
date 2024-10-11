@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Alessandro Rapiti">
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Rystem.Content.Infrastructure.M365.Sharepoint - Rystem</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" disabled>
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" >
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">Rystem</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href=".." class="nav-link">Home</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Concepts</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../repository/" class="dropdown-item">Repository</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Core</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../Rystem/" class="dropdown-item">Rystem</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.DependencyInjection/" class="dropdown-item">Rystem.DependencyInjection</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.DependencyInjection.Web/" class="dropdown-item">Rystem.DependencyInjection.Web</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.Concurrency/" class="dropdown-item">Rystem.Concurrency</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.BackgroundJob/" class="dropdown-item">Rystem.BackgroundJob</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.Concurrency.Redis/" class="dropdown-item">Rystem.Concurrency.Redis</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.Test.XUnit/" class="dropdown-item">Rystem.Test.XUnit</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.Queue/" class="dropdown-item">Rystem.Queue</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Api</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../Rystem.Api/" class="dropdown-item">Rystem.Api</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.Api.Client/" class="dropdown-item">Rystem.Api.Client</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.Api.Server/" class="dropdown-item">Rystem.Api.Server</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.Api.Client.Authentication.BlazorServer/" class="dropdown-item">Rystem.Api.Client.Authentication.BlazorServer</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.Api.Client.Authentication.BlazorWasm/" class="dropdown-item">Rystem.Api.Client.Authentication.BlazorWasm</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Social Authentication</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../Rystem.Authentication.Social.Abstractions/" class="dropdown-item">Rystem.Authentication.Social.Abstractions</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.Authentication.Social/" class="dropdown-item">Rystem.Authentication.Social</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.Authentication.Social.Blazor/" class="dropdown-item">Rystem.Authentication.Social.Blazor</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Content</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../Rystem.Content.Abstractions/" class="dropdown-item">Rystem.Content.Abstractions</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.Content.Infrastructure.Storage.Blob/" class="dropdown-item">Rystem.Content.Infrastructure.Storage.Blob</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.Content.Infrastructure.Storage.File/" class="dropdown-item">Rystem.Content.Infrastructure.Storage.File</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.Content.Infrastructure.InMemory/" class="dropdown-item">Rystem.Content.Infrastructure.InMemory</a>
+</li>
+                                    
+<li>
+    <a href="./" class="dropdown-item active" aria-current="page">Rystem.Content.Infrastructure.M365.Sharepoint</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Repository Framework</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../Rystem.RepositoryFramework.Abstractions/" class="dropdown-item">Rystem.RepositoryFramework.Abstractions</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.RepositoryFramework.Api.Client/" class="dropdown-item">Rystem.RepositoryFramework.Api.Client</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.RepositoryFramework.Api.Server/" class="dropdown-item">Rystem.RepositoryFramework.Api.Server</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.RepositoryFramework.Cache/" class="dropdown-item">Rystem.RepositoryFramework.Cache</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.RepositoryFramework.Infrastructure.InMemory/" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.InMemory</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.RepositoryFramework.Infrastructure.Azure.Cosmos.Sql/" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.Azure.Cosmos.Sql</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob/" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Table/" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Table</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.RepositoryFramework.Infrastructure.Dynamics.Dataverse/" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.Dynamics.Dataverse</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.RepositoryFramework.Infrastructure.EntityFramework/" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.EntityFramework</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.RepositoryFramework.Infrastructure.MsSql/" class="dropdown-item">Rystem.RepositoryFramework.Infrastructure.MsSql</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.RepositoryFramework.MigrationTools/" class="dropdown-item">Rystem.RepositoryFramework.MigrationTools</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.RepositoryFramework.Web.Components/" class="dropdown-item">Rystem.RepositoryFramework.Web.Components</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer/" class="dropdown-item">Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm/" class="dropdown-item">Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm</a>
+</li>
+                                    
+<li>
+    <a href="../Rystem.RepositoryFramework.Cache.Azure.Storage.Blob/" class="dropdown-item">Rystem.RepositoryFramework.Cache.Azure.Storage.Blob</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../Rystem.Content.Infrastructure.InMemory/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../Rystem.RepositoryFramework.Abstractions/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li class="nav-item dropdown">
+                              <button id="theme-menu" aria-expanded="false" data-bs-toggle="dropdown" data-bs-display="static" aria-label="Toggle theme" class="nav-link dropdown-toggle">
+                                <i class="fa-solid fa-circle-half-stroke fa-fw"></i>
+                                <span class="d-lg-none ms-2">Toggle theme</span>
+                              </button>
+                              <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                  <button class="dropdown-item d-flex align-items-center" data-bs-theme-value="light" aria-pressed="false">
+                                    <i class="fa-solid fa-sun fa-fw"></i>
+                                    <span class="ms-2">Light</span>
+                                    <i class="fa-solid fa-check ms-auto d-none"></i>
+                                  </button>
+                                </li>
+                                <li>
+                                  <button class="dropdown-item d-flex align-items-center" data-bs-theme-value="dark" aria-pressed="true">
+                                    <i class="fa-solid fa-moon fa-fw"></i>
+                                    <span class="ms-2">Dark</span>
+                                    <i class="fa-solid fa-check ms-auto"></i>
+                                  </button>
+                                </li>
+                                <li>
+                                  <button class="dropdown-item d-flex align-items-center" data-bs-theme-value="auto" aria-pressed="false">
+                                    <i class="fa-solid fa-circle-half-stroke fa-fw"></i>
+                                    <span class="ms-2">Auto</span>
+                                    <i class="fa-solid fa-check ms-auto d-none"></i>
+                                  </button>
+                                </li>
+                              </ul>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <script src="../js/darkmode.js"></script>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#get-information" class="nav-link">Get information</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            
+            <li class="nav-item" data-bs-level="1"><a href="#integration-with-sharepoint-online-and-content-repository" class="nav-link">Integration with Sharepoint online and Content Repository</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#how-to-use-in-a-business-class" class="nav-link">How to use in a business class</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="get-information">Get information</h1>
+<p>https://<tenant>.sharepoint.com/sites/<site-url>/_api/site/id</p>
+<h1 id="integration-with-sharepoint-online-and-content-repository">Integration with Sharepoint online and Content Repository</h1>
+<pre><code>await services
+.AddContentRepository()
+.WithSharepointIntegrationAsync(x =&gt;
+{
+    x.TenantId = configuration["Sharepoint:TenantId"];
+    x.ClientId = configuration["Sharepoint:ClientId"];
+    x.ClientSecret = configuration["Sharepoint:ClientSecret"];
+    x.MapWithSiteNameAndDocumentLibraryName("TestNumberOne", "Foglione");
+    //x.MapWithRootSiteAndDocumentLibraryName("Foglione");
+    //x.MapWithSiteIdAndDocumentLibraryId(configuration["Sharepoint:SiteId"],
+    //    configuration["Sharepoint:DocumentLibraryId"]);
+}, "sharepoint")
+.NoContext();
+</code></pre>
+<h2 id="how-to-use-in-a-business-class">How to use in a business class</h2>
+<pre><code>public class AllStorageTest
+{
+    private readonly IContentRepositoryFactory _contentRepositoryFactory;
+    private readonly Utility _utility;
+    public AllStorageTest(IContentRepositoryFactory contentRepositoryFactory, Utility utility)
+    {
+        _contentRepositoryFactory = contentRepositoryFactory;
+        _utility = utility;
+    }
+
+    public async Task ExecuteAsync()
+    {
+        var _contentRepository = _contentRepositoryFactory.Create("sharepoint");
+        var file = await _utility.GetFileAsync();
+        var name = "folder/file.png";
+        var contentType = "images/png";
+        var metadata = new Dictionary&lt;string, string&gt;()
+        {
+            { "name", "ale" }
+        };
+        var tags = new Dictionary&lt;string, string&gt;()
+        {
+            { "version", "1" }
+        };
+        var response = await _contentRepository.ExistAsync(name).NoContext();
+        if (response)
+        {
+            await _contentRepository.DeleteAsync(name).NoContext();
+            response = await _contentRepository.ExistAsync(name).NoContext();
+        }
+        Assert.False(response);
+        response = await _contentRepository.UploadAsync(name, file.ToArray(), new ContentRepositoryOptions
+        {
+            HttpHeaders = new ContentRepositoryHttpHeaders
+            {
+                ContentType = contentType
+            },
+            Metadata = metadata,
+            Tags = tags
+        }, true).NoContext();
+        Assert.True(response);
+        response = await _contentRepository.ExistAsync(name).NoContext();
+        Assert.True(response);
+        var options = await _contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
+        Assert.NotNull(options.Uri);
+        foreach (var x in metadata)
+        {
+            Assert.Equal(x.Value, options.Options.Metadata[x.Key]);
+        }
+        foreach (var x in tags)
+        {
+            Assert.Equal(x.Value, options.Options.Tags[x.Key]);
+        }
+        Assert.Equal(contentType, options.Options.HttpHeaders.ContentType);
+        metadata.Add("ale2", "single");
+        response = await _contentRepository.SetPropertiesAsync(name, new ContentRepositoryOptions
+        {
+            HttpHeaders = new ContentRepositoryHttpHeaders
+            {
+                ContentType = contentType
+            },
+            Metadata = metadata,
+            Tags = tags
+        }).NoContext();
+        Assert.True(response);
+        options = await _contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
+        Assert.Equal("single", options.Options.Metadata["ale2"]);
+        response = await _contentRepository.DeleteAsync(name).NoContext();
+        Assert.True(response);
+        response = await _contentRepository.ExistAsync(name).NoContext();
+        Assert.False(response);
+    }
+}
+</code></pre></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+                <p>© 2020</p>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

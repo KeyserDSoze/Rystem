@@ -1,61 +1,47 @@
-# Documentation
+# Adding runtime provider
 
-## Class: `FallbackBuilderForServiceCollection`
-Namespace: `Microsoft.Extensions.DependencyInjection`
+	 builder.Services.AddRuntimeServiceProvider();
 
-This class is responsible for managing fallbacks in the dependency injection process. It provides the ability to add back-up mechanisms when a service cannot be resolved during dependency injection.
+and after the build use the runtime provider
 
-**Properties**
+	var app = builder.Build();
+	app.UseRuntimeServiceProvider();
 
-- **ServiceColletionBuilder**: Type is `Action<IServiceCollection>`. This property sets an action that adds fallback services to the service collection. If not specified, the default action will not add any services.
 
-- **ServiceProvider**: Type is `IServiceProvider`. This property provides an existing instance of the service provider. It is used internally for initializing the class.
+# Add service at runtime
 
-- **Name**: Type is `string?`. This property sets a name for the fallback builder.
+```csharp
+await RuntimeServiceProvider.GetServiceCollection()
+       .AddSingleton<Service2>()
+       .RebuildAsync();
+```
 
-## Class: `ServiceCollectionExtensions`
-Namespace: `Microsoft.Extensions.DependencyInjection`
+# Add service at runtime with lock
 
-This static class extends the `IServiceCollection` with additional helper methods for managing the services dependency injection process.
-
-**Methods**
-
-1. **AddActionAsFallbackWithServiceCollectionRebuilding**
-
-    **Method Purpose**: 
-    This method allows adding an action as a fallback mechanism during the dependency injection resolution process.
-    
-    **Parameters**:
-     - `services`: Type is `IServiceCollection`. This represents the Microsoft.Extensions.DependencyInjection.IServiceCollection extended by this helper method.
-     - `fallbackBuilder`: Type is `Func<FallbackBuilderForServiceCollection, ValueTask>`. This is a function that takes a `FallbackBuilderForServiceCollection` instance as input and returns a `ValueTask`. The function is responsible for defining the fallback behavior.
-
-    **Return Value**:
-     - Returns `IServiceCollection` to allow method chaining.
-     
-     **Usage Example**:
-    ```
-    services.AddActionAsFallbackWithServiceCollectionRebuilding<T>(async fallbackBuilder =>
+```csharp
+ await RuntimeServiceProvider
+    .AddServicesToServiceCollectionWithLock(configureFurtherServices =>
     {
-        // Configure fallback action
-    });
-    ```
-2. **AddActionAsFallbackWithServiceCollectionRebuilding**
+        configureFurtherServices.AddSingleton(service);
+    })
+.RebuildAsync();
+```
 
-    **Method Purpose**: 
-    This method is a variant of the method above and allows specifying a service type at run-time.
-    
-    **Parameters**:
-     - `services`: Type is `IServiceCollection`. This represents the Microsoft.Extensions.DependencyInjection.IServiceCollection extended by this helper method.
-     - `serviceType`: Type is `Type`. This represents the type of the service class to be extended.
-     - `fallbackBuilder`: Type is `Func<FallbackBuilderForServiceCollection, ValueTask>`. This is a function that takes a `FallbackBuilderForServiceCollection` instance as input and returns a `ValueTask`. The function is responsible for defining the fallback behavior.
+# Add fallback for Factory and automatic rebuild of service collection
+In this example Factorized is a simple class with a few parameters.
 
-    **Return Value**:
-     - Returns `IServiceCollection` to allow method chaining.
-
-    **Usage Example**:
-    ```
-    services.AddActionAsFallbackWithServiceCollectionRebuilding(serviceType, async fallbackBuilder =>
+```csharp
+services.AddFactory<Factorized>("1");
+services.AddActionAsFallbackWithServiceCollectionRebuilding<Factorized>(async x =>
+{
+    //example of retrievieng something
+    await Task.Delay(1); 
+    //example of ServiceProvider usage during new service addition
+    var singletonService = x.ServiceProvider.GetService<SingletonService>();
+    if (singletonService != null)
     {
-        // Configure fallback action
-    });
-    ```
+        //example of adding a new service as factory to the service collection. You need to pass a delegate.
+        x.ServiceColletionBuilder = (serviceCollection => serviceCollection.AddFactory<Factorized>(x.Name));
+    }
+});
+```

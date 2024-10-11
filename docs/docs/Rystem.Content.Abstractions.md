@@ -1,115 +1,142 @@
-# Rystem.Content.Abstractions Documentation
+# Content Repository Abstractions
+You may use this library to help the integration with your business and your several storage repositories.
 
-## Class: ContentMigrationExceptionResult
+# Dependency injection
 
-This class handles the outcome of a failed migration in the content system, containing the exception information that arose and the path of the migration.
+    services
+        .AddContentRepository()
+        .WithIntegration<SimpleIntegration>("example", ServiceLifetime.Singleton);
 
-### Properties:
+with integration class
 
-**1. Exception**
-  - **Type**: Exception
-  - **Description**: Contains the exception that resulted from a failed migration.
-    
-**2. Path**
-  - **Type**: ContentMigrationPath
-  - **Description**: Contains the migration path for which the exception was thrown.
+    internal sealed class SimpleIntegration : IContentRepository
+    {
+        public ValueTask<bool> DeleteAsync(string path, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
 
-## Class: ContentMigrationPath
+        public Task<ContentRepositoryDownloadResult?> DownloadAsync(string path, ContentInformationType informationRetrieve = ContentInformationType.None, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
 
-This class denotes a migration path in the content system, including source and destination. It also includes a method to check if the source and destination are the same.
+        public ValueTask<bool> ExistAsync(string path, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
 
-### Properties:
+        public Task<ContentRepositoryResult?> GetPropertiesAsync(string path, ContentInformationType informationRetrieve = ContentInformationType.All, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
 
-**1. From**
-  - **Type**: string
-  - **Description**: The source of the migration path.
+        public IAsyncEnumerable<ContentRepositoryDownloadResult> ListAsync(string? prefix = null, bool downloadContent = false, ContentInformationType informationRetrieve = ContentInformationType.None, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
 
-**2. To**
-  - **Type**: string
-  - **Description**: The destination of the migration path.
+        public void SetName(string name)
+        {
+            throw new NotImplementedException();
+        }
 
-**3. IsTheSame**
-  - **Type**: bool
-  - **Description**: A checker method conditional to return true if "From" and "To" are equal which means the source and destination are the same.
+        public ValueTask<bool> SetPropertiesAsync(string path, ContentRepositoryOptions? options = null, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
 
-## Class: ContentMigrationResult
+        public ValueTask<bool> UploadAsync(string path, byte[] data, ContentRepositoryOptions? options = null, bool overwrite = true, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+    }
 
-This class compiles the results of content migration, including paths that were migrated, those not migrated, blocked by predicate paths, and paths not migrated due to errors.
+# How to use
+If you have only one integration installed at once, you may inject directly
 
-### Properties:
+    public sealed class SimpleBusiness
+    {
+        private readonly IContentRepository _contentRepository;
 
-**1. MigratedPaths**
+        public SimpleBusiness(IContentRepository contentRepository)
+        {
+            _contentRepository = contentRepository;
+        }
+    }
 
-    - Type: List<ContentMigrationPath>
-    - Description: List of migration paths that were migrated successfully.
+## In case of multiple integrations you have to use the factory service
 
-**2. NotMigratedPaths**
+DI
 
-    - Type: List<ContentMigrationPath>
-    - Description: List of migration paths that were not migrated.
+    services
+        .AddContentRepository()
+        .WithIntegration<SimpleIntegration>("example", ServiceLifetime.Singleton);
+        .WithIntegration<SimpleIntegration2>("example2", ServiceLifetime.Singleton);
 
-**3. NotContentPaths**
+in Business class to use the first integration
 
-    - Type: List<ContentMigrationPath>
-    - Description: List of paths that were not considered to be content and thus did not migrate.
+    public sealed class SimpleBusiness
+    {
+        private readonly IContentRepository _contentRepository;
 
-**4. BlockedByPredicatePaths**
+        public SimpleBusiness(IContentRepositoryFactory contentRepositoryFactory)
+        {
+            _contentRepository = contentRepositoryFactory.Create("example");
+        }
+    }
 
-    - Type: List<ContentMigrationPath>
-    - Description: List of migration paths that were blocked by a predicate and thus did not migrate.
+in Business class to use the second integration
 
-**5. NotMigratedPathsForErrors**
+    public sealed class SimpleBusiness
+    {
+        private readonly IContentRepository _contentRepository;
 
-    - Type: List<ContentMigrationExceptionResult>
-    - Description: List of failed migrations due to exceptions.
+        public SimpleBusiness(IContentRepositoryFactory contentRepositoryFactory)
+        {
+            _contentRepository = contentRepositoryFactory.Create("example2");
+        }
+    }
 
-## Class: ContentMigrationSettings
+# Migration tool
+You can migrate from two different sources. For instance from a blob storage to a sharepoint site document library.
 
-This class contains various settings that control the behaviour of the migration process during content migration.
+Setup in DI
 
-### Properties:
+     services
+        .AddSingleton<Utility>()
+        .AddContentRepository()
+        .WithBlobStorageIntegrationAsync(x =>
+        {
+            x.ContainerName = "supertest";
+            x.Prefix = "site/";
+            x.ConnectionString = configuration["ConnectionString:Storage"];
+        },
+        "blobstorage")
+        .ToResult()
+        .WithInMemoryIntegration("inmemory")
+        .WithSharepointIntegrationAsync(x =>
+        {
+            x.TenantId = configuration["Sharepoint:TenantId"];
+            x.ClientId = configuration["Sharepoint:ClientId"];
+            x.ClientSecret = configuration["Sharepoint:ClientSecret"];
+            x.MapWithSiteNameAndDocumentLibraryName("TestNumberOne", "Foglione");
+        }, "sharepoint")
+        .ToResult();
 
-**1. Prefix**
+Usage
 
-    - Type: string
-    - Description: The prefix applied to migration paths.
-
-**2. Predicate**
-
-    - Type: Func<ContentRepositoryDownloadResult, bool>
-    - Description: A function to filter out paths from migration. If the function returns true for a given path, it will be included in the migration; otherwise, it will be excluded.
-
-**3. OnErrorContinue**
-
-    - Type: bool
-    - Description: If set to true, the migration process will continue even if an error is encountered. Default value is true.
-
-**4. OverwriteIfExists**
-
-    - Type: bool
-    - Description: If set to true, existing content at the destination path will be overwritten if the same content is being migrated.
-
-**5. ModifyDestinationPath**
-
-    - Type: Func<string, string>
-    - Description: A function to modify the destination path for a given source path when migrating content.
-
-## Class: ServiceCollectionExtensions
-
-This class includes extension methods for the IServiceCollection class.
-
-### Methods:
-
-**1. AddContentRepository**
-
-    - Description: This method configures content repository services and registers them to the provided IServiceCollection.
-    - Parameters: 
-        - IServiceCollection services: An instance of IServiceCollection to which the content repository services will be added.
-    - Returns: IContentRepositoryBuilder object that is used to configure content repository.
-    - Usage Example:
-    ```markdown
-    var services = new ServiceCollection();
-    services.AddContentRepository();
-    ```
-
-For the remaining classes, the properties serve to encapsulate various details of the content repository, download results, response headers, etc., and do not have notable behaviors needing to be explained. With these classes, you can manage content, handle requests and responses in content operations, set up necessary options regarding caching, encoding, languages, etc., and generally manage all data traffic related to content operations.
+    var result = await _contentMigration.MigrateAsync("blobstorage", "sharepoint",
+        settings =>
+        {
+            settings.OverwriteIfExists = true;
+            settings.Prefix = prefix;
+            settings.Predicate = (x) =>
+            {
+                return x.Path?.Contains("fileName6") != true;
+            };
+            settings.ModifyDestinationPath = x =>
+            {
+                return x.Replace("Folder2", "Folder3");
+            };
+        }).NoContext();

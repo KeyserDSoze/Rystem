@@ -1,97 +1,111 @@
-# RepositoryFramework.Cache Documentation
+# Cache
 
-The `RepositoryFramework.Cache` namespace, part of the `Rystem.RepositoryFramework.Cache` NuGet package, provides classes for managing caching within a repository framework. 
+## Examples
+You can add a repository (with default blob integration for instance) and after attack an in memory cache for all methods.
+The RefreshTime is a property that adds an Expiration date to the cached value, in the example below you can see that after 20 seconds the in memory cache requests again to the repository pattern a new value for each key.
+The Methods is a flag that allows to setup what operations have to be cached.
 
-**Dependencies**:
-- Rystem.RepositoryFramework.Abstractions, minimum version: 6.2.0
-- Microsoft.Extensions.Caching.Abstractions, minimum version: 8.0.0
-- Microsoft.Extensions.Caching.Memory, minimum version: 8.0.1
+Query -> query will be cached with this key
 
-Below are the descriptions of classes and their methods within this namespace.
+    var keyAsString = $"{nameof(RepositoryMethods.Query)}_{typeof(T).Name}_{FactoryName}_{filter.ToKey()}";
 
-## Class: CacheOptions<T, TKey>
-This class provides settings for cache management in your repository. Settings include the expiration time for the cached data, and the allowed commands to perform operations like update/insert, delete or get on the cache.
+Operation -> operation will be cached with this key
 
-### Properties
+    var keyAsString = $"{nameof(RepositoryMethods.Operation)}_{operation.Name}_{typeof(T).Name}_{FactoryName}_{filter.ToKey()}";
 
-1. **ExpiringTime** - _TimeSpan_
+Get -> query will be cached with this key
+    
+    var keyAsString = $"{nameof(RepositoryMethods.Get)}_{typeof(T).Name}_{FactoryName}_{key.AsString()}";
 
-   The duration after which the cached data expires.
+Exist -> query will be cached with this key
+    
+    var keyAsString = $"{nameof(RepositoryMethod.Exist)}_{typeof(T).Name}_{FactoryName}_{key.AsString()}";
 
-2. **HasCommandPattern** - _bool_
+Now you can understand the special behavior for commands. If you set Insert and/or Update and/or Delete, during any command if you allowed it for each command automatically the framework will update the cache value, with updated or inserted value or removing the deleted value.
+The code below allows everything
 
-   A flag indicating if Update, Insert, or Delete methods are allowed to perform operations on the cache.
+    x.Methods = RepositoryMethod.All
 
-3. **HasCache(method)** - _bool_
+In the example below you're setting up the following behavior: setting up a cache only for Get operation, and update the Get cache when exists a new Insert or an Update, or a removal when Delete operation were perfomed.
+    
+    x.Methods = RepositoryMethod.Get | RepositoryMethod.Insert | RepositoryMethod.Update | RepositoryMethod.Delete
 
-   Checks if the cache is allowed on the repository according to specified method.
+## Setup in DI
 
-4. **Methods** - _RepositoryMethods_
+	services
+        .AddRepository<Plant, int>(settings =>
+        {
+            settings
+                .WithInMemory();
+            settings
+                .WithInMemoryCache(x =>
+                {
+                    x.ExpiringTime = TimeSpan.FromSeconds(1);
+                    x.Methods = RepositoryMethods.All;
+                });
+        });
 
-   Flags to set the allowed operations on the cache.
+## Usage
+You always will find the same interface. For instance
 
-5. **Default** - _CacheOptions<T, TKey>_
+    IRepository<Plant, int> repository
 
-   Gets the default cache options.
+or if you added a query pattern or command pattern
 
-## Class: DistributedCacheOptions<T, TKey>
-This class extends `CacheOptions<T, TKey>`, providing settings for cache management in a distributed (multi-instance) environment.
+    IQuery<Plant, int> query 
+    ICommand<Plant, int> command
 
-### Properties
+## Distributed Cache
+Based on this [link](https://docs.microsoft.com/en-us/aspnet/core/performance/caching/distributed) you may use the standard interface IDistributedCache instead of create a custom IDistributedCache<T, TKey, TState>.
+For instance you may choose between three libraries: Distributed SQL Server cache, Distributed Redis cache, Distributed NCache cache.
+You need to add the cache
 
-1. **Default** - _DistributedCacheOptions<T, TKey>_
-
-   Gets the default distributed cache options.
-
-## RepositoryBuilderExtensions Class
-
-This class provides extension methods to add caching mechanisms to repository, command and query patterns for both single-instance and multi-instance environments.
-
-### Methods
-
-1. **WithCache**, **WithDistributedCache** (for Repository, Command & Query builder)
-
-   These methods are used to add the cache mechanism (a normal or distributed cache) to the specified repository/command/query builder.
-
-   - **Parameters**:
-     - `builder`: The builder instance to which you're adding cache mechanism.
-     - `options`: Optional settings for your cache.
-     - `name`: Optional name.
-     - `lifetime`: Service Lifetime. Default is Singleton.
-
-   - **Return Value**:
-     - Returns the builder instance (IRepositoryBuilder, ICommandBuilder or IQueryBuilder) with applied caching mechanism.
-
-   - **Usage Example**:
-     ```csharp
-     var builder = new RepositoryBuilder<MyModel, string>();
-     builder.WithCache(options =>
+    builder.Services.AddStackExchangeRedisCache(options =>
      {
-         options.ExpiringTime = TimeSpan.FromMinutes(30);
+         options.Configuration = builder.Configuration.GetConnectionString("MyRedisConStr");
+         options.InstanceName = "SampleInstance";
      });
-     ```
 
-2. **WithInMemoryCache** (for Repository, Command & Query builder)
+then you add the IDistributedCache implementation to your repository patterns or CQRS.
 
-   These methods are used to add in-memory cache mechanism to the specified repository/command/query builder.
+    .AddRepository<Country, CountryKey>(builder =>
+    {
+        builder
+            .WithInMemory(inMemoryBuilder =>
+            {
+                inMemoryBuilder
+                    .PopulateWithRandomData(NumberOfEntries, NumberOfEntries);
+            });
+        builder
+            .WithDistributedCache(distributedCacheBuilder =>
+            {
+                distributedCacheBuilder.ExpiringTime = TimeSpan.FromSeconds(10);
+            });
+    });
 
-   - **Parameters**:
-     - `builder`: The builder instance to which you're adding cache mechanism.
-     - `options`: Optional settings for your cache.
-     - `name`: Optional name.
+or a mix of them
 
-   - **Return Value**:
-     - Returns the builder instance (IRepositoryBuilder, ICommandBuilder or IQueryBuilder) with applied in-memory caching mechanism.
+    .AddRepository<Country, CountryKey>(builder =>
+    {
+        builder
+            .WithInMemory(inMemoryBuilder =>
+            {
+                inMemoryBuilder
+                    .PopulateWithRandomData(NumberOfEntries, NumberOfEntries);
+            });
+        builder
+            .WithInMemoryCache(inMemoryCacheBuilder =>
+            {
+                inMemoryCacheBuilder.ExpiringTime = TimeSpan.FromSeconds(10);
+            })
+            .WithDistributedCache(distributedCacheBuilder =>
+            {
+                distributedCacheBuilder.ExpiringTime = TimeSpan.FromSeconds(10);
+            });
+    });
 
-   - **Usage Example**:
-     ```csharp
-     var builder = new RepositoryBuilder<MyModel, string>();
-     builder.WithInMemoryCache(options =>
-     {
-         options.ExpiringTime = TimeSpan.FromMinutes(30);
-     });
-     ```
+and as always you will use the standard interface that is automatically integrated in the repository flow.
+    
+    IRepository<User, string> repository;
 
-These classes also includes several private methods such as `AddCacheManager`, `WithCache`, and `WithDistributedCache` that are used internally by the public methods.
-
-This documentation should help you understand the capabilities of the `RepositoryFramework.Cache` namespace. When you're ready to add caching to your repository, start with the `WithCache` or `WithDistributedCache` methods.
+The same is valid for ICommand and IQuery.

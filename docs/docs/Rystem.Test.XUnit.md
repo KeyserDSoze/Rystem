@@ -1,36 +1,85 @@
-# Class Documentation
+You have to add a startup class in your test project to initialize the Rystem XUnit helpers. 
 
-## Class: HostTester
-
-The `HostTester` class contains a single static method useful for setting up integration tests for a web-host-based application. The class utilizes the `Microsoft.AspNetCore.TestHost` namespace for simulating the web host.
-
-### Method: CreateHostServerAsync
-
-This method aims to configure and initiate a web host server for testing purposes. It allows you to set up services, middlewares, and health checks. It also handles synchronization and potential asynchronous exceptions. Exception handling is ensured with the help of the `Rystem.Concurrency` library.
-
-**Parameters**
-- `IConfiguration configuration`: This provides application's configuration details such as connection strings and app settings.
-- `Type? applicationPartToAdd`: An optional parameter representing the part of the application - often a class type - to be added to the application services. If not provided, the method adds the currently executing assembly.
-- `Func<IServiceCollection, IConfiguration, ValueTask> configureServicesAsync`: Function to configure application services. It takes services collection and configuration as input, allowing you to add your own services to the services collection asynchronously.
-- `Func<IApplicationBuilder, IServiceProvider, ValueTask> configureMiddlewaresAsync`: Function to configure middlewares. It takes the application builder and service provider as input, permitting middleware modules to be lined up in your application's pipeline asynchronously.
-- `bool addHealthCheck`: An optional boolean parameter to decide whether to include health checks to services and middleware or not. Default value is 'false'.
-
-**Return Value**
-- Returns a `Task<Exception?>` where the task result will be an `Exception` object if an exception occurred during the server startup or health-check process, or `null` if the process completes smoothly.
-
-**Usage Example**
 ```csharp
-Exception? exception = await HostTester.CreateHostServerAsync(
-new ConfigurationBuilder().Build(),
-typeof(Startup),
-(async (services, configuration) => await Task.CompletedTask),
-(async (app, provider) => await Task.CompletedTask),
-true
-);
-
-if (exception != null)
+public class Startup : StartupHelper
 {
-    Console.WriteLine($"Action failed with error: {exception}");
+    protected override string? AppSettingsFileName => "appsettings.test.json";
+    protected override bool HasTestHost => true;
+    protected override Type? TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration => typeof(Startup);
+    protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => typeof(ServiceController);
+    protected override IServiceCollection ConfigureCientServices(IServiceCollection services)
+    {
+        services.AddHttpClient("client", x =>
+        {
+            x.BaseAddress = new Uri("http://localhost");
+        });
+        return services;
+    }
+    protected override ValueTask ConfigureServerMiddlewaresAsync(IApplicationBuilder applicationBuilder, IServiceProvider serviceProvider)
+    {
+        applicationBuilder.UseTestApplication();
+        return ValueTask.CompletedTask;
+    }
+    protected override ValueTask ConfigureServerServicesAsync(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddTestServices();
+        return ValueTask.CompletedTask;
+    }
 }
 ```
-In this example, an empty configuration and the 'Startup' class are passed to the method while setting up the server. Also, the addHealthCheck option is activated. If an exception occurs during the setup, it will be logged.
+
+## TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration
+This property is the Type to discover the right assembly to retrieve secrets.\
+
+## TypeToChooseTheRightAssemblyWithControllersToMap
+This property is the Type to discover the right assembly to map controllers automatically.\
+
+## AppSettingsFileName
+This property is the name of the appsettings file to load the configuration.
+
+## HasTestHost
+This property allows the Test server to start. You have to override **ConfigureServerMiddlewaresAsync** and **ConfigureServerServicesAsync**.
+
+applicationBuilder.UseTestApplication() is an example of your middlewares from your api project.
+
+```csharp
+ public static IApplicationBuilder UseTestApplication(this IApplicationBuilder app)
+{
+    app.UseRuntimeServiceProvider();
+    app.UseRouting();
+    app.UseAuthorization();
+    app.UseEndpoints(x =>
+    {
+        x.MapControllers();
+    });
+    return app;
+}
+```
+
+and with the same behavior services.AddTestServices(); adds the services from your api project.
+
+```csharp
+ public static IServiceCollection AddTestServices(this IServiceCollection services)
+{
+    services.AddRuntimeServiceProvider();
+    services.AddControllers();
+    services.AddEndpointsApiExplorer();
+    services.AddSingleton<SingletonService>();
+    services.AddSingleton<Singleton2Service>();
+    services.AddScoped<ScopedService>();
+    services.AddScoped<Scoped2Service>();
+    services.AddTransient<TransientService>();
+    services.AddTransient<Transient2Service>();
+    return services;
+}
+```
+
+## ConfigureCientServices
+This method configure the DI in your XUnit test project. Usually you need to inject the http client to test your api if you need the test server.
+
+```csharp
+services.AddHttpClient("client", x =>
+{
+    x.BaseAddress = new Uri("http://localhost");
+});
+```

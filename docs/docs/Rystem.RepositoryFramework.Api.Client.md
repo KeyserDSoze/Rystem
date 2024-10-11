@@ -1,45 +1,110 @@
-# Classes Documentation
+# Services extensions
 
-## Class: AuthenticatorSettings
+## HttpClient to use your API (example)
+You can add a client for a specific url
 
-This class works as a configuration holder for authentication settings needed in the HTTP requests.
+    builder.Services.AddRepository<User, string>(builder =>
+    {
+        builder
+            .WithApiClient()
+            .WithHttpClient("localhost:7058");
+    });
 
-### Properties:
-- **Scopes**: An array of `string`. It represents the scopes for an API request. Its purpose is to allow the API to limit the types of data returned according to the scopes provided.
-- **ExceptionHandler**: A `Func` that takes an `Exception` and an `IServiceProvider`, and returns a `Task`. This is used to handle exceptions that can occur during the authentication process. It allows for centralized handling and possibly recovery from certain exceptional circumstances.
+You may add a Polly policy to your api client for example:
 
-## Class: AuthenticatorSettings<T>
+    var retryPolicy = HttpPolicyExtensions
+      .HandleTransientHttpError()
+      .Or<TimeoutRejectedException>()
+      .RetryAsync(3);
 
-This class extends `AuthenticatorSettings`. It's currently not adding any new property or method, but it's designed to support future settings that may be specific to the type `T` it is associated with.
+    builder.Services.AddRepository<User, string>(builder =>
+    {
+        builder
+            .WithApiClient()
+            .WithHttpClient("localhost:7058")
+                .ClientBuilder
+            .AddPolicyHandler(retryPolicy);
+    });
+    
+and use it in DI with
+    
+    IRepository<User, string> repository
 
-## Class: AuthenticatorSettings<T, TKey>
+## Query and Command
+In DI you install the services
 
-This class extends `AuthenticatorSettings<T>`. It does not add anything new currently, but it's designed to support future settings that may be specific to the type `T` and key type `TKey` it is associated with. The `TKey` parameter must be not null as indicated by the `where TKey : notnull` clause.
+    services.AddCommand<User, string>(builder => {
+        builder
+            .WithApiClient()
+            .WithHttpClient("localhost:7058");
+    });
+    services.AddQuery<User, string>(builder => {
+        builder
+            .WithApiClient()
+            .WithHttpClient("localhost:7058");
+    });
 
-## Class: RepositoryBuilderExtensions
+And you may inject the objects
+# Please, use ICommand, IQuery and not ICommandPattern, IQueryPattern
 
-This class contains extension methods for `IServiceCollection`, `IRepositoryBuilder`, `IQueryBuilder` and `ICommandBuilder`. 
+    ICommand<User, string> command
+    IQuery<User, string> command
 
-It includes methods for adding authorization interceptors, adding clients to repository builders, and adding API client interceptors. All the methods take a `ServiceLifetime` parameter which controls the lifetime of these services in dependency injection. The methods also make use of several generic type parameters, which allow the methods to work with a variety of repository types, keys, and corresponding token manager or interceptor classes.
+## With a non default key
+In DI you install the services with a bool key for example.
 
-Note: Most methods return `IServiceCollection`, `IRepositoryBuilder`, `IQueryBuilder` or `ICommandBuilder` to allow for chaining multiple operations together. These methods typically perform configuration tasks such as adding services to the dependency injection container.
+    services.AddRepository<User, bool>(builder => {
+        builder
+            .WithApiClient()
+            .WithHttpClient("localhost:7058");
+    });
+    services.AddCommand<User, bool>(builder => {
+        builder
+            .WithApiClient()
+            .WithHttpClient("localhost:7058");
+    });
+    services.AddQuery<User, bool>(builder => {
+        builder
+            .WithApiClient()
+            .WithHttpClient("localhost:7058");
+    });
 
-## Class: HttpClientRepositoryBuilder<T, TKey>
+And you may inject the objects
+# Please, use ICommand, IQuery, IRepository and not ICommandPattern, IQueryPattern, IRepositoryPattern
+    
+    IRepository<User, string> repository
+    ICommand<User, string> command
+    IQuery<User, string> command
 
-Contains configuration settings for an HttpClient repository builder. 
+## Interceptors
+You may add a custom interceptor for every request for every model
 
-### Properties:
-- **ApiBuilder**: IApiRepositoryBuilder<T, TKey>, which contains the configuration for API repository.
-- **ClientBuilder**: IHttpClientBuilder, which is the standard builder for HttpClient in .NET Core. 
+    public static IServiceCollection AddApiClientInterceptor<TInterceptor>(this IServiceCollection services,
+        ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
+        where TInterceptor : class, IRepositoryClientInterceptor
 
-This builder is specifically for the repositories that use an HttpClient for the data source and can be tailored to different types of repositories and keys.
+or a specific interceptor for each model
+    
+    public static IServiceCollection AddApiClientInterceptor<TInterceptor>(this IServiceCollection services,
+        ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
+        where TInterceptor : class, IRepositoryClientInterceptor
 
-## Class: ApiClientSettings<T, TKey>
+or for a string as default TKey
 
-Hold the settings required for an API client with a corresponding repository model of type `T` and a key type `TKey`. The paths will be constructed using these settings and will point to the URLs that the client will make requests to.
+     public static RepositorySettings<T, TKey> AddApiClientSpecificInterceptor<T, TKey, TInterceptor>(
+        this RepositorySettings<T, TKey> settings,
+        ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
+        where TInterceptor : class, IRepositoryClientInterceptor<T>
+        where TKey : notnull   
 
-### Note:
-"Key" refers to the unique identifier for a specific item in the repository. For example, if `T` is `Product` and TKey is `int`, then each product has an integer key that can be used to retrieve it from the repository.
+Maybe you can use it to add a token as JWT o another pre-request things.
 
-# Additional Information
-This documentation does not cover the full functionality and usage examples for all the methods in these classes due to lack of method-level information. Please provide detailed information on public methods to enhance the documentations further.
+## Default interceptor for Authentication with JWT
+You may use the default interceptor to deal with the identity manager in .Net DI.
+
+    builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient();
+
+with package 
+## RepositoryFramework.Api.Client.Authentication.BlazorServer 
+or if you need to use in Wasm blazor use with 
+## Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm

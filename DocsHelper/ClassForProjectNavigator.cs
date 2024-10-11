@@ -11,6 +11,7 @@ namespace DocsHelper
     {
         public required string Id { get; set; }
         public required List<Class> Classes { get; set; }
+        public required string ReadMe { get; set; }
         public required List<TestClass> TestClasses { get; set; }
         public required List<OnlinePackageDependency> PackageDependencies { get; set; }
         public required List<OnlinePackageDependency> ProjectDependencies { get; set; }
@@ -174,7 +175,7 @@ namespace DocsHelper
         };
 
         private static readonly SystemChatMessage s_systemChatMessage = new("You are an expert in software development and documentation. Your task is to generate comprehensive usability documentation for a library based on the provided classes and their associated public methods. You will create detailed descriptions, including the purpose of each method, its parameters, return types, and possible use cases, following the input format below:\r\n\r\n1. **Classes**: \r\n   - You will receive a list of classes and their methods enclosed between triple backticks. Each class will have public methods that need documentation. Your output must be organized per class, providing:\r\n     - **Method Name**: A description of what the method does.\r\n     - **Parameters**: List and explain each parameter, including type and purpose.\r\n     - **Return Value**: What the method returns and its type.\r\n     - **Usage Example**: Provide at least one practical use case for the method, formatted as code.\r\n\r\n2. **Test Classes**:\r\n   - After the class definitions, you will receive test classes separated by three vertical bars `|||`. The tests provide further context on how the methods are used. Incorporate relevant information from the test classes to enrich your documentation, such as edge cases or additional examples of usage.\r\n\r\nFollow these principles:\r\n- Use clear, concise, and user-friendly language.\r\n- Ensure the documentation is suitable for developers who are new to the library.\r\n- Organize the content logically, with each class and its methods clearly separated.\r\n- Enhance each method’s description based on its associated tests where applicable.\r\n- Write everything in markdown");
-        private static readonly string mkdocs = "site_name: Rystem\r\nsite_author: Alessandro Rapiti\r\ncopyright: © 2020\r\ntheme:\r\n  name: mkdocs\r\n  color_mode: dark\r\n  user_color_mode_toggle: true\r\nnav:\r\n  - Home: index.md";
+        private static readonly string mkdocs = "site_name: Rystem\r\nsite_author: Alessandro Rapiti\r\ncopyright: © 2020\r\ntheme:\r\n  name: mkdocs\r\n  color_mode: dark\r\n  user_color_mode_toggle: true\r\nnav:\r\n  - Home: index.md\r\n  - Concepts: \r\n    - Repository: repository.md";
         public async Task CreateAsync(int? backPath)
         {
             var splittedDirectory = Directory.GetCurrentDirectory().Split('\\');
@@ -413,7 +414,8 @@ namespace DocsHelper
                             Classes = [],
                             PackageDependencies = [],
                             TestClasses = [],
-                            ProjectDependencies = []
+                            ProjectDependencies = [],
+                            ReadMe = string.Empty
                         };
                         Projects.Add(project);
                         var packageReferences = s_packageReference.Matches(projectText);
@@ -471,6 +473,18 @@ namespace DocsHelper
                                 {
                                     var classText = await File.ReadAllTextAsync(file.FullName);
                                     project.Classes.Add(new Class { Text = classText, Type = ".razor", Path = path, Namespace = $"{project.Id.Trim('\\')}.{path.Trim('\\').Replace("\\", ".")}" });
+                                }
+                                else if (file.Name.EndsWith("README.md"))
+                                {
+                                    var readmeText = new StringBuilder();
+                                    using StreamReader readmeReader = new(file.FullName);
+                                    while (!readmeReader.EndOfStream)
+                                    {
+                                        var line = await readmeReader.ReadLineAsync();
+                                        if (!line.ToLower().Contains("what is rystem?") && !line.ToLower().Contains("get started"))
+                                            readmeText.AppendLine(line);
+                                    }
+                                    project.ReadMe = readmeText.ToString();
                                 }
                             }
                             foreach (var directory in directoryInfo.GetDirectories())

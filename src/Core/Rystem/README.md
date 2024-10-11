@@ -1,10 +1,10 @@
 ﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
-## Get Started
+# Get Started
 
-### Extension methods
+## Extension methods
 
-#### Stopwatch
+### Stopwatch
 You can monitor the time spent on an action, task or in a method.
 Some examples from Unit test.
 
@@ -28,7 +28,7 @@ or with a return value
         return 3;
     });
 
-### Linq expression serializer
+## Linq expression serializer
 Usually a linq expression is not serializable as string. With this method you can serialize your expression with some limits. Only primitives are allowed in the expression body.
 An example from Unit test.
 
@@ -70,14 +70,14 @@ or
      newLambda =  newLambda.ChangeReturnType(typeof(bool));
 
 
-### Reflection helper
+## Reflection helper
 
-#### Name of calling class
+### Name of calling class
 You can find the name of the calling class from your method, with deep = 1 the calling class of your method, with deep = 2 the calling class that calls the class that calls your method, and so on, with fullName set to true you obtain the complete name of the discovered class.
 
     ReflectionHelper.NameOfCallingClass(deep, fullName);
 
-#### Extensions for Type class
+### Extensions for Type class
 You can get the properties, fields and constructors for your class (and singleton them to save time during new requests)
 
     Type.FetchProperties();
@@ -102,7 +102,7 @@ You may find more information in unit test [here](https://github.com/KeyserDSoze
     Assert.True(sulo.IsTheSameTypeOrAParent(zalo));
     Assert.False(y.IsTheSameTypeOrAParent(x));
 
-#### Mock a Type
+### Mock a Type
 If you need to create a type over an abstract class or interface you may use the mocking system of Rystem.
 For example, if you have an abstract class like this one down below.
 
@@ -134,7 +134,7 @@ or
 
 you may see "AAA" as argument for your constructor in abstract class.
 
-### Check nullability for properties, fields and parameters.
+## Check nullability for properties, fields and parameters.
 Following an example from unit test.
 
     private sealed class InModel
@@ -172,7 +172,7 @@ Following an example from unit test.
         Assert.False(fields[1].IsNullable());
     }
 
-### Text extensions
+## Text extensions
 You may convert as fast as possible byte[] to string or stream to byte[] or byte[] to stream or stream to string or string to stream.
 For example, string to byte array and viceversa.
 
@@ -206,13 +206,13 @@ A simple method to check if a char is contained at least X times.
     string value = "abcderfa";
     bool containsAtLeastTwoAChar = value.ContainsAtLeast(2, 'a');
 
-### Character separated-value (CSV)
+## Character separated-value (CSV)
 Transform any kind of IEnumerable data in a CSV string.
 
     string value = _models.ToCsv();
 
 
-### Minimization of a model (based on CSV concept)
+## Minimization of a model (based on CSV concept)
 It's a brand new idea to serialize any kind of objects (with lesser occupied space of json), the idea comes from Command separated-value standard.
 To serialize
 
@@ -222,7 +222,7 @@ To deserialize (for instance in a List of a class named CsvModel)
 
     value.FromMinimization<List<CsvModel>>();
 
-### Extensions for json
+## Extensions for json
 I don't know if you are fed up to write JsonSerializer.Serialize, I do, and so, you may use the extension method to serialize faster.
 To serialize
 
@@ -232,7 +232,7 @@ To deserialize in a class (for instance a class named User)
 
     var value = text.FromJson<User>();
 
-### Extensions for Task
+## Extensions for Task
 I don't know if you still are fed up to write .ConfigureAwait(false) to eliminate the context waiting for a task. I do.
 [Why should I set the configure await to false?](https://devblogs.microsoft.com/dotnet/configureawait-faq/)
 To set configure await to false
@@ -249,7 +249,7 @@ You may change the behavior of your NoContext() or ToResult(), setting (in the b
 
 When do I need a true? In windows application for example you have to return after a button clicked to the same thread that started the request.
 
-#### TaskManager
+## TaskManager
 When you need to run a list of tasks concurrently you may use this static method.
 
 In the next example with TaskManager.WhenAll you may run a method ExecuteAsync {times} times with {concurrentTasks} times in concurrency, and running them when a time slot is free.

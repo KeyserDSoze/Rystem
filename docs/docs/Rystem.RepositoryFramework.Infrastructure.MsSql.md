@@ -1,68 +1,47 @@
-# Documentation
+# Integration with MsSql and Repository Framework
+Example from unit test with a business integration too.
 
-## Class: `PropertyHelper<T>`
+     services.
+        AddRepository<Cat, Guid>(settings =>
+        {
+            settings
+            .WithMsSql(builder =>
+            {
+                builder.Schema = "repo";
+                builder.ConnectionString = configuration["ConnectionString:Database"];
+                builder.WithPrimaryKey(x => x.Id, x =>
+                    {
+                        x.ColumnName = "Key";
+                    })
+                .WithColumn(x => x.Paws, x =>
+                {
+                    x.ColumnName = "Zampe";
+                    x.IsNullable = true;
+                });
+            });
+        });
 
-This class provides a set of methods manipulating entities of a certain type. It is used to map the properties of an entity to their `SqlParameter` representations, and to set the properties of an entity from a `SqlDataReader`.
+You found the IRepository<Cat, Guid> in DI to play with it.
 
-### Method: `SetEntityForDatabase`
+# Configure database after build
+You have to run a method after the service collection build during startup. This method creates your tables.
 
-This method maps an entity consisting of properties of the type `T` into an `SqlParameter` object.
+    var app = builder.Build();
+    await app.Services.WarmUpAsync();
 
-**Parameters**
-- `T entity`: This is an object of type `T`. Its public properties' values are used to create an `SqlParameter`.
+## Automated api with Rystem.RepositoryFramework.Api.Server package
+With automated api, you may have the api implemented with your dataverse integration.
+You need only to add the AddApiFromRepositoryFramework and UseApiForRepositoryFramework
 
-**Return Value**  
-This method returns an instance of `SqlParameter`. The `SqlParameter` is set with the `value` of the entity's property, with the `ColumnName` as the parameter’s name.
+    builder.Services.AddApiFromRepositoryFramework()
+        .WithDescriptiveName("Repository Api")
+        .WithPath(Path)
+        .WithSwagger()
+        .WithVersion(Version)
+        .WithDocumentation()
+        .WithDefaultCors("http://example.com");  
 
-**Usage Example**
+    var app = builder.Build();
 
-```csharp
-var propertyHelper = new PropertyHelper<YourEntity>(propertyInfo); // Assume propertyInfo is an instance of PropertyInfo.
-SqlParameter sqlParameter = propertyHelper.SetEntityForDatabase(new YourEntity{ Property1 = "A value" });
-```
-
-### Method: `SetEntity`
-
-This method sets the value of the property in an object of the type `T` using data from a `SqlDataReader`.
-
-**Parameters**
-- `SqlDataReader reader`: This parameter is used to read the data that will be set into the entity.
-- `T entity`: This object's property identified by the `ColumnName` will be set to the received value.
-
-**Return Value**  
-This method does not return any value. It sets the property of an entity object of type `T`.
-
-**Usage Example**
-
-```csharp
-var propertyHelper = new PropertyHelper<YourEntity>(propertyInfo); // Assume propertyInfo is an instance of PropertyInfo.
-SqlDataReader sqlDataReader = command.ExecuteReader();
-propertyHelper.SetEntity(sqlDataReader, new YourEntity());
-```
-
-
-## Class: `RepositoryBuilderExtensions`
-
-This static class provides extension methods for several interfaces to add and configure the MsSql service.
-
-### Method: `WithMsSql<T, TKey>`
-
-This is an extension method available for classes implementing the `IRepositoryBuilder<T, TKey>` interface. It configures an MsSql service for the repository.
-
-**Parameters**
-- `IRepositoryBuilder<T, TKey> builder`: The repository builder to be extended.
-- `Action<IMsSqlRepositoryBuilder<T, TKey>> sqlBuilder`: An action to further configure the MsSql repository.
-- `string? name`: Optional name for the factory.
-- `ServiceLifetime lifetime`: Optional parameter specifying the service's lifetime.
-
-**Return Value**  
-This method returns an instance of `IRepositoryBuilder<T, TKey>`.
-
-**Usage Example**
-
-```csharp
-IRepositoryBuilder<YourEntity, int> builder;
-builder.WithMsSql<YourEntity, int>(sqlBuilderAction, "MyFactory");
-```
-
-The same concept applies for `WithMsSql<T, TKey>` method overload on `ICommandBuilder<T, TKey>` and `IQueryBuilder<T, TKey> interface. These methods set up MsSql service for command pattern and query pattern respectively.
+    app.UseApiFromRepositoryFramework()
+        .WithNoAuthorization();

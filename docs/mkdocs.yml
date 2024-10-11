@@ -7,27 +7,11 @@ theme:
   user_color_mode_toggle: true
 nav:
   - Home: index.md
+  - Concepts: 
+    - Repository: repository.md
   - Core:
-    - Rystem:
-      - System.ProgrammingLanguage: Rystem\System.ProgrammingLanguage.md
-      - System: Rystem\System.md
-      - System.Collection.Generics: Rystem\System.Collection.Generics.md
-      - System.Collections: Rystem\System.Collections.md
-      - System.Collections.Concurrent: Rystem\System.Collections.Concurrent.md
-      - System.IO: Rystem\System.IO.md
-      - System.Linq: Rystem\System.Linq.md
-      - System.Linq.Expressions: Rystem\System.Linq.Expressions.md
-      - System.Reflection: Rystem\System.Reflection.md
-      - Rystem.Reflection: Rystem\Rystem.Reflection.md
-      - System.Security.Cryptography: Rystem\System.Security.Cryptography.md
-      - System.Text: Rystem\System.Text.md
-      - System.Text.Csv: Rystem\System.Text.Csv.md
-      - System.Text.Json: Rystem\System.Text.Json.md
-      - System.Text.Minimization: Rystem\System.Text.Minimization.md
-      - System.Threading.Tasks: Rystem\System.Threading.Tasks.md
-    - Rystem.DependencyInjection:
-      - Microsoft.Extensions.DependencyInjection: Rystem.DependencyInjection\Microsoft.Extensions.DependencyInjection.md
-      - System.Population.Random: Rystem.DependencyInjection\System.Population.Random.md
+    - Rystem: Rystem.md
+    - Rystem.DependencyInjection: Rystem.DependencyInjection.md
     - Rystem.DependencyInjection.Web: Rystem.DependencyInjection.Web.md
     - Rystem.Concurrency: Rystem.Concurrency.md
     - Rystem.BackgroundJob: Rystem.BackgroundJob.md
@@ -51,10 +35,7 @@ nav:
     - Rystem.Content.Infrastructure.InMemory: Rystem.Content.Infrastructure.InMemory.md
     - Rystem.Content.Infrastructure.M365.Sharepoint: Rystem.Content.Infrastructure.M365.Sharepoint.md
   - Repository Framework:
-    - Rystem.RepositoryFramework.Abstractions:
-      - RepositoryFramework: Rystem.RepositoryFramework.Abstractions\RepositoryFramework.md
-      - System.Linq: Rystem.RepositoryFramework.Abstractions\System.Linq.md
-      - Microsoft.Extensions.DependencyInjection: Rystem.RepositoryFramework.Abstractions\Microsoft.Extensions.DependencyInjection.md
+    - Rystem.RepositoryFramework.Abstractions: Rystem.RepositoryFramework.Abstractions.md
     - Rystem.RepositoryFramework.Api.Client: Rystem.RepositoryFramework.Api.Client.md
     - Rystem.RepositoryFramework.Api.Server: Rystem.RepositoryFramework.Api.Server.md
     - Rystem.RepositoryFramework.Cache: Rystem.RepositoryFramework.Cache.md
