@@ -1,0 +1,7 @@
+:root {
+    --bs-primary-rgb: #55a3e2;
+}
+.navbar.bg-primary {
+    background-image: unset !important;
+    background-color: var(--bs-primary-rgb) !important;
+}
