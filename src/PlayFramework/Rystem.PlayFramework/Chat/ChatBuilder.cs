@@ -1,6 +1,9 @@
 ﻿using System.ClientModel;
 using Azure.AI.OpenAI;
+using Azure.Core;
+using Azure.Identity;
 using Microsoft.Extensions.DependencyInjection;
+using OpenAI;
 
 namespace Rystem.PlayFramework
 {
@@ -16,16 +19,25 @@ namespace Rystem.PlayFramework
         {
             var chatBuilderSettings = new ChatBuilderSettings();
             settings(chatBuilderSettings);
+            if (chatBuilderSettings.Uri == null)
+                throw new ArgumentNullException(nameof(chatBuilderSettings.Uri));
+            AzureOpenAIClient? openAiClient;
+            if (chatBuilderSettings.UseSystemManagedIdentity)
+                openAiClient = new AzureOpenAIClient(new Uri(chatBuilderSettings.Uri!), new ManagedIdentityCredential());
+            else if (chatBuilderSettings.ManagedIdentityId != null)
+                openAiClient = new AzureOpenAIClient(new Uri(chatBuilderSettings.Uri!), new ManagedIdentityCredential(chatBuilderSettings.ManagedIdentityId!));
+            else if (chatBuilderSettings.ApiKey != null)
+                openAiClient = new AzureOpenAIClient(new Uri(chatBuilderSettings.Uri!), new ApiKeyCredential(chatBuilderSettings.ApiKey!));
+            else
+                throw new ArgumentNullException($"{nameof(chatBuilderSettings.ApiKey)} or {nameof(chatBuilderSettings.ManagedIdentityId)} or {nameof(chatBuilderSettings.UseSystemManagedIdentity)} needs to be present.");
             _services.AddFactory<IChatClient>(
-                ((serviceProvider, name) =>
+                (serviceProvider, name) =>
                 {
-                    var openAiClient = new AzureOpenAIClient(new Uri(chatBuilderSettings.Uri), new ApiKeyCredential(chatBuilderSettings.ApiKey));
                     var chatClient = openAiClient.GetChatClient(chatBuilderSettings.Model);
                     var thisChatClient = new ChatClient(chatClient, serviceProvider);
                     chatBuilderSettings.ChatClientBuilder?.Invoke(thisChatClient);
                     return thisChatClient;
-                }
-            ), configurationName);
+                }, configurationName);
             return this;
         }
     }

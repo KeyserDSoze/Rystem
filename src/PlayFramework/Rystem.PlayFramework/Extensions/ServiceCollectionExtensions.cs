@@ -18,5 +18,13 @@ namespace Microsoft.Extensions.DependencyInjection
             builder(actorBuilder);
             return services;
         }
+        public static IServiceCollection AddChat(
+            this IServiceCollection services,
+            Action<IChatBuilder> builder)
+        {
+            var chatBuilder = new ChatBuilder(services);
+            builder(chatBuilder);
+            return services;
+        }
     }
 }
