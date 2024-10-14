@@ -1,4 +1,4 @@
-﻿using Rystem.OpenAi.Actors;
+﻿using Rystem.PlayFramework;
 
 namespace Microsoft.Extensions.DependencyInjection
 {

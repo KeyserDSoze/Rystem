@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Rystem.OpenAi.Actors
+namespace Rystem.PlayFramework
 {
     internal sealed class ActorBuilder : IActorBuilder
     {

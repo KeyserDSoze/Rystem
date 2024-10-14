@@ -1,4 +1,4 @@
-﻿namespace Rystem.OpenAi.Actors
+﻿namespace Rystem.PlayFramework
 {
     public interface ISceneBuilder
     {
@@ -8,5 +8,6 @@
         ISceneBuilder WithHttpClient(string factoryName);
         ISceneBuilder WithApi(Action<IScenePathBuilder> builder);
         ISceneBuilder WithActors(Action<IActorBuilder> builder);
+        ISceneBuilder WithService<T>(Action<ISceneServiceBuilder<T>>? builder = null) where T : class;
     }
 }

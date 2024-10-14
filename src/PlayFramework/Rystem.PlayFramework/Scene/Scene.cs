@@ -1,4 +1,4 @@
-﻿namespace Rystem.OpenAi.Actors
+﻿namespace Rystem.PlayFramework
 {
     internal sealed class Scene : IScene
     {

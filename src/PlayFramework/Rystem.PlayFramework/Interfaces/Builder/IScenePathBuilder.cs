@@ -1,6 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 
-namespace Rystem.OpenAi.Actors
+namespace Rystem.PlayFramework
 {
     public interface IScenePathBuilder
     {

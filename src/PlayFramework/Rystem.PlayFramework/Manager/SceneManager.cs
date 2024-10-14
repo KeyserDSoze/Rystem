@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Rystem.PlayFramework;
 
-namespace Rystem.OpenAi.Actors
+namespace Rystem.PlayFramework
 {
     internal sealed class SceneManager : ISceneManager
     {
@@ -59,7 +59,7 @@ namespace Rystem.OpenAi.Actors
                 };
             }
         }
-        private async IAsyncEnumerable<AiSceneResponse> GetResponseFromSceneAsync(IScene scene, string message, CancellationToken cancellationToken = default)
+        private async IAsyncEnumerable<AiSceneResponse> GetResponseFromSceneAsync(IScene scene, string message, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             var openAi = _openAiFactory.Create(scene.OpenAiFactoryName)!;
             var request = openAi.AddSystemMessage($"Oggi è {DateTime.UtcNow}.");
@@ -90,7 +90,15 @@ namespace Rystem.OpenAi.Actors
                     using var streamReader = new StreamReader(toolCall.Entity.ToStream());
                     var json = await streamReader.ReadToEndAsync();
                     var functionName = toolCall.FunctionName;
-                    var responseAsJson = await ExecuteHttpClientAsync(clientName, functionName, json);
+                    var responseAsJson = string.Empty;
+                    if (ScenesBuilderHelper.HttpCalls.ContainsKey(functionName))
+                    {
+                        responseAsJson = await ExecuteHttpClientAsync(clientName, functionName, json);
+                    }
+                    else if (ScenesBuilderHelper.ServiceCalls.ContainsKey(functionName))
+                    {
+                        responseAsJson = await ExecuteServiceAsync(functionName, json);
+                    }
                     yield return new AiSceneResponse
                     {
                         Name = sceneName,
@@ -116,13 +124,25 @@ namespace Rystem.OpenAi.Actors
                     Message = chatResponse.FullText
                 };
         }
+        private async Task<string?> ExecuteServiceAsync(string functionName, string argumentAsJson)
+        {
+            var json = ParseJson(argumentAsJson);
+            var currentActions = ScenesBuilderHelper.ServiceActions[functionName];
+            var serviceBringer = new ServiceBringer() { Parameters = [] };
+            foreach (var input in currentActions)
+            {
+                await input.Value(json, serviceBringer);
+            }
+            var response = await ScenesBuilderHelper.ServiceCalls[functionName](_serviceProvider, serviceBringer);
+            return response.ToJson();
+        }
         private async Task<string?> ExecuteHttpClientAsync(string? clientName, string functionName, string argumentAsJson)
         {
             var uri = functionName.Replace("_", "/");
             var json = ParseJson(argumentAsJson);
             var httpBringer = new HttpBringer();
-            await ScenesBuilderHelper.Calls[functionName](httpBringer);
-            var currentActions = ScenesBuilderHelper.Actions[functionName];
+            await ScenesBuilderHelper.HttpCalls[functionName](httpBringer);
+            var currentActions = ScenesBuilderHelper.HttpActions[functionName];
             foreach (var actions in currentActions)
             {
                 await actions.Value(json, httpBringer);
@@ -149,19 +169,16 @@ namespace Rystem.OpenAi.Actors
         private static Dictionary<string, string> ParseJson(string json)
         {
             var result = new Dictionary<string, string>();
-
-            using (JsonDocument document = JsonDocument.Parse(json))
+            using (var document = JsonDocument.Parse(json))
             {
                 foreach (var element in document.RootElement.EnumerateObject())
                 {
                     if (element.Value.ValueKind == JsonValueKind.Object || element.Value.ValueKind == JsonValueKind.Array)
                     {
-                        // Use GetRawText() to keep the JSON structure as a string
                         result.Add(element.Name, element.Value.GetRawText());
                     }
                     else
                     {
-                        // Convert simple values directly to string
                         result.Add(element.Name, element.Value.ToString());
                     }
                 }

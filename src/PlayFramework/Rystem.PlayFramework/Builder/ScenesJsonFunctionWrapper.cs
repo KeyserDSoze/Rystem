@@ -1,7 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 using Rystem.PlayFramework;
 
-namespace Rystem.OpenAi.Actors
+namespace Rystem.PlayFramework
 {
     internal sealed class ScenesJsonFunctionWrapper
     {

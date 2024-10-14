@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace Rystem.OpenAi.Actors
+namespace Rystem.PlayFramework
 {
     internal sealed class ScenesBuilder : IScenesBuilder
     {

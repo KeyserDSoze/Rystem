@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Rystem.OpenAi.Actors;
+using Rystem.PlayFramework;
 
 namespace Microsoft.AspNetCore.Builder
 {
