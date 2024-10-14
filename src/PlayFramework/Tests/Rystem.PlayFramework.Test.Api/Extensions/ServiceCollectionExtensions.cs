@@ -76,7 +76,7 @@ namespace Rystem.PlayFramework.Test.Api
         public static IApplicationBuilder UseMiddlewares(this IApplicationBuilder app)
         {
             app.UseSwagger();
-            app.UseSwaggerUI();
+            //app.UseSwaggerUI();
             app.UseHttpsRedirection();
             app.UseRouting();
             app.UseAuthorization();

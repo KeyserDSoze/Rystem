@@ -9,7 +9,7 @@ namespace Rystem.PlayFramework
     public sealed class ActorsOpenAiFilterCaller : IMiddleware
     {
         private bool firstRequest = true;
-        public Task InvokeAsync(HttpContext context, RequestDelegate next)
+        public async Task InvokeAsync(HttpContext context, RequestDelegate next)
         {
             if (firstRequest)
             {
@@ -21,9 +21,10 @@ namespace Rystem.PlayFramework
                 var clientFactory = context.RequestServices.GetRequiredService<IHttpClientFactory>();
                 var httpClient = clientFactory.CreateClient();
                 httpClient.BaseAddress = new Uri(baseUri);
-                _ = httpClient.GetAsync("/swagger/v1/swagger.json");
+                var response = await httpClient.GetAsync("/swagger/v1/swagger.json");
+                response.EnsureSuccessStatusCode();
             }
-            return next(context);
+            await next.Invoke(context);
         }
     }
     public class ActorsOpenAiFilter : IOperationFilter

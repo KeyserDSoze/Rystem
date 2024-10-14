@@ -12,6 +12,7 @@
         public async ValueTask TestAsync(string message)
         {
             var client = _httpClientFactory.CreateClient("client");
+            var swagger = await client.GetAsync("/swagger/v1/swagger.json");
             var response = await client.GetAsync($"api/ai/message?m={message}");
             response.EnsureSuccessStatusCode();
             var content = await response.Content.ReadAsStringAsync();
