@@ -14,13 +14,14 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 setup.OperationFilter<ActorsOpenAiFilter>();
             });
+            services.AddSingleton<ActorsOpenAiFilterCaller>();
             var actorBuilder = new ScenesBuilder(services);
             builder(actorBuilder);
             return services;
         }
         public static IServiceCollection AddChat(
-            this IServiceCollection services,
-            Action<IChatBuilder> builder)
+           this IServiceCollection services,
+           Action<IChatBuilder> builder)
         {
             var chatBuilder = new ChatBuilder(services);
             builder(chatBuilder);

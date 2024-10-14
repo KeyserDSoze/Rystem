@@ -7,6 +7,6 @@
         public static Dictionary<string, Dictionary<string, Func<Dictionary<string, string>, HttpBringer, ValueTask>>> HttpActions { get; } = [];
         public static Dictionary<string, Dictionary<string, Func<Dictionary<string, string>, ServiceBringer, ValueTask>>> ServiceActions { get; } = [];
         public static Dictionary<string, Func<HttpBringer, ValueTask>> HttpCalls { get; } = [];
-        public static Dictionary<string, Func<IServiceProvider, ServiceBringer, Task<object>>> ServiceCalls { get; } = [];
+        public static Dictionary<string, Func<IServiceProvider, ServiceBringer, Task<object?>>> ServiceCalls { get; } = [];
     }
 }

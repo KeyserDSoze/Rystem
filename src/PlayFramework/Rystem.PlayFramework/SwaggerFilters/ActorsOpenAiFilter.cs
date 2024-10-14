@@ -1,12 +1,31 @@
-﻿using System.ComponentModel;
-using System.Reflection;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi.Models;
-using Rystem.PlayFramework;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace Rystem.PlayFramework
 {
+    public sealed class ActorsOpenAiFilterCaller : IMiddleware
+    {
+        private bool firstRequest = true;
+        public Task InvokeAsync(HttpContext context, RequestDelegate next)
+        {
+            if (firstRequest)
+            {
+                firstRequest = false;
+                var request = context.Request;
+                var scheme = request.Scheme;
+                var host = request.Host.Value;
+                var baseUri = $"{scheme}://{host}";
+                var clientFactory = context.RequestServices.GetRequiredService<IHttpClientFactory>();
+                var httpClient = clientFactory.CreateClient();
+                httpClient.BaseAddress = new Uri(baseUri);
+                _ = httpClient.GetAsync("/swagger/v1/swagger.json");
+            }
+            return next(context);
+        }
+    }
     public class ActorsOpenAiFilter : IOperationFilter
     {
         public void Apply(OpenApiOperation operation, OperationFilterContext context)

@@ -13,7 +13,6 @@ namespace Rystem.PlayFramework.Test.Api
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "Weather", Version = "v1" });
-
                 var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
                 var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
                 c.IncludeXmlComments(xmlPath);
@@ -22,9 +21,9 @@ namespace Rystem.PlayFramework.Test.Api
             {
                 x.AddConfiguration("openai", builder =>
                 {
-                    builder.ApiKey = configuration["OpenAi:Key"]!;
-                    builder.Uri = configuration["OpenAi:Uri"]!;
-                    builder.Model = configuration["OpenAi:Model"]!;
+                    builder.ApiKey = configuration["OpenAi:ApiKey"]!;
+                    builder.Uri = configuration["OpenAi:Endpoint"]!;
+                    builder.Model = configuration["OpenAi:ModelName"]!;
                     builder.ChatClientBuilder = (chatClient) =>
                     {
                         chatClient.AddPriceModel(new ChatPriceSettings
@@ -51,7 +50,7 @@ namespace Rystem.PlayFramework.Test.Api
                         .WithName("Weather")
                         .WithDescription("Get information about the weather")
                         .WithHttpClient("apiDomain")
-                        .WithOpenAi(null)
+                        .WithOpenAi("openai")
                         .WithApi(pathBuilder =>
                         {
                             pathBuilder
@@ -79,6 +78,7 @@ namespace Rystem.PlayFramework.Test.Api
             app.UseSwagger();
             app.UseSwaggerUI();
             app.UseHttpsRedirection();
+            app.UseRouting();
             app.UseAuthorization();
             app.UseEndpoints(x => x.MapControllers());
             app.UseAiEndpoints();

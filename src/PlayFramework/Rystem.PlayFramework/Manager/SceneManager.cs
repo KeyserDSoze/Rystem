@@ -1,10 +1,8 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
-using Azure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using Rystem.PlayFramework;
 
 namespace Rystem.PlayFramework
 {
@@ -153,7 +151,7 @@ namespace Rystem.PlayFramework
                 Content = httpBringer.BodyAsJson != null ? new StringContent(httpBringer.BodyAsJson, Encoding.UTF8, "application/json") : null,
                 Headers = { { "Accept", "application/json" } },
                 RequestUri = new Uri($"{httpClient.BaseAddress}{uri}{(httpBringer.Query != null ? (uri.Contains('?') ? $"&{httpBringer.Query}" : $"?{httpBringer.Query}") : string.Empty)}"),
-                Method = new HttpMethod(httpBringer.Method)
+                Method = new HttpMethod(httpBringer.Method!)
             };
             var authorization = _httpContext?.Request?.Headers?.Authorization.ToString();
             if (authorization != null)
