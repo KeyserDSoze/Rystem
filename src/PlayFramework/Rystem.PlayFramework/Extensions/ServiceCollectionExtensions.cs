@@ -14,7 +14,6 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 setup.OperationFilter<ActorsOpenAiFilter>();
             });
-            services.AddSingleton<ActorsOpenAiFilterCaller>();
             var actorBuilder = new ScenesBuilder(services);
             builder(actorBuilder);
             return services;

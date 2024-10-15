@@ -1,41 +1,17 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace Rystem.PlayFramework
 {
-    //todo: change in next upgrade with new openapi integration
-    public sealed class ActorsOpenAiFilterCaller : IMiddleware
-    {
-        private bool firstRequest = true;
-        public async Task InvokeAsync(HttpContext context, RequestDelegate next)
-        {
-            if (firstRequest)
-            {
-                firstRequest = false;
-                var request = context.Request;
-                var scheme = request.Scheme;
-                var host = request.Host.Value;
-                var baseUri = $"{scheme}://{host}";
-                var clientFactory = context.RequestServices.GetRequiredService<IHttpClientFactory>();
-                var httpClient = clientFactory.CreateClient();
-                httpClient.BaseAddress = new Uri(baseUri);
-                var response = await httpClient.GetAsync("/swagger/v1/swagger.json");
-                response.EnsureSuccessStatusCode();
-            }
-            await next.Invoke(context);
-        }
-    }
     public class ActorsOpenAiFilter : IOperationFilter
     {
-        private static bool firstRequest = true;
+        private static bool s_firstRequest = true;
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
-            if (firstRequest)
+            if (s_firstRequest)
             {
-                firstRequest = false;
+                s_firstRequest = false;
                 if (operation.Parameters.Count > 0 || context.ApiDescription.ParameterDescriptions.Count > 0)
                 {
                     var relativePath = context.ApiDescription.RelativePath;

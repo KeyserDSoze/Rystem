@@ -93,8 +93,8 @@ namespace Rystem.PlayFramework.Test.Api
             app.UseHttpsRedirection();
             app.UseRouting();
             app.UseAuthorization();
-            app.UseEndpoints(x => x.MapControllers());
             app.UseAiEndpoints();
+            app.UseEndpoints(x => x.MapControllers());
             return app;
         }
     }

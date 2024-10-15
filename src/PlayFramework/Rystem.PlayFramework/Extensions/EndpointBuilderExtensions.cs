@@ -18,7 +18,6 @@ namespace Microsoft.AspNetCore.Builder
         }
         private static IApplicationBuilder UseAiEndpoints(this IApplicationBuilder app, bool authorization, params string[] policies)
         {
-            app.UseMiddleware<ActorsOpenAiFilterCaller>();
             app.UseEndpoints(x =>
             {
                 var mapped = x.MapGet("api/ai/message", ([FromQuery(Name = "m")] string message,
