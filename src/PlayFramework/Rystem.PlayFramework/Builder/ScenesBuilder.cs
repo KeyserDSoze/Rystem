@@ -37,10 +37,11 @@ namespace Rystem.PlayFramework
             {
                 x.AddTool(sceneBuilder.Scene.Name, sceneBuilder.Scene.Description, new object());
             });
-            ScenesBuilderHelper.FunctionsForEachScene.Add(sceneBuilder.Scene.Name, new ScenesJsonFunctionWrapper()
-            {
-                AvailableApiPath = sceneBuilder.RegexForApiMapping ?? new(),
-            });
+            if (!ScenesBuilderHelper.FunctionsForEachScene.ContainsKey(sceneBuilder.Scene.Name))
+                ScenesBuilderHelper.FunctionsForEachScene.Add(sceneBuilder.Scene.Name, new ScenesJsonFunctionWrapper()
+                {
+                    AvailableApiPath = sceneBuilder.RegexForApiMapping ?? [],
+                });
             return this;
         }
     }

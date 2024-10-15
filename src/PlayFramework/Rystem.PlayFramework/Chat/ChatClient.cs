@@ -44,8 +44,30 @@ namespace Rystem.PlayFramework
         private IChatClient AddTool(Tool tool, bool strict)
         {
             _chatCompletionOptions.ToolChoice = ChatToolChoice.CreateAutoChoice();
-            _chatCompletionOptions.Tools.Add(ChatTool.CreateFunctionTool(tool.Name, tool.Description, BinaryData.FromString(tool.Parameters.ToJson()), strict));
+            var qq = tool.Parameters.Properties.ToJson();
+            var tt = ChatTool.CreateFunctionTool(tool.Name, tool.Description, BinaryData.FromString(tool.Parameters.ToJson()), strict);
+            var tya = tt.FunctionParameters.ToString();
+            var sola = BinaryData.FromString("""
+                 {
+                    "type": "object",
+                    "properties": {
+                        "username": {
+                            "type": "string",
+                            "description": "username"
+                        }
+                    },
+                    "required": [ "username" ],
+                    "additionalProperties": false
+                }
+                """);
+            var entity = new APD() { username = "username" };
+            var dsjk = ChatTool.CreateFunctionTool(tool.Name, tool.Description, sola, true);
+            _chatCompletionOptions.Tools.Add(tt);
             return this;
+        }
+        private sealed class APD
+        {
+            public string username { get; set; }
         }
         public IChatClient AddStrictTool<T>(string name, string description)
            => AddTool<T>(name, description, true);

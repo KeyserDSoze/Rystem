@@ -6,5 +6,7 @@ namespace Rystem.PlayFramework
     {
         [JsonPropertyName("items")]
         public ToolProperty? Items { get; set; }
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
     }
 }

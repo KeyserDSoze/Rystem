@@ -4,16 +4,18 @@ namespace Rystem.PlayFramework
 {
     public sealed class ToolNonPrimitiveProperty : ToolProperty
     {
-        private const string DefaultTypeName = "object";
+        internal const string DefaultTypeName = "object";
         public ToolNonPrimitiveProperty()
         {
             Type = DefaultTypeName;
-            Properties = new Dictionary<string, ToolProperty>();
+            Properties = [];
         }
         [JsonPropertyName("properties")]
         public Dictionary<string, ToolProperty> Properties { get; }
         [JsonPropertyName("required")]
         public List<string>? Required { get; private set; }
+        [JsonPropertyName("additionalProperties")]
+        public bool AdditionalProperties { get; set; }
         public ToolNonPrimitiveProperty AddRequired(params string[] names)
         {
             Required ??= new List<string>();

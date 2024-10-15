@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using System.Text.RegularExpressions;
 using Microsoft.OpenApi.Models;
+using Rystem.PlayFramework.Test.Api.Services;
 
 namespace Rystem.PlayFramework.Test.Api
 {
@@ -38,6 +39,7 @@ namespace Rystem.PlayFramework.Test.Api
             {
                 x.BaseAddress = new Uri(configuration["Api:Uri"]!);
             });
+            services.AddSingleton<IdentityManager>();
             services.AddPlayFramework(scenes =>
             {
                 scenes.Configure(settings =>
@@ -66,6 +68,17 @@ namespace Rystem.PlayFramework.Test.Api
                                     .AddActor("Non chiamare alcun meteo prima di assicurarti che tutto sia stato popolato correttamente.")
                                     .AddActor<ActorWithDbRequest>();
                             });
+                })
+                .AddScene(scene =>
+                {
+                    scene
+                    .WithName("Identity")
+                    .WithDescription("Get information about the user")
+                    .WithOpenAi("openai")
+                    .WithService<IdentityManager>(builder =>
+                    {
+                        builder.WithMethod(x => x.GetNameAsync);
+                    });
                 });
             });
             return services;

@@ -57,46 +57,46 @@ namespace Rystem.PlayFramework
         public ISceneBuilder WithService<T>(Action<ISceneServiceBuilder<T>>? builder = null)
             where T : class
         {
-            var delegations = new List<Delegate>();
+            var methods = new List<MethodInfo>();
             var currentType = typeof(T);
+
             if (builder == null)
             {
-                currentType.GetMethods().ToList().ForEach(x =>
-                {
-                    delegations.Add(x.CreateDelegate(currentType));
-                });
+                methods.AddRange(currentType.GetMethods(BindingFlags.Public | BindingFlags.Instance));
             }
             else
             {
                 var sceneServiceBuilder = new SceneServiceBuilder<T>();
                 builder(sceneServiceBuilder);
-                delegations.AddRange(sceneServiceBuilder.Delegates);
+                methods.AddRange(sceneServiceBuilder.Methods);
             }
-            foreach (var delegation in delegations)
+            foreach (var method in methods)
             {
-                var name = $"{currentType.Name}.{delegation.Method.Name}";
-                var description = delegation.Method.GetCustomAttributes(true).FirstOrDefault(x => x.GetType() == typeof(DescriptionAttribute)) as DescriptionAttribute;
-                var jsonFunctionObject = new ToolNonPrimitiveProperty()
-                {
-                    Type = "object",
-                    Description = description?.Description ?? name,
-                };
+                var name = $"{currentType.Name}_{method.Name}";
+                var description = method.GetCustomAttributes(true).FirstOrDefault(x => x.GetType() == typeof(DescriptionAttribute)) as DescriptionAttribute;
+                var jsonFunctionObject = new ToolNonPrimitiveProperty();
                 var jsonFunction = new Tool
                 {
                     Name = name,
                     Description = description?.Description ?? name,
                     Parameters = jsonFunctionObject
                 };
+                if (!ScenesBuilderHelper.FunctionsForEachScene.ContainsKey(Scene.Name))
+                    ScenesBuilderHelper.FunctionsForEachScene.Add(Scene.Name, new ScenesJsonFunctionWrapper() { AvailableApiPath = [] });
+                ScenesBuilderHelper.FunctionsForEachScene[Scene.Name].Functions.Add(x =>
+                {
+                    x.AddTool(jsonFunction);
+                });
                 ScenesBuilderHelper.ServiceActions.Add(name, new());
-                var withoutReturn = delegation.Method.ReturnType == typeof(void) || delegation.Method.ReturnType == typeof(Task) || delegation.Method.ReturnType == typeof(ValueTask);
-                var isGenericAsync = delegation.Method.ReturnType.IsGenericType &&
-                    (delegation.Method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)
-                    || delegation.Method.ReturnType.GetGenericTypeDefinition() == typeof(ValueTask<>));
+                var withoutReturn = method.ReturnType == typeof(void) || method.ReturnType == typeof(Task) || method.ReturnType == typeof(ValueTask);
+                var isGenericAsync = method.ReturnType.IsGenericType &&
+                    (method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)
+                    || method.ReturnType.GetGenericTypeDefinition() == typeof(ValueTask<>));
 
                 ScenesBuilderHelper.ServiceCalls.Add(name, async (serviceProvider, bringer) =>
                 {
                     var service = serviceProvider.GetRequiredService<T>();
-                    var result = delegation.Method.Invoke(service, bringer.Parameters.ToArray());
+                    var result = method.Invoke(service, [.. bringer.Parameters]);
                     if (result is Task task)
                         await task;
                     if (result is ValueTask valueTask)
@@ -114,10 +114,14 @@ namespace Rystem.PlayFramework
                     else
                         return default!;
                 });
-                foreach (var parameter in delegation.Method.GetParameters())
+                foreach (var parameter in method.GetParameters())
                 {
                     var parameterName = parameter.Name ?? parameter.ParameterType.Name;
                     ToolPropertyHelper.Add(parameterName, parameter.ParameterType, jsonFunctionObject);
+                    if (!parameter.IsNullable())
+                        jsonFunctionObject.AddRequired(parameterName);
+                    else
+                        jsonFunctionObject.AdditionalProperties = true;
                     ScenesBuilderHelper.ServiceActions[name][parameterName] = (value, bringer) =>
                     {
                         bringer.Parameters.Add(value[parameterName]);
@@ -125,16 +129,6 @@ namespace Rystem.PlayFramework
                     };
                 }
             }
-            return this;
-        }
-    }
-    internal sealed class SceneServiceBuilder<T> : ISceneServiceBuilder<T>
-        where T : class
-    {
-        public List<Delegate> Delegates { get; } = new();
-        public ISceneServiceBuilder<T> WithMethod(Func<T, Delegate> method)
-        {
-            Delegates.Add(method);
             return this;
         }
     }

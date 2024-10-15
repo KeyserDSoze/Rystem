@@ -12,7 +12,10 @@
             MethodBodyReader mr = new(methodInfo);
             return mr.Instructions;
         }
+        [Obsolete("Use ToSignature method")]
         public static string GetSignature(this MethodInfo methodInfo)
             => $"{methodInfo.Name}_{methodInfo.ReturnParameter?.ParameterType?.FullName}-{string.Join('-', methodInfo.GetParameters().Select(x => x.ParameterType.FullName))}";
+        public static string ToSignature(this MethodInfo methodInfo)
+            => $"{methodInfo.ReturnParameter?.ToString() ?? "void"} {methodInfo.Name}({string.Join(", ", methodInfo.GetParameters().Select(x => x.ParameterType.FullName))})";
     }
 }

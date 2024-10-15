@@ -29,66 +29,67 @@ namespace Rystem.PlayFramework
     }
     public class ActorsOpenAiFilter : IOperationFilter
     {
+        private static bool firstRequest = true;
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
-            if (operation.Parameters.Count > 0 || context.ApiDescription.ParameterDescriptions.Count > 0)
+            if (firstRequest)
             {
-                var relativePath = context.ApiDescription.RelativePath;
-                if (relativePath == "api/ai/message")
-                    return;
-                var name = relativePath.Replace("/", "_");
-                var jsonFunctionObject = new ToolNonPrimitiveProperty()
+                firstRequest = false;
+                if (operation.Parameters.Count > 0 || context.ApiDescription.ParameterDescriptions.Count > 0)
                 {
-                    Type = "object",
-                    Description = operation.Description ?? relativePath,
-                };
-                var jsonFunction = new Tool
-                {
-                    Name = name,
-                    Description = operation.Description ?? name,
-                    Parameters = jsonFunctionObject
-                };
-                foreach (var scene in ScenesBuilderHelper.FunctionsForEachScene)
-                {
-                    foreach (var path in scene.Value.AvailableApiPath)
+                    var relativePath = context.ApiDescription.RelativePath;
+                    if (relativePath == "api/ai/message")
+                        return;
+                    var name = relativePath.Replace("/", "_");
+                    var jsonFunctionObject = new ToolNonPrimitiveProperty();
+                    var jsonFunction = new Tool
                     {
-                        if (path.IsMatch(relativePath))
+                        Name = name,
+                        Description = operation.Description ?? name,
+                        Parameters = jsonFunctionObject
+                    };
+                    foreach (var scene in ScenesBuilderHelper.FunctionsForEachScene)
+                    {
+                        foreach (var path in scene.Value.AvailableApiPath)
                         {
-                            scene.Value.Functions.Add(x =>
+                            if (path.IsMatch(relativePath))
                             {
-                                x.AddTool(name, operation.Description ?? name, jsonFunction);
-                            });
-                            break;
+                                scene.Value.Functions.Add(x =>
+                                {
+                                    x.AddTool(jsonFunction);
+                                });
+                                break;
+                            }
                         }
                     }
-                }
-                ScenesBuilderHelper.HttpActions.Add(name, new());
-                ScenesBuilderHelper.HttpCalls.Add(name, (httpBringer) =>
-                {
-                    httpBringer.Method = context.ApiDescription.HttpMethod!;
-                    return ValueTask.CompletedTask;
-                });
-                foreach (var parameter in context.ApiDescription.ParameterDescriptions)
-                {
-                    var parameterName = parameter.Name ?? parameter.Type.Name;
-                    ToolPropertyHelper.Add(parameterName, parameter.Type, jsonFunctionObject);
-                    if (parameter.Source == BindingSource.Query)
+                    ScenesBuilderHelper.HttpActions.Add(name, new());
+                    ScenesBuilderHelper.HttpCalls.Add(name, (httpBringer) =>
                     {
-                        ScenesBuilderHelper.HttpActions[name][parameterName] = (value, httpBringer) =>
-                        {
-                            if (httpBringer.Query is null)
-                                httpBringer.Query = new();
-                            httpBringer.Query.Append($"{parameterName}={value[parameterName]}&");
-                            return ValueTask.CompletedTask;
-                        };
-                    }
-                    else if (parameter.Source == BindingSource.Body)
+                        httpBringer.Method = context.ApiDescription.HttpMethod!;
+                        return ValueTask.CompletedTask;
+                    });
+                    foreach (var parameter in context.ApiDescription.ParameterDescriptions)
                     {
-                        ScenesBuilderHelper.HttpActions[name][parameterName] = (value, httpBringer) =>
+                        var parameterName = parameter.Name ?? parameter.Type.Name;
+                        ToolPropertyHelper.Add(parameterName, parameter.Type, jsonFunctionObject);
+                        if (parameter.Source == BindingSource.Query)
                         {
-                            httpBringer.BodyAsJson = value[parameterName];
-                            return ValueTask.CompletedTask;
-                        };
+                            ScenesBuilderHelper.HttpActions[name][parameterName] = (value, httpBringer) =>
+                            {
+                                if (httpBringer.Query is null)
+                                    httpBringer.Query = new();
+                                httpBringer.Query.Append($"{parameterName}={value[parameterName]}&");
+                                return ValueTask.CompletedTask;
+                            };
+                        }
+                        else if (parameter.Source == BindingSource.Body)
+                        {
+                            ScenesBuilderHelper.HttpActions[name][parameterName] = (value, httpBringer) =>
+                            {
+                                httpBringer.BodyAsJson = value[parameterName];
+                                return ValueTask.CompletedTask;
+                            };
+                        }
                     }
                 }
             }

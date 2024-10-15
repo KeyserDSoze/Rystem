@@ -10,8 +10,6 @@ namespace Rystem.PlayFramework
     {
         [JsonPropertyName("type")]
         public string Type { get; set; }
-        [JsonPropertyName("description")]
-        public string? Description { get; set; }
         private const string DefaultTypeName = "string";
         public ToolProperty()
         {

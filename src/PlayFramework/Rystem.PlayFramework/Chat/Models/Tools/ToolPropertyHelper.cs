@@ -13,16 +13,12 @@ namespace Rystem.PlayFramework
             {
                 jsonFunction.AddPrimitive(parameterName ?? type.Name, new ToolProperty
                 {
-                    Description = description?.Description ?? parameterName ?? type.Name,
                     Type = type.IsNumeric() ? "number" : "string"
                 });
             }
             else
             {
-                var innerFunction = new ToolNonPrimitiveProperty()
-                {
-                    Description = description?.Description ?? parameterName ?? type.Name,
-                };
+                var innerFunction = new ToolNonPrimitiveProperty();
                 jsonFunction.AddObject(parameterName ?? type.Name, innerFunction);
                 foreach (var innerParameter in type.GetProperties(BindingFlags.Instance | BindingFlags.Public))
                 {

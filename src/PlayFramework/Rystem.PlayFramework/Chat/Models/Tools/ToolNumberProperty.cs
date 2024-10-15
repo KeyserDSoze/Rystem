@@ -19,5 +19,7 @@ namespace Rystem.PlayFramework
         public bool? ExclusiveMinimum { get; set; }
         [JsonPropertyName("exclusiveMaximum")]
         public bool? ExclusiveMaximum { get; set; }
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
     }
 }
