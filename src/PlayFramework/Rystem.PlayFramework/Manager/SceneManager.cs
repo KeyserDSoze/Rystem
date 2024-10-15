@@ -26,7 +26,7 @@ namespace Rystem.PlayFramework
         {
             var openAi = _openAiFactory.Create(_settings?.OpenAi.Name)!;
             var request = openAi.AddSystemMessage($"Oggi è {DateTime.UtcNow}.");
-            foreach (var function in ScenesBuilderHelper.ScenesAsFunctions)
+            foreach (var function in PlayHandler.Instance.ScenesChooser)
             {
                 function.Invoke(request);
             }
@@ -68,7 +68,7 @@ namespace Rystem.PlayFramework
             {
                 actorBuilder.Append($"{await actor.GetMessageAsync()}.\n");
             }
-            foreach (var function in ScenesBuilderHelper.FunctionsForEachScene[scene.Name].Functions)
+            foreach (var function in FunctionsHandler.Instance.FunctionsChooser(scene.Name))
             {
                 function.Invoke(request);
             }
@@ -89,13 +89,14 @@ namespace Rystem.PlayFramework
                     var json = await streamReader.ReadToEndAsync();
                     var functionName = toolCall.FunctionName;
                     var responseAsJson = string.Empty;
-                    if (ScenesBuilderHelper.HttpCalls.ContainsKey(functionName))
+                    var function = FunctionsHandler.Instance[functionName];
+                    if (function.HasHttpRequest)
                     {
-                        responseAsJson = await ExecuteHttpClientAsync(clientName, functionName, json);
+                        responseAsJson = await ExecuteHttpClientAsync(clientName, function.HttpRequest!, json);
                     }
-                    else if (ScenesBuilderHelper.ServiceCalls.ContainsKey(functionName))
+                    else if (function.HasService)
                     {
-                        responseAsJson = await ExecuteServiceAsync(functionName, json);
+                        responseAsJson = await ExecuteServiceAsync(function.Service!, json);
                     }
                     yield return new AiSceneResponse
                     {
@@ -122,26 +123,23 @@ namespace Rystem.PlayFramework
                     Message = chatResponse.FullText
                 };
         }
-        private async Task<string?> ExecuteServiceAsync(string functionName, string argumentAsJson)
+        private async Task<string?> ExecuteServiceAsync(ServiceHandler serviceHandler, string argumentAsJson)
         {
             var json = ParseJson(argumentAsJson);
-            var currentActions = ScenesBuilderHelper.ServiceActions[functionName];
             var serviceBringer = new ServiceBringer() { Parameters = [] };
-            foreach (var input in currentActions)
+            foreach (var input in serviceHandler.Actions)
             {
                 await input.Value(json, serviceBringer);
             }
-            var response = await ScenesBuilderHelper.ServiceCalls[functionName](_serviceProvider, serviceBringer);
+            var response = await serviceHandler.Call(_serviceProvider, serviceBringer);
             return response.ToJson();
         }
-        private async Task<string?> ExecuteHttpClientAsync(string? clientName, string functionName, string argumentAsJson)
+        private async Task<string?> ExecuteHttpClientAsync(string? clientName, HttpHandler httpHandler, string argumentAsJson)
         {
-            var uri = functionName.Replace("_", "/");
             var json = ParseJson(argumentAsJson);
             var httpBringer = new HttpBringer();
-            await ScenesBuilderHelper.HttpCalls[functionName](httpBringer);
-            var currentActions = ScenesBuilderHelper.HttpActions[functionName];
-            foreach (var actions in currentActions)
+            await httpHandler.Call(httpBringer);
+            foreach (var actions in httpHandler.Actions)
             {
                 await actions.Value(json, httpBringer);
             }
@@ -150,7 +148,7 @@ namespace Rystem.PlayFramework
             {
                 Content = httpBringer.BodyAsJson != null ? new StringContent(httpBringer.BodyAsJson, Encoding.UTF8, "application/json") : null,
                 Headers = { { "Accept", "application/json" } },
-                RequestUri = new Uri($"{httpClient.BaseAddress}{uri}{(httpBringer.Query != null ? (uri.Contains('?') ? $"&{httpBringer.Query}" : $"?{httpBringer.Query}") : string.Empty)}"),
+                RequestUri = new Uri($"{httpClient.BaseAddress}{httpHandler.Uri}{(httpBringer.Query != null ? (httpHandler.Uri.Contains('?') ? $"&{httpBringer.Query}" : $"?{httpBringer.Query}") : string.Empty)}"),
                 Method = new HttpMethod(httpBringer.Method!)
             };
             var authorization = _httpContext?.Request?.Headers?.Authorization.ToString();

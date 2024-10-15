@@ -6,6 +6,7 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace Rystem.PlayFramework
 {
+    //todo: change in next upgrade with new openapi integration
     public sealed class ActorsOpenAiFilterCaller : IMiddleware
     {
         private bool firstRequest = true;
@@ -40,55 +41,50 @@ namespace Rystem.PlayFramework
                     var relativePath = context.ApiDescription.RelativePath;
                     if (relativePath == "api/ai/message")
                         return;
-                    var name = relativePath.Replace("/", "_");
+                    var functionName = relativePath.Replace("/", "_");
                     var jsonFunctionObject = new ToolNonPrimitiveProperty();
                     var jsonFunction = new Tool
                     {
-                        Name = name,
-                        Description = operation.Description ?? name,
+                        Name = functionName,
+                        Description = operation.Description ?? functionName,
                         Parameters = jsonFunctionObject
                     };
-                    foreach (var scene in ScenesBuilderHelper.FunctionsForEachScene)
+                    var function = FunctionsHandler.Instance[functionName];
+                    function.Chooser = x => x.AddTool(jsonFunction);
+                    foreach (var scene in PlayHandler.Instance.ChooseRightPath(relativePath))
                     {
-                        foreach (var path in scene.Value.AvailableApiPath)
-                        {
-                            if (path.IsMatch(relativePath))
-                            {
-                                scene.Value.Functions.Add(x =>
-                                {
-                                    x.AddTool(jsonFunction);
-                                });
-                                break;
-                            }
-                        }
+                        PlayHandler.Instance[scene].Functions.Add(functionName);
                     }
-                    ScenesBuilderHelper.HttpActions.Add(name, new());
-                    ScenesBuilderHelper.HttpCalls.Add(name, (httpBringer) =>
+                    function.HttpRequest = new()
                     {
-                        httpBringer.Method = context.ApiDescription.HttpMethod!;
-                        return ValueTask.CompletedTask;
-                    });
+                        Uri = relativePath,
+                        Call = (httpBringer) =>
+                            {
+                                httpBringer.Method = context.ApiDescription.HttpMethod!;
+                                return ValueTask.CompletedTask;
+                            }
+                    };
                     foreach (var parameter in context.ApiDescription.ParameterDescriptions)
                     {
                         var parameterName = parameter.Name ?? parameter.Type.Name;
                         ToolPropertyHelper.Add(parameterName, parameter.Type, jsonFunctionObject);
                         if (parameter.Source == BindingSource.Query)
                         {
-                            ScenesBuilderHelper.HttpActions[name][parameterName] = (value, httpBringer) =>
+                            function.HttpRequest.Actions.Add(parameterName, (value, httpBringer) =>
                             {
                                 if (httpBringer.Query is null)
                                     httpBringer.Query = new();
                                 httpBringer.Query.Append($"{parameterName}={value[parameterName]}&");
                                 return ValueTask.CompletedTask;
-                            };
+                            });
                         }
                         else if (parameter.Source == BindingSource.Body)
                         {
-                            ScenesBuilderHelper.HttpActions[name][parameterName] = (value, httpBringer) =>
+                            function.HttpRequest.Actions.Add(parameterName, (value, httpBringer) =>
                             {
                                 httpBringer.BodyAsJson = value[parameterName];
                                 return ValueTask.CompletedTask;
-                            };
+                            });
                         }
                     }
                 }
