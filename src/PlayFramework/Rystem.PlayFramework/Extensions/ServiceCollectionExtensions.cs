@@ -10,10 +10,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddPopulationService();
             services.AddHttpContextAccessor();
             services.AddTransient<ISceneManager, SceneManager>();
-            services.AddSwaggerGen(setup =>
-            {
-                setup.OperationFilter<ActorsOpenAiFilter>();
-            });
+            services.AddSingleton(new ActorsOpenAiFilter(services));
             var actorBuilder = new ScenesBuilder(services);
             builder(actorBuilder);
             return services;

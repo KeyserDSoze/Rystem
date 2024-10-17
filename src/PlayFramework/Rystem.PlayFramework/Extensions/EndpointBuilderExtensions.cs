@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Rystem.PlayFramework;
 
 namespace Microsoft.AspNetCore.Builder
@@ -6,17 +7,15 @@ namespace Microsoft.AspNetCore.Builder
     public static class EndpointBuilderExtensions
     {
         //todo: migliorare codice per filtro aggiungendo la nuova integrazione openapi
-        public static IApplicationBuilder UseAiEndpoints(this IApplicationBuilder app, params string[] policies)
+        public static Task<IApplicationBuilder> UseAiEndpoints(this IApplicationBuilder app, params string[] policies)
         {
-            app.UseAiEndpoints(false, policies);
-            return app;
+            return app.UseAiEndpoints(false, policies);
         }
-        public static IApplicationBuilder UseAiEndpoints(this IApplicationBuilder app, bool isAuthorized)
+        public static Task<IApplicationBuilder> UseAiEndpoints(this IApplicationBuilder app, bool isAuthorized)
         {
-            app.UseAiEndpoints(isAuthorized, Array.Empty<string>());
-            return app;
+            return app.UseAiEndpoints(isAuthorized, Array.Empty<string>());
         }
-        private static IApplicationBuilder UseAiEndpoints(this IApplicationBuilder app, bool authorization, params string[] policies)
+        private static async Task<IApplicationBuilder> UseAiEndpoints(this IApplicationBuilder app, bool authorization, params string[] policies)
         {
             app.UseEndpoints(x =>
             {
@@ -31,6 +30,8 @@ namespace Microsoft.AspNetCore.Builder
                 else if (authorization)
                     mapped.RequireAuthorization();
             });
+            var actorsOpenAiFilter = app.ApplicationServices.GetRequiredService<ActorsOpenAiFilter>();
+            await actorsOpenAiFilter.MapOpenAiAsync(app.ApplicationServices);
             return app;
         }
     }

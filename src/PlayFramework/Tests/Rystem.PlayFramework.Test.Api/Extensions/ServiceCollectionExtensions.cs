@@ -2,6 +2,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.OpenApi.Models;
 using Rystem.PlayFramework.Test.Api.Services;
+using Scalar.AspNetCore;
 
 namespace Rystem.PlayFramework.Test.Api
 {
@@ -11,13 +12,7 @@ namespace Rystem.PlayFramework.Test.Api
         {
             services.AddControllers();
             services.AddEndpointsApiExplorer();
-            services.AddSwaggerGen(c =>
-            {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Weather", Version = "v1" });
-                var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-                var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-                c.IncludeXmlComments(xmlPath);
-            });
+            services.AddOpenApi();
             services.AddChat(x =>
             {
                 x.AddConfiguration("openai", builder =>
@@ -88,13 +83,16 @@ namespace Rystem.PlayFramework.Test.Api
     {
         public static IApplicationBuilder UseMiddlewares(this IApplicationBuilder app)
         {
-            app.UseSwagger();
-            //app.UseSwaggerUI();
-            app.UseHttpsRedirection();
             app.UseRouting();
+            app.UseEndpoints(x =>
+            {
+                x.MapOpenApi();
+                x.MapScalarApiReference();
+            });
+            app.UseHttpsRedirection();
             app.UseAuthorization();
-            app.UseAiEndpoints();
             app.UseEndpoints(x => x.MapControllers());
+            _ = app.UseAiEndpoints();
             return app;
         }
     }
