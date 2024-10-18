@@ -13,11 +13,11 @@
         <Authors>Alessandro Rapiti</Authors>
         <Company>Alessandro Rapiti</Company>
         <Product>Rystem.PlayFramework</Product>
-        <Description>Rystem.PlayFramework allows you to use correctly concepts like multi agent and openai.</Description>
+        <Description>Rystem.PlayFramework helps you to use concepts like multi agent and openai.</Description>
         <Copyright>2024</Copyright>
         <PackageIcon>rystem.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository</RepositoryUrl>
+        <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/PlayFramework</RepositoryUrl>
         <PackageId>Rystem.PlayFramework</PackageId>
         <Version>6.2.0</Version>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
