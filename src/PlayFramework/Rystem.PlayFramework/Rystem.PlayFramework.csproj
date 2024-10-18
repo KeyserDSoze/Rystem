@@ -41,7 +41,6 @@
             </ItemGroup>
         </When>
     </Choose>
-
     <ItemGroup>
         <None Update="rystem.png">
             <Pack>True</Pack>
@@ -49,5 +48,4 @@
         </None>
         <None Update="README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
-
 </Project>
