@@ -24,14 +24,14 @@ namespace Rystem.PlayFramework.Test
             });
             return services;
         }
-        protected override ValueTask ConfigureServerMiddlewareAsync(IApplicationBuilder applicationBuilder, IServiceProvider serviceProvider)
-        {
-            applicationBuilder.UseMiddlewares();
-            return ValueTask.CompletedTask;
-        }
         protected override ValueTask ConfigureServerServicesAsync(IServiceCollection services, IConfiguration configuration)
         {
             services.AddServices(configuration);
+            return ValueTask.CompletedTask;
+        }
+        protected override ValueTask ConfigureServerMiddlewareAsync(IApplicationBuilder applicationBuilder, IServiceProvider serviceProvider)
+        {
+            applicationBuilder.UseMiddlewares();
             return ValueTask.CompletedTask;
         }
     }
