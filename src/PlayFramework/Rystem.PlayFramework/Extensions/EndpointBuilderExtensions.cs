@@ -17,6 +17,8 @@ namespace Microsoft.AspNetCore.Builder
         }
         private static async Task<IApplicationBuilder> UseAiEndpoints(this IApplicationBuilder app, bool authorization, params string[] policies)
         {
+            var actorsOpenAiFilter = app.ApplicationServices.GetRequiredService<ActorsOpenAiEndpointReader>();
+            await actorsOpenAiFilter.MapOpenAiAsync(app.ApplicationServices);
             app.UseEndpoints(x =>
             {
                 var mapped = x.MapGet("api/ai/message", ([FromQuery(Name = "m")] string message,
@@ -30,8 +32,6 @@ namespace Microsoft.AspNetCore.Builder
                 else if (authorization)
                     mapped.RequireAuthorization();
             });
-            var actorsOpenAiFilter = app.ApplicationServices.GetRequiredService<ActorsOpenAiFilter>();
-            await actorsOpenAiFilter.MapOpenAiAsync(app.ApplicationServices);
             return app;
         }
     }

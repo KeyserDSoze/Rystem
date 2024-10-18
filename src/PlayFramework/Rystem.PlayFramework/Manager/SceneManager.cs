@@ -138,18 +138,18 @@ namespace Rystem.PlayFramework
         {
             var json = ParseJson(argumentAsJson);
             var httpBringer = new HttpBringer();
+            using var httpClient = clientName == null ? _httpClientFactory.CreateClient() : _httpClientFactory.CreateClient(clientName);
             await httpHandler.Call(httpBringer);
             foreach (var actions in httpHandler.Actions)
             {
                 await actions.Value(json, httpBringer);
             }
-            using var httpClient = clientName == null ? _httpClientFactory.CreateClient() : _httpClientFactory.CreateClient(clientName);
             var message = new HttpRequestMessage
             {
                 Content = httpBringer.BodyAsJson != null ? new StringContent(httpBringer.BodyAsJson, Encoding.UTF8, "application/json") : null,
                 Headers = { { "Accept", "application/json" } },
-                RequestUri = new Uri($"{httpClient.BaseAddress}{httpHandler.Uri}{(httpBringer.Query != null ? (httpHandler.Uri.Contains('?') ? $"&{httpBringer.Query}" : $"?{httpBringer.Query}") : string.Empty)}"),
-                Method = new HttpMethod(httpBringer.Method!)
+                RequestUri = new Uri($"{httpClient.BaseAddress}{httpBringer.RewrittenUri ?? httpHandler.Uri}{(httpBringer.Query != null ? (httpHandler.Uri.Contains('?') ? $"&{httpBringer.Query}" : $"?{httpBringer.Query}") : string.Empty)}"),
+                Method = new HttpMethod(httpBringer.Method.ToString()!)
             };
             var authorization = _httpContext?.Request?.Headers?.Authorization.ToString();
             if (authorization != null)

@@ -1,5 +1,5 @@
+﻿using Microsoft.AspNetCore.Mvc;
 using Rystem.PlayFramework.Test.Api;
-using Microsoft.AspNetCore.Mvc;
 
 namespace Rystem.PlayFramework.Test.Api
 {
@@ -13,7 +13,12 @@ namespace Rystem.PlayFramework.Test.Api
         {
             _logger = logger;
         }
-
+        [HttpGet]
+        [Route("{id?}")]
+        public async Task<IActionResult> ReadCityByIdAsync([FromRoute] string id)
+        {
+            return Ok(id);
+        }
         /// <summary>
         /// Adds a new city to the database.
         /// </summary>

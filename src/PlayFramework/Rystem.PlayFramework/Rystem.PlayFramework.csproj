@@ -1,32 +1,32 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
+    <PropertyGroup>
         <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
         <TargetFramework>net9.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<IncludeSymbols>true</IncludeSymbols>
-		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
-		<DebugSymbols>true</DebugSymbols>
-		<EmbedAllSources>true</EmbedAllSources>
-		<DebugType>portable</DebugType>
-		<Authors>Alessandro Rapiti</Authors>
-		<Company>Alessandro Rapiti</Company>
-		<Product>Rystem.PlayFramework</Product>
-		<Description>Rystem.PlayFramework allows you to use correctly concepts like multi agent and openai.</Description>
-		<Copyright>2024</Copyright>
-		<PackageIcon>rystem.png</PackageIcon>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository</RepositoryUrl>
-		<PackageId>Rystem.PlayFramework</PackageId>
-		<Version>6.2.0</Version>
-		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-	</PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <DebugSymbols>true</DebugSymbols>
+        <EmbedAllSources>true</EmbedAllSources>
+        <DebugType>portable</DebugType>
+        <Authors>Alessandro Rapiti</Authors>
+        <Company>Alessandro Rapiti</Company>
+        <Product>Rystem.PlayFramework</Product>
+        <Description>Rystem.PlayFramework allows you to use correctly concepts like multi agent and openai.</Description>
+        <Copyright>2024</Copyright>
+        <PackageIcon>rystem.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository</RepositoryUrl>
+        <PackageId>Rystem.PlayFramework</PackageId>
+        <Version>6.2.0</Version>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    </PropertyGroup>
     <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
         <PackageReference Include="Azure.AI.OpenAI" Version="2.0.0" />
         <PackageReference Include="Azure.Identity" Version="1.12.1" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0-rc.2.24474.3" />
         <PackageReference Include="OpenAI" Version="2.0.0" />
     </ItemGroup>
     <Choose>
@@ -42,12 +42,12 @@
         </When>
     </Choose>
 
-	<ItemGroup>
-		<None Update="rystem.png">
-			<Pack>True</Pack>
-			<PackagePath>\</PackagePath>
-		</None>
-		<None Update="README.md" Pack="true" PackagePath="\" />
-	</ItemGroup>
+    <ItemGroup>
+        <None Update="rystem.png">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+        <None Update="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
 
 </Project>
