@@ -109,6 +109,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RepositoryFramework.Web.Tes
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Workflows", "Workflows", "{21EA88B3-A513-4C01-8EB2-0E537C31EA07}"
 	ProjectSection(SolutionItems) = preProject
+		.github\workflows\azure-static-web-apps-white-sky-056232003.yml = .github\workflows\azure-static-web-apps-white-sky-056232003.yml
 		.github\workflows\NugetOnlineWorkflow.yml = .github\workflows\NugetOnlineWorkflow.yml
 		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.CosmosSql.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.CosmosSql.yml
 		.github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.Storage.Blob.yml = .github\workflows\PackageDeploy.RepositoryFramework.Infrastructure.Azure.Storage.Blob.yml
@@ -131,6 +132,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Workflows", "Workflows", "{
 		.github\workflows\PackageDeploy.Rystem.Content.Infrastructure.InMemory.yml = .github\workflows\PackageDeploy.Rystem.Content.Infrastructure.InMemory.yml
 		.github\workflows\PackageDeploy.Rystem.Content.Infrastructure.M365.Sharepoint.yml = .github\workflows\PackageDeploy.Rystem.Content.Infrastructure.M365.Sharepoint.yml
 		.github\workflows\PackageDeploy.Rystem.DependencyInjection.yml = .github\workflows\PackageDeploy.Rystem.DependencyInjection.yml
+		.github\workflows\PackageDeploy.Rystem.PlayFramework.yml = .github\workflows\PackageDeploy.Rystem.PlayFramework.yml
 		.github\workflows\PackageDeploy.Rystem.Queue.yml = .github\workflows\PackageDeploy.Rystem.Queue.yml
 		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Abstractions.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Abstractions.yml
 		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer.yml
@@ -142,6 +144,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Workflows", "Workflows", "{
 		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Cache.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Cache.yml
 		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.MigrationTools.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.MigrationTools.yml
 		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Web.Components.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Web.Components.yml
+		.github\workflows\PackageDeploy.Rystem.Test.XUnit.yml = .github\workflows\PackageDeploy.Rystem.Test.XUnit.yml
 		.github\workflows\PackageDeploy.Rystem.yml = .github\workflows\PackageDeploy.Rystem.yml
 		.github\workflows\SonarLint.RepositoryFramework.yml = .github\workflows\SonarLint.RepositoryFramework.yml
 	EndProjectSection
