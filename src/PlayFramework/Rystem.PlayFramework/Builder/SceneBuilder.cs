@@ -69,7 +69,7 @@ namespace Rystem.PlayFramework
                 var functionName = $"{serviceName}_{currentType.Name}_{method.Name}";
                 PlayHandler.Instance[Scene.Name].Functions.Add(functionName);
                 var description = method.GetCustomAttributes(true).FirstOrDefault(x => x.GetType() == typeof(DescriptionAttribute)) as DescriptionAttribute;
-                var jsonFunctionObject = new ToolNonPrimitiveProperty();
+                var jsonFunctionObject = new ToolMainProperty();
                 var jsonFunction = new Tool
                 {
                     Name = functionName,

@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Reflection.Metadata;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
@@ -27,7 +28,7 @@ namespace Rystem.PlayFramework
             {
                 if (endpoint.RoutePattern.RawText == null)
                     continue;
-                var jsonFunctionObject = new ToolNonPrimitiveProperty();
+                var jsonFunctionObject = new ToolMainProperty();
                 var relativePath = endpoint.RoutePattern.RawText.Trim('/');
                 var regexToNormalizePath = new Regex($"\\{{[a-zA-Z0-9_@]+\\??(:[a-zA-Z0-9]+)?\\}}");
                 var basedFunctionName = endpoint.RoutePattern.RawText;
@@ -94,6 +95,10 @@ namespace Rystem.PlayFramework
                             if (type != typeof(CancellationToken) && !parameterInfo.CustomAttributes.Any(x => x.AttributeType == typeof(FromServicesAttribute) || x.AttributeType == typeof(FromFormAttribute)))
                             {
                                 ToolPropertyHelper.Add(name, type, jsonFunctionObject);
+                                if (!parameterInfo.IsNullable())
+                                    jsonFunctionObject.AddRequired(name);
+                                else
+                                    jsonFunctionObject.AdditionalProperties = true;
                                 return true;
                             }
                             return false;
