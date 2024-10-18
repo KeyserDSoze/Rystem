@@ -16,6 +16,8 @@ namespace Rystem.Test.XUnit
             Type? applicationPartToAdd,
             Func<IServiceCollection, IConfiguration, ValueTask> configureServicesAsync,
             Func<IApplicationBuilder, IServiceProvider, ValueTask> configureMiddlewaresAsync,
+            bool withHttps,
+            bool preserveExecutionContext,
             bool addHealthCheck = false)
         {
             var serviceCollection = new ServiceCollection();
@@ -33,8 +35,16 @@ namespace Rystem.Test.XUnit
                          TestHttpClientFactory.Instance.Host = new HostBuilder()
                              .ConfigureWebHost(webHostBuilder =>
                              {
+                                 if (withHttps)
+                                     webHostBuilder
+                                        .UseSetting("https_port", "443");
                                  webHostBuilder
-                                 .UseTestServer()
+                                 .UseTestServer(options =>
+                                 {
+                                     if (withHttps)
+                                         options.BaseAddress = new Uri("https://localhost:443");
+                                     options.PreserveExecutionContext = preserveExecutionContext;
+                                 })
                                  .Configure(async (context, app) =>
                                  {
                                      try

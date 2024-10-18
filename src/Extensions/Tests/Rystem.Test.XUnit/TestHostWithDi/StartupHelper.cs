@@ -9,6 +9,8 @@ namespace Rystem.Test.XUnit
     {
         protected abstract string? AppSettingsFileName { get; }
         protected abstract bool HasTestHost { get; }
+        protected virtual bool WithHttps => true;
+        protected virtual bool PreserveExecutionContext => false;
         protected virtual ValueTask ConfigureServerServicesAsync(IServiceCollection services, IConfiguration configuration) => ValueTask.CompletedTask;
         protected virtual ValueTask ConfigureServerMiddlewareAsync(IApplicationBuilder applicationBuilder, IServiceProvider serviceProvider) => ValueTask.CompletedTask;
         protected virtual bool AddHealthCheck => true;
@@ -39,6 +41,8 @@ namespace Rystem.Test.XUnit
                     TypeToChooseTheRightAssemblyWithControllersToMap,
                     ConfigureServerServicesAsync,
                     ConfigureServerMiddlewareAsync,
+                    WithHttps,
+                    PreserveExecutionContext,
                     AddHealthCheck).ToResult();
                 if (exception != null)
                     throw exception;

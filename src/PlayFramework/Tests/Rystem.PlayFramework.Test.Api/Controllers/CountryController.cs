@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Rystem.PlayFramework.Test.Api;
 
 namespace Rystem.PlayFramework.Test.Api
 {

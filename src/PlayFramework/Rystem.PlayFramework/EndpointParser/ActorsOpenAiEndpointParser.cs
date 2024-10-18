@@ -1,5 +1,4 @@
 ﻿using System.Reflection;
-using System.Reflection.Metadata;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
@@ -10,15 +9,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Rystem.PlayFramework
 {
-    public sealed class ActorsOpenAiEndpointReader
+    public sealed class ActorsOpenAiEndpointParser
     {
-        private readonly IServiceCollection _services;
-
-        public ActorsOpenAiEndpointReader(IServiceCollection services)
-        {
-            _services = services;
-        }
-        public async ValueTask MapOpenAiAsync(IServiceProvider serviceProvider)
+        public void MapOpenAi(IServiceProvider serviceProvider)
         {
             var services = serviceProvider.GetServices<EndpointDataSource>();
             var endpoints = services
@@ -51,10 +44,12 @@ namespace Rystem.PlayFramework
                     };
                     var function = FunctionsHandler.Instance[functionName];
                     var hasAddedAtLeastOne = false;
-                    foreach (var scene in PlayHandler.Instance.ChooseRightPath(relativePath))
+                    foreach (var scene in PlayHandler.Instance.ChooseRightPath(relativePath).Distinct())
                     {
-                        PlayHandler.Instance[scene].Functions.Add(functionName);
-                        function.Scenes.Add(scene);
+                        if (!PlayHandler.Instance[scene].Functions.Contains(functionName))
+                            PlayHandler.Instance[scene].Functions.Add(functionName);
+                        if (!function.Scenes.Contains(scene))
+                            function.Scenes.Add(scene);
                         hasAddedAtLeastOne = true;
                     }
                     if (hasAddedAtLeastOne)

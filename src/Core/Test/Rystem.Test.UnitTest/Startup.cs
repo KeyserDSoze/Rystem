@@ -19,7 +19,7 @@ namespace Rystem.Test.UnitTest
         {
             services.AddHttpClient("client", x =>
             {
-                x.BaseAddress = new Uri("http://localhost");
+                x.BaseAddress = new Uri("https://localhost:443");
             });
             return services;
         }

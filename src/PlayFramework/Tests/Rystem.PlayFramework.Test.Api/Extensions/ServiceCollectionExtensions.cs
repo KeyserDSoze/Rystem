@@ -1,10 +1,7 @@
-﻿using System.Reflection;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
-
-//using Microsoft.OpenApi.Models;
 using Rystem.PlayFramework.Test.Api.Services;
-//using Scalar.AspNetCore;
+using Scalar.AspNetCore;
 
 namespace Rystem.PlayFramework.Test.Api
 {
@@ -14,7 +11,7 @@ namespace Rystem.PlayFramework.Test.Api
         {
             services.AddControllers();
             services.AddEndpointsApiExplorer();
-            //services.AddOpenApi();
+            services.AddOpenApi();
             services.AddChat(x =>
             {
                 x.AddConfiguration("openai", builder =>
@@ -86,11 +83,11 @@ namespace Rystem.PlayFramework.Test.Api
         public static IApplicationBuilder UseMiddlewares(this IApplicationBuilder app)
         {
             app.UseRouting();
-            //app.UseEndpoints(x =>
-            //{
-            //    x.MapOpenApi();
-            //    x.MapScalarApiReference();
-            //});
+            app.UseEndpoints(x =>
+            {
+                x.MapOpenApi();
+                x.MapScalarApiReference();
+            });
             app.UseHttpsRedirection();
             app.UseAuthorization();
             app.UseEndpoints(x =>
@@ -101,7 +98,7 @@ namespace Rystem.PlayFramework.Test.Api
                 });
                 x.MapControllers();
             });
-            _ = app.UseAiEndpoints();
+            app.UseAiEndpoints();
             return app;
         }
     }
