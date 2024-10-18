@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - master
+    paths:
+       - docs/site/**
   pull_request:
     types: [opened, synchronize, reopened, closed]
     branches:
