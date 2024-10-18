@@ -16,6 +16,8 @@ namespace Rystem.Test.XUnit
             Type? applicationPartToAdd,
             Func<IServiceCollection, IConfiguration, ValueTask> configureServicesAsync,
             Func<IApplicationBuilder, IServiceProvider, ValueTask> configureMiddlewaresAsync,
+            bool withHttps,
+            bool preserveExecutionContext,
             bool addHealthCheck = false)
         {
             var serviceCollection = new ServiceCollection();
@@ -24,63 +26,73 @@ namespace Rystem.Test.XUnit
             Exception? exception = null;
             if (TestHttpClientFactory.Instance.Host == null)
             {
-                await locker!.ExecuteAsync(async () =>
-                {
-                    if (TestHttpClientFactory.Instance.Host == null)
-                    {
-                        var iAmWaiting = true;
-                        TestHttpClientFactory.Instance.Configuration = configuration;
-                        TestHttpClientFactory.Instance.Host = new HostBuilder()
-                            .ConfigureWebHost(webHostBuilder =>
-                            {
-                                webHostBuilder
-                                .UseTestServer()
-                                .Configure(async (context, app) =>
-                                {
-                                    try
-                                    {
-                                        await configureMiddlewaresAsync(app, app.ApplicationServices);
-                                        if (addHealthCheck)
-                                        {
-                                            app.UseEndpoints(endpoints =>
-                                            {
-                                                endpoints.MapHealthChecks("/healthz");
-                                            });
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        exception = ex;
-                                    }
-                                    iAmWaiting = false;
-                                }).ConfigureServices(services =>
-                                {
-                                    services.AddSingleton(configuration);
-                                    services.AddMvc()
-                                        .AddApplicationPart(applicationPartToAdd?.Assembly ?? Assembly.GetExecutingAssembly())
-                                        .AddControllersAsServices();
-                                    if (addHealthCheck)
-                                        services.AddHealthChecks();
-                                    configureServicesAsync(services, configuration).ToResult();
-                                });
-                            }).Build();
-                        await TestHttpClientFactory.Instance.Host!.StartAsync();
-                        while (iAmWaiting)
-                        {
-                            await Task.Delay(100);
-                        }
-                        if (exception == null && addHealthCheck)
-                        {
-                            var client = TestHttpClientFactory.Instance.CreateServerAndClient();
-                            var response = await client.GetAsync("/healthz");
-                            if (response.StatusCode != HttpStatusCode.OK && response.Content.Headers.ContentType!.ToString() != "text/plain"
-                                    && await response.Content.ReadAsStringAsync() != "Healthy")
-                            {
-                                exception = new Exception("Health check failed");
-                            }
-                        }
-                    }
-                });
+                var lockResponse = await locker!.ExecuteAsync(async () =>
+                 {
+                     if (TestHttpClientFactory.Instance.Host == null)
+                     {
+                         var iAmWaiting = true;
+                         TestHttpClientFactory.Instance.Configuration = configuration;
+                         TestHttpClientFactory.Instance.Host = new HostBuilder()
+                             .ConfigureWebHost(webHostBuilder =>
+                             {
+                                 if (withHttps)
+                                     webHostBuilder
+                                        .UseSetting("https_port", "443");
+                                 webHostBuilder
+                                 .UseTestServer(options =>
+                                 {
+                                     if (withHttps)
+                                         options.BaseAddress = new Uri("https://localhost:443");
+                                     options.PreserveExecutionContext = preserveExecutionContext;
+                                 })
+                                 .Configure(async (context, app) =>
+                                 {
+                                     try
+                                     {
+                                         await configureMiddlewaresAsync(app, app.ApplicationServices);
+                                         if (addHealthCheck)
+                                         {
+                                             app.UseEndpoints(endpoints =>
+                                             {
+                                                 endpoints.MapHealthChecks("/healthz");
+                                             });
+                                         }
+                                     }
+                                     catch (Exception ex)
+                                     {
+                                         exception = ex;
+                                     }
+                                     iAmWaiting = false;
+                                 }).ConfigureServices(services =>
+                                 {
+                                     services.AddSingleton(configuration);
+                                     services.AddMvc()
+                                         .AddApplicationPart(applicationPartToAdd?.Assembly ?? Assembly.GetExecutingAssembly())
+                                         .AddControllersAsServices();
+                                     if (addHealthCheck)
+                                         services.AddHealthChecks();
+                                     configureServicesAsync(services, configuration).ToResult();
+                                 });
+                             }).Build();
+                         await TestHttpClientFactory.Instance.Host!.StartAsync();
+                         while (iAmWaiting)
+                         {
+                             await Task.Delay(100);
+                         }
+                         if (exception == null && addHealthCheck)
+                         {
+                             var client = TestHttpClientFactory.Instance.CreateServerAndClient();
+                             var response = await client.GetAsync("/healthz");
+                             if (response.StatusCode != HttpStatusCode.OK && response.Content.Headers.ContentType!.ToString() != "text/plain"
+                                     && await response.Content.ReadAsStringAsync() != "Healthy")
+                             {
+                                 exception = new Exception("Health check failed");
+                             }
+                         }
+                     }
+                 });
+                if (lockResponse.InException)
+                    throw lockResponse.Exceptions!;
             }
             return exception;
         }

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net9.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <UserSecretsId>a03d572e-4534-4321-98da-8c2dfde8babd</UserSecretsId>
@@ -12,8 +12,8 @@
         <ProjectReference Include="..\..\Rystem.Api.Client\Rystem.Api.Client.csproj" />
         <ProjectReference Include="..\Rystem.Api.Test.Domain\Rystem.Api.Test.Domain.csproj" />
         <ProjectReference Include="..\Rystem.Api.TestServer\Rystem.Api.TestServer.csproj" />
-        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.10" NoWarn="NU1605" />
-        <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="8.0.10" NoWarn="NU1605" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0-rc.2.24474.3" NoWarn="NU1605" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="9.0.0-rc.2.24474.3" NoWarn="NU1605" />
         <PackageReference Include="Microsoft.Identity.Web" Version="3.2.2" />
         <PackageReference Include="Microsoft.Identity.Web.UI" Version="3.2.2" />
     </ItemGroup>

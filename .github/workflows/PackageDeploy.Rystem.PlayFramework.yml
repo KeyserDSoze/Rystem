@@ -1,0 +1,21 @@
+name: Rystem.PlayFramework.Nuget
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - src/PlayFramework/Rystem.PlayFramework/Rystem.PlayFramework.csproj
+      - reload.txt
+jobs:
+  publish:
+    name: build, pack & publish
+    runs-on: ubuntu-latest
+    environment: Rystem.Nuget
+    
+    steps:
+      - name: Publish package
+        uses: KeyserDSoze/DefaultAction/pushing_nuget_with_symbols@v1.0.1
+        with:
+          dotnet-version: ${{ secrets.NET_VERSION }}
+          path: src/PlayFramework/Rystem.PlayFramework/Rystem.PlayFramework.csproj
+          api-key: ${{ secrets.NUGET_API_KEY }}
