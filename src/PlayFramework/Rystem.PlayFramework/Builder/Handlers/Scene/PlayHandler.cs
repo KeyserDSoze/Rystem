@@ -12,7 +12,10 @@
                 return Scenes[sceneName];
             }
         }
-        public IEnumerable<Action<IChatClientToolBuilder>> ScenesChooser => Scenes.Where(x => x.Value.Chooser != null).Select(x => x.Value.Chooser!);
+        public IEnumerable<Action<IChatClientToolBuilder>> ScenesChooser(IEnumerable<string>? toAvoid = null)
+        {
+            return Scenes.Where(x => x.Value.Chooser != null && (toAvoid == null || !toAvoid.Contains(x.Key))).Select(x => x.Value.Chooser!);
+        }
         public IEnumerable<string> ChooseRightPath(string path)
         {
             foreach (var scene in Scenes)

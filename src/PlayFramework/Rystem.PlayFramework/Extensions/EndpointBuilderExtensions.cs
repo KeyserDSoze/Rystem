@@ -28,9 +28,12 @@ namespace Microsoft.AspNetCore.Builder
                 [
                     x.MapPost("api/ai/message",
                         ([FromQuery(Name = "m")] string message,
-                        [FromBody] Dictionary<object, object> properties,
+                        [FromBody] SceneRequestSettingsForApi settings,
                         [FromServices] ISceneManager sceneManager,
-                        CancellationToken cancellationToken) => sceneManager.ExecuteAsync(message, properties, cancellationToken)),
+                        CancellationToken cancellationToken) => sceneManager.ExecuteAsync(message, settings => {
+                            settings.Properties = settings.Properties;
+                            settings.ScenesToAvoid = settings.ScenesToAvoid;
+                        }, cancellationToken)),
                     x.MapGet("api/ai/message",
                        ([FromQuery(Name = "m")] string message,
                        [FromServices] ISceneManager sceneManager,
