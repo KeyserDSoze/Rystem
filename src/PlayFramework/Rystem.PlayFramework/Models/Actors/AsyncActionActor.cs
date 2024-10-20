@@ -3,6 +3,6 @@
     internal sealed class AsyncActionActor : IActor
     {
         public required Func<SceneContext, CancellationToken, Task<string>> Action { get; init; }
-        public Task<string?> GetMessageAsync(SceneContext sceneContext, CancellationToken cancellationToken) => Action(sceneContext, cancellationToken)!;
+        public Task<string?> GetMessageAsync(SceneContext context, CancellationToken cancellationToken) => Action(context, cancellationToken)!;
     }
 }

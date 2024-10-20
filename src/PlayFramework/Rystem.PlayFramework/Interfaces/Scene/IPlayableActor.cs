@@ -2,6 +2,6 @@
 {
     public interface IPlayableActor
     {
-        Task<string?> GetMessageAsync(SceneContext sceneContext, CancellationToken cancellationToken);
+        Task<string?> GetMessageAsync(SceneContext context, CancellationToken cancellationToken);
     }
 }

@@ -27,7 +27,7 @@ namespace Rystem.PlayFramework
                 _services.AddKeyedSingleton<IActor>(MainActor, new SimpleActor { Role = role });
             return this;
         }
-        public IScenesBuilder AddMainActor<T>(string role, bool playInEveryScene)
+        public IScenesBuilder AddMainActor<T>(bool playInEveryScene)
             where T : class, IActor
         {
             if (playInEveryScene)
