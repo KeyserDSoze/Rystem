@@ -11,7 +11,7 @@ namespace Rystem.PlayFramework
 {
     public sealed class ActorsOpenAiEndpointParser
     {
-        public void MapOpenAi(IServiceProvider serviceProvider)
+        public void MapOpenApiAi(IServiceProvider serviceProvider)
         {
             var services = serviceProvider.GetServices<EndpointDataSource>();
             var endpoints = services

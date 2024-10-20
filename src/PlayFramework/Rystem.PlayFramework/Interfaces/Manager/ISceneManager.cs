@@ -2,6 +2,6 @@
 {
     public interface ISceneManager
     {
-        IAsyncEnumerable<AiSceneResponse> ExecuteAsync(string sceneName, CancellationToken cancellationToken);
+        IAsyncEnumerable<AiSceneResponse> ExecuteAsync(string sceneName, Dictionary<object, object>? properties = null, CancellationToken cancellationToken = default);
     }
 }

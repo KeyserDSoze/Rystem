@@ -6,6 +6,12 @@ namespace Microsoft.AspNetCore.Builder
 {
     public static class EndpointBuilderExtensions
     {
+        public static IApplicationBuilder MapOpenApiEndpointsForPlayFramework(this IApplicationBuilder app)
+        {
+            var actorsOpenAiFilter = app.ApplicationServices.GetRequiredService<ActorsOpenAiEndpointParser>();
+            actorsOpenAiFilter.MapOpenApiAi(app.ApplicationServices);
+            return app;
+        }
         public static IApplicationBuilder UseAiEndpoints(this IApplicationBuilder app, params string[] policies)
         {
             return app.UseAiEndpoints(false, policies);
@@ -16,21 +22,25 @@ namespace Microsoft.AspNetCore.Builder
         }
         private static IApplicationBuilder UseAiEndpoints(this IApplicationBuilder app, bool authorization, params string[] policies)
         {
-            var actorsOpenAiFilter = app.ApplicationServices.GetRequiredService<ActorsOpenAiEndpointParser>();
-            actorsOpenAiFilter.MapOpenAi(app.ApplicationServices);
             app.UseEndpoints(x =>
             {
-                var mapped = x.MapGet("api/ai/message",
-                    ([FromQuery(Name = "m")] string message,
-                    [FromServices] ISceneManager sceneManager,
-                    CancellationToken cancellationToken) =>
-                {
-                    return sceneManager.ExecuteAsync(message, cancellationToken);
-                });
-                if (policies.Length > 0)
-                    mapped.RequireAuthorization(policies);
-                else if (authorization)
-                    mapped.RequireAuthorization();
+                List<RouteHandlerBuilder> routes =
+                [
+                    x.MapPost("api/ai/message",
+                        ([FromQuery(Name = "m")] string message,
+                        [FromBody] Dictionary<object, object> properties,
+                        [FromServices] ISceneManager sceneManager,
+                        CancellationToken cancellationToken) => sceneManager.ExecuteAsync(message, properties, cancellationToken)),
+                    x.MapGet("api/ai/message",
+                       ([FromQuery(Name = "m")] string message,
+                       [FromServices] ISceneManager sceneManager,
+                       CancellationToken cancellationToken) => sceneManager.ExecuteAsync(message, null, cancellationToken))
+                ];
+                foreach (var mapped in routes)
+                    if (policies.Length > 0)
+                        mapped.RequireAuthorization(policies);
+                    else if (authorization)
+                        mapped.RequireAuthorization();
             });
             return app;
         }

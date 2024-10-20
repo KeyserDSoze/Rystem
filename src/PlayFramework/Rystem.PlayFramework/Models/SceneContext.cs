@@ -6,5 +6,6 @@
         public string? CurrentSceneName { get; set; }
         public List<SceneIteration> Iterations { get; } = [];
         public IChatClient? CurrentChatClient { get; set; }
+        public required Dictionary<object, object> Properties { get; init; }
     }
 }

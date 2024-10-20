@@ -99,6 +99,7 @@ namespace Rystem.PlayFramework.Test.Api
                 });
                 x.MapControllers();
             });
+            app.MapOpenApiEndpointsForPlayFramework();
             app.UseAiEndpoints();
             return app;
         }

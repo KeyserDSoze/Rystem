@@ -22,10 +22,10 @@ namespace Rystem.PlayFramework
             _httpClientFactory = httpClientFactory;
             _settings = settings;
         }
-
-        public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(string message, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        private const string Starting = nameof(Starting);
+        public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(string message, Dictionary<object, object>? properties = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var context = new SceneContext { InputMessage = message };
+            var context = new SceneContext { InputMessage = message, Properties = properties ?? [] };
             var chatClient = _openAiFactory.Create(_settings?.OpenAi.Name)!;
             context.CurrentChatClient = chatClient;
             var mainActorsThatPlayEveryScene = _serviceProvider.GetKeyedServices<IPlayableActor>(ScenesBuilder.MainActor);
@@ -51,7 +51,7 @@ namespace Rystem.PlayFramework
                     var aiSceneResponse = new AiSceneResponse
                     {
                         Name = toolCall.FunctionName,
-                        Message = "Starting"
+                        Message = Starting
                     };
                     iteration.Responses.Add(aiSceneResponse);
                     yield return aiSceneResponse;
