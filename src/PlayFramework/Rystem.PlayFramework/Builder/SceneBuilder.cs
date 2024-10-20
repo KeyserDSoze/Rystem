@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Rystem.PlayFramework
@@ -12,9 +13,12 @@ namespace Rystem.PlayFramework
         {
             _services = services;
         }
+        private static readonly Regex s_checkName = new("[^a-zA-Z0-9_-]{1,64}");
         public ISceneBuilder WithName(string name)
         {
-            Scene.Name = name;
+            Scene.Name = s_checkName.Replace(name, string.Empty);
+            if (Scene.Name.Length > 64)
+                Scene.Name = Scene.Name.Substring(0, 64);
             return this;
         }
         public ISceneBuilder WithDescription(string description)
