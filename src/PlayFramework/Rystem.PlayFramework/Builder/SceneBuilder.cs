@@ -1,6 +1,5 @@
 ﻿using System.ComponentModel;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Rystem.PlayFramework
@@ -44,8 +43,6 @@ namespace Rystem.PlayFramework
         {
             var builderInstance = new ActorBuilder(_services, Scene.Name);
             builder(builderInstance);
-            if (Scene is Scene scene)
-                scene.SimpleActors = builderInstance.SimpleActors.ToString();
             return this;
         }
         public ISceneBuilder WithService<T>(Action<ISceneServiceBuilder<T>>? builder = null)
@@ -83,12 +80,15 @@ namespace Rystem.PlayFramework
                 var isGenericAsync = method.ReturnType.IsGenericType &&
                     (method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)
                     || method.ReturnType.GetGenericTypeDefinition() == typeof(ValueTask<>));
+                var hasCancellationToken = method.GetParameters().Any(x => x.ParameterType == typeof(CancellationToken));
                 function.Service = new()
                 {
-                    Call = async (serviceProvider, bringer) =>
+                    Call = async (serviceProvider, bringer, cancellationToken) =>
                     {
                         var service = serviceProvider.GetRequiredService<T>();
-                        var result = method.Invoke(service, [.. bringer.Parameters]);
+                        var result = hasCancellationToken ?
+                            method.Invoke(service, [.. bringer.Parameters, cancellationToken]) :
+                            method.Invoke(service, [.. bringer.Parameters]);
                         if (result is Task task)
                             await task;
                         if (result is ValueTask valueTask)
@@ -109,6 +109,8 @@ namespace Rystem.PlayFramework
                 };
                 foreach (var parameter in method.GetParameters())
                 {
+                    if (parameter.ParameterType == typeof(CancellationToken))
+                        continue;
                     var parameterName = parameter.Name ?? parameter.ParameterType.Name;
                     ToolPropertyHelper.Add(parameterName, parameter.ParameterType, jsonFunctionObject);
                     if (!parameter.IsNullable())

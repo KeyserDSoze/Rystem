@@ -3,6 +3,8 @@
     public interface IActorBuilder
     {
         IActorBuilder AddActor<T>() where T : class, IActor;
-        public IActorBuilder AddActor(string role);
+        IActorBuilder AddActor(string role);
+        IActorBuilder AddActor(Func<SceneContext, string> action);
+        IActorBuilder AddActor(Func<SceneContext, CancellationToken, Task<string>> action);
     }
 }

@@ -12,10 +12,44 @@ namespace Rystem.PlayFramework
             _services = services;
             _settings = new();
         }
+        public const string MainActor = "MainActor";
         public IScenesBuilder Configure(Action<SceneManagerSettings> settings)
         {
             settings(_settings);
             _services.TryAddSingleton(_settings);
+            return this;
+        }
+        public IScenesBuilder AddMainActor(string role, bool playInEveryScene)
+        {
+            if (playInEveryScene)
+                _services.AddKeyedSingleton<IPlayableActor>(MainActor, new SimpleActor { Role = role });
+            else
+                _services.AddKeyedSingleton<IActor>(MainActor, new SimpleActor { Role = role });
+            return this;
+        }
+        public IScenesBuilder AddMainActor<T>(string role, bool playInEveryScene)
+            where T : class, IActor
+        {
+            if (playInEveryScene)
+                _services.AddKeyedTransient<IPlayableActor, T>(MainActor);
+            else
+                _services.AddKeyedTransient<IActor, T>(MainActor);
+            return this;
+        }
+        public IScenesBuilder AddMainActor(Func<SceneContext, string> action, bool playInEveryScene)
+        {
+            if (playInEveryScene)
+                _services.AddKeyedSingleton<IPlayableActor>(MainActor, new ActionActor { Action = action });
+            else
+                _services.AddKeyedSingleton<IActor>(MainActor, new ActionActor { Action = action });
+            return this;
+        }
+        public IScenesBuilder AddMainActor(Func<SceneContext, CancellationToken, Task<string>> action, bool playInEveryScene)
+        {
+            if (playInEveryScene)
+                _services.AddKeyedSingleton<IPlayableActor>(MainActor, new AsyncActionActor { Action = action });
+            else
+                _services.AddKeyedSingleton<IActor>(MainActor, new AsyncActionActor { Action = action });
             return this;
         }
         public IScenesBuilder AddScene(Action<ISceneBuilder> builder)

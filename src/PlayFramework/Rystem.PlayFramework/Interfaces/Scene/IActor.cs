@@ -1,7 +1,6 @@
 ﻿namespace Rystem.PlayFramework
 {
-    public interface IActor
+    public interface IActor : IPlayableActor
     {
-        Task<string> GetMessageAsync();
     }
 }

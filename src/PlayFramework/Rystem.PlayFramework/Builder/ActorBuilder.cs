@@ -7,7 +7,6 @@ namespace Rystem.PlayFramework
     {
         private readonly IServiceCollection _services;
         private readonly string _sceneName;
-        public StringBuilder SimpleActors { get; } = new();
         public ActorBuilder(IServiceCollection services, string sceneName)
         {
             _services = services;
@@ -21,7 +20,17 @@ namespace Rystem.PlayFramework
         }
         public IActorBuilder AddActor(string role)
         {
-            SimpleActors.AppendLine(role);
+            _services.AddKeyedSingleton<IActor>(_sceneName, new SimpleActor { Role = role });
+            return this;
+        }
+        public IActorBuilder AddActor(Func<SceneContext, string> action)
+        {
+            _services.AddKeyedSingleton<IActor>(_sceneName, new ActionActor { Action = action });
+            return this;
+        }
+        public IActorBuilder AddActor(Func<SceneContext, CancellationToken, Task<string>> action)
+        {
+            _services.AddKeyedSingleton<IActor>(_sceneName, new AsyncActionActor { Action = action });
             return this;
         }
     }

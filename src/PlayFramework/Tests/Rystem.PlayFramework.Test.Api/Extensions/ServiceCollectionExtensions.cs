@@ -40,6 +40,7 @@ namespace Rystem.PlayFramework.Test.Api
                 {
                     settings.OpenAi.Name = "openai";
                 })
+                .AddMainActor((context) => $"Oggi è {DateTime.UtcNow}.", true)
                 .AddScene(scene =>
                 {
                     scene

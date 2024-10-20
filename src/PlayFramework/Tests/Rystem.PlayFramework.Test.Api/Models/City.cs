@@ -1,4 +1,5 @@
-﻿namespace Rystem.PlayFramework.Test.Api
+﻿
+namespace Rystem.PlayFramework.Test.Api
 {
     public sealed class City
     {
@@ -13,7 +14,7 @@
     }
     internal sealed class ActorWithDbRequest : IActor
     {
-        public async Task<string> GetMessageAsync()
+        public async Task<string?> GetMessageAsync(SceneContext sceneContext, CancellationToken cancellationToken)
         {
             await Task.Delay(0);
             return string.Empty;
