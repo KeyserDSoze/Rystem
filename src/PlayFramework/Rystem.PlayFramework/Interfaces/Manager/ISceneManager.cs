@@ -2,6 +2,6 @@
 {
     public interface ISceneManager
     {
-        IAsyncEnumerable<AiSceneResponse> ExecuteAsync(string sceneName, Action<SceneRequestSettings>? settings = null, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<AiSceneResponse> ExecuteAsync(string message, Action<SceneRequestSettings>? settings = null, CancellationToken cancellationToken = default);
     }
 }

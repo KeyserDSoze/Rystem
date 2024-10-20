@@ -25,16 +25,18 @@ namespace Rystem.PlayFramework
         private const string Starting = nameof(Starting);
         public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(string message, Action<SceneRequestSettings>? settings = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var sceneManagerSettings = new SceneRequestSettings();
-            settings?.Invoke(sceneManagerSettings);
-            var context = new SceneContext { InputMessage = message, Properties = sceneManagerSettings.Properties ?? [] };
+            var requestSettings = new SceneRequestSettings();
+            settings?.Invoke(requestSettings);
+            if (requestSettings.Context != null)
+                requestSettings.Context.InputMessage = message;
+            var context = requestSettings.Context ?? new SceneContext { InputMessage = message, Properties = requestSettings.Properties ?? [] };
             var chatClient = _openAiFactory.Create(_settings?.OpenAi.Name)!;
             context.CurrentChatClient = chatClient;
             var mainActorsThatPlayEveryScene = _serviceProvider.GetKeyedServices<IPlayableActor>(ScenesBuilder.MainActor);
             var mainActors = _serviceProvider.GetKeyedServices<IActor>(ScenesBuilder.MainActor);
             await PlayActorsInScene(context, chatClient, mainActorsThatPlayEveryScene, cancellationToken);
             await PlayActorsInScene(context, chatClient, mainActors, cancellationToken);
-            foreach (var function in PlayHandler.Instance.ScenesChooser(sceneManagerSettings.ScenesToAvoid))
+            foreach (var function in PlayHandler.Instance.ScenesChooser(requestSettings.ScenesToAvoid))
             {
                 function.Invoke(chatClient);
             }
