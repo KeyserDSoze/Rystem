@@ -9,6 +9,12 @@
             ScenesToAvoid.Add(name);
             return this;
         }
+        public SceneRequestSettings AvoidScenes(IEnumerable<string> names)
+        {
+            ScenesToAvoid ??= [];
+            ScenesToAvoid.AddRange(names);
+            return this;
+        }
         internal Dictionary<object, object>? Properties { get; set; }
         public SceneRequestSettings AddProperty<TKey, T>(TKey key, T value)
         {

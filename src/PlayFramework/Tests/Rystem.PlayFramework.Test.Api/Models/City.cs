@@ -14,10 +14,10 @@ namespace Rystem.PlayFramework.Test.Api
     }
     internal sealed class ActorWithDbRequest : IActor
     {
-        public async Task<string?> GetMessageAsync(SceneContext context, CancellationToken cancellationToken)
+        public async Task<ActorResponse> PlayAsync(SceneContext context, CancellationToken cancellationToken)
         {
             await Task.Delay(0);
-            return string.Empty;
+            return new ActorResponse { Message = string.Empty };
         }
     }
 }

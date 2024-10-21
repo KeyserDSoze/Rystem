@@ -8,5 +8,7 @@
         public string? Message { get; set; }
         public string? Arguments { get; set; }
         public string? Response { get; set; }
+        public required DateTime ResponseTime { get; set; }
+
     }
 }

@@ -3,6 +3,6 @@
     internal sealed class SimpleActor : IActor
     {
         public required string Role { get; init; }
-        public Task<string?> GetMessageAsync(SceneContext context, CancellationToken cancellationToken) => Task.FromResult(Role)!;
+        public Task<ActorResponse> PlayAsync(SceneContext context, CancellationToken cancellationToken) => Task.FromResult(new ActorResponse { Message = Role })!;
     }
 }

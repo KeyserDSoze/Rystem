@@ -4,8 +4,9 @@
     {
         public required string InputMessage { get; set; }
         public string? CurrentSceneName { get; set; }
-        public List<SceneIteration> Iterations { get; } = [];
+        public List<AiSceneResponse> Responses { get; } = [];
         public IChatClient? CurrentChatClient { get; set; }
+        public Func<IChatClient>? CreateNewDefaultChatClient { get; set; }
         public required Dictionary<object, object> Properties { get; init; }
         public T GetProperty<T>(object key)
         {

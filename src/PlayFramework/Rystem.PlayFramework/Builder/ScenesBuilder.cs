@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.IO;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Rystem.PlayFramework
@@ -50,6 +51,13 @@ namespace Rystem.PlayFramework
                 _services.AddKeyedSingleton<IPlayableActor>(MainActor, new AsyncActionActor { Action = action });
             else
                 _services.AddKeyedSingleton<IActor>(MainActor, new AsyncActionActor { Action = action });
+            return this;
+        }
+        public IScenesBuilder AddCustomDirector<T>(ServiceLifetime lifetime = ServiceLifetime.Singleton)
+            where T : class, IDirector
+        {
+            _services.RemoveAll<IDirector>();
+            _services.AddService<IDirector, T>(lifetime);
             return this;
         }
         public IScenesBuilder AddScene(Action<ISceneBuilder> builder)

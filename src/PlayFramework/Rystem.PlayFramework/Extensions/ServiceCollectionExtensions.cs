@@ -11,8 +11,9 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddHttpContextAccessor();
             services.AddTransient<ISceneManager, SceneManager>();
             services.AddSingleton<ActorsOpenAiEndpointParser>();
-            var actorBuilder = new ScenesBuilder(services);
-            builder(actorBuilder);
+            var sceneBuilder = new ScenesBuilder(services);
+            sceneBuilder.AddCustomDirector<MainDirector>();
+            builder(sceneBuilder);
             return services;
         }
         public static IServiceCollection AddChat(
