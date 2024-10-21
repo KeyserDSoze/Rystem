@@ -2,6 +2,6 @@
 {
     public interface IDirector
     {
-        Task<DirectorResponse> DirectAsync(SceneContext context, CancellationToken cancellationToken);
+        Task<DirectorResponse> DirectAsync(SceneContext context, SceneRequestSettings requestSettings, CancellationToken cancellationToken);
     }
 }

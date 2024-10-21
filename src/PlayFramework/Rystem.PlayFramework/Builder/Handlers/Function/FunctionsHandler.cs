@@ -2,7 +2,6 @@
 {
     internal sealed class FunctionsHandler
     {
-        public static FunctionsHandler Instance { get; } = new();
         public FunctionHandler this[string functionName]
         {
             get

@@ -9,14 +9,18 @@ namespace Rystem.PlayFramework
     {
         private readonly IServiceCollection _services;
         internal IScene Scene { get; } = new Scene();
+        private readonly PlayHandler _playHander;
+        private readonly FunctionsHandler _functionsHandler;
         public SceneBuilder(IServiceCollection services)
         {
             _services = services;
+            _playHander = _services.GetSingletonService<PlayHandler>()!;
+            _functionsHandler = _services.GetSingletonService<FunctionsHandler>()!;
         }
         private static readonly Regex s_checkName = new("[^a-zA-Z0-9_-]{1,64}");
         public ISceneBuilder WithName(string name)
         {
-            Scene.Name = s_checkName.Replace(name, string.Empty);
+            Scene.Name = s_checkName.Replace(name.Replace(' ', '-'), string.Empty);
             if (Scene.Name.Length > 64)
                 Scene.Name = Scene.Name.Substring(0, 64);
             return this;
@@ -40,7 +44,7 @@ namespace Rystem.PlayFramework
         {
             var scenePathBuilder = new ScenePathBuilder();
             builder(scenePathBuilder);
-            PlayHandler.Instance[Scene.Name].AvailableApiPath.AddRange(scenePathBuilder.RegexForApiMapping);
+            _playHander[Scene.Name].AvailableApiPath.AddRange(scenePathBuilder.RegexForApiMapping);
             return this;
         }
         public ISceneBuilder WithActors(Action<IActorBuilder> builder)
@@ -68,7 +72,7 @@ namespace Rystem.PlayFramework
             foreach (var method in methods)
             {
                 var functionName = $"{serviceName}_{currentType.Name}_{method.Name}";
-                PlayHandler.Instance[Scene.Name].Functions.Add(functionName);
+                _playHander[Scene.Name].Functions.Add(functionName);
                 var description = method.GetCustomAttributes(true).FirstOrDefault(x => x.GetType() == typeof(DescriptionAttribute)) as DescriptionAttribute;
                 var jsonFunctionObject = new ToolMainProperty();
                 var jsonFunction = new Tool
@@ -77,7 +81,7 @@ namespace Rystem.PlayFramework
                     Description = description?.Description ?? functionName,
                     Parameters = jsonFunctionObject
                 };
-                var function = FunctionsHandler.Instance[functionName];
+                var function = _functionsHandler[functionName];
                 function.Scenes.Add(Scene.Name);
                 function.Chooser = x => x.AddTool(jsonFunction);
                 var withoutReturn = method.ReturnType == typeof(void) || method.ReturnType == typeof(Task) || method.ReturnType == typeof(ValueTask);

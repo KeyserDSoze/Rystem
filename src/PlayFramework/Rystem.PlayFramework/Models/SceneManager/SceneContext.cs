@@ -58,7 +58,7 @@
                 return Properties.TryAdd(key, value!);
             }
         }
-        public bool TryOverrideProperty<T>(object key, T value)
+        public bool SetProperty<T>(object key, T value)
         {
             if (Properties.ContainsKey(key))
             {

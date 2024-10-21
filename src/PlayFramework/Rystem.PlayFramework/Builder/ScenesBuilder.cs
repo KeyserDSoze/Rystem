@@ -8,10 +8,12 @@ namespace Rystem.PlayFramework
     {
         private readonly IServiceCollection _services;
         private readonly SceneManagerSettings _settings;
+        private readonly PlayHandler _playHander;
         public ScenesBuilder(IServiceCollection services)
         {
             _services = services;
             _settings = new();
+            _playHander = _services.GetSingletonService<PlayHandler>()!;
         }
         public const string MainActor = "MainActor";
         public IScenesBuilder Configure(Action<SceneManagerSettings> settings)
@@ -64,8 +66,8 @@ namespace Rystem.PlayFramework
         {
             var sceneBuilder = new SceneBuilder(_services);
             builder(sceneBuilder);
-            _services.AddKeyedSingleton(sceneBuilder.Scene.Name, sceneBuilder.Scene);
-            PlayHandler.Instance[sceneBuilder.Scene.Name].Chooser = x => x.AddTool(sceneBuilder.Scene.Name, sceneBuilder.Scene.Description, new object());
+            _services.AddFactory(sceneBuilder.Scene, sceneBuilder.Scene.Name, ServiceLifetime.Singleton);
+            _playHander[sceneBuilder.Scene.Name].Chooser = x => x.AddTool(sceneBuilder.Scene.Name, sceneBuilder.Scene.Description, new object());
             return this;
         }
     }

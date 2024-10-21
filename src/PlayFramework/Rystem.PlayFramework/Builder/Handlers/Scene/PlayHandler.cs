@@ -2,7 +2,6 @@
 {
     internal sealed class PlayHandler
     {
-        public static PlayHandler Instance { get; } = new();
         public SceneHandler this[string sceneName]
         {
             get
@@ -15,6 +14,10 @@
         public IEnumerable<Action<IChatClientToolBuilder>> ScenesChooser(IEnumerable<string>? toAvoid = null)
         {
             return Scenes.Where(x => x.Value.Chooser != null && (toAvoid == null || !toAvoid.Contains(x.Key))).Select(x => x.Value.Chooser!);
+        }
+        public IEnumerable<string> GetScenes(IEnumerable<string>? toAvoid = null)
+        {
+            return Scenes.Where(x => toAvoid == null || !toAvoid.Contains(x.Key)).Select(x => x.Key);
         }
         public IEnumerable<string> ChooseRightPath(string path)
         {

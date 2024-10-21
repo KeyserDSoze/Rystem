@@ -9,8 +9,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Rystem.PlayFramework
 {
-    public sealed class ActorsOpenAiEndpointParser
+    internal sealed class ActorsOpenAiEndpointParser
     {
+        private readonly PlayHandler _playHandler;
+        private readonly FunctionsHandler _functionHandler;
+
+        public ActorsOpenAiEndpointParser(PlayHandler playHandler, FunctionsHandler functionHandler)
+        {
+            _playHandler = playHandler;
+            _functionHandler = functionHandler;
+        }
         public void MapOpenApiAi(IServiceProvider serviceProvider)
         {
             var services = serviceProvider.GetServices<EndpointDataSource>();
@@ -42,12 +50,12 @@ namespace Rystem.PlayFramework
                         Description = endpoint.DisplayName ?? functionName,
                         Parameters = jsonFunctionObject
                     };
-                    var function = FunctionsHandler.Instance[functionName];
+                    var function = _functionHandler[functionName];
                     var hasAddedAtLeastOne = false;
-                    foreach (var scene in PlayHandler.Instance.ChooseRightPath(relativePath).Distinct())
+                    foreach (var scene in _playHandler.ChooseRightPath(relativePath).Distinct())
                     {
-                        if (!PlayHandler.Instance[scene].Functions.Contains(functionName))
-                            PlayHandler.Instance[scene].Functions.Add(functionName);
+                        if (!_playHandler[scene].Functions.Contains(functionName))
+                            _playHandler[scene].Functions.Add(functionName);
                         if (!function.Scenes.Contains(scene))
                             function.Scenes.Add(scene);
                         hasAddedAtLeastOne = true;

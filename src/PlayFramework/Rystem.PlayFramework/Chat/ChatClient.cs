@@ -48,6 +48,11 @@ namespace Rystem.PlayFramework
             _chatCompletionOptions.Tools.Add(functionTool);
             return this;
         }
+        public IChatClient ClearTools()
+        {
+            _chatCompletionOptions.Tools.Clear();
+            return this;
+        }
         public IChatClient AddStrictTool<T>(string name, string description)
            => AddTool<T>(name, description, true);
         public IChatClient AddTool<T>(string name, string description)
