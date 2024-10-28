@@ -18,16 +18,16 @@ namespace Rystem.Authentication.Social
             _loginBuilder = loginBuilder;
         }
         private const string Bearer = nameof(Bearer);
-        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? redirectDomain = null, CancellationToken cancellationToken = default)
+        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? domain = null, CancellationToken cancellationToken = default)
         {
             if (!string.IsNullOrWhiteSpace(code))
             {
                 var settings = _loginBuilder.Linkedin;
-                redirectDomain = settings.CheckDomain(redirectDomain);
-                if (redirectDomain != null)
+                domain = settings.CheckDomain(domain);
+                if (domain != null)
                 {
                     var client = _clientFactory.CreateClient(Constants.LinkedinAuthenticationClient);
-                    var content = new StringContent(string.Format(PostMessage, settings.ClientId, settings.ClientSecret, code, redirectDomain), s_mediaTypeHeaderValue);
+                    var content = new StringContent(string.Format(PostMessage, settings.ClientId, settings.ClientSecret, code, domain), s_mediaTypeHeaderValue);
                     var response = await client.PostAsync(string.Empty, content, cancellationToken);
                     if (response.IsSuccessStatusCode)
                     {

@@ -9,6 +9,7 @@ namespace Microsoft.Extensions.DependencyInjection
             Action<SocialLoginBuilder> settings,
             Action<BearerTokenOptions>? action = null)
         {
+            services.AddHttpContextAccessor();
             services
                 .AddAuthentication()
                 .AddBearerToken(action!);

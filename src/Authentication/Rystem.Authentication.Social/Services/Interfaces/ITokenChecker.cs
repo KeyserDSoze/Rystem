@@ -2,6 +2,6 @@
 {
     public interface ITokenChecker
     {
-        Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? redirectDomain = null, CancellationToken cancellationToken = default);
+        Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? domain = null, CancellationToken cancellationToken = default);
     }
 }

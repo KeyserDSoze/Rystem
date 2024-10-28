@@ -73,6 +73,7 @@ namespace Rystem.Authentication.Social.Blazor
             }
             return default;
         }
+        private const string Origin = nameof(Origin);
         public async Task<Token?> FetchTokenAsync()
         {
             var token = await _localStorage.GetTokenAsync();
@@ -104,9 +105,8 @@ namespace Rystem.Authentication.Social.Blazor
                         return default;
                     try
                     {
-                        var baseUri = new Uri(_navigationManager.BaseUri);
-                        var domain = HttpUtility.UrlEncode($"{baseUri.Scheme}://{baseUri.Host}");
-                        token = await _client.GetFromJsonAsync<Token>($"/api/Authentication/Social/Token?provider={localState.Provider}&code={code}&=r={domain}");
+                        _client.DefaultRequestHeaders.Add(Origin, _navigationManager.BaseUri.Trim('/'));
+                        token = await _client.GetFromJsonAsync<Token>($"/api/Authentication/Social/Token?provider={localState.Provider}&code={code}");
                         if (token is not null)
                         {
                             await _localStorage.SetTokenAsync(token);

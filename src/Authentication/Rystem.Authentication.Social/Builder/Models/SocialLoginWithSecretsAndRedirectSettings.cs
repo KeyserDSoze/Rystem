@@ -4,15 +4,15 @@ namespace Rystem.Authentication.Social
 {
     public class SocialLoginWithSecretsAndRedirectSettings : SocialLoginWithSecretsSettings
     {
-        public List<string>? RedirectDomains { get; set; }
-        public override bool IsActive => ClientId != null && ClientSecret != null && RedirectDomains != null && RedirectDomains.Count > 0;
+        public List<string>? AllowedDomains { get; set; }
+        public override bool IsActive => ClientId != null && ClientSecret != null && AllowedDomains != null && AllowedDomains.Count > 0;
         public string? CheckDomain(string? domain)
         {
             if (domain == null)
             {
-                return RedirectDomains?.FirstOrDefault();
+                return AllowedDomains?.FirstOrDefault();
             }
-            else if (RedirectDomains?.Contains(domain) == true)
+            else if (AllowedDomains?.Contains(domain) == true)
             {
                 return domain;
             }

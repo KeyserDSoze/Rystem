@@ -8,24 +8,24 @@ builder.Services.AddSocialLogin(x =>
 {
     x.Google.ClientId = builder.Configuration["SocialLogin:Google:ClientId"];
     x.Google.ClientSecret = builder.Configuration["SocialLogin:Google:ClientSecret"];
-    x.Google.RedirectDomains = [builder.Configuration["SocialLogin:Google:RedirectDomain"]];
+    x.Google.AllowedDomains = [.. builder.Configuration["SocialLogin:Google:AllowedDomains"]!.Split(',')];
     x.Microsoft.ClientId = builder.Configuration["SocialLogin:Microsoft:ClientId"];
     x.Microsoft.ClientSecret = builder.Configuration["SocialLogin:Microsoft:ClientSecret"];
-    x.Microsoft.RedirectDomains = [builder.Configuration["SocialLogin:Microsoft:RedirectDomain"]];
+    x.Microsoft.AllowedDomains = [.. builder.Configuration["SocialLogin:Microsoft:AllowedDomains"]!.Split(',')];
     x.GitHub.ClientId = builder.Configuration["SocialLogin:GitHub:ClientId"];
     x.GitHub.ClientSecret = builder.Configuration["SocialLogin:GitHub:ClientSecret"];
     x.Linkedin.ClientId = builder.Configuration["SocialLogin:Linkedin:ClientId"];
     x.Linkedin.ClientSecret = builder.Configuration["SocialLogin:Linkedin:ClientSecret"];
-    x.Linkedin.RedirectDomains = [builder.Configuration["SocialLogin:Linkedin:RedirectDomain"]];
+    x.Linkedin.AllowedDomains = [.. builder.Configuration["SocialLogin:Linkedin:AllowedDomains"]!.Split(',')];
     x.X.ClientId = builder.Configuration["SocialLogin:X:ClientId"];
     x.X.ClientSecret = builder.Configuration["SocialLogin:X:ClientSecret"];
-    x.X.RedirectDomains = [builder.Configuration["SocialLogin:X:RedirectDomain"]];
+    x.X.AllowedDomains = [.. builder.Configuration["SocialLogin:X:AllowedDomains"]!.Split(',')];
     x.Instagram.ClientId = builder.Configuration["SocialLogin:Instagram:ClientId"];
     x.Instagram.ClientSecret = builder.Configuration["SocialLogin:Instagram:ClientSecret"];
-    x.Instagram.RedirectDomains = [builder.Configuration["SocialLogin:Instagram:RedirectDomain"]];
+    x.Instagram.AllowedDomains = [.. builder.Configuration["SocialLogin:Instagram:AllowedDomains"]!.Split(',')];
     x.Pinterest.ClientId = builder.Configuration["SocialLogin:Pinterest:ClientId"];
     x.Pinterest.ClientSecret = builder.Configuration["SocialLogin:Pinterest:ClientSecret"];
-    x.Pinterest.RedirectDomains = [builder.Configuration["SocialLogin:Pinterest:RedirectDomain"]];
+    x.Pinterest.AllowedDomains = [.. builder.Configuration["SocialLogin:Pinterest:AllowedDomains"]!.Split(',')];
 },
 x =>
 {

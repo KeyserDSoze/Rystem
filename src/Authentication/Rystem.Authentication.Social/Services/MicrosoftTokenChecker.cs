@@ -47,17 +47,17 @@ namespace Rystem.Authentication.Social
         }
         private const string Email = "email";
         private const string PreferredUser = "preferred_username";
-        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? redirectDomain = null, CancellationToken cancellationToken = default)
+        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? domain = null, CancellationToken cancellationToken = default)
         {
             if (!string.IsNullOrWhiteSpace(code))
             {
                 var settings = _loginBuilder.Microsoft;
-                redirectDomain = settings.CheckDomain(redirectDomain);
-                if (redirectDomain != null)
+                domain = settings.CheckDomain(domain);
+                if (domain != null)
                 {
                     var client = _clientFactory.CreateClient(Constants.MicrosoftAuthenticationClient);
-                    client.DefaultRequestHeaders.Add("Origin", redirectDomain);
-                    var content = new StringContent(string.Format(PostMessage, code, settings.ClientId, $"{redirectDomain.Trim('/')}/"), s_mediaTypeHeaderValue);
+                    client.DefaultRequestHeaders.Add("Origin", domain);
+                    var content = new StringContent(string.Format(PostMessage, code, settings.ClientId, $"{domain.Trim('/')}/"), s_mediaTypeHeaderValue);
                     var response = await client.PostAsync(string.Empty, content, cancellationToken);
                     if (response.IsSuccessStatusCode)
                     {

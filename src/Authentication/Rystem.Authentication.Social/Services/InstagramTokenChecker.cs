@@ -18,14 +18,14 @@ namespace Rystem.Authentication.Social
         }
         private const string Bearer = nameof(Bearer);
         private const string Basic = nameof(Basic);
-        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? redirectDomain = null, CancellationToken cancellationToken = default)
+        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? domain = null, CancellationToken cancellationToken = default)
         {
             var settings = _loginBuilder.Instagram;
-            redirectDomain = settings.CheckDomain(redirectDomain);
-            if (redirectDomain != null)
+            domain = settings.CheckDomain(domain);
+            if (domain != null)
             {
                 var client = _clientFactory.CreateClient(Constants.InstagramAuthenticationClient);
-                var content = new StringContent(string.Format(PostMessage, settings.ClientId, settings.ClientSecret, code, redirectDomain), s_mediaTypeHeaderValue);
+                var content = new StringContent(string.Format(PostMessage, settings.ClientId, settings.ClientSecret, code, domain), s_mediaTypeHeaderValue);
                 var response = await client.PostAsync(string.Empty, content, cancellationToken);
                 if (response.IsSuccessStatusCode)
                 {
