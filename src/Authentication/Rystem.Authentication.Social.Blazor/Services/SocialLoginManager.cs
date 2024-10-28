@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Json;
 using System.Text.Json;
+using System.Web;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Identity.Abstractions;
 
@@ -103,7 +104,9 @@ namespace Rystem.Authentication.Social.Blazor
                         return default;
                     try
                     {
-                        token = await _client.GetFromJsonAsync<Token>($"/api/Authentication/Social/Token?provider={localState.Provider}&code={code}");
+                        var baseUri = new Uri(_navigationManager.BaseUri);
+                        var domain = HttpUtility.UrlEncode($"{baseUri.Scheme}://{baseUri.Host}");
+                        token = await _client.GetFromJsonAsync<Token>($"/api/Authentication/Social/Token?provider={localState.Provider}&code={code}&=r={domain}");
                         if (token is not null)
                         {
                             await _localStorage.SetTokenAsync(token);

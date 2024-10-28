@@ -18,36 +18,39 @@ namespace Rystem.Authentication.Social
         }
         private const string Bearer = nameof(Bearer);
         private const string Basic = nameof(Basic);
-        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
+        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? redirectDomain = null, CancellationToken cancellationToken = default)
         {
             var settings = _loginBuilder.Instagram;
-            var client = _clientFactory.CreateClient(Constants.InstagramAuthenticationClient);
-            var content = new StringContent(string.Format(PostMessage, settings.ClientId, settings.ClientSecret, code, settings.RedirectDomain), s_mediaTypeHeaderValue);
-            var response = await client.PostAsync(string.Empty, content, cancellationToken);
-
-            if (response.IsSuccessStatusCode)
+            redirectDomain = settings.CheckDomain(redirectDomain);
+            if (redirectDomain != null)
             {
-                var message = await response.Content.ReadAsStringAsync();
-                if (message != null)
+                var client = _clientFactory.CreateClient(Constants.InstagramAuthenticationClient);
+                var content = new StringContent(string.Format(PostMessage, settings.ClientId, settings.ClientSecret, code, redirectDomain), s_mediaTypeHeaderValue);
+                var response = await client.PostAsync(string.Empty, content, cancellationToken);
+                if (response.IsSuccessStatusCode)
                 {
-                    var authResponse = message.FromJson<AuthenticationResponse>();
-                    client = _clientFactory.CreateClient(Constants.InstagramAuthenticationClientUser);
-                    using var requestMessage = new HttpRequestMessage(HttpMethod.Get, $"access_token={authResponse.AccessToken}");
-                    var responseFromUser = await client.SendAsync(requestMessage, cancellationToken);
-                    if (responseFromUser.IsSuccessStatusCode)
+                    var message = await response.Content.ReadAsStringAsync();
+                    if (message != null)
                     {
-                        message = await responseFromUser.Content.ReadAsStringAsync();
-                        var data = message.FromJson<DataResponse>();
-                        return new TokenResponse
+                        var authResponse = message.FromJson<AuthenticationResponse>();
+                        client = _clientFactory.CreateClient(Constants.InstagramAuthenticationClientUser);
+                        using var requestMessage = new HttpRequestMessage(HttpMethod.Get, $"access_token={authResponse.AccessToken}");
+                        var responseFromUser = await client.SendAsync(requestMessage, cancellationToken);
+                        if (responseFromUser.IsSuccessStatusCode)
                         {
-                            Username = data.Data.Username,
-                            Claims =
-                            [
-                                new Claim(ClaimTypes.Name, data.Data.Name),
+                            message = await responseFromUser.Content.ReadAsStringAsync();
+                            var data = message.FromJson<DataResponse>();
+                            return new TokenResponse
+                            {
+                                Username = data.Data.Username,
+                                Claims =
+                                [
+                                    new Claim(ClaimTypes.Name, data.Data.Name),
                                 new Claim(ClaimTypes.NameIdentifier, data.Data.Id),
                                 new Claim(ClaimTypes.Email, data.Data.Username),
                             ]
-                        };
+                            };
+                        }
                     }
                 }
             }

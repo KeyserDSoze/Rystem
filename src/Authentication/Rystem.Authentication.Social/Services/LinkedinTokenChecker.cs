@@ -18,43 +18,47 @@ namespace Rystem.Authentication.Social
             _loginBuilder = loginBuilder;
         }
         private const string Bearer = nameof(Bearer);
-        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
+        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? redirectDomain = null, CancellationToken cancellationToken = default)
         {
             if (!string.IsNullOrWhiteSpace(code))
             {
                 var settings = _loginBuilder.Linkedin;
-                var client = _clientFactory.CreateClient(Constants.LinkedinAuthenticationClient);
-                var content = new StringContent(string.Format(PostMessage, settings.ClientId, settings.ClientSecret, code, settings.RedirectDomain), s_mediaTypeHeaderValue);
-                var response = await client.PostAsync(string.Empty, content, cancellationToken);
-                if (response.IsSuccessStatusCode)
+                redirectDomain = settings.CheckDomain(redirectDomain);
+                if (redirectDomain != null)
                 {
-                    var message = await response.Content.ReadAsStringAsync();
-                    if (message != null)
+                    var client = _clientFactory.CreateClient(Constants.LinkedinAuthenticationClient);
+                    var content = new StringContent(string.Format(PostMessage, settings.ClientId, settings.ClientSecret, code, redirectDomain), s_mediaTypeHeaderValue);
+                    var response = await client.PostAsync(string.Empty, content, cancellationToken);
+                    if (response.IsSuccessStatusCode)
                     {
-                        var authResponse = message.FromJson<AuthenticationResponse>();
-                        client = _clientFactory.CreateClient(Constants.LinkedinAuthenticationClientUser);
-                        using var requestMessage = new HttpRequestMessage(HttpMethod.Get, string.Empty);
-                        requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Bearer, authResponse.AccessToken);
-                        var responseFromUser = await client.SendAsync(requestMessage, cancellationToken);
-                        if (responseFromUser.IsSuccessStatusCode)
+                        var message = await response.Content.ReadAsStringAsync();
+                        if (message != null)
                         {
-                            message = await responseFromUser.Content.ReadAsStringAsync();
-                            var profile = message.FromJson<ProfileResponse>();
-                            if (profile.EmailVerified)
+                            var authResponse = message.FromJson<AuthenticationResponse>();
+                            client = _clientFactory.CreateClient(Constants.LinkedinAuthenticationClientUser);
+                            using var requestMessage = new HttpRequestMessage(HttpMethod.Get, string.Empty);
+                            requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Bearer, authResponse.AccessToken);
+                            var responseFromUser = await client.SendAsync(requestMessage, cancellationToken);
+                            if (responseFromUser.IsSuccessStatusCode)
                             {
-                                return new TokenResponse
+                                message = await responseFromUser.Content.ReadAsStringAsync();
+                                var profile = message.FromJson<ProfileResponse>();
+                                if (profile.EmailVerified)
                                 {
-                                    Username = profile.Email,
-                                    Claims =
-                                    [
-                                        new Claim(ClaimTypes.Email, profile.Email),
+                                    return new TokenResponse
+                                    {
+                                        Username = profile.Email,
+                                        Claims =
+                                        [
+                                            new Claim(ClaimTypes.Email, profile.Email),
                                         new Claim(ClaimTypes.Name, profile.Name),
                                         new Claim(ClaimTypes.GivenName, profile.GivenName),
                                         new Claim(ClaimTypes.Locality, profile.Locale.Language),
                                         new Claim(ClaimTypes.NameIdentifier, profile.Sub),
                                         new Claim(ClaimTypes.Thumbprint, profile.Picture),
                                     ]
-                                };
+                                    };
+                                }
                             }
                         }
                     }

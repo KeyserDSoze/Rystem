@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authentication;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -6,7 +7,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 using Rystem.Authentication.Social;
-using System.Security.Claims;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -24,7 +24,8 @@ namespace Microsoft.Extensions.DependencyInjection
                     [FromServices] ILogger<ITokenChecker>? logger,
                     [FromQuery] ProviderType provider,
                     [FromQuery] string code,
-                    CancellationToken cancellationToken) =>
+                    [FromQuery(Name = "r")] string? redirectDomain = null,
+                    CancellationToken cancellationToken = default) =>
                 {
                     TokenResponse? response = null;
                     var tokenChecker = tokenCheckerFactory.Create(provider.ToString());
@@ -32,7 +33,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     {
                         try
                         {
-                            response = await tokenChecker.CheckTokenAndGetUsernameAsync(code, cancellationToken);
+                            response = await tokenChecker.CheckTokenAndGetUsernameAsync(code, redirectDomain, cancellationToken);
                         }
                         catch (Exception ex)
                         {

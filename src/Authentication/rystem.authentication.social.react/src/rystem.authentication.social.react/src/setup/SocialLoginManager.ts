@@ -14,7 +14,8 @@ export class SocialLoginManager {
         return SocialLoginManager.instance;
     }
     public updateToken(provider: ProviderType, code: string): Promise<SocialToken> {
-        return fetch(`${this.settings.apiUri}/api/Authentication/Social/Token?provider=${provider}&code=${code}`)
+        const domain = window.location.origin;
+        return fetch(`${this.settings.apiUri}/api/Authentication/Social/Token?provider=${provider}&code=${code}&r=${domain}`)
             .then(t => {
                 return t.json();
             })

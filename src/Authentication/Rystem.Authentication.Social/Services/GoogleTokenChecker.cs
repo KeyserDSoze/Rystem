@@ -1,8 +1,8 @@
-﻿using Google.Apis.Auth;
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
+using Google.Apis.Auth;
 
 namespace Rystem.Authentication.Social
 {
@@ -17,31 +17,35 @@ namespace Rystem.Authentication.Social
             _clientFactory = clientFactory;
             _loginBuilder = loginBuilder;
         }
-        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
+        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? redirectDomain = null, CancellationToken cancellationToken = default)
         {
             var settings = _loginBuilder.Google;
-            var client = _clientFactory.CreateClient(Constants.GoogleAuthenticationClient);
-            var content = new StringContent(string.Format(PostMessage, settings.ClientId, settings.ClientSecret, code, settings.RedirectDomain), s_mediaTypeHeaderValue);
-            var response = await client.PostAsync(string.Empty, content);
-            if (response.IsSuccessStatusCode)
+            redirectDomain = settings.CheckDomain(redirectDomain);
+            if (redirectDomain != null)
             {
-                var message = await response.Content.ReadFromJsonAsync<AuthenticationResponse>(cancellationToken);
-                if (message != null)
+                var client = _clientFactory.CreateClient(Constants.GoogleAuthenticationClient);
+                var content = new StringContent(string.Format(PostMessage, settings.ClientId, settings.ClientSecret, code, redirectDomain), s_mediaTypeHeaderValue);
+                var response = await client.PostAsync(string.Empty, content);
+                if (response.IsSuccessStatusCode)
                 {
-                    var payload = await GoogleJsonWebSignature.ValidateAsync(message.IdToken);
-                    return new TokenResponse
+                    var message = await response.Content.ReadFromJsonAsync<AuthenticationResponse>(cancellationToken);
+                    if (message != null)
                     {
-                        Username = payload.Email,
-                        Claims =
-                        [
-                            new Claim(ClaimTypes.Email, payload.Email),
+                        var payload = await GoogleJsonWebSignature.ValidateAsync(message.IdToken);
+                        return new TokenResponse
+                        {
+                            Username = payload.Email,
+                            Claims =
+                            [
+                                new Claim(ClaimTypes.Email, payload.Email),
                             new Claim(ClaimTypes.Name, payload.Name),
                             new Claim(ClaimTypes.GivenName, payload.FamilyName),
                             new Claim(ClaimTypes.Locality, payload.Locale),
                             new Claim(ClaimTypes.NameIdentifier, payload.Subject),
                             new Claim(ClaimTypes.Thumbprint, payload.Picture),
                         ]
-                    };
+                        };
+                    }
                 }
             }
             return TokenResponse.Empty;

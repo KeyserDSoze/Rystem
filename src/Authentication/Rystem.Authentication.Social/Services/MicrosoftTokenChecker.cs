@@ -1,10 +1,10 @@
-﻿using System.Net.Http.Headers;
-using System.Text.Json.Serialization;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
 
 namespace Rystem.Authentication.Social
 {
@@ -47,51 +47,56 @@ namespace Rystem.Authentication.Social
         }
         private const string Email = "email";
         private const string PreferredUser = "preferred_username";
-        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
+        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? redirectDomain = null, CancellationToken cancellationToken = default)
         {
             if (!string.IsNullOrWhiteSpace(code))
             {
                 var settings = _loginBuilder.Microsoft;
-                var client = _clientFactory.CreateClient(Constants.MicrosoftAuthenticationClient);
-                var content = new StringContent(string.Format(PostMessage, code, settings.ClientId, $"{settings.RedirectDomain?.Trim('/')}/"), s_mediaTypeHeaderValue);
-                var response = await client.PostAsync(string.Empty, content, cancellationToken);
-                if (response.IsSuccessStatusCode)
+                redirectDomain = settings.CheckDomain(redirectDomain);
+                if (redirectDomain != null)
                 {
-                    var message = await response.Content.ReadAsStringAsync();
-                    if (message != null)
+                    var client = _clientFactory.CreateClient(Constants.MicrosoftAuthenticationClient);
+                    client.DefaultRequestHeaders.Add("Origin", redirectDomain);
+                    var content = new StringContent(string.Format(PostMessage, code, settings.ClientId, $"{redirectDomain.Trim('/')}/"), s_mediaTypeHeaderValue);
+                    var response = await client.PostAsync(string.Empty, content, cancellationToken);
+                    if (response.IsSuccessStatusCode)
                     {
-                        var authResponse = message.FromJson<AuthenticationResponse>();
-                        if (authResponse.AccessToken != null)
+                        var message = await response.Content.ReadAsStringAsync();
+                        if (message != null)
                         {
-                            var token = new JwtSecurityToken(authResponse.IdToken);
-                            var issuer = token.Payload.Iss;
-                            var validationParameters = await GetTokenValidationParametersAsync(issuer);
-                            var counter = 0;
-                            while (counter <= 1)
+                            var authResponse = message.FromJson<AuthenticationResponse>();
+                            if (authResponse.AccessToken != null)
                             {
-                                counter++;
-                                try
+                                var token = new JwtSecurityToken(authResponse.IdToken);
+                                var issuer = token.Payload.Iss;
+                                var validationParameters = await GetTokenValidationParametersAsync(issuer);
+                                var counter = 0;
+                                while (counter <= 1)
                                 {
-                                    var tokenHandler = new JwtSecurityTokenHandler();
-                                    tokenHandler.ValidateToken(authResponse.IdToken, validationParameters, out SecurityToken validatedToken);
-                                    var jwt = (JwtSecurityToken)validatedToken;
-                                    var preferredUser = jwt.Claims.FirstOrDefault(x => x.Type == PreferredUser);
-                                    var username = preferredUser != null ? preferredUser.Value : jwt.Claims.First(x => x.Type == Email).Value;
-                                    return new TokenResponse
+                                    counter++;
+                                    try
                                     {
-                                        Username = username,
-                                        Claims = jwt.Claims.ToList()
-                                    };
-                                }
-                                catch (SecurityTokenValidationException)
-                                {
-                                    if (s_nextUpdate > DateTime.UtcNow)
-                                    {
-                                        validationParameters = await RefreshTokenValidationParametersAsync(issuer);
+                                        var tokenHandler = new JwtSecurityTokenHandler();
+                                        tokenHandler.ValidateToken(authResponse.IdToken, validationParameters, out SecurityToken validatedToken);
+                                        var jwt = (JwtSecurityToken)validatedToken;
+                                        var preferredUser = jwt.Claims.FirstOrDefault(x => x.Type == PreferredUser);
+                                        var username = preferredUser != null ? preferredUser.Value : jwt.Claims.First(x => x.Type == Email).Value;
+                                        return new TokenResponse
+                                        {
+                                            Username = username,
+                                            Claims = jwt.Claims.ToList()
+                                        };
                                     }
-                                    else
+                                    catch (SecurityTokenValidationException)
                                     {
-                                        counter++;
+                                        if (s_nextUpdate > DateTime.UtcNow)
+                                        {
+                                            validationParameters = await RefreshTokenValidationParametersAsync(issuer);
+                                        }
+                                        else
+                                        {
+                                            counter++;
+                                        }
                                     }
                                 }
                             }

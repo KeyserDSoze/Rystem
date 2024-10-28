@@ -27,39 +27,43 @@ namespace Rystem.Authentication.Social
             var toReturn = Convert.ToBase64String(bytes);
             return toReturn;
         }
-        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
+        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? redirectDomain = null, CancellationToken cancellationToken = default)
         {
             if (!string.IsNullOrWhiteSpace(code))
             {
                 var settings = _loginBuilder.Pinterest;
-                var client = _clientFactory.CreateClient(Constants.TikTokAuthenticationClient);
-                var content = new StringContent(string.Format(PostMessage, code, settings.RedirectDomain), s_mediaTypeHeaderValue);
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(Basic, Btoa($"{settings.ClientId}:{settings.ClientSecret}"));
-                var response = await client.PostAsync(TokenUri, content, cancellationToken);
-
-                if (response.IsSuccessStatusCode)
+                redirectDomain = settings.CheckDomain(redirectDomain);
+                if (redirectDomain != null)
                 {
-                    var message = await response.Content.ReadAsStringAsync();
-                    if (message != null)
+                    var client = _clientFactory.CreateClient(Constants.TikTokAuthenticationClient);
+                    var content = new StringContent(string.Format(PostMessage, code, redirectDomain), s_mediaTypeHeaderValue);
+                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(Basic, Btoa($"{settings.ClientId}:{settings.ClientSecret}"));
+                    var response = await client.PostAsync(TokenUri, content, cancellationToken);
+
+                    if (response.IsSuccessStatusCode)
                     {
-                        var authResponse = message.FromJson<AuthenticationResponse>();
-                        client = _clientFactory.CreateClient(Constants.TikTokAuthenticationClient);
-                        using var requestMessage = new HttpRequestMessage(HttpMethod.Get, MeUri);
-                        requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Bearer, authResponse.AccessToken);
-                        var responseFromUser = await client.SendAsync(requestMessage, cancellationToken);
-                        if (responseFromUser.IsSuccessStatusCode)
+                        var message = await response.Content.ReadAsStringAsync();
+                        if (message != null)
                         {
-                            message = await responseFromUser.Content.ReadAsStringAsync();
-                            var data = message.FromJson<UserInformation>();
-                            return new TokenResponse
+                            var authResponse = message.FromJson<AuthenticationResponse>();
+                            client = _clientFactory.CreateClient(Constants.TikTokAuthenticationClient);
+                            using var requestMessage = new HttpRequestMessage(HttpMethod.Get, MeUri);
+                            requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Bearer, authResponse.AccessToken);
+                            var responseFromUser = await client.SendAsync(requestMessage, cancellationToken);
+                            if (responseFromUser.IsSuccessStatusCode)
                             {
-                                Username = data.Email,
-                                Claims = [
-                                    new Claim(ClaimTypes.Email, data.Email),
+                                message = await responseFromUser.Content.ReadAsStringAsync();
+                                var data = message.FromJson<UserInformation>();
+                                return new TokenResponse
+                                {
+                                    Username = data.Email,
+                                    Claims = [
+                                        new Claim(ClaimTypes.Email, data.Email),
                                     new Claim(ClaimTypes.Name, data.Name),
                                     new Claim(ClaimTypes.NameIdentifier, data.Id),
                                 ]
-                            };
+                                };
+                            }
                         }
                     }
                 }

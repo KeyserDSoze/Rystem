@@ -21,38 +21,42 @@ namespace Rystem.Authentication.Social
         }
         private const string Bearer = nameof(Bearer);
         private const string Basic = nameof(Basic);
-        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, CancellationToken cancellationToken)
+        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? redirectDomain = null, CancellationToken cancellationToken = default)
         {
             var settings = _loginBuilder.X;
-            var client = _clientFactory.CreateClient(Constants.XAuthenticationClient);
-            var content = new StringContent(string.Format(PostMessage, settings.ClientId, settings.RedirectDomain, code), s_mediaTypeHeaderValue);
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(Basic, $"{settings.ClientId}:{settings.ClientSecret}".ToBase64());
-            var response = await client.PostAsync(TokenUri, content, cancellationToken);
-
-            if (response.IsSuccessStatusCode)
+            redirectDomain = settings.CheckDomain(redirectDomain);
+            if (redirectDomain != null)
             {
-                var message = await response.Content.ReadAsStringAsync();
-                if (message != null)
+                var client = _clientFactory.CreateClient(Constants.XAuthenticationClient);
+                var content = new StringContent(string.Format(PostMessage, settings.ClientId, redirectDomain, code), s_mediaTypeHeaderValue);
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(Basic, $"{settings.ClientId}:{settings.ClientSecret}".ToBase64());
+                var response = await client.PostAsync(TokenUri, content, cancellationToken);
+
+                if (response.IsSuccessStatusCode)
                 {
-                    var authResponse = message.FromJson<AuthenticationResponse>();
-                    client = _clientFactory.CreateClient(Constants.XAuthenticationClient);
-                    using var requestMessage = new HttpRequestMessage(HttpMethod.Get, MeUri);
-                    requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Bearer, authResponse.AccessToken);
-                    var responseFromUser = await client.SendAsync(requestMessage, cancellationToken);
-                    if (responseFromUser.IsSuccessStatusCode)
+                    var message = await response.Content.ReadAsStringAsync();
+                    if (message != null)
                     {
-                        message = await responseFromUser.Content.ReadAsStringAsync();
-                        var data = message.FromJson<DataResponse>();
-                        return new TokenResponse
+                        var authResponse = message.FromJson<AuthenticationResponse>();
+                        client = _clientFactory.CreateClient(Constants.XAuthenticationClient);
+                        using var requestMessage = new HttpRequestMessage(HttpMethod.Get, MeUri);
+                        requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Bearer, authResponse.AccessToken);
+                        var responseFromUser = await client.SendAsync(requestMessage, cancellationToken);
+                        if (responseFromUser.IsSuccessStatusCode)
                         {
-                            Username = data.Data.Username,
-                            Claims =
-                            [
-                                new Claim(ClaimTypes.Name, data.Data.Name),
+                            message = await responseFromUser.Content.ReadAsStringAsync();
+                            var data = message.FromJson<DataResponse>();
+                            return new TokenResponse
+                            {
+                                Username = data.Data.Username,
+                                Claims =
+                                [
+                                    new Claim(ClaimTypes.Name, data.Data.Name),
                                 new Claim(ClaimTypes.NameIdentifier, data.Data.Id),
                                 new Claim(ClaimTypes.Email, data.Data.Username),
                             ]
-                        };
+                            };
+                        }
                     }
                 }
             }

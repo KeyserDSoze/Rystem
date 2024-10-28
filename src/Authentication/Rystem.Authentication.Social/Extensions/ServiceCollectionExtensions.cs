@@ -38,7 +38,6 @@ namespace Microsoft.Extensions.DependencyInjection
                 services.AddHttpClient(Constants.MicrosoftAuthenticationClient, x =>
                 {
                     x.BaseAddress = new Uri("https://login.microsoftonline.com/consumers/oauth2/v2.0/token");
-                    x.DefaultRequestHeaders.Add("Origin", builder.Microsoft.RedirectDomain);
                 });
             }
             if (builder.Facebook.IsActive)
