@@ -124,6 +124,7 @@ namespace Rystem.Authentication.Social.Blazor
             {
                 try
                 {
+                    _client.DefaultRequestHeaders.Add(Origin, _navigationManager.BaseUri.Trim('/'));
                     token = await _client.GetFromJsonAsync<Token>($"/api/Authentication/Social/Token?provider={SocialLoginProvider.DotNet}&code={token.RefreshToken}");
                     if (token is not null)
                     {
