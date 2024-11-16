@@ -1,7 +1,6 @@
 ﻿using System.Reflection;
 using System.Text.Json;
 using Microsoft.PowerPlatform.Dataverse.Client;
-using Microsoft.Rest;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
 using Microsoft.Xrm.Sdk.Metadata;

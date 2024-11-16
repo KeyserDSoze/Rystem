@@ -9,8 +9,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0-rc.2.24474.3" />
-        <PackageReference Include="Scalar.AspNetCore" Version="1.2.13" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
+        <PackageReference Include="Scalar.AspNetCore" Version="1.2.37" />
     </ItemGroup>
 
     <ItemGroup>

@@ -3,7 +3,6 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.PowerPlatform.Dataverse.Client;
-using Microsoft.Rest;
 using Microsoft.Xrm.Sdk.Query;
 
 namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse

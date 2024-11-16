@@ -35,9 +35,9 @@ namespace RepositoryFramework.Api.Client.Authorization
                 var token = await _authorizationHeaderProvider.CreateAuthorizationHeaderForUserAsync(_settings.Scopes!);
                 return token;
             }
-            catch (Exception ex)
+            catch
             {
-                return null;
+                return default;
             }
         }
     }
