@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -30,7 +30,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Azure.Identity" Version="1.13.1" />
-		<PackageReference Include="Microsoft.Azure.Cosmos" Version="3.45.2" />
+		<PackageReference Include="Microsoft.Azure.Cosmos" Version="3.46.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
 	</ItemGroup>
 

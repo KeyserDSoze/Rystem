@@ -18,17 +18,17 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Extensions/Tests/Rystem.Test.XUnit</RepositoryUrl>
         <PackageId>Rystem.Test.XUnit</PackageId>
-        <Version>9.0.0</Version>
+        <Version>9.0.1</Version>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
         <IsPackable>true</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
         <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="9.0.0" />
         <PackageReference Include="xunit" Version="2.9.2" />
-        <PackageReference Include="Xunit.DependencyInjection" Version="9.6.0" />
+        <PackageReference Include="Xunit.DependencyInjection" Version="9.7.0" />
     </ItemGroup>
     <Choose>
         <When Condition=" '$(Configuration)'=='Debug' ">

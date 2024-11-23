@@ -16,7 +16,7 @@ namespace Rystem.PlayFramework.Test
 
         protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => typeof(CountryController);
 
-        protected override IServiceCollection ConfigureClientServices(IServiceCollection services)
+        protected override IServiceCollection ConfigureClientServices(IServiceCollection services, IConfiguration configuration)
         {
             services.AddHttpClient("client", x =>
             {

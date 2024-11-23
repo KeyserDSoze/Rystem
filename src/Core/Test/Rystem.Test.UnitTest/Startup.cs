@@ -15,7 +15,7 @@ namespace Rystem.Test.UnitTest
         protected override bool HasTestHost => true;
         protected override Type? TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration => typeof(Startup);
         protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => typeof(ServiceController);
-        protected override IServiceCollection ConfigureClientServices(IServiceCollection services)
+        protected override IServiceCollection ConfigureClientServices(IServiceCollection services, IConfiguration configuration)
         {
             services.AddHttpClient("client", x =>
             {

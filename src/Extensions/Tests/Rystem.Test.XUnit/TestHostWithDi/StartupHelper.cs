@@ -16,7 +16,7 @@ namespace Rystem.Test.XUnit
         protected virtual bool AddHealthCheck => true;
         protected abstract Type? TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration { get; }
         protected abstract Type? TypeToChooseTheRightAssemblyWithControllersToMap { get; }
-        protected abstract IServiceCollection ConfigureClientServices(IServiceCollection services);
+        protected abstract IServiceCollection ConfigureClientServices(IServiceCollection services, IConfiguration configuration);
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "It's necessary to have this method as a non-static method because the dependency injection package needs a non-static method.")]
         public void ConfigureHost(IHostBuilder hostBuilder) =>
         hostBuilder
@@ -49,7 +49,7 @@ namespace Rystem.Test.XUnit
                 services.AddSingleton(context.Configuration);
                 services.AddSingleton<IHttpClientFactory>(TestHttpClientFactory.Instance);
             }
-            ConfigureClientServices(services);
+            ConfigureClientServices(services, context.Configuration);
         }
     }
 }
