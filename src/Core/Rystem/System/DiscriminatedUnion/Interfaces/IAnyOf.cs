@@ -1,9 +1,10 @@
 ﻿namespace System
 {
-    public interface IUnionOf
+    public interface IAnyOf
     {
         object? Value { get; set; }
         int Index { get; }
         T? Get<T>();
+        bool Is<T>();
     }
 }

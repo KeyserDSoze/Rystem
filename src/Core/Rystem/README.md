@@ -6,12 +6,13 @@
 - [What is Rystem?](#what-is-rystem)
 - [Discriminated Union in C#](#discriminated-union-in-c)
   - [What is a Discriminated Union?](#what-is-a-discriminated-union)
-  - [UnionOf Classes](#unionof-classes)
+  - [AnyOf Classes](#unionof-classes)
   - [JSON Integration](#json-integration)
-- [Usage Examples](#usage-examples)
+  - [Usage Examples](#usage-examples)
   - [Defining Unions](#defining-unions)
   - [Serializing and Deserializing JSON](#serializing-and-deserializing-json)
-- [Benefits of Using It](#benefits-of-using-it)
+  - [Signature-Based Deserialization](#signature-based-deserialization)
+  - [Benefits of Using It](#benefits-of-using-it)
 - [Extension Methods](#extension-methods)
   - [Stopwatch](#stopwatch)
   - [LINQ Expression Serializer](#linq-expression-serializer)
@@ -33,7 +34,9 @@
 
 ## Discriminated Union in C#
 
-This library introduces a `UnionOf<T0, T1, ...>` class that implements discriminated unions in C#. Discriminated unions are a powerful type system feature that allows variables to store one of several predefined types, enabling type-safe and concise programming. This library also includes integration with JSON serialization and deserialization.
+This library introduces a `AnyOf<T0, T1, ...>` class that implements discriminated unions in C#. Discriminated unions are a powerful type system feature that allows variables to store one of several predefined types, enabling type-safe and concise programming. 
+
+**This library also includes integration with JSON serialization and deserialization.**
 
 ## What is a Discriminated Union?
 
@@ -42,36 +45,36 @@ A discriminated union is a type that can hold one of several predefined types at
 For example, a union can represent a value that is either an integer, a string, or a boolean:
 
 ```csharp
-UnionOf<int, string, bool> value;
+AnyOf<int, string, bool> value;
 ```
 
 The `value` can hold an integer, a string, or a boolean, but never more than one type at a time.
 
 ---
 
-## UnionOf Classes
+### AnyOf Classes
 
-The `UnionOf` class is implemented as follows:
+The `AnyOf` class is implemented as follows:
 
 ```csharp
 [JsonConverter(typeof(UnionConverterFactory))]
-public class UnionOf<T0, T1> : IUnionOf
+public class AnyOf<T0, T1> : IAnyOf
 {
     private Wrapper[]? _wrappers;
     public int Index { get; private protected set; } = -1;
     public T0? AsT0 => TryGet<T0>(0);
     public T1? AsT1 => TryGet<T1>(1);
     private protected virtual int MaxIndex => 2;
-    public UnionOf(object? value)
+    public AnyOf(object? value)
     {
-        UnionOfInstance(value);
+        AnyOfInstance(value);
     }
-    private protected void UnionOfInstance(object? value)
+    private protected void AnyOfInstance(object? value)
     {
         _wrappers = new Wrapper[MaxIndex];
         var check = SetWrappers(value);
         if (!check)
-            throw new ArgumentException($"Invalid value in UnionOf. You're passing an object of type: {value?.GetType().FullName}", nameof(value));
+            throw new ArgumentException($"Invalid value in AnyOf. You're passing an object of type: {value?.GetType().FullName}", nameof(value));
     }
     private protected Q? TryGet<Q>(int index)
     {
@@ -83,6 +86,7 @@ public class UnionOf<T0, T1> : IUnionOf
         var entity = (Q)value.Entity;
         return entity;
     }
+    public bool Is<T>() => Value is T;
     private protected virtual bool SetWrappers(object? value)
     {
         foreach (var wrapper in _wrappers!)
@@ -126,9 +130,9 @@ public class UnionOf<T0, T1> : IUnionOf
             SetWrappers(value);
         }
     }
-    public static implicit operator UnionOf<T0, T1>(T0 entity)
+    public static implicit operator AnyOf<T0, T1>(T0 entity)
         => new(entity);
-    public static implicit operator UnionOf<T0, T1>(T1 entity)
+    public static implicit operator AnyOf<T0, T1>(T1 entity)
         => new(entity);
     public override string? ToString()
         => Value?.ToString();
@@ -143,7 +147,7 @@ public class UnionOf<T0, T1> : IUnionOf
         => RuntimeHelpers.GetHashCode(Value);
 }
 
-public interface IUnionOf
+public interface IAnyOf
 {
     object? Value { get; set; }
     int Index { get; }
@@ -151,12 +155,12 @@ public interface IUnionOf
 }
 ```
 
-The library defines `UnionOf<T0, T1, ..., Tn>` classes, supporting up to 8 types:
+The library defines `AnyOf<T0, T1, ..., Tn>` classes, supporting up to 8 types:
 
-- `UnionOf<T0, T1>`
-- `UnionOf<T0, T1, T2>`
+- `AnyOf<T0, T1>`
+- `AnyOf<T0, T1, T2>`
 - ...
-- `UnionOf<T0, T1, ..., T7>`
+- `AnyOf<T0, T1, ..., T7>`
 
 Each union class contains methods and properties for:
 
@@ -166,11 +170,11 @@ Each union class contains methods and properties for:
 
 ---
 
-## JSON Integration
+### JSON Integration
 
 This library supports seamless JSON serialization and deserialization for discriminated unions. It uses a mechanism called **"Signature"** to identify the correct class during deserialization. The "Signature" is constructed based on the names of all properties that define each class in the union.
 
-### How "Signature" Works
+#### How "Signature" Works
 
 1. During deserialization, the library analyzes the properties present in the JSON.
 2. The "Signature" matches the property names in the JSON to a predefined signature for each class in the union.
@@ -178,9 +182,9 @@ This library supports seamless JSON serialization and deserialization for discri
 
 ---
 
-## Usage Examples
+### Usage Examples
 
-### Defining Unions
+#### Defining Unions
 
 Here’s how to define and use a discriminated union:
 
@@ -221,13 +225,13 @@ var testClass = new CurrentTestClass
 };
 ```
 
-Notice that the implicit conversion allows you to directly assign values of compatible types (e.g., `FirstClass` and `SecondClass`) without explicitly constructing a `UnionOf<T0, T1>` instance.
+Notice that the implicit conversion allows you to directly assign values of compatible types (e.g., `FirstClass` and `SecondClass`) without explicitly constructing a `AnyOf<T0, T1>` instance.
 
-### Serializing and Deserializing JSON
+#### Serializing and Deserializing JSON
 
 Here is an example that demonstrates JSON integration:
 
-#### Classes
+##### Classes
 
 ```csharp
 public class FirstClass {
@@ -250,7 +254,7 @@ public class ThirdClass {
 }
 ```
 
-#### Example JSON
+##### Example JSON
 
 ```json
 {
@@ -265,7 +269,7 @@ public class ThirdClass {
 }
 ```
 
-#### Deserialization
+##### Deserialization
 
 ```csharp
 var json = "{\"OneClass_String\":{\"FirstProperty\":\"OneClass_String.FirstProperty\",\"SecondProperty\":\"OneClass_String.SecondProperty\"},\"SecondClass_OneClass\":{\"FirstProperty\":\"SecondClass_OneClass.FirstProperty\",\"SecondProperty\":\"SecondClass_OneClass.SecondProperty\"}}";
@@ -273,16 +277,62 @@ var deserialized = json.FromJson<CurrentTestClass>();
 Console.WriteLine(deserialized.OneClass_String.AsT0.FirstProperty); // Outputs: OneClass_String.FirstProperty
 ```
 
-#### Serialization
+##### Serialization
 
 ```csharp
 var serializedJson = testClass.ToJson();
 Console.WriteLine(serializedJson); // Outputs the JSON representation of testClass
 ```
 
+#### Signature-Based Deserialization
+
+This library employs a "signature method" for deserialization, allowing it to determine the correct type based on property names. Here’s an example demonstrating how it works:
+
+```csharp
+[Fact]
+public void DeserializationSignature()
+{
+    var testClass = new SignatureTestClass
+    {
+        Test = new SignatureClassTwo
+        {
+            FirstProperty = "FirstProperty",
+            SecondProperty = "SecondProperty"
+        }
+    };
+    var json = testClass.ToJson();
+    var deserialized = json.FromJson<SignatureTestClass>();
+
+    // It's correct that the class during deserialization is not the same as the original one,
+    // because the deserialization is based on the name of the properties (signature method),
+    // and both classes are the same in terms of properties.
+    Assert.True(deserialized.Test!.Is<SignatureClassOne>());
+    Assert.False(deserialized.Test!.Is<SignatureClassTwo>());
+}
+
+private sealed class SignatureTestClass
+{
+    public AnyOf<SignatureClassOne, SignatureClassTwo>? Test { get; set; }
+}
+
+private sealed class SignatureClassOne
+{
+    public string? FirstProperty { get; set; }
+    public string? SecondProperty { get; set; }
+}
+
+private sealed class SignatureClassTwo
+{
+    public string? FirstProperty { get; set; }
+    public string? SecondProperty { get; set; }
+}
+```
+
+This approach ensures flexibility and correctness when deserializing objects that share similar property structures, with a think to performance.
+
 ---
 
-## Benefits of Using It
+### Benefits of Using It
 
 1. **Type Safety**: Ensures only predefined types are used.
 2. **JSON Support**: Automatically identifies and deserializes the correct type using "Signature".

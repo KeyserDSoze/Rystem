@@ -10,7 +10,7 @@ namespace System.Text.Json.Serialization
         private readonly Dictionary<Type, ReadHelper> _readers = [];
         private readonly Dictionary<Type, WriteHelper> _writers = [];
         private readonly Dictionary<Type, Dictionary<string, bool>> _properties = [];
-        private readonly Type _unionOfType;
+        private readonly Type _anyOfType;
         public UnionConverterEngine(JsonSerializerOptions options, params Type[] types)
         {
             _types = types;
@@ -31,15 +31,15 @@ namespace System.Text.Json.Serialization
                     _properties[type].Add(name, true);
                 }
             }
-            _unionOfType = GetUnionType(types.Length).MakeGenericType(_types);
+            _anyOfType = GetUnionType(types.Length).MakeGenericType(_types);
 
             static Type GetUnionType(int numberOfTypes)
             {
                 return numberOfTypes switch
                 {
-                    2 => typeof(UnionOf<,>),
-                    3 => typeof(UnionOf<,,>),
-                    4 => typeof(UnionOf<,,,>),
+                    2 => typeof(AnyOf<,>),
+                    3 => typeof(AnyOf<,,>),
+                    4 => typeof(AnyOf<,,,>),
                     _ => throw new NotSupportedException()
                 };
             }
@@ -58,7 +58,7 @@ namespace System.Text.Json.Serialization
             {
                 var readHelper = _readers[currentType];
                 var result = readHelper.Read(ref reader, currentType, options);
-                var instance = (dynamic)Activator.CreateInstance(_unionOfType, [result])!;
+                var instance = (dynamic)Activator.CreateInstance(_anyOfType, [result])!;
                 return instance;
             }
             else
@@ -123,9 +123,9 @@ namespace System.Text.Json.Serialization
             object value,
             JsonSerializerOptions options)
         {
-            if (value is IUnionOf unionOf)
+            if (value is IAnyOf anyOf)
             {
-                var currentValue = unionOf.Value;
+                var currentValue = anyOf.Value;
                 if (currentValue != null)
                 {
                     var currentType = currentValue.GetType();

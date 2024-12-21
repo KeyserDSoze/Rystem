@@ -8,9 +8,9 @@
             {
                 return false;
             }
-            if (typeToConvert.GetGenericTypeDefinition() == typeof(UnionOf<,>)
-                || typeToConvert.GetGenericTypeDefinition() == typeof(UnionOf<,,>)
-                || typeToConvert.GetGenericTypeDefinition() == typeof(UnionOf<,,,>))
+            if (typeToConvert.GetGenericTypeDefinition() == typeof(AnyOf<,>)
+                || typeToConvert.GetGenericTypeDefinition() == typeof(AnyOf<,,>)
+                || typeToConvert.GetGenericTypeDefinition() == typeof(AnyOf<,,,>))
             {
                 return true;
             }

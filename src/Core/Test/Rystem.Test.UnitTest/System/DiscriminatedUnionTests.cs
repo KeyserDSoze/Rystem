@@ -70,23 +70,54 @@ namespace Rystem.Test.UnitTest.System
             }
             Assert.Equal(json, deserialized.ToJson());
         }
+        [Fact]
+        public void DeserializationSignature()
+        {
+            var testClass = new SignatureTestClass
+            {
+                Test = new SignatureClassTwo
+                {
+                    FirstProperty = "FirstProperty",
+                    SecondProperty = "SecondProperty"
+                }
+            };
+            var json = testClass.ToJson();
+            var deserialized = json.FromJson<SignatureTestClass>();
+            //It's correct that the class during the deserialization is not the same as the original one, because the deserialization is based on the name of the properties (signature method), and both classes are the same in terms of properties.
+            Assert.True(deserialized.Test!.Is<SignatureClassOne>());
+            Assert.False(deserialized.Test!.Is<SignatureClassTwo>());
+        }
+        private sealed class SignatureTestClass
+        {
+            public AnyOf<SignatureClassOne, SignatureClassTwo>? Test { get; set; }
+        }
+        private sealed class SignatureClassOne
+        {
+            public string? FirstProperty { get; set; }
+            public string? SecondProperty { get; set; }
+        }
+        private sealed class SignatureClassTwo
+        {
+            public string? FirstProperty { get; set; }
+            public string? SecondProperty { get; set; }
+        }
         private sealed class CurrentTestClass
         {
             [JsonPropertyName("c")]
-            public UnionOf<SecondClass, FirstClass>? SecondClass_OneClass { get; set; }
+            public AnyOf<SecondClass, FirstClass>? SecondClass_OneClass { get; set; }
             [JsonPropertyName("m")]
-            public UnionOf<FirstClass, string>? OneClass_String { get; set; }
+            public AnyOf<FirstClass, string>? OneClass_String { get; set; }
             [JsonPropertyName("f")]
-            public UnionOf<FirstClass, string>? OneClass_string__2 { get; set; }
+            public AnyOf<FirstClass, string>? OneClass_string__2 { get; set; }
             [JsonPropertyName("s")]
-            public UnionOf<bool, int>? Bool_Int { get; set; }
+            public AnyOf<bool, int>? Bool_Int { get; set; }
             [JsonPropertyName("p")]
-            public UnionOf<decimal, bool>? Decimal_Bool { get; set; }
-            public UnionOf<string, int>? Test { get; set; }
+            public AnyOf<decimal, bool>? Decimal_Bool { get; set; }
+            public AnyOf<string, int>? Test { get; set; }
             [JsonPropertyName("d")]
-            public UnionOf<FirstClass, SecondClass, int>? OneCLass_SecondClass_Int { get; set; }
+            public AnyOf<FirstClass, SecondClass, int>? OneCLass_SecondClass_Int { get; set; }
             [JsonPropertyName("e")]
-            public UnionOf<FirstClass, SecondClass, int, ThirdClass>? FirstClass_SecondClass_Int_ThirdClass { get; set; }
+            public AnyOf<FirstClass, SecondClass, int, ThirdClass>? FirstClass_SecondClass_Int_ThirdClass { get; set; }
         }
         private sealed class FirstClass
         {
