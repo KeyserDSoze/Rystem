@@ -1,6 +1,293 @@
 ﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
-# Get Started
+---
+# Table of Contents
+
+- [What is Rystem?](#what-is-rystem)
+- [Discriminated Union in C#](#discriminated-union-in-c)
+  - [What is a Discriminated Union?](#what-is-a-discriminated-union)
+  - [UnionOf Classes](#unionof-classes)
+  - [JSON Integration](#json-integration)
+- [Usage Examples](#usage-examples)
+  - [Defining Unions](#defining-unions)
+  - [Serializing and Deserializing JSON](#serializing-and-deserializing-json)
+- [Benefits of Using It](#benefits-of-using-it)
+- [Extension Methods](#extension-methods)
+  - [Stopwatch](#stopwatch)
+  - [LINQ Expression Serializer](#linq-expression-serializer)
+  - [Reflection Helper](#reflection-helper)
+    - [Name of Calling Class](#name-of-calling-class)
+    - [Extensions for Type Class](#extensions-for-type-class)
+    - [Mock a Type](#mock-a-type)
+    - [Check Nullability for Properties, Fields, and Parameters](#check-nullability-for-properties-fields-and-parameters)
+  - [Text Extensions](#text-extensions)
+  - [Character Separated-Value (CSV)](#character-separated-value-csv)
+  - [Minimization of a Model](#minimization-of-a-model)
+  - [Extensions for JSON](#extensions-for-json)
+  - [Extensions for Task](#extensions-for-task)
+  - [TaskManager](#taskmanager)
+- [Concurrency](#concurrency)
+  - [ConcurrentList](#concurrentlist)
+
+---
+
+## Discriminated Union in C#
+
+This library introduces a `UnionOf<T0, T1, ...>` class that implements discriminated unions in C#. Discriminated unions are a powerful type system feature that allows variables to store one of several predefined types, enabling type-safe and concise programming. This library also includes integration with JSON serialization and deserialization.
+
+## What is a Discriminated Union?
+
+A discriminated union is a type that can hold one of several predefined types at a time. It provides a way to represent and operate on data that may take different forms, ensuring type safety and improving code readability.
+
+For example, a union can represent a value that is either an integer, a string, or a boolean:
+
+```csharp
+UnionOf<int, string, bool> value;
+```
+
+The `value` can hold an integer, a string, or a boolean, but never more than one type at a time.
+
+---
+
+## UnionOf Classes
+
+The `UnionOf` class is implemented as follows:
+
+```csharp
+[JsonConverter(typeof(UnionConverterFactory))]
+public class UnionOf<T0, T1> : IUnionOf
+{
+    private Wrapper[]? _wrappers;
+    public int Index { get; private protected set; } = -1;
+    public T0? AsT0 => TryGet<T0>(0);
+    public T1? AsT1 => TryGet<T1>(1);
+    private protected virtual int MaxIndex => 2;
+    public UnionOf(object? value)
+    {
+        UnionOfInstance(value);
+    }
+    private protected void UnionOfInstance(object? value)
+    {
+        _wrappers = new Wrapper[MaxIndex];
+        var check = SetWrappers(value);
+        if (!check)
+            throw new ArgumentException($"Invalid value in UnionOf. You're passing an object of type: {value?.GetType().FullName}", nameof(value));
+    }
+    private protected Q? TryGet<Q>(int index)
+    {
+        if (Index != index)
+            return default;
+        var value = _wrappers![index];
+        if (value?.Entity == null)
+            return default;
+        var entity = (Q)value.Entity;
+        return entity;
+    }
+    private protected virtual bool SetWrappers(object? value)
+    {
+        foreach (var wrapper in _wrappers!)
+        {
+            if (wrapper?.Entity != null)
+                wrapper.Entity = null;
+        }
+        Index = -1;
+        if (value == null)
+            return true;
+        else if (Set<T0>(0, value))
+            return true;
+        else if (Set<T1>(1, value))
+            return true;
+        return false;
+    }
+    private protected bool Set<T>(int index, object? value)
+    {
+        if (value is T v)
+        {
+            Index = index;
+            _wrappers![index] = new(v);
+            return true;
+        }
+        return false;
+    }
+    public T? Get<T>() => Value is T value ? value : default;
+    public object? Value
+    {
+        get
+        {
+            foreach (var wrapper in _wrappers!)
+            {
+                if (wrapper?.Entity != null)
+                    return wrapper.Entity;
+            }
+            return null;
+        }
+        set
+        {
+            SetWrappers(value);
+        }
+    }
+    public static implicit operator UnionOf<T0, T1>(T0 entity)
+        => new(entity);
+    public static implicit operator UnionOf<T0, T1>(T1 entity)
+        => new(entity);
+    public override string? ToString()
+        => Value?.ToString();
+    public override bool Equals(object? obj)
+    {
+        if (obj == null && Value == null)
+            return true;
+        var dynamicValue = ((dynamic)obj!).Value;
+        return Value?.Equals(dynamicValue) ?? false;
+    }
+    public override int GetHashCode()
+        => RuntimeHelpers.GetHashCode(Value);
+}
+
+public interface IUnionOf
+{
+    object? Value { get; set; }
+    int Index { get; }
+    T? Get<T>();
+}
+```
+
+The library defines `UnionOf<T0, T1, ..., Tn>` classes, supporting up to 8 types:
+
+- `UnionOf<T0, T1>`
+- `UnionOf<T0, T1, T2>`
+- ...
+- `UnionOf<T0, T1, ..., T7>`
+
+Each union class contains methods and properties for:
+
+1. Accessing the current type value.
+2. Performing safe operations based on the active type.
+3. Ensuring type safety during assignments.
+
+---
+
+## JSON Integration
+
+This library supports seamless JSON serialization and deserialization for discriminated unions. It uses a mechanism called **"Signature"** to identify the correct class during deserialization. The "Signature" is constructed based on the names of all properties that define each class in the union.
+
+### How "Signature" Works
+
+1. During deserialization, the library analyzes the properties present in the JSON.
+2. The "Signature" matches the property names in the JSON to a predefined signature for each class in the union.
+3. Once a match is found, the correct class is instantiated and populated with the data.
+
+---
+
+## Usage Examples
+
+### Defining Unions
+
+Here’s how to define and use a discriminated union:
+
+```csharp
+var testClass = new CurrentTestClass
+{
+    OneClass_String = new FirstClass { FirstProperty = "OneClass_String.FirstProperty", SecondProperty = "OneClass_String.SecondProperty" },
+    SecondClass_OneClass = new SecondClass
+    {
+        FirstProperty = "SecondClass_OneClass.FirstProperty",
+        SecondProperty = "SecondClass_OneClass.SecondProperty"
+    },
+    OneClass_string__2 = "ExampleString",
+    Bool_Int = 3,
+    Decimal_Bool = true,
+    OneCLass_SecondClass_Int = 42,
+    FirstClass_SecondClass_Int_ThirdClass = new ThirdClass
+    {
+        Stringable = "StringContent",
+        SecondClass = new SecondClass { FirstProperty = "Nested.FirstProperty", SecondProperty = "Nested.SecondProperty" },
+        ListOfSecondClasses = new List<SecondClass>
+        {
+            new SecondClass { FirstProperty = "List.Item1.FirstProperty", SecondProperty = "List.Item1.SecondProperty" },
+            new SecondClass { FirstProperty = "List.Item2.FirstProperty", SecondProperty = "List.Item2.SecondProperty" }
+        },
+        DictionaryItems = new Dictionary<string, string>
+        {
+            { "Key1", "Value1" },
+            { "Key2", "Value2" }
+        },
+        ArrayOfStrings = new[] { "ArrayElement1", "ArrayElement2" },
+        ObjectDictionary = new Dictionary<string, SecondClass>
+        {
+            { "DictKey1", new SecondClass { FirstProperty = "Dict.Value1.FirstProperty", SecondProperty = "Dict.Value1.SecondProperty" } },
+            { "DictKey2", new SecondClass { FirstProperty = "Dict.Value2.FirstProperty", SecondProperty = "Dict.Value2.SecondProperty" } }
+        }
+    }
+};
+```
+
+Notice that the implicit conversion allows you to directly assign values of compatible types (e.g., `FirstClass` and `SecondClass`) without explicitly constructing a `UnionOf<T0, T1>` instance.
+
+### Serializing and Deserializing JSON
+
+Here is an example that demonstrates JSON integration:
+
+#### Classes
+
+```csharp
+public class FirstClass {
+    public string FirstProperty { get; set; }
+    public string SecondProperty { get; set; }
+}
+
+public class SecondClass {
+    public string FirstProperty { get; set; }
+    public string SecondProperty { get; set; }
+}
+
+public class ThirdClass {
+    public string Stringable { get; set; }
+    public SecondClass SecondClass { get; set; }
+    public List<SecondClass> ListOfSecondClasses { get; set; }
+    public Dictionary<string, string> DictionaryItems { get; set; }
+    public string[] ArrayOfStrings { get; set; }
+    public Dictionary<string, SecondClass> ObjectDictionary { get; set; }
+}
+```
+
+#### Example JSON
+
+```json
+{
+  "OneClass_String": {
+    "FirstProperty": "OneClass_String.FirstProperty",
+    "SecondProperty": "OneClass_String.SecondProperty"
+  },
+  "SecondClass_OneClass": {
+    "FirstProperty": "SecondClass_OneClass.FirstProperty",
+    "SecondProperty": "SecondClass_OneClass.SecondProperty"
+  }
+}
+```
+
+#### Deserialization
+
+```csharp
+var json = "{\"OneClass_String\":{\"FirstProperty\":\"OneClass_String.FirstProperty\",\"SecondProperty\":\"OneClass_String.SecondProperty\"},\"SecondClass_OneClass\":{\"FirstProperty\":\"SecondClass_OneClass.FirstProperty\",\"SecondProperty\":\"SecondClass_OneClass.SecondProperty\"}}";
+var deserialized = json.FromJson<CurrentTestClass>();
+Console.WriteLine(deserialized.OneClass_String.AsT0.FirstProperty); // Outputs: OneClass_String.FirstProperty
+```
+
+#### Serialization
+
+```csharp
+var serializedJson = testClass.ToJson();
+Console.WriteLine(serializedJson); // Outputs the JSON representation of testClass
+```
+
+---
+
+## Benefits of Using It
+
+1. **Type Safety**: Ensures only predefined types are used.
+2. **JSON Support**: Automatically identifies and deserializes the correct type using "Signature".
+3. **Code Clarity**: Reduces boilerplate code for type management and error handling.
+
 
 ## Extension methods
 

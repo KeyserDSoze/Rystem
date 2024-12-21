@@ -12,6 +12,7 @@ namespace Rystem.Test.UnitTest.System
         [Fact]
         public void SerializeAndDeserialize()
         {
+
             var testClass = new CurrentTestClass
             {
                 OneClass_String = new FirstClass { FirstProperty = "OneClass_String.FirstProperty", SecondProperty = "OneClass_String.SecondProperty" },
