@@ -24,7 +24,19 @@ namespace Rystem.Test.UnitTest.System
                 Bool_Int = 3,
                 Decimal_Bool = true,
                 OneCLass_SecondClass_Int = 3,
-                FirstClass_SecondClass_Int_ThirdClass = 4
+                FirstClass_SecondClass_Int_ThirdClass = new ThirdClass
+                {
+                    Stringable = "ThirdClass.Stringable",
+                    SecondClass = new SecondClass { SecondProperty = "FirstClass_SecondClass_Int_ThirdClass.SecondClass.SecondProperty", FirstProperty = "FirstClass_SecondClass_Int_ThirdClass.SecondClass.FirstProperty" },
+                    ListOfSecondClasses = [new SecondClass { SecondProperty = "ListOfSecondClasses.SecondClass.SecondProperty[0]", FirstProperty = "ListOfSecondClasses.SecondClass.FirstProperty[0]" }],
+                    DictionaryItems = new Dictionary<string, string> { ["key"] = "FirstClass_SecondClass_Int_ThirdClass.DictionaryItems.key", ["key2"] = "FirstClass_SecondClass_Int_ThirdClass.DictionaryItems.key2" },
+                    ArrayOfStrings = ["FirstClass_SecondClass_Int_ThirdClass.ArrayOfStrings[0]", "FirstClass_SecondClass_Int_ThirdClass.ArrayOfStrings[1]", "FirstClass_SecondClass_Int_ThirdClass.ArrayOfStrings[2]"],
+                    ObjectDictionary = new Dictionary<string, SecondClass>
+                    {
+                        ["key"] = new SecondClass { FirstProperty = "FirstClass_SecondClass_Int_ThirdClass.ObjectDictionary.FirstProperty.key", SecondProperty = "FirstClass_SecondClass_Int_ThirdClass.ObjectDictionary.SecondProperty.key" },
+                        ["key2"] = new SecondClass { FirstProperty = "FirstClass_SecondClass_Int_ThirdClass.ObjectDictionary.FirstProperty.key2", SecondProperty = "FirstClass_SecondClass_Int_ThirdClass.ObjectDictionary.SecondProperty.key2" },
+                    }
+                }
             };
             var json = testClass.ToJson();
             var deserialized = json.FromJson<CurrentTestClass>();
