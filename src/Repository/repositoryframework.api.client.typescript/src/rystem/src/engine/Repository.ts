@@ -39,7 +39,7 @@ export class Repository<T, TKey> implements IRepository<T, TKey>
                     const json = res.json();
                     return json;
                 })
-                .catch((err) => {
+                .catch(err => {
                     retry = this.settings.manageError(endpoint, uri, method, headers, body, err);
                     return null;
                 })
@@ -88,7 +88,7 @@ export class Repository<T, TKey> implements IRepository<T, TKey>
                     bodyReader.releaseLock();
                 }
             })
-            .catch(async (err) => {
+            .catch(async err => {
                 console.log(err);
                 console.log("in errordalsjdlasjdlasjdlas");
                 this.settings.manageError(endpoint, uri, method, headers, body, err);

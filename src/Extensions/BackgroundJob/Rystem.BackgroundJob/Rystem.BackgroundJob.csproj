@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -25,7 +25,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Cronos" Version="0.8.4" />
+		<PackageReference Include="Cronos" Version="0.9.0" />
 	</ItemGroup>
     <Choose>
         <When Condition=" '$(Configuration)'=='Debug' ">
