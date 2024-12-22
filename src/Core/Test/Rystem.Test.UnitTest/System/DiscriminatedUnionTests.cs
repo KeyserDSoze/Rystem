@@ -168,6 +168,33 @@ namespace Rystem.Test.UnitTest.System
             Assert.Equal(0.5, deserialized.Temperature);
             Assert.Equal("auto", deserialized.ResponseFormat);
         }
+        [Fact]
+        public void RightChoiceWithAttribute()
+        {
+            var testClass = new ChosenClass
+            {
+                FirstProperty = new TheSecondChoice(),
+                SecondProperty = "SecondProperty"
+            };
+            var json = testClass.ToJson();
+            var deserialized = json.FromJson<ChosenClass>();
+            Assert.True(deserialized.FirstProperty!.Is<TheSecondChoice>());
+        }
+        private sealed class ChosenClass
+        {
+            public AnyOf<TheFirstChoice, TheSecondChoice>? FirstProperty { get; set; }
+            public string? SecondProperty { get; set; }
+        }
+        public sealed class TheFirstChoice
+        {
+            [JsonAnyOfChooser("first")]
+            public string Type { get; } = "first";
+        }
+        public sealed class TheSecondChoice
+        {
+            [JsonAnyOfChooser("second")]
+            public string Type { get; } = "second";
+        }
         private sealed class SignatureTestClass
         {
             public AnyOf<SignatureClassOne, SignatureClassTwo>? Test { get; set; }
