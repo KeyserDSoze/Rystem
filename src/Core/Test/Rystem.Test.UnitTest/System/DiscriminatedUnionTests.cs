@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Xunit;
@@ -133,6 +134,40 @@ namespace Rystem.Test.UnitTest.System
             Assert.NotNull(test);
             Assert.Null(test2);
         }
+        [Fact]
+        public void DeserializeRequiredProperties()
+        {
+            var json = """
+                {
+                  "id": "asst_wGCsr359S5tbUQYT9SJ9VYpk",
+                  "object": "assistant",
+                  "created_at": 1734858272,
+                  "name": null,
+                  "description": null,
+                  "model": "gpt-4o",
+                  "instructions": "You are a personal math tutor. When asked a question, write and run Python code to answer the question.",
+                  "tools": [
+                    {
+                      "type": "code_interpreter"
+                    }
+                  ],
+                  "top_p": 1.0,
+                  "temperature": 0.5,
+                  "tool_resources": {
+                    "code_interpreter": {
+                      "file_ids": []
+                    }
+                  },
+                  "metadata": {},
+                  "response_format": "auto"
+                }
+                """;
+            var deserialized = json.FromJson<AssistantRequest>();
+            Assert.Equal("asst_wGCsr359S5tbUQYT9SJ9VYpk", deserialized.Id);
+            Assert.Equal(1.0, deserialized.TopP);
+            Assert.Equal(0.5, deserialized.Temperature);
+            Assert.Equal("auto", deserialized.ResponseFormat);
+        }
         private sealed class SignatureTestClass
         {
             public AnyOf<SignatureClassOne, SignatureClassTwo>? Test { get; set; }
@@ -187,6 +222,216 @@ namespace Rystem.Test.UnitTest.System
             public Dictionary<string, string>? DictionaryItems { get; set; }
             [JsonPropertyName("a")]
             public Dictionary<string, SecondClass>? ObjectDictionary { get; set; }
+        }
+        private sealed class AssistantRequest
+        {
+            [JsonPropertyName("id")]
+            public string? Id { get; set; }
+            [JsonPropertyName("object")]
+            public string? Object { get; set; }
+            [JsonPropertyName("created_at")]
+            public long? CreatedAt { get; set; }
+            [JsonPropertyName("name")]
+            public string? Name { get; set; }
+            [JsonPropertyName("description")]
+            public string? Description { get; set; }
+            [JsonPropertyName("model")]
+            public string? Model { get; set; }
+            [JsonIgnore]
+            public StringBuilder? InstructionsBuilder { get; set; }
+            [JsonPropertyName("instructions")]
+            public string? Instructions { get => InstructionsBuilder?.ToString(); set => InstructionsBuilder = new(value); }
+            [JsonPropertyName("metadata")]
+            public Dictionary<string, string>? Metadata { get; set; }
+            [JsonPropertyName("response_format")]
+            public AnyOf<string, ResponseFormatChatRequest>? ResponseFormat { get; set; }
+            [JsonPropertyName("temperature")]
+            public double? Temperature { get; set; }
+            [JsonPropertyName("top_p")]
+            public double? TopP { get; set; }
+            [JsonPropertyName("tools")]
+            public List<AnyOf<AssistantFunctionTool, AssistantCodeInterpreterTool, AssistantFileSearchTool>>? Tools { get; set; }
+            [JsonPropertyName("tool_resources")]
+            public AssistantToolResources? ToolResources { get; set; }
+        }
+        public sealed class AssistantToolResources
+        {
+            [JsonPropertyName("code_interpreter")]
+            public AssistantCodeInterpreterTool? CodeInterpreter { get; set; }
+            [JsonPropertyName("file_search")]
+            public AssistantFileSearchToolResources? FileSearch { get; set; }
+        }
+
+        public sealed class AssistantCodeInterpreterToolResources
+        {
+            [JsonPropertyName("file_ids")]
+            public List<string>? Files { get; set; }
+        }
+        public sealed class AssistantStaticChunkingStrategyVectorStoresFileSearchToolResources
+        {
+            [JsonPropertyName("max_chunk_size_tokens")]
+            public int MaxChunkSizeTokens { get; set; } = 800;
+            [JsonPropertyName("chunk_overlap_tokens")]
+            public int ChunkOverlapTokens { get; set; } = 400;
+        }
+        public sealed class AssistantChunkingStrategyVectorStoresFileSearchToolResources
+        {
+            [JsonPropertyName("type")]
+            public string? Type { get; set; }
+            [JsonPropertyName("static")]
+            public AssistantStaticChunkingStrategyVectorStoresFileSearchToolResources? Static { get; set; }
+        }
+        public sealed class AssistantVectorStoresFileSearchToolResources
+        {
+            [JsonPropertyName("file_ids")]
+            public List<string>? Files { get; set; }
+            [JsonPropertyName("chunking_strategy")]
+            public AssistantChunkingStrategyVectorStoresFileSearchToolResources? ChunkingStrategy { get; set; }
+        }
+        public sealed class AssistantFileSearchToolResources
+        {
+            [JsonPropertyName("vector_store_ids")]
+            public List<string>? VectorStoresId { get; set; }
+            [JsonPropertyName("vector_stores")]
+            public AssistantVectorStoresFileSearchToolResources? VectorStores { get; set; }
+            [JsonPropertyName("metadata")]
+            public Dictionary<string, string>? Metadata { get; set; }
+        }
+        public sealed class AssistantCodeInterpreterTool
+        {
+            private const string FileType = "code_interpreter";
+            [JsonPropertyName("type")]
+            public string Type { get; } = FileType;
+        }
+        public sealed class AssistantFileSearchTool
+        {
+            private const string FileType = "file_search";
+            [JsonPropertyName("type")]
+            public string Type { get; } = FileType;
+            [JsonPropertyName("file_search")]
+            public AssistantSettingsForFileSearchTool? FileSearch { get; set; }
+        }
+        public sealed class AssistantSettingsForFileSearchTool
+        {
+            [JsonPropertyName("max_num_results")]
+            public int MaxNumberOfResults { get; set; }
+            [JsonPropertyName("ranking_options")]
+            public AssistantRankerSettingsForFileSearchTool? RankingOptions { get; set; }
+        }
+        public sealed class AssistantRankerSettingsForFileSearchTool
+        {
+            [JsonPropertyName("ranker")]
+            public string? Ranker { get; set; }
+            [JsonPropertyName("score_threshold")]
+            public int ScoreThreshold { get; set; }
+        }
+        public sealed class AssistantFunctionTool
+        {
+            private const string FunctionType = "function";
+            [JsonPropertyName("type")]
+            public string Type { get; } = FunctionType;
+            [JsonPropertyName("function")]
+            public FunctionTool? Function { get; set; }
+        }
+        public sealed class ResponseFormatChatRequest
+        {
+            [JsonPropertyName("type")]
+            public string? Type { get; set; }
+            [JsonPropertyName("content")]
+            public FunctionTool? Content { get; set; }
+        }
+        public sealed class FunctionTool
+        {
+            [JsonPropertyName("name")]
+            public string Name { get; set; } = null!;
+            [JsonPropertyName("description")]
+            public string Description { get; set; } = null!;
+            [JsonPropertyName("parameters")]
+            public FunctionToolMainProperty Parameters { get; set; } = null!;
+            [JsonPropertyName("strict")]
+            public bool? Strict { get; set; }
+        }
+        public class FunctionToolMainProperty : FunctionToolNonPrimitiveProperty
+        {
+            public FunctionToolMainProperty() : base()
+            {
+            }
+            [JsonPropertyName("required")]
+            public List<string>? RequiredParameters { get; set; }
+            [JsonPropertyName("additionalProperties")]
+            public bool AdditionalProperties => _numberOfProperties != (RequiredParameters?.Count ?? 0);
+        }
+        public class FunctionToolNonPrimitiveProperty : FunctionToolProperty
+        {
+            internal int _numberOfProperties;
+            internal const string DefaultTypeName = "object";
+            public FunctionToolNonPrimitiveProperty()
+            {
+                Type = DefaultTypeName;
+                Properties = [];
+            }
+            [JsonPropertyName("properties")]
+            public Dictionary<string, FunctionToolProperty> Properties { get; }
+        }
+        [JsonDerivedType(typeof(FunctionToolEnumProperty))]
+        [JsonDerivedType(typeof(FunctionToolNumberProperty))]
+        [JsonDerivedType(typeof(FunctionToolNonPrimitiveProperty))]
+        [JsonDerivedType(typeof(FunctionToolArrayProperty))]
+        [JsonDerivedType(typeof(FunctionToolPrimitiveProperty))]
+        public abstract class FunctionToolProperty
+        {
+            [JsonPropertyName("type")]
+            public string Type { get; set; }
+            private const string DefaultTypeName = "string";
+            public FunctionToolProperty()
+            {
+                Type = DefaultTypeName;
+            }
+        }
+        public sealed class FunctionToolEnumProperty : FunctionToolProperty
+        {
+            private const string DefaultTypeName = "string";
+            public FunctionToolEnumProperty()
+            {
+                Type = DefaultTypeName;
+            }
+            [JsonPropertyName("enum")]
+            public List<string>? Enums { get; set; }
+        }
+        public sealed class FunctionToolNumberProperty : FunctionToolProperty
+        {
+            private const string DefaultTypeName = "number";
+            public FunctionToolNumberProperty()
+            {
+                Type = DefaultTypeName;
+            }
+            [JsonPropertyName("multipleOf")]
+            public double? MultipleOf { get; set; }
+            [JsonPropertyName("minimum")]
+            public double? Minimum { get; set; }
+            [JsonPropertyName("maximum")]
+            public double? Maximum { get; set; }
+            [JsonPropertyName("exclusiveMinimum")]
+            public bool? ExclusiveMinimum { get; set; }
+            [JsonPropertyName("exclusiveMaximum")]
+            public bool? ExclusiveMaximum { get; set; }
+            [JsonPropertyName("description")]
+            public string? Description { get; set; }
+        }
+        public sealed class FunctionToolArrayProperty : FunctionToolProperty
+        {
+            [JsonPropertyName("items")]
+            public FunctionToolProperty? Items { get; set; }
+            [JsonPropertyName("description")]
+            public string? Description { get; set; }
+        }
+        public sealed class FunctionToolPrimitiveProperty : FunctionToolProperty
+        {
+            [JsonPropertyName("description")]
+            public string? Description { get; set; }
+            public FunctionToolPrimitiveProperty() : base()
+            {
+            }
         }
     }
 }

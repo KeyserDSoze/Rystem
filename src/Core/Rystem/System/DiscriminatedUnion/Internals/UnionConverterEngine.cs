@@ -2,18 +2,34 @@
 
 namespace System.Text.Json.Serialization
 {
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = true)]
+    public sealed class JsonAnyOfChooserAttribute : Attribute
+    {
+        public JsonAnyOfChooserAttribute(Type type, string property, object value)
+        {
+            Type = type;
+            Property = property;
+            Value = value;
+        }
+        public Type Type { get; }
+        public string Property { get; }
+        public object Value { get; }
+    }
     internal sealed class UnionConverterEngine : JsonConverter<object>
     {
         private const string ReadMethodName = "Read";
         private const string WriteMethodName = "Write";
-        private readonly Type[] _types;
+        private readonly List<Type> _primitiveTypes;
+        private readonly List<Type> _objectTypes;
         private readonly Dictionary<Type, ReadHelper> _readers = [];
         private readonly Dictionary<Type, WriteHelper> _writers = [];
         private readonly Dictionary<Type, Dictionary<string, bool>> _properties = [];
+        private readonly Dictionary<string, Dictionary<object, Type>> _choosers = [];
         private readonly Type _anyOfType;
         public UnionConverterEngine(JsonSerializerOptions options, params Type[] types)
         {
-            _types = types;
+            _primitiveTypes = [.. types.Where(x => x.IsPrimitive())];
+            _objectTypes = [.. types.Where(x => !x.IsPrimitive())];
             foreach (var type in types)
             {
                 var converter = options.GetConverter(type);
@@ -25,13 +41,22 @@ namespace System.Text.Json.Serialization
                 _readers.Add(type, reader);
                 _writers.Add(type, new WriteHelper(converter, writeMethod));
                 _properties.Add(type, []);
-                foreach (var property in type.GetProperties())
+                foreach (var property in type.GetProperties().Where(x => x.GetCustomAttribute<JsonIgnoreAttribute>() != null))
                 {
                     var name = property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name ?? property.Name;
                     _properties[type].Add(name, true);
                 }
+                var choosers = type.GetCustomAttributes<JsonAnyOfChooserAttribute>();
+                if (choosers.Any())
+                {
+                    foreach (var choice in choosers)
+                    {
+                        _choosers.TryAdd(choice.Property, []);
+                        _choosers[choice.Property].TryAdd(choice.Value, choice.Type);
+                    }
+                }
             }
-            _anyOfType = GetUnionType(types.Length).MakeGenericType(_types);
+            _anyOfType = GetUnionType(types.Length).MakeGenericType(types);
 
             static Type GetUnionType(int numberOfTypes)
             {
@@ -40,6 +65,10 @@ namespace System.Text.Json.Serialization
                     2 => typeof(AnyOf<,>),
                     3 => typeof(AnyOf<,,>),
                     4 => typeof(AnyOf<,,,>),
+                    5 => typeof(AnyOf<,,,,>),
+                    6 => typeof(AnyOf<,,,,,>),
+                    7 => typeof(AnyOf<,,,,,,>),
+                    8 => typeof(AnyOf<,,,,,,,>),
                     _ => throw new NotSupportedException()
                 };
             }
@@ -73,7 +102,7 @@ namespace System.Text.Json.Serialization
                 reader.TokenType == JsonTokenType.False ||
                 reader.TokenType == JsonTokenType.True)
             {
-                foreach (var type in _types.Where(x => x.IsPrimitive()))
+                foreach (var type in _primitiveTypes)
                 {
                     var isPrimitive =
                            (reader.TokenType == JsonTokenType.String && type == typeof(string))
@@ -87,6 +116,7 @@ namespace System.Text.Json.Serialization
             {
                 List<string> properties = [];
                 var initialDepth = reader.CurrentDepth;
+                List<Type> availableTypes = [.. _objectTypes];
                 while (reader.Read())
                 {
                     if (initialDepth == reader.CurrentDepth && reader.TokenType == JsonTokenType.EndObject)
@@ -95,9 +125,21 @@ namespace System.Text.Json.Serialization
                     {
                         var name = reader.GetString()!;
                         properties.Add(name);
+                        if (_choosers.ContainsKey(name))
+                        {
+                            _ = reader.Read();
+                            if (reader.TokenType == JsonTokenType.String)
+                            {
+                                var value = reader.GetString();
+                                if (value != null && !_choosers[name].ContainsKey(value))
+                                {
+
+                                }
+                            }
+                        }
                     }
                 }
-                foreach (var type in _types.Where(x => !x.IsPrimitive()))
+                foreach (var type in availableTypes)
                 {
                     var propertiesAsNameMap = _properties[type];
                     if (propertiesAsNameMap.Count >= properties.Count)
