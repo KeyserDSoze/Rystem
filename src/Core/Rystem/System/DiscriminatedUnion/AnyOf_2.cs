@@ -10,10 +10,18 @@ namespace System
         public int Index { get; private protected set; } = -1;
         public T0? AsT0 => TryGet<T0>(0);
         public T1? AsT1 => TryGet<T1>(1);
+        public T0 CastT0 => Get<T0>(0);
+        public T1 CastT1 => Get<T1>(1);
         private protected virtual int MaxIndex => 2;
         public AnyOf(object? value)
         {
             AnyOfInstance(value);
+        }
+        private protected AnyOf(object? value, int index)
+        {
+            _wrappers = new Wrapper[MaxIndex];
+            Index = index;
+            _wrappers[index] = new(value);
         }
         private protected void AnyOfInstance(object? value)
         {
@@ -32,7 +40,32 @@ namespace System
             var entity = (Q)value.Entity;
             return entity;
         }
-        public bool Is<T>() => Value is T;
+        private protected Q Get<Q>(int index)
+        {
+            if (Index != index)
+                throw new InvalidCastException($"Cannot cast {typeof(Q).FullName} to {Value?.GetType().FullName ?? "null"}");
+            var value = _wrappers![index];
+            if (value?.Entity == null)
+                return default!;
+            var entity = (Q)value.Entity;
+            return entity;
+        }
+        public bool Is<T>()
+        {
+            if (Index < 0)
+                return false;
+            return Value is T;
+        }
+        public bool Is<T>(out T? entity)
+        {
+            if (Index >= 0 && Value is T value)
+            {
+                entity = value;
+                return true;
+            }
+            entity = default;
+            return false;
+        }
         private protected virtual bool SetWrappers(object? value)
         {
             foreach (var wrapper in _wrappers!)
@@ -76,12 +109,9 @@ namespace System
                 SetWrappers(value);
             }
         }
-        public static implicit operator AnyOf<T0, T1>(T0 entity)
-            => new(entity);
-        public static implicit operator AnyOf<T0, T1>(T1 entity)
-            => new(entity);
-        public override string? ToString()
-            => Value?.ToString();
+        public static implicit operator AnyOf<T0, T1>(T0 entity) => new(entity, 0);
+        public static implicit operator AnyOf<T0, T1>(T1 entity) => new(entity, 1);
+        public override string? ToString() => Value?.ToString();
         public override bool Equals(object? obj)
         {
             if (obj == null && Value == null)
@@ -89,7 +119,6 @@ namespace System
             var dynamicValue = ((dynamic)obj!).Value;
             return Value?.Equals(dynamicValue) ?? false;
         }
-        public override int GetHashCode()
-            => RuntimeHelpers.GetHashCode(Value);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(Value);
     }
 }

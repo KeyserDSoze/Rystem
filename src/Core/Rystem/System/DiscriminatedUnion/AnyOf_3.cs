@@ -3,10 +3,17 @@
 namespace System
 {
     [JsonConverter(typeof(UnionConverterFactory))]
-    public class AnyOf<T0, T1, T2>(object? value) : AnyOf<T0, T1>(value)
+    public class AnyOf<T0, T1, T2> : AnyOf<T0, T1>
     {
         public T2? AsT2 => TryGet<T2>(2);
+        public T2 CastT2 => Get<T2>(2);
         private protected override int MaxIndex => 3;
+        public AnyOf(object? value) : base(value)
+        {
+        }
+        private protected AnyOf(object? value, int index) : base(value, index)
+        {
+        }
         private protected override bool SetWrappers(object? value)
         {
             if (base.SetWrappers(value))
@@ -15,8 +22,8 @@ namespace System
                 return true;
             return false;
         }
-        public static implicit operator AnyOf<T0, T1, T2>(T0 entity) => new(entity);
-        public static implicit operator AnyOf<T0, T1, T2>(T1 entity) => new(entity);
-        public static implicit operator AnyOf<T0, T1, T2>(T2 entity) => new(entity);
+        public static implicit operator AnyOf<T0, T1, T2>(T0 entity) => new(entity, 0);
+        public static implicit operator AnyOf<T0, T1, T2>(T1 entity) => new(entity, 1);
+        public static implicit operator AnyOf<T0, T1, T2>(T2 entity) => new(entity, 2);
     }
 }

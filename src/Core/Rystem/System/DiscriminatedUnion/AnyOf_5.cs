@@ -3,10 +3,17 @@
 namespace System
 {
     [JsonConverter(typeof(UnionConverterFactory))]
-    public class AnyOf<T0, T1, T2, T3, T4>(object? value) : AnyOf<T0, T1, T2, T3>(value)
+    public class AnyOf<T0, T1, T2, T3, T4> : AnyOf<T0, T1, T2, T3>
     {
         public T4? AsT4 => TryGet<T4>(4);
+        public T4 CastT4 => Get<T4>(4);
         private protected override int MaxIndex => 5;
+        public AnyOf(object? value) : base(value)
+        {
+        }
+        private protected AnyOf(object? value, int index) : base(value, index)
+        {
+        }
         private protected override bool SetWrappers(object? value)
         {
             if (base.SetWrappers(value))
@@ -15,10 +22,10 @@ namespace System
                 return true;
             return false;
         }
-        public static implicit operator AnyOf<T0, T1, T2, T3, T4>(T0 entity) => new(entity);
-        public static implicit operator AnyOf<T0, T1, T2, T3, T4>(T1 entity) => new(entity);
-        public static implicit operator AnyOf<T0, T1, T2, T3, T4>(T2 entity) => new(entity);
-        public static implicit operator AnyOf<T0, T1, T2, T3, T4>(T3 entity) => new(entity);
-        public static implicit operator AnyOf<T0, T1, T2, T3, T4>(T4 entity) => new(entity);
+        public static implicit operator AnyOf<T0, T1, T2, T3, T4>(T0 entity) => new(entity, 0);
+        public static implicit operator AnyOf<T0, T1, T2, T3, T4>(T1 entity) => new(entity, 1);
+        public static implicit operator AnyOf<T0, T1, T2, T3, T4>(T2 entity) => new(entity, 2);
+        public static implicit operator AnyOf<T0, T1, T2, T3, T4>(T3 entity) => new(entity, 3);
+        public static implicit operator AnyOf<T0, T1, T2, T3, T4>(T4 entity) => new(entity, 4);
     }
 }
