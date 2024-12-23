@@ -173,7 +173,11 @@ namespace Rystem.Test.UnitTest.System
         {
             var testClass = new ChosenClass
             {
-                FirstProperty = new TheSecondChoice(),
+                FirstProperty = new TheSecondChoice()
+                {
+                    Type = "first",
+                    Flexy = 1,
+                },
                 SecondProperty = "SecondProperty"
             };
             var json = testClass.ToJson();
@@ -188,12 +192,16 @@ namespace Rystem.Test.UnitTest.System
         public sealed class TheFirstChoice
         {
             [JsonAnyOfChooser("first")]
-            public string Type { get; } = "first";
+            public string Type { get; init; }
+            [JsonAnyOfChooser(2, 3, 4)]
+            public int Flexy { get; set; }
         }
         public sealed class TheSecondChoice
         {
-            [JsonAnyOfChooser("second")]
-            public string Type { get; } = "second";
+            [JsonAnyOfChooser("first", "second")]
+            public string Type { get; init; }
+            [JsonAnyOfChooser(1)]
+            public int Flexy { get; set; }
         }
         private sealed class SignatureTestClass
         {

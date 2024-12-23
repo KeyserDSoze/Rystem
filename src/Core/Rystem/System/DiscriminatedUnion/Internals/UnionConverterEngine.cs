@@ -52,9 +52,10 @@ namespace System.Text.Json.Serialization
                         _choosers.TryAdd(name, []);
                         _choosers[name].Add(new ChooserHelper
                         {
-                            Check = (x) =>
+                            Check = (value) =>
                             {
-                                if (chooser.Values.Any(t => (t == null && x == null) || (t != null && t.Equals(x))))
+                                var castedValue = value?.Cast(property.PropertyType);
+                                if (chooser.Values.Any(t => (t == null && castedValue == null) || (t != null && t.Equals(castedValue))))
                                     return type;
                                 return null;
                             }
@@ -107,74 +108,93 @@ namespace System.Text.Json.Serialization
                 reader.TokenType == JsonTokenType.False ||
                 reader.TokenType == JsonTokenType.True)
             {
-                foreach (var type in _primitiveTypes)
-                {
-                    var isPrimitive =
-                           (reader.TokenType == JsonTokenType.String && type == typeof(string))
-                        || (reader.TokenType == JsonTokenType.Number && type.IsNumeric())
-                        || ((reader.TokenType == JsonTokenType.True || reader.TokenType == JsonTokenType.False) && (type == typeof(bool) || type == typeof(bool?)));
-                    if (isPrimitive)
-                        return type;
-                }
+                return GetPossiblePrimitiveType(reader);
             }
             else
             {
-                List<string> properties = [];
-                var initialDepth = reader.CurrentDepth;
-                List<Type> availableTypes = _objectTypes;
-                while (reader.Read())
+                return GetPossibleNonPrimitiveType(reader);
+            }
+        }
+        private Type? GetPossiblePrimitiveType(Utf8JsonReader reader)
+        {
+            foreach (var type in _primitiveTypes)
+            {
+                var isPrimitive =
+                       (reader.TokenType == JsonTokenType.String && type == typeof(string))
+                    || (reader.TokenType == JsonTokenType.Number && type.IsNumeric())
+                    || ((reader.TokenType == JsonTokenType.True || reader.TokenType == JsonTokenType.False) && (type == typeof(bool) || type == typeof(bool?)));
+                if (isPrimitive)
+                    return type;
+            }
+            return null;
+        }
+        private Type? GetPossibleNonPrimitiveType(Utf8JsonReader reader)
+        {
+            List<string> properties = [];
+            var initialDepth = reader.CurrentDepth;
+            var availableTypes = _objectTypes;
+            while (reader.Read())
+            {
+                if (initialDepth == reader.CurrentDepth && reader.TokenType == JsonTokenType.EndObject)
+                    break;
+                else if (initialDepth + 1 == reader.CurrentDepth && reader.TokenType == JsonTokenType.PropertyName)
                 {
-                    if (initialDepth == reader.CurrentDepth && reader.TokenType == JsonTokenType.EndObject)
-                        break;
-                    else if (initialDepth + 1 == reader.CurrentDepth && reader.TokenType == JsonTokenType.PropertyName)
+                    var propertyName = reader.GetString()!;
+                    properties.Add(propertyName);
+                    if (_choosers.Count > 0 && _choosers.TryGetValue(propertyName, out var values))
                     {
-                        var propertyName = reader.GetString()!;
-                        properties.Add(propertyName);
-                        if (_choosers.Count > 0 && _choosers.TryGetValue(propertyName, out var values))
+                        var newAvailable = new List<Type>();
+                        var value = ReadValue(reader);
+                        foreach (var val in values)
                         {
-                            var newAvailable = new List<Type>();
-                            _ = reader.Read();
-                            if (reader.TokenType == JsonTokenType.String)
-                            {
-                                var value = reader.GetString();
-                                foreach (var val in values)
-                                {
-                                    var possibleType = val.Check.Invoke(value);
-                                    if (possibleType != null)
-                                    {
-                                        newAvailable.Add(possibleType);
-                                    }
-                                }
-                            }
-                            if (newAvailable.Count == 1)
-                                return newAvailable[0];
-                            else
-                            {
-                                availableTypes = newAvailable.Where(x => availableTypes.Contains(x)).ToList();
-                            }
+                            var possibleType = val.Check.Invoke(value);
+                            if (possibleType != null)
+                                newAvailable.Add(possibleType);
                         }
-                    }
-                }
-                foreach (var type in availableTypes)
-                {
-                    var propertiesAsNameMap = _properties[type];
-                    if (propertiesAsNameMap.Count >= properties.Count)
-                    {
-                        var correctType = true;
-                        foreach (var property in properties)
-                        {
-                            if (!propertiesAsNameMap.ContainsKey(property))
-                            {
-                                correctType = false;
-                                break;
-                            }
-                        }
-                        if (correctType)
-                            return type;
+                        if (newAvailable.Count == 1)
+                            return newAvailable[0];
+                        else
+                            availableTypes = newAvailable.Where(x => availableTypes.Contains(x)).ToList();
                     }
                 }
             }
+            foreach (var type in availableTypes)
+            {
+                var propertiesAsNameMap = _properties[type];
+                if (propertiesAsNameMap.Count >= properties.Count)
+                {
+                    var correctType = true;
+                    foreach (var property in properties)
+                    {
+                        if (!propertiesAsNameMap.ContainsKey(property))
+                        {
+                            correctType = false;
+                            break;
+                        }
+                    }
+                    if (correctType)
+                        return type;
+                }
+            }
             return null;
+        }
+        private object? ReadValue(Utf8JsonReader reader)
+        {
+            _ = reader.Read();
+            object? value = null;
+            if (reader.TokenType == JsonTokenType.True)
+                value = true;
+            else if (reader.TokenType == JsonTokenType.False)
+                value = false;
+            else if (reader.TokenType == JsonTokenType.String)
+            {
+                value = reader.GetString();
+            }
+            else if (reader.TokenType == JsonTokenType.Number)
+            {
+                value = reader.GetDecimal();
+            }
+            return value;
         }
         public override void Write(
             Utf8JsonWriter writer,
