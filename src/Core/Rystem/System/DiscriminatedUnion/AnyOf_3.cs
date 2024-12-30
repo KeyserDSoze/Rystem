@@ -7,7 +7,7 @@ namespace System
     {
         public T2? AsT2 => TryGet<T2>(2);
         public T2 CastT2 => Get<T2>(2);
-        private protected override int MaxIndex => 3;
+        private protected override int NumberOfElements => 3;
         public AnyOf(object? value) : base(value)
         {
         }
@@ -21,6 +21,13 @@ namespace System
             else if (Set<T2>(2, value))
                 return true;
             return false;
+        }
+        public override Type? GetCurrentType()
+        {
+            var type = base.GetCurrentType();
+            if (Index == 2)
+                return typeof(T2);
+            return type;
         }
         public static implicit operator AnyOf<T0, T1, T2>(T0 entity) => new(entity, 0);
         public static implicit operator AnyOf<T0, T1, T2>(T1 entity) => new(entity, 1);

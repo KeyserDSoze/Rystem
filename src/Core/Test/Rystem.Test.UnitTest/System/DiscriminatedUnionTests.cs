@@ -167,6 +167,7 @@ namespace Rystem.Test.UnitTest.System
             Assert.Equal(1.0, deserialized.TopP);
             Assert.Equal(0.5, deserialized.Temperature);
             Assert.Equal("auto", deserialized.ResponseFormat);
+            Assert.Equal("auto", deserialized.ResponseFormat!.Dynamic!.ToString());
         }
         [Fact]
         public void RightChoiceWithAttribute()

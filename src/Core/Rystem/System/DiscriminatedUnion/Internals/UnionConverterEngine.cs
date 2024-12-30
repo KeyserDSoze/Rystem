@@ -2,15 +2,6 @@
 
 namespace System.Text.Json.Serialization
 {
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-    public sealed class JsonAnyOfChooserAttribute : Attribute
-    {
-        public JsonAnyOfChooserAttribute(params object[] values)
-        {
-            Values = values;
-        }
-        public object[] Values { get; }
-    }
     internal sealed class UnionConverterEngine : JsonConverter<object>
     {
         private const string ReadMethodName = "Read";
@@ -203,12 +194,15 @@ namespace System.Text.Json.Serialization
         {
             if (value is IAnyOf anyOf)
             {
-                var currentValue = anyOf.Value;
-                if (currentValue != null)
+                var currentType = anyOf.GetCurrentType();
+                if (currentType != null)
                 {
-                    var currentType = currentValue.GetType();
-                    var writeHelper = _writers[currentType];
-                    writeHelper.Write(writer, currentValue, options);
+                    var currentValue = anyOf.Value;
+                    if (currentValue != null)
+                    {
+                        var writeHelper = _writers[currentType];
+                        writeHelper.Write(writer, currentValue, options);
+                    }
                 }
             }
         }
