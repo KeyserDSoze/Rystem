@@ -18,7 +18,7 @@
         }
         public override JsonConverter? CreateConverter(Type typeToConvert, JsonSerializerOptions options)
         {
-            Type[] typeArguments = typeToConvert.GetGenericArguments();
+            var typeArguments = typeToConvert.GetGenericArguments();
             return new UnionConverterEngine(options, typeArguments);
         }
     }

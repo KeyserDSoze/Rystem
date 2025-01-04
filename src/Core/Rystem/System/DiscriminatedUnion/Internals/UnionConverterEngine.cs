@@ -145,7 +145,7 @@ namespace System.Text.Json.Serialization
                         if (newAvailable.Count == 1)
                             return newAvailable[0];
                         else
-                            availableTypes = newAvailable.Where(x => availableTypes.Contains(x)).ToList();
+                            availableTypes = [.. newAvailable.Where(x => availableTypes.Contains(x))];
                     }
                 }
             }
@@ -169,7 +169,7 @@ namespace System.Text.Json.Serialization
             }
             return null;
         }
-        private object? ReadValue(Utf8JsonReader reader)
+        private static object? ReadValue(Utf8JsonReader reader)
         {
             _ = reader.Read();
             object? value = null;
