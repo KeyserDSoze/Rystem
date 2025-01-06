@@ -19,6 +19,7 @@ namespace System.Text.Json.Serialization
         {
             public required Func<object?, Type?> Check { get; init; }
         }
+        private readonly Type? _defaultType;
         public UnionConverterEngine(JsonSerializerOptions options, params Type[] types)
         {
             _primitiveTypes = [.. types.Where(x => x.IsPrimitive())];
@@ -34,6 +35,9 @@ namespace System.Text.Json.Serialization
                 _readers.Add(type, reader);
                 _writers.Add(type, new WriteHelper(converter, writeMethod));
                 _properties.Add(type, []);
+                var isDefault = type.GetCustomAttribute<AnyOfJsonDefaultAttribute>() != null;
+                if (isDefault)
+                    _defaultType = type;
                 var selectorsForClass = new List<AnyOfJsonSelectorAttribute>();
                 var anyOfJsonClassSelectorAttributes = type.GetCustomAttributes<AnyOfJsonClassSelectorAttribute>();
                 if (anyOfJsonClassSelectorAttributes != null)
@@ -104,7 +108,7 @@ namespace System.Text.Json.Serialization
             {
                 return null!;
             }
-            var currentType = GetPossibleType(reader);
+            var currentType = GetPossibleType(reader) ?? _defaultType;
             if (currentType != null)
             {
                 var readHelper = _readers[currentType];

@@ -247,14 +247,20 @@ namespace Rystem.Test.UnitTest.System
                 FirstProperty = "fifth.Cdas",
                 SecondProperty = "first.Aloa"
             });
+            testClass.Tests.Add(new FirstGetClass
+            {
+                FirstProperty = "sixth.AnotherOne",
+                SecondProperty = "theDefaultValue"
+            });
             var json = testClass.ToJson();
             var deserialized = json.FromJson<SelectorTestClass>();
-            Assert.Equal(8, deserialized.Tests!.Count);
+            Assert.Equal(9, deserialized.Tests!.Count);
             Assert.Equal(2, deserialized.Tests.Count(t => t.IsT0));
             Assert.Equal(1, deserialized.Tests.Count(t => t.IsT1));
             Assert.Equal(1, deserialized.Tests.Count(t => t.IsT2));
             Assert.Equal(2, deserialized.Tests.Count(t => t.IsT3));
             Assert.Equal(2, deserialized.Tests.Count(t => t.IsT4));
+            Assert.Equal(1, deserialized.Tests.Count(t => t.IsT5));
         }
         private sealed class ChosenClass
         {
@@ -545,7 +551,7 @@ namespace Rystem.Test.UnitTest.System
         }
         public sealed class SelectorTestClass
         {
-            public List<AnyOf<FirstGetClass, SecondGetClass, ThirdGetClass, FourthGetClass, FifthGetClass>>? Tests { get; set; }
+            public List<AnyOf<FirstGetClass, SecondGetClass, ThirdGetClass, FourthGetClass, FifthGetClass, SixthGetClass>>? Tests { get; set; }
         }
         [AnyOfJsonClassSelector(nameof(FirstProperty), "first.F")]
         public sealed class FirstGetClass
@@ -578,6 +584,12 @@ namespace Rystem.Test.UnitTest.System
         public sealed class FifthGetClass
         {
             [AnyOfJsonRegexSelector("fift[^.]*.")]
+            public string? FirstProperty { get; set; }
+            public string? SecondProperty { get; set; }
+        }
+        [AnyOfJsonDefault]
+        public sealed class SixthGetClass
+        {
             public string? FirstProperty { get; set; }
             public string? SecondProperty { get; set; }
         }
