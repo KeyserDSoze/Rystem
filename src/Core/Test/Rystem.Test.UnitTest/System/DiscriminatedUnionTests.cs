@@ -262,6 +262,101 @@ namespace Rystem.Test.UnitTest.System
             Assert.Equal(2, deserialized.Tests.Count(t => t.IsT4));
             Assert.Equal(1, deserialized.Tests.Count(t => t.IsT5));
         }
+        [Fact]
+        public void ComplexDeserialization()
+        {
+            var json = """
+                {
+                    "id": "run_UHtdBrFiqdaSDbu617vqrie8",
+                    "object": "thread.run",
+                    "created_at": 1736189952,
+                    "assistant_id": "asst_Dx9J9xQ6ii02qlqYIxE5hRon",
+                    "thread_id": "thread_NJ3LQPadT2RPvfD6s2v9KW5P",
+                    "status": "queued",
+                    "started_at": null,
+                    "expires_at": 1736190552,
+                    "cancelled_at": null,
+                    "failed_at": null,
+                    "completed_at": null,
+                    "required_action": null,
+                    "last_error": null,
+                    "model": "gpt-4o-2",
+                    "instructions": "You are a book reader. When asked a question, use the context to respond to the question.",
+                    "tools": [
+                        {
+                            "type": "code_interpreter"
+                        },
+                        {
+                            "type": "file_search",
+                            "file_search": {
+                                "max_num_results": 20,
+                                "ranking_options": {
+                                    "ranker": "default_2024_08_21",
+                                    "score_threshold": 0
+                                }
+                            }
+                        }
+                    ],
+                    "tool_resources": {
+                        "code_interpreter": {
+                            "file_ids": []
+                        }
+                    },
+                    "metadata": {},
+                    "temperature": 0.5,
+                    "top_p": 1,
+                    "max_completion_tokens": null,
+                    "max_prompt_tokens": null,
+                    "truncation_strategy": {
+                        "type": "auto",
+                        "last_messages": null
+                    },
+                    "incomplete_details": null,
+                    "usage": null,
+                    "response_format": "auto",
+                    "tool_choice": "auto",
+                    "parallel_tool_calls": true
+                }
+                """;
+            var deserialized = json.FromJson<AnyOf<RunResult, ThreadMessageResponse, ThreadChunkMessageResponse>>();
+            Assert.True(deserialized.IsT0);
+        }
+        [Fact]
+        public void DeserializeAnIncorrectObjectAsNull()
+        {
+            var json = """
+                {
+                    "id": "run_UHtdBrFiqdaSDbu617vqrie8",
+                    "object": "thread.run"
+                }
+                """;
+            var deserialized = json.FromJson<AnyOf<FirstClass1, SecondClass1>>();
+            Assert.Null(deserialized);
+            json = """
+                {
+                    "Test": {
+                        "id": "run_UHtdBrFiqdaSDbu617vqrie8",
+                        "object": "thread.run"
+                    }
+                }
+                """;
+            var deserializedWrapper = json.FromJson<WrapperOfClass1>();
+            Assert.Null(deserializedWrapper.Test);
+        }
+        public sealed class WrapperOfClass1
+        {
+            public AnyOf<FirstClass1, SecondClass1>? Test { get; set; }
+        }
+        public sealed class FirstClass1
+        {
+            public string? FirstProperty { get; set; }
+            public string? SecondProperty { get; set; }
+        }
+        public sealed class SecondClass1
+        {
+            public string? FirstProperty { get; set; }
+            public string? SecondProperty { get; set; }
+        }
         private sealed class ChosenClass
         {
             public AnyOf<TheFirstChoice, TheSecondChoice>? FirstProperty { get; set; }
@@ -592,6 +687,346 @@ namespace Rystem.Test.UnitTest.System
         {
             public string? FirstProperty { get; set; }
             public string? SecondProperty { get; set; }
+        }
+        public abstract class UnixTimeBaseResponse
+        {
+            /// The time when the result was generated
+            [JsonIgnore]
+            public DateTime? Created
+            {
+                get => CreatedAt.HasValue ? DateTimeOffset.FromUnixTimeSeconds(CreatedAt.Value).DateTime : null;
+                set => CreatedAt = value.HasValue ? new DateTimeOffset(value.Value).ToUnixTimeSeconds() : null;
+            }
+            /// <summary>
+            /// The time when the result was generated in unix epoch format
+            /// </summary>
+            [JsonPropertyName("created")]
+            public long? CreatedAt { get; set; }
+        }
+        public abstract class ApiBaseResponse : UnixTimeBaseResponse
+        {
+            /// <summary>
+            /// Which model was used to generate this result.
+            /// </summary>
+            [JsonPropertyName("model")]
+            public string? Model { get; set; }
+            /// <summary>
+            /// Object type, ie: text_completion, file, fine-tune, list, etc
+            /// </summary>
+            [JsonPropertyName("object")]
+            public string? Object { get; set; }
+            /// <summary>
+            /// The organization associated with the API request, as reported by the API.
+            /// </summary>
+            [JsonIgnore]
+            public string? Organization { get; internal set; }
+            /// <summary>
+            /// The server-side processing time as reported by the API.  This can be useful for debugging where a delay occurs.
+            /// </summary>
+            [JsonIgnore]
+            public TimeSpan ProcessingTime { get; internal set; }
+            /// <summary>
+            /// The request id of this API call, as reported in the response headers.  This may be useful for troubleshooting or when contacting OpenAI support in reference to a specific request.
+            /// </summary>
+            [JsonIgnore]
+            public string? RequestId { get; internal set; }
+            /// <summary>
+            /// The Openai-Version used to generate this response, as reported in the response headers.  This may be useful for troubleshooting or when contacting OpenAI support in reference to a specific request.
+            /// </summary>
+            [JsonIgnore]
+            public string? OpenaiVersion { get; internal set; }
+        }
+        public enum RunStatus
+        {
+            Queued,
+            InProgress,
+            RequiresAction,
+            Cancelling,
+            Cancelled,
+            Failed,
+            Completed,
+            Incomplete,
+            Expired
+        }
+        public enum LastErrorCode
+        {
+            ServerError,
+            RateLimitExceeded,
+            InvalidPrompt
+        }
+        public sealed class LastErrorRun
+        {
+            [JsonPropertyName("code")]
+            public string? CodeAsString { get; set; }
+            [JsonIgnore]
+            public LastErrorCode? Code => LastErrorCodeExtensions.ToLastErrorCode(CodeAsString);
+            [JsonPropertyName("message")]
+            public string? Message { get; set; }
+        }
+        public sealed class IncompleteReasonRun
+        {
+            [JsonPropertyName("reason")]
+            public string? Reason { get; set; }
+        }
+        public class ThreadMessage
+        {
+            [JsonPropertyName("role")]
+            public string? Role { get; set; }
+            [JsonPropertyName("content")]
+            public AnyOf<string, List<ChatMessageContent>>? Content { get; set; }
+            [JsonPropertyName("attachments")]
+            public List<ThreadAttachment>? Attachments { get; set; }
+            [JsonPropertyName("metadata")]
+            public Dictionary<string, string>? Metadata { get; set; }
+            [JsonIgnore]
+            public bool AlreadyAdded { get; set; } = true;
+        }
+        public sealed class ThreadAttachmentTool
+        {
+            [JsonPropertyName("type")]
+            public string? Type { get; set; }
+            public static ThreadAttachmentTool CodeInterpreter { get; } = new ThreadAttachmentTool
+            {
+                Type = "code_interpreter"
+            };
+            public static ThreadAttachmentTool FileSearch { get; } = new ThreadAttachmentTool
+            {
+                Type = "file_search"
+            };
+        }
+        public sealed class ThreadChunkMessageResponse
+        {
+            [JsonPropertyName("id")]
+            public string? Id { get; set; }
+            [JsonPropertyName("object")]
+            [AnyOfJsonSelector("thread.message.delta")]
+            public string? Object { get; set; }
+            [JsonPropertyName("delta")]
+            public ThreadDeltaMessageResponse? Delta { get; set; }
+        }
+        public sealed class ThreadDeltaMessageResponse
+        {
+            [JsonPropertyName("content")]
+            public AnyOf<string, List<ChatMessageContent>>? Content { get; set; }
+        }
+        public sealed class ThreadAttachment
+        {
+            [JsonPropertyName("file_id")]
+            public string? FileId { get; set; }
+            [JsonPropertyName("tools")]
+            public List<ThreadAttachmentTool>? Tools { get; set; }
+        }
+        public sealed class ChatMessageTextContent
+        {
+            [JsonPropertyName("value")]
+            public string? Value { get; set; }
+            [JsonPropertyName("annotations")]
+            public List<string>? Annotations { get; set; }
+        }
+        public sealed class ChatMessageImageContent
+        {
+            [JsonPropertyName("url")]
+            public string? Url { get; set; }
+            [JsonPropertyName("detail")]
+            public string? Detail { get; set; }
+        }
+        public sealed class ChatMessageContent
+        {
+            [JsonPropertyName("index")]
+            public int? Index { get; set; }
+            [JsonPropertyName("type")]
+            public string? Type { get; set; }
+            [JsonPropertyName("text")]
+            public AnyOf<string, ChatMessageTextContent>? Text { get; set; }
+            [JsonPropertyName("image_url")]
+            public ChatMessageImageContent? Image { get; set; }
+            [JsonPropertyName("image_file")]
+            public ChatMessageImageFile? FileImage { get; set; }
+            [JsonPropertyName("input_audio")]
+            public ChatMessageAudioFile? AudioInput { get; set; }
+            [JsonPropertyName("refusal")]
+            public string? Refusal { get; set; }
+        }
+        public sealed class ChatMessageAudioFile
+        {
+            [JsonPropertyName("data")]
+            public string? Data { get; set; }
+            [JsonPropertyName("format")]
+            public string? Format { get; set; }
+        }
+        public sealed class ChatMessageImageFile
+        {
+            [JsonPropertyName("file_id")]
+            public string? FileId { get; set; }
+            [JsonPropertyName("detail")]
+            public string? Detail { get; set; }
+        }
+        public sealed class ThreadMessageResponse : ThreadMessage
+        {
+            [JsonPropertyName("id")]
+            public string? Id { get; set; }
+            [JsonPropertyName("object")]
+            [AnyOfJsonSelector("thread.message")]
+            public string? Object { get; set; }
+            [JsonPropertyName("assistant_id")]
+            public string? AssistantId { get; set; }
+            [JsonPropertyName("thread_id")]
+            public string? ThreadId { get; set; }
+            /// The time when the result was generated
+            [JsonIgnore]
+            public DateTime? Created
+            {
+                get => CreatedAt.HasValue ? DateTimeOffset.FromUnixTimeSeconds(CreatedAt.Value).DateTime : null;
+                set => CreatedAt = value.HasValue ? new DateTimeOffset(value.Value).ToUnixTimeSeconds() : null;
+            }
+            /// <summary>
+            /// The time when the result was generated in unix epoch format
+            /// </summary>
+            [JsonPropertyName("created_at")]
+            public long? CreatedAt { get; set; }
+            [JsonPropertyName("run_id")]
+            public string? RunId { get; set; }
+        }
+        [AnyOfJsonDefault]
+        public sealed class RunResult : ApiBaseResponse
+        {
+            [JsonPropertyName("id")]
+            public string? Id { get; set; }
+            [JsonPropertyName("assistant_id")]
+            public string? AssistantId { get; set; }
+            [JsonPropertyName("thread_id")]
+            public string? ThreadId { get; set; }
+            [JsonPropertyName("status")]
+            public string? StatusAsString { get; set; }
+            [JsonIgnore]
+            public RunStatus? Status => RunStatusExtensions.ToRunStatus(StatusAsString);
+            [JsonPropertyName("started_at")]
+            public int? StartedAt { get; set; }
+            [JsonPropertyName("expires_at")]
+            public int? ExpiresAt { get; set; }
+            [JsonPropertyName("cancelled_at")]
+            public int? CancelledAt { get; set; }
+            [JsonPropertyName("failed_at")]
+            public int? FailedAt { get; set; }
+            [JsonPropertyName("completed_at")]
+            public int? CompletedAt { get; set; }
+            [JsonPropertyName("last_error")]
+            public LastErrorRun? LastError { get; set; }
+            [JsonPropertyName("instructions")]
+            public string? Instructions { get; set; }
+            [JsonPropertyName("incomplete_details")]
+            public IncompleteReasonRun? IncompleteDetails { get; set; }
+            [JsonPropertyName("tools")]
+            public List<AnyOf<AssistantFunctionTool, AssistantCodeInterpreterTool, AssistantFileSearchTool>>? Tools { get; set; }
+            [JsonPropertyName("metadata")]
+            public Dictionary<string, string>? Metadata { get; set; }
+            [JsonPropertyName("usage")]
+            public ChatUsage? Usage { get; set; }
+            [JsonPropertyName("temperature")]
+            public double? Temperature { get; set; }
+            [JsonPropertyName("top_p")]
+            public double? TopP { get; set; }
+            [JsonPropertyName("max_prompt_tokens")]
+            public int? MaxPromptTokens { get; set; }
+            [JsonPropertyName("max_completion_tokens")]
+            public int? MaxCompletionTokens { get; set; }
+            [JsonPropertyName("truncation_strategy")]
+            public RunTruncationStrategy? TruncationStrategy { get; set; }
+            [JsonPropertyName("response_format")]
+            public AnyOf<string, ResponseFormatChatRequest>? ResponseFormat { get; set; }
+            [JsonPropertyName("tool_choice")]
+            public AnyOf<string, ForcedFunctionTool>? ToolChoice { get; set; }
+            [JsonPropertyName("parallel_tool_calls")]
+            public bool ParallelToolCalls { get; set; }
+        }
+        public sealed class RunTruncationStrategy
+        {
+            [JsonPropertyName("type")]
+            public string? Type { get; set; }
+            [JsonPropertyName("last_messages")]
+            public int? NumberOfLastMessages { get; set; }
+            private const string TruncationTypeLastMessages = "last_messages";
+            public static RunTruncationStrategy Auto { get; } = new() { Type = "auto" };
+            public static RunTruncationStrategy LastMessages(int numberOfMessages) => new() { Type = TruncationTypeLastMessages, NumberOfLastMessages = numberOfMessages };
+        }
+        public sealed class ForcedFunctionTool
+        {
+            [JsonPropertyName("type")]
+            public string? Type { get; set; }
+            [JsonPropertyName("function")]
+            public ForcedFunctionToolName? Function { get; set; }
+        }
+        public sealed class ForcedFunctionToolName
+        {
+            [JsonPropertyName("name")]
+            public string? Name { get; set; }
+        }
+        public sealed class ChatUsage
+        {
+            [JsonPropertyName("prompt_tokens")]
+            public int PromptTokens { get; set; }
+
+            [JsonPropertyName("completion_tokens")]
+            public int CompletionTokens { get; set; }
+
+            [JsonPropertyName("total_tokens")]
+            public int TotalTokens { get; set; }
+
+            [JsonPropertyName("completion_tokens_details")]
+            public CompletionTokensDetails? CompletionTokensDetails { get; set; }
+        }
+        public sealed class CompletionTokensDetails
+        {
+            [JsonPropertyName("reasoning_tokens")]
+            public int? ReasoningTokens { get; set; }
+
+            [JsonPropertyName("accepted_prediction_tokens")]
+            public int? AcceptedPredictionTokens { get; set; }
+
+            [JsonPropertyName("rejected_prediction_tokens")]
+            public int? RejectedPredictionTokens { get; set; }
+        }
+        internal static class RunStatusExtensions
+        {
+            public static RunStatus? ToRunStatus(string? input)
+            {
+                if (string.IsNullOrWhiteSpace(input))
+                {
+                    return null;
+                }
+
+                return input switch
+                {
+                    "queued" => RunStatus.Queued,
+                    "in_progress" => RunStatus.InProgress,
+                    "requires_action" => RunStatus.RequiresAction,
+                    "cancelling" => RunStatus.Cancelling,
+                    "cancelled" => RunStatus.Cancelled,
+                    "failed" => RunStatus.Failed,
+                    "completed" => RunStatus.Completed,
+                    "incomplete" => RunStatus.Incomplete,
+                    "expired" => RunStatus.Expired,
+                    _ => null
+                };
+            }
+        }
+        internal static class LastErrorCodeExtensions
+        {
+            public static LastErrorCode? ToLastErrorCode(string? input)
+            {
+                if (string.IsNullOrWhiteSpace(input))
+                {
+                    return null;
+                }
+
+                return input switch
+                {
+                    "server_error" => LastErrorCode.ServerError,
+                    "rate_limit_exceeded" => LastErrorCode.RateLimitExceeded,
+                    "invalid_prompt" => LastErrorCode.InvalidPrompt,
+                    _ => null
+                };
+            }
         }
     }
 }

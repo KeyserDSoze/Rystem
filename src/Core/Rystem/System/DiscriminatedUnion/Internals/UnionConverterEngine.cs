@@ -118,6 +118,7 @@ namespace System.Text.Json.Serialization
             }
             else
             {
+                reader.Skip();
                 return null!;
             }
         }
