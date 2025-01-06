@@ -10,7 +10,11 @@
             }
             if (typeToConvert.GetGenericTypeDefinition() == typeof(AnyOf<,>)
                 || typeToConvert.GetGenericTypeDefinition() == typeof(AnyOf<,,>)
-                || typeToConvert.GetGenericTypeDefinition() == typeof(AnyOf<,,,>))
+                || typeToConvert.GetGenericTypeDefinition() == typeof(AnyOf<,,,>)
+                || typeToConvert.GetGenericTypeDefinition() == typeof(AnyOf<,,,,>)
+                || typeToConvert.GetGenericTypeDefinition() == typeof(AnyOf<,,,,,>)
+                || typeToConvert.GetGenericTypeDefinition() == typeof(AnyOf<,,,,,,>)
+                || typeToConvert.GetGenericTypeDefinition() == typeof(AnyOf<,,,,,,,>))
             {
                 return true;
             }

@@ -139,23 +139,41 @@ namespace Rystem.Test.UnitTest.System
         {
             var json = """
                 {
-                  "id": "asst_wGCsr359S5tbUQYT9SJ9VYpk",
+                  "id": "asst_FFvugfFeVLQzbnaTsF2Mvp31",
                   "object": "assistant",
-                  "created_at": 1734858272,
+                  "created_at": 1736092577,
                   "name": null,
                   "description": null,
-                  "model": "gpt-4o",
+                  "model": "gpt-4o-2",
                   "instructions": "You are a personal math tutor. When asked a question, write and run Python code to answer the question.",
                   "tools": [
                     {
                       "type": "code_interpreter"
+                    },
+                    {
+                      "type": "file_search",
+                      "file_search": {
+                        "max_num_results": 20,
+                        "ranking_options": {
+                          "ranker": "default_2024_08_21",
+                          "score_threshold": 0.0
+                        }
+                      }
                     }
                   ],
                   "top_p": 1.0,
                   "temperature": 0.5,
                   "tool_resources": {
+                    "file_search": {
+                      "vector_store_ids": [
+                        "vs_ab4UC7phv8eirzQlbVrQW10T"
+                      ]
+                    },
                     "code_interpreter": {
-                      "file_ids": []
+                      "file_ids": [
+                        "assistant-o4iT2ksNbunh6hvDEDhwEG5O",
+                        "assistant-TOJea0wNrQ2iejJELvGrdCQh"
+                      ]
                     }
                   },
                   "metadata": {},
@@ -163,7 +181,7 @@ namespace Rystem.Test.UnitTest.System
                 }
                 """;
             var deserialized = json.FromJson<AssistantRequest>();
-            Assert.Equal("asst_wGCsr359S5tbUQYT9SJ9VYpk", deserialized.Id);
+            Assert.Equal("asst_FFvugfFeVLQzbnaTsF2Mvp31", deserialized.Id);
             Assert.Equal(1.0, deserialized.TopP);
             Assert.Equal(0.5, deserialized.Temperature);
             Assert.Equal("auto", deserialized.ResponseFormat);
@@ -185,6 +203,59 @@ namespace Rystem.Test.UnitTest.System
             var deserialized = json.FromJson<ChosenClass>();
             Assert.True(deserialized.FirstProperty!.Is<TheSecondChoice>());
         }
+        [Fact]
+        public void ChoiceForAttributeAsClass()
+        {
+            var testClass = new SelectorTestClass { Tests = [] };
+            testClass.Tests.Add(new FirstGetClass
+            {
+                FirstProperty = "first.F",
+                SecondProperty = "first.Aloa"
+            });
+            testClass.Tests.Add(new FirstGetClass
+            {
+                FirstProperty = "first.F",
+                SecondProperty = "first.Aloa"
+            });
+            testClass.Tests.Add(new SecondGetClass
+            {
+                FirstProperty = "second.F",
+                SecondProperty = "first.Aloa"
+            });
+            testClass.Tests.Add(new ThirdGetClass
+            {
+                FirstProperty = "third.F",
+                SecondProperty = "first.Aloa"
+            });
+            testClass.Tests.Add(new FourthGetClass
+            {
+                FirstProperty = "fourth.F",
+                SecondProperty = "first.Aloa"
+            });
+            testClass.Tests.Add(new FifthGetClass
+            {
+                FirstProperty = "fifth.A",
+                SecondProperty = "first.Aloa"
+            });
+            testClass.Tests.Add(new FourthGetClass
+            {
+                FirstProperty = "fourth.F",
+                SecondProperty = "first.Aloa"
+            });
+            testClass.Tests.Add(new FifthGetClass
+            {
+                FirstProperty = "fifth.Cdas",
+                SecondProperty = "first.Aloa"
+            });
+            var json = testClass.ToJson();
+            var deserialized = json.FromJson<SelectorTestClass>();
+            Assert.Equal(8, deserialized.Tests!.Count);
+            Assert.Equal(2, deserialized.Tests.Count(t => t.IsT0));
+            Assert.Equal(1, deserialized.Tests.Count(t => t.IsT1));
+            Assert.Equal(1, deserialized.Tests.Count(t => t.IsT2));
+            Assert.Equal(2, deserialized.Tests.Count(t => t.IsT3));
+            Assert.Equal(2, deserialized.Tests.Count(t => t.IsT4));
+        }
         private sealed class ChosenClass
         {
             public AnyOf<TheFirstChoice, TheSecondChoice>? FirstProperty { get; set; }
@@ -192,16 +263,16 @@ namespace Rystem.Test.UnitTest.System
         }
         public sealed class TheFirstChoice
         {
-            [JsonAnyOfChooser("first")]
+            [AnyOfJsonSelector("first")]
             public string Type { get; init; }
-            [JsonAnyOfChooser(2, 3, 4)]
+            [AnyOfJsonSelector(2, 3, 4)]
             public int Flexy { get; set; }
         }
         public sealed class TheSecondChoice
         {
-            [JsonAnyOfChooser("first", "second")]
+            [AnyOfJsonSelector("first", "second")]
             public string Type { get; init; }
-            [JsonAnyOfChooser(1)]
+            [AnyOfJsonSelector(1)]
             public int Flexy { get; set; }
         }
         private sealed class SignatureTestClass
@@ -329,7 +400,7 @@ namespace Rystem.Test.UnitTest.System
             [JsonPropertyName("vector_store_ids")]
             public List<string>? VectorStoresId { get; set; }
             [JsonPropertyName("vector_stores")]
-            public AssistantVectorStoresFileSearchToolResources? VectorStores { get; set; }
+            public List<AssistantVectorStoresFileSearchToolResources>? VectorStores { get; set; }
             [JsonPropertyName("metadata")]
             public Dictionary<string, string>? Metadata { get; set; }
         }
@@ -337,13 +408,15 @@ namespace Rystem.Test.UnitTest.System
         {
             private const string FileType = "code_interpreter";
             [JsonPropertyName("type")]
-            public string Type { get; } = FileType;
+            [AnyOfJsonSelector(FileType)]
+            public string Type { get; set; } = FileType;
         }
         public sealed class AssistantFileSearchTool
         {
             private const string FileType = "file_search";
             [JsonPropertyName("type")]
-            public string Type { get; } = FileType;
+            [AnyOfJsonSelector(FileType)]
+            public string Type { get; set; } = FileType;
             [JsonPropertyName("file_search")]
             public AssistantSettingsForFileSearchTool? FileSearch { get; set; }
         }
@@ -359,13 +432,14 @@ namespace Rystem.Test.UnitTest.System
             [JsonPropertyName("ranker")]
             public string? Ranker { get; set; }
             [JsonPropertyName("score_threshold")]
-            public int ScoreThreshold { get; set; }
+            public float ScoreThreshold { get; set; }
         }
         public sealed class AssistantFunctionTool
         {
             private const string FunctionType = "function";
             [JsonPropertyName("type")]
-            public string Type { get; } = FunctionType;
+            [AnyOfJsonSelector(FunctionType)]
+            public string Type { get; set; } = FunctionType;
             [JsonPropertyName("function")]
             public FunctionTool? Function { get; set; }
         }
@@ -468,6 +542,44 @@ namespace Rystem.Test.UnitTest.System
             public FunctionToolPrimitiveProperty() : base()
             {
             }
+        }
+        public sealed class SelectorTestClass
+        {
+            public List<AnyOf<FirstGetClass, SecondGetClass, ThirdGetClass, FourthGetClass, FifthGetClass>>? Tests { get; set; }
+        }
+        [AnyOfJsonClassSelector(nameof(FirstProperty), "first.F")]
+        public sealed class FirstGetClass
+        {
+            public string? FirstProperty { get; set; }
+            public string? SecondProperty { get; set; }
+        }
+        [AnyOfJsonRegexClassSelector(nameof(FirstProperty), "secon[^.]*.[^.]*")]
+        public sealed class SecondGetClass
+        {
+            public string? FirstProperty { get; set; }
+            public string? SecondProperty { get; set; }
+        }
+        [AnyOfJsonClassSelector(nameof(FirstProperty), "third.F")]
+        public sealed class ThirdGetClass : ThirdGetInnerClass
+        {
+
+        }
+        public class ThirdGetInnerClass
+        {
+            public string? FirstProperty { get; set; }
+            public string? SecondProperty { get; set; }
+        }
+        public sealed class FourthGetClass
+        {
+            [AnyOfJsonSelector("fourth.F")]
+            public string? FirstProperty { get; set; }
+            public string? SecondProperty { get; set; }
+        }
+        public sealed class FifthGetClass
+        {
+            [AnyOfJsonRegexSelector("fift[^.]*.")]
+            public string? FirstProperty { get; set; }
+            public string? SecondProperty { get; set; }
         }
     }
 }

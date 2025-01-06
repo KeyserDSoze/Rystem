@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace System.Text.Json.Serialization
 {
@@ -11,10 +12,10 @@ namespace System.Text.Json.Serialization
         private readonly Dictionary<Type, ReadHelper> _readers = [];
         private readonly Dictionary<Type, WriteHelper> _writers = [];
         private readonly Dictionary<Type, Dictionary<string, bool>> _properties = [];
-        private readonly Dictionary<string, List<ChooserHelper>> _choosers = [];
+        private readonly Dictionary<string, List<SelectorHelper>> _selectors = [];
         private readonly Type _anyOfType;
 
-        private sealed class ChooserHelper
+        private sealed class SelectorHelper
         {
             public required Func<object?, Type?> Check { get; init; }
         }
@@ -33,21 +34,45 @@ namespace System.Text.Json.Serialization
                 _readers.Add(type, reader);
                 _writers.Add(type, new WriteHelper(converter, writeMethod));
                 _properties.Add(type, []);
+                var selectorsForClass = new List<AnyOfJsonSelectorAttribute>();
+                var anyOfJsonClassSelectorAttributes = type.GetCustomAttributes<AnyOfJsonClassSelectorAttribute>();
+                if (anyOfJsonClassSelectorAttributes != null)
+                    selectorsForClass.AddRange(anyOfJsonClassSelectorAttributes);
+                var anyOfJsonRegexClassSelectorAttribute = type.GetCustomAttributes<AnyOfJsonRegexClassSelectorAttribute>();
+                if (anyOfJsonRegexClassSelectorAttribute != null)
+                    selectorsForClass.AddRange(anyOfJsonRegexClassSelectorAttribute);
                 foreach (var property in type.GetProperties().Where(x => x.GetCustomAttribute<JsonIgnoreAttribute>() == null))
                 {
                     var name = property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name ?? property.Name;
                     _properties[type].Add(name, true);
-                    var chooser = property.GetCustomAttribute<JsonAnyOfChooserAttribute>();
-                    if (chooser != null)
+                    var selector = selectorsForClass.FirstOrDefault(x => x.PropertyName == name) ?? property.GetCustomAttribute<AnyOfJsonRegexSelectorAttribute>() ?? property.GetCustomAttribute<AnyOfJsonSelectorAttribute>();
+                    if (selector != null)
                     {
-                        _choosers.TryAdd(name, []);
-                        _choosers[name].Add(new ChooserHelper
+                        _selectors.TryAdd(name, []);
+                        var regexSelectors = new List<Regex>();
+                        if (selector.IsRegex)
+                        {
+                            foreach (var value in selector.Values)
+                            {
+                                regexSelectors.Add(new Regex(value.ToString()!, RegexOptions.Compiled));
+                            }
+                        }
+                        _selectors[name].Add(new SelectorHelper
                         {
                             Check = (value) =>
                             {
-                                var castedValue = value?.Cast(property.PropertyType);
-                                if (chooser.Values.Any(t => (t == null && castedValue == null) || (t != null && t.Equals(castedValue))))
-                                    return type;
+                                if (selector.IsRegex)
+                                {
+                                    var castedValue = value?.ToString() ?? string.Empty;
+                                    if (selector.IsRegex && regexSelectors.Any(t => t.IsMatch(castedValue)))
+                                        return type;
+                                }
+                                else
+                                {
+                                    var castedValue = value?.Cast(property.PropertyType);
+                                    if (selector.Values.Any(t => (t == null && castedValue == null) || (t != null && t.Equals(castedValue))))
+                                        return type;
+                                }
                                 return null;
                             }
                         });
@@ -132,7 +157,7 @@ namespace System.Text.Json.Serialization
                 {
                     var propertyName = reader.GetString()!;
                     properties.Add(propertyName);
-                    if (_choosers.Count > 0 && _choosers.TryGetValue(propertyName, out var values))
+                    if (_selectors.Count > 0 && _selectors.TryGetValue(propertyName, out var values))
                     {
                         var newAvailable = new List<Type>();
                         var value = ReadValue(reader);

@@ -1,12 +1,14 @@
 ﻿namespace System.Text.Json.Serialization
 {
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-    public sealed class JsonAnyOfChooserAttribute : Attribute
+    public class AnyOfJsonSelectorAttribute : Attribute
     {
-        public JsonAnyOfChooserAttribute(params object[] values)
+        public AnyOfJsonSelectorAttribute(params object[] values)
         {
             Values = values;
         }
+        internal string? PropertyName { get; set; }
+        internal bool IsRegex { get; set; }
         public object[] Values { get; }
     }
 }
