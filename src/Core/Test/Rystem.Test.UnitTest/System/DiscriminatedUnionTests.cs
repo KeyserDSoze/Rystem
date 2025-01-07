@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Rystem.Test.UnitTest.System
@@ -197,11 +198,33 @@ namespace Rystem.Test.UnitTest.System
                     Type = "first",
                     Flexy = 1,
                 },
-                SecondProperty = "SecondProperty"
+                SecondProperty = new TheSecondChoice1()
+                {
+                    Type = "first",
+                    Flexy = 1,
+                }
             };
             var json = testClass.ToJson();
             var deserialized = json.FromJson<ChosenClass>();
             Assert.True(deserialized.FirstProperty!.Is<TheSecondChoice>());
+            Assert.True(deserialized.SecondProperty!.Is<TheFirstChoice1>());
+            testClass = new ChosenClass
+            {
+                FirstProperty = new TheSecondChoice()
+                {
+                    Type = "first",
+                    Flexy = 2,
+                },
+                SecondProperty = new TheSecondChoice1()
+                {
+                    Type = "third",
+                    Flexy = 1,
+                }
+            };
+            json = testClass.ToJson();
+            deserialized = json.FromJson<ChosenClass>();
+            Assert.True(deserialized.FirstProperty!.Is<TheFirstChoice>());
+            Assert.True(deserialized.SecondProperty!.Is<TheSecondChoice1>());
         }
         [Fact]
         public void ChoiceForAttributeAsClass()
@@ -343,6 +366,59 @@ namespace Rystem.Test.UnitTest.System
             var deserializedWrapper = json.FromJson<WrapperOfClass1>();
             Assert.Null(deserializedWrapper.Test);
         }
+        [Fact]
+        public async ValueTask SwitchAndMatchAsync()
+        {
+            var testClass = new SwitchAndMatchClass
+            {
+                Test = new FirstClass
+                {
+                    FirstProperty = "FirstProperty",
+                    SecondProperty = "SecondProperty"
+                }
+            };
+            testClass.Test.Switch(
+                x => Assert.Equal("FirstProperty", x?.FirstProperty),
+                y => Assert.True(false),
+                y => Assert.True(false),
+                y => Assert.True(false),
+                y => Assert.True(false),
+                y => Assert.True(false),
+                y => Assert.True(false),
+                y => Assert.True(false));
+            await testClass.Test.SwitchAsync(
+                 x => { Assert.Equal("FirstProperty", x?.FirstProperty); return ValueTask.CompletedTask; },
+                 y => { Assert.True(false); return ValueTask.CompletedTask; },
+                 y => { Assert.True(false); return ValueTask.CompletedTask; },
+                 y => { Assert.True(false); return ValueTask.CompletedTask; },
+                 y => { Assert.True(false); return ValueTask.CompletedTask; },
+                 y => { Assert.True(false); return ValueTask.CompletedTask; },
+                 y => { Assert.True(false); return ValueTask.CompletedTask; },
+                 y => { Assert.True(false); return ValueTask.CompletedTask; });
+            var result = testClass.Test.Match(
+                x => { return x?.FirstProperty; },
+                y => { return string.Empty; },
+                y => { return string.Empty; },
+                y => { return string.Empty; },
+                y => { return string.Empty; },
+                y => { return string.Empty; },
+                y => { return string.Empty; },
+                y => { return string.Empty; });
+            Assert.Equal("FirstProperty", result);
+            var resultAsync = await testClass.Test.MatchAsync(
+                async x => { await Task.Delay(0); return x?.FirstProperty; },
+                async y => { await Task.Delay(0); return string.Empty; },
+                async y => { await Task.Delay(0); return string.Empty; },
+                async y => { await Task.Delay(0); return string.Empty; },
+                async y => { await Task.Delay(0); return string.Empty; },
+                async y => { await Task.Delay(0); return string.Empty; },
+                async y => { await Task.Delay(0); return string.Empty; });
+            Assert.Equal("FirstProperty", resultAsync);
+        }
+        private sealed class SwitchAndMatchClass
+        {
+            public AnyOf<FirstClass, decimal, bool, int, SecondClass, RunStatus, string, FirstClass1>? Test { get; set; }
+        }
         public sealed class WrapperOfClass1
         {
             public AnyOf<FirstClass1, SecondClass1>? Test { get; set; }
@@ -360,7 +436,7 @@ namespace Rystem.Test.UnitTest.System
         private sealed class ChosenClass
         {
             public AnyOf<TheFirstChoice, TheSecondChoice>? FirstProperty { get; set; }
-            public string? SecondProperty { get; set; }
+            public AnyOf<TheFirstChoice1, TheSecondChoice1>? SecondProperty { get; set; }
         }
         public sealed class TheFirstChoice
         {
@@ -374,6 +450,18 @@ namespace Rystem.Test.UnitTest.System
             [AnyOfJsonSelector("first", "second")]
             public string Type { get; init; }
             [AnyOfJsonSelector(1)]
+            public int Flexy { get; set; }
+        }
+        public sealed class TheFirstChoice1
+        {
+            [AnyOfJsonSelector("first")]
+            public string Type { get; init; }
+            public int Flexy { get; set; }
+        }
+        public sealed class TheSecondChoice1
+        {
+            [AnyOfJsonSelector("third", "second")]
+            public string Type { get; init; }
             public int Flexy { get; set; }
         }
         private sealed class SignatureTestClass

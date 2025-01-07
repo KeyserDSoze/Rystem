@@ -32,6 +32,37 @@ namespace System
             if (!check)
                 throw new ArgumentException($"Invalid value in AnyOf. You're passing an object of type: {value?.GetType().FullName}", nameof(value));
         }
+        public TResult? Match<TResult>(Func<T0?, TResult>? f0, Func<T1?, TResult>? f1)
+        {
+            if (Index == 0 && f0 != null)
+                return f0(AsT0);
+            else if (Index == 1 && f1 != null)
+                return f1(AsT1);
+            return default;
+        }
+        public Task<TResult?> MatchAsync<TResult>(Func<T0?, Task<TResult?>>? f0, Func<T1?, Task<TResult?>>? f1)
+        {
+            if (Index == 0 && f0 != null)
+                return f0(AsT0);
+            else if (Index == 1 && f1 != null)
+                return f1(AsT1);
+            return Task.FromResult(default(TResult));
+        }
+        public void Switch(Action<T0?> a0, Action<T1?> a1)
+        {
+            if (Index == 0 && a0 != null)
+                a0(AsT0);
+            else if (Index == 1 && a1 != null)
+                a1(AsT1);
+        }
+        public ValueTask SwitchAsync(Func<T0?, ValueTask> a0, Func<T1?, ValueTask> a1)
+        {
+            if (Index == 0 && a0 != null)
+                return a0(AsT0);
+            else if (Index == 1 && a1 != null)
+                return a1(AsT1);
+            return ValueTask.CompletedTask;
+        }
         private protected Q? TryGet<Q>(int index)
         {
             if (Index != index)

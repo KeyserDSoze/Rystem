@@ -6,13 +6,14 @@
 - [What is Rystem?](#what-is-rystem)
 - [Discriminated Union in C#](#discriminated-union-in-c)
   - [What is a Discriminated Union?](#what-is-a-discriminated-union)
-  - [AnyOf Classes](#unionof-classes)
+  - [AnyOf Classes](#anyof-classes)
   - [JSON Integration](#json-integration)
+  - [Matching and Switching](#matching-and-switching)
   - [Usage Examples](#usage-examples)
-  - [Defining Unions](#defining-unions)
-  - [Serializing and Deserializing JSON](#serializing-and-deserializing-json)
-  - [Signature-Based Deserialization](#signature-based-deserialization)
-  - [Benefits of Using It](#benefits-of-using-it)
+    - [Defining Unions](#defining-unions)
+    - [Serializing and Deserializing JSON](#serializing-and-deserializing-json)
+    - [Advanced Matching and Switching](#advanced-matching-and-switching)
+    - [Deserialization with Attributes](#deserialization-with-attributes)
 - [Extension Methods](#extension-methods)
   - [Stopwatch](#stopwatch)
   - [LINQ Expression Serializer](#linq-expression-serializer)
@@ -38,7 +39,7 @@ This library introduces a `AnyOf<T0, T1, ...>` class that implements discriminat
 
 **This library also includes integration with JSON serialization and deserialization.**
 
-## What is a Discriminated Union?
+### What is a Discriminated Union?
 
 A discriminated union is a type that can hold one of several predefined types at a time. It provides a way to represent and operate on data that may take different forms, ensuring type safety and improving code readability.
 
@@ -54,119 +55,28 @@ The `value` can hold an integer, a string, or a boolean, but never more than one
 
 ### AnyOf Classes
 
-The `AnyOf` class is implemented as follows:
-
-```csharp
-[JsonConverter(typeof(UnionConverterFactory))]
-public class AnyOf<T0, T1> : IAnyOf
-{
-    private Wrapper[]? _wrappers;
-    public int Index { get; private protected set; } = -1;
-    public T0? AsT0 => TryGet<T0>(0);
-    public T1? AsT1 => TryGet<T1>(1);
-    private protected virtual int MaxIndex => 2;
-    public AnyOf(object? value)
-    {
-        AnyOfInstance(value);
-    }
-    private protected void AnyOfInstance(object? value)
-    {
-        _wrappers = new Wrapper[MaxIndex];
-        var check = SetWrappers(value);
-        if (!check)
-            throw new ArgumentException($"Invalid value in AnyOf. You're passing an object of type: {value?.GetType().FullName}", nameof(value));
-    }
-    private protected Q? TryGet<Q>(int index)
-    {
-        if (Index != index)
-            return default;
-        var value = _wrappers![index];
-        if (value?.Entity == null)
-            return default;
-        var entity = (Q)value.Entity;
-        return entity;
-    }
-    public bool Is<T>() => Value is T;
-    private protected virtual bool SetWrappers(object? value)
-    {
-        foreach (var wrapper in _wrappers!)
-        {
-            if (wrapper?.Entity != null)
-                wrapper.Entity = null;
-        }
-        Index = -1;
-        if (value == null)
-            return true;
-        else if (Set<T0>(0, value))
-            return true;
-        else if (Set<T1>(1, value))
-            return true;
-        return false;
-    }
-    private protected bool Set<T>(int index, object? value)
-    {
-        if (value is T v)
-        {
-            Index = index;
-            _wrappers![index] = new(v);
-            return true;
-        }
-        return false;
-    }
-    public T? Get<T>() => Value is T value ? value : default;
-    public object? Value
-    {
-        get
-        {
-            foreach (var wrapper in _wrappers!)
-            {
-                if (wrapper?.Entity != null)
-                    return wrapper.Entity;
-            }
-            return null;
-        }
-        set
-        {
-            SetWrappers(value);
-        }
-    }
-    public static implicit operator AnyOf<T0, T1>(T0 entity)
-        => new(entity);
-    public static implicit operator AnyOf<T0, T1>(T1 entity)
-        => new(entity);
-    public override string? ToString()
-        => Value?.ToString();
-    public override bool Equals(object? obj)
-    {
-        if (obj == null && Value == null)
-            return true;
-        var dynamicValue = ((dynamic)obj!).Value;
-        return Value?.Equals(dynamicValue) ?? false;
-    }
-    public override int GetHashCode()
-        => RuntimeHelpers.GetHashCode(Value);
-}
-
-public interface IAnyOf
-{
-    object? Value { get; set; }
-    int Index { get; }
-    T? Get<T>();
-}
-```
-
-The library defines `AnyOf<T0, T1, ..., Tn>` classes, supporting up to 8 types:
+The `AnyOf` class provides the ability to define a discriminated union of up to 8 types.
 
 - `AnyOf<T0, T1>`
 - `AnyOf<T0, T1, T2>`
 - ...
 - `AnyOf<T0, T1, ..., T7>`
 
-Each union class contains methods and properties for:
+Each class supports the following features:
 
-1. Accessing the current type value.
-2. Performing safe operations based on the active type.
-3. Ensuring type safety during assignments.
+1. **Implicit Conversion**: Allows seamless assignment of any supported type to the union.
+```csharp
+public AnyOf<int, string> GetSomething(bool check)
+{
+    if (check)
+        return 42;
+    else
+        return "Hello";
+}
+```
+2. **Type Checking and Casting**: Methods to check and retrieve the stored type.
+3. **Serialization Support**: Built-in JSON serialization and deserialization integration.
+4. **Matching and Switching**: Methods to process the stored value using delegates or lambdas.
 
 ---
 
@@ -174,11 +84,77 @@ Each union class contains methods and properties for:
 
 This library supports seamless JSON serialization and deserialization for discriminated unions. It uses a mechanism called **"Signature"** to identify the correct class during deserialization. The "Signature" is constructed based on the names of all properties that define each class in the union.
 
+#### Serialization and Deserialization
+
+The `AnyOf` class integrates with JSON serialization and deserialization. The integration supports:
+
+1. **Implicit Serialization**: The active value in the union is serialized to JSON directly.
+2. **Signature-Based Deserialization**: Uses property names ("signatures") to determine the correct type during deserialization.
+
 #### How "Signature" Works
 
 1. During deserialization, the library analyzes the properties present in the JSON.
 2. The "Signature" matches the property names in the JSON to a predefined signature for each class in the union.
 3. Once a match is found, the correct class is instantiated and populated with the data.
+
+---
+
+## Matching and Switching
+
+The `AnyOf` class includes methods to simplify processing the stored value:
+
+### Match Method
+
+The `Match` method allows you to provide delegates for each possible type, returning a value based on the stored type.
+
+#### Example:
+
+```csharp
+var union = new AnyOf<int, string>(42);
+var result = union.Match(
+    i => $"Integer: {i}",
+    s => $"String: {s}"
+);
+Console.WriteLine(result); // Outputs: "Integer: 42"
+```
+
+### Switch Method
+
+The `Switch` method allows you to perform different actions based on the stored type without returning a value.
+
+#### Example:
+
+```csharp
+var union = new AnyOf<int, string>("Hello");
+union.Switch(
+    i => Console.WriteLine($"Integer: {i}"),
+    s => Console.WriteLine($"String: {s}")
+);
+```
+
+### Async Matching and Switching
+
+Async versions of `Match` and `Switch` are also available for asynchronous operations.
+
+#### Async Match Example:
+
+```csharp
+var union = new AnyOf<int, string>("Hello");
+var result = await union.MatchAsync(
+    async i => await Task.FromResult($"Integer: {i}"),
+    async s => await Task.FromResult($"String: {s}")
+);
+Console.WriteLine(result); // Outputs: "String: Hello"
+```
+
+#### Async Switch Example:
+
+```csharp
+await union.SwitchAsync(
+    async i => { await Task.Delay(100); Console.WriteLine($"Integer: {i}"); },
+    async s => { await Task.Delay(100); Console.WriteLine($"String: {s}"); }
+);
+```
 
 ---
 
@@ -204,144 +180,155 @@ var testClass = new CurrentTestClass
     FirstClass_SecondClass_Int_ThirdClass = new ThirdClass
     {
         Stringable = "StringContent",
-        SecondClass = new SecondClass { FirstProperty = "Nested.FirstProperty", SecondProperty = "Nested.SecondProperty" },
-        ListOfSecondClasses = new List<SecondClass>
-        {
-            new SecondClass { FirstProperty = "List.Item1.FirstProperty", SecondProperty = "List.Item1.SecondProperty" },
-            new SecondClass { FirstProperty = "List.Item2.FirstProperty", SecondProperty = "List.Item2.SecondProperty" }
-        },
-        DictionaryItems = new Dictionary<string, string>
-        {
-            { "Key1", "Value1" },
-            { "Key2", "Value2" }
-        },
-        ArrayOfStrings = new[] { "ArrayElement1", "ArrayElement2" },
-        ObjectDictionary = new Dictionary<string, SecondClass>
-        {
-            { "DictKey1", new SecondClass { FirstProperty = "Dict.Value1.FirstProperty", SecondProperty = "Dict.Value1.SecondProperty" } },
-            { "DictKey2", new SecondClass { FirstProperty = "Dict.Value2.FirstProperty", SecondProperty = "Dict.Value2.SecondProperty" } }
-        }
+        SecondClass = new SecondClass { FirstProperty = "Nested.FirstProperty", SecondProperty = "Nested.SecondProperty" }
     }
 };
 ```
 
-Notice that the implicit conversion allows you to directly assign values of compatible types (e.g., `FirstClass` and `SecondClass`) without explicitly constructing a `AnyOf<T0, T1>` instance.
-
 #### Serializing and Deserializing JSON
 
-Here is an example that demonstrates JSON integration:
-
-##### Classes
+##### Example:
 
 ```csharp
-public class FirstClass {
-    public string FirstProperty { get; set; }
-    public string SecondProperty { get; set; }
-}
-
-public class SecondClass {
-    public string FirstProperty { get; set; }
-    public string SecondProperty { get; set; }
-}
-
-public class ThirdClass {
-    public string Stringable { get; set; }
-    public SecondClass SecondClass { get; set; }
-    public List<SecondClass> ListOfSecondClasses { get; set; }
-    public Dictionary<string, string> DictionaryItems { get; set; }
-    public string[] ArrayOfStrings { get; set; }
-    public Dictionary<string, SecondClass> ObjectDictionary { get; set; }
-}
-```
-
-##### Example JSON
-
-```json
-{
-  "OneClass_String": {
-    "FirstProperty": "OneClass_String.FirstProperty",
-    "SecondProperty": "OneClass_String.SecondProperty"
-  },
-  "SecondClass_OneClass": {
-    "FirstProperty": "SecondClass_OneClass.FirstProperty",
-    "SecondProperty": "SecondClass_OneClass.SecondProperty"
-  }
-}
-```
-
-##### Deserialization
-
-```csharp
-var json = "{\"OneClass_String\":{\"FirstProperty\":\"OneClass_String.FirstProperty\",\"SecondProperty\":\"OneClass_String.SecondProperty\"},\"SecondClass_OneClass\":{\"FirstProperty\":\"SecondClass_OneClass.FirstProperty\",\"SecondProperty\":\"SecondClass_OneClass.SecondProperty\"}}";
+var json = testClass.ToJson();
 var deserialized = json.FromJson<CurrentTestClass>();
 Console.WriteLine(deserialized.OneClass_String.AsT0.FirstProperty); // Outputs: OneClass_String.FirstProperty
 ```
 
-##### Serialization
+---
+
+#### Deserialization with Attributes
+
+Attributes allow more control over deserialization, specifying how the correct type is chosen:
+
+##### Example:
 
 ```csharp
-var serializedJson = testClass.ToJson();
-Console.WriteLine(serializedJson); // Outputs the JSON representation of testClass
-```
 
-#### Signature-Based Deserialization
-
-This library employs a "signature method" for deserialization, allowing it to determine the correct type based on property names. Here’s an example demonstrating how it works:
-
-```csharp
-[Fact]
-public void DeserializationSignature()
+public sealed class ChosenClass
 {
-    var testClass = new SignatureTestClass
+    public AnyOf<TheFirstChoice, TheSecondChoice>? FirstProperty { get; set; }
+    public string? SecondProperty { get; set; }
+}
+
+public sealed class TheFirstChoice
+{
+    [AnyOfJsonSelector("first")]
+    public string Type { get; init; }
+    public int Flexy { get; set; }
+}
+public sealed class TheSecondChoice
+{
+    [AnyOfJsonSelector("third", "second")]
+    public string Type { get; init; }
+    public int Flexy { get; set; }
+}
+
+var testClass = new ChosenClass
+{
+    FirstProperty = new TheSecondChoice
     {
-        Test = new SignatureClassTwo
-        {
-            FirstProperty = "FirstProperty",
-            SecondProperty = "SecondProperty"
-        }
-    };
-    var json = testClass.ToJson();
-    var deserialized = json.FromJson<SignatureTestClass>();
+        Type = "first",
+        Flexy = 1,
+    }
+};
+var json = testClass.ToJson();
+var deserialized = json.FromJson<ChosenClass>();
+Assert.True(deserialized.FirstProperty.Is<TheFirstChoice>());
+```
 
-    // It's correct that the class during deserialization is not the same as the original one,
-    // because the deserialization is based on the name of the properties (signature method),
-    // and both classes are the same in terms of properties.
-    Assert.True(deserialized.Test!.Is<SignatureClassOne>());
-    Assert.False(deserialized.Test!.Is<SignatureClassTwo>());
-}
+I want to use this example that you find in the unit test to explain the attribute AnyOfJsonSelector. 
+In this example FirstProperty of ChosenClass has a value for TheSecondChoice with a value in Type equal to "first".
+The attribute AnyOfJsonSelector is used to define the correct class to use during deserialization, therefore when the deserialization happens
+the library will use the class TheFirstChoice because the value of Type is "first". Both classes have the same properties and so the signatures are equals.
+Follow the next example to understand completely.
 
-private sealed class SignatureTestClass
+```csharp
+public sealed class ChosenClass
 {
-    public AnyOf<SignatureClassOne, SignatureClassTwo>? Test { get; set; }
-}
-
-private sealed class SignatureClassOne
-{
-    public string? FirstProperty { get; set; }
+    public AnyOf<TheFirstChoice, TheSecondChoice>? FirstProperty { get; set; }
     public string? SecondProperty { get; set; }
 }
 
-private sealed class SignatureClassTwo
+public sealed class TheFirstChoice
 {
+    [AnyOfJsonSelector("first")]
+    public string Type { get; init; }
+    public int Flexy { get; set; }
+}
+public sealed class TheSecondChoice
+{
+    [AnyOfJsonSelector("third", "second")]
+    public string Type { get; init; }
+    public int Flexy { get; set; }
+}
+
+var testClass = new ChosenClass
+{
+    FirstProperty = new TheSecondChoice
+    {
+        Type = "third",
+        Flexy = 1,
+    }
+};
+var json = testClass.ToJson();
+var deserialized = json.FromJson<ChosenClass>();
+Assert.True(deserialized.FirstProperty.Is<TheSecondChoice>());
+```
+
+In this second example the property has a value of "third" and so the library will use the class TheSecondChoice.
+
+#### Further attributes
+
+Set a class as default class for AnyOf
+
+```csharp
+ [AnyOfJsonDefault]
+public sealed class RunResult : ApiBaseResponse
+{
+}
+```
+
+Use regex as selector
+
+```csharp
+public sealed class FifthGetClass
+{
+    [AnyOfJsonRegexSelector("fift[^.]*.")]
     public string? FirstProperty { get; set; }
     public string? SecondProperty { get; set; }
 }
 ```
 
-This approach ensures flexibility and correctness when deserializing objects that share similar property structures, with a think to performance.
+Use over a class and not only over a property, like a value or like a regex.
+
+```csharp
+[AnyOfJsonClassSelector(nameof(FirstProperty), "first.F")]
+public sealed class FirstGetClass
+{
+    public string? FirstProperty { get; set; }
+    public string? SecondProperty { get; set; }
+}
+[AnyOfJsonRegexClassSelector(nameof(FirstProperty), "secon[^.]*.[^.]*")]
+public sealed class SecondGetClass
+{
+    public string? FirstProperty { get; set; }
+    public string? SecondProperty { get; set; }
+}
+```
 
 ---
 
-### Benefits of Using It
+#### Benefits of Using It
 
 1. **Type Safety**: Ensures only predefined types are used.
 2. **JSON Support**: Automatically identifies and deserializes the correct type using "Signature".
 3. **Code Clarity**: Reduces boilerplate code for type management and error handling.
 
 
-## Extension methods
+# Extension methods
 
-### Stopwatch
+## Stopwatch
 You can monitor the time spent on an action, task or in a method.
 Some examples from Unit test.
 
