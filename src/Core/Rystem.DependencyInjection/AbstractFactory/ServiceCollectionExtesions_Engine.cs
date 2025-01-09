@@ -96,15 +96,5 @@ namespace Microsoft.Extensions.DependencyInjection
                 whenExists?.Invoke();
             return services;
         }
-        public static bool HasFactory<TService>(
-            this IServiceCollection services,
-            string? name)
-            where TService : class
-            => services.HasKeyedService<TService>(name, out _);
-        public static bool HasFactory(
-            this IServiceCollection services,
-            Type serviceType,
-            string? name)
-            => services.HasKeyedService(serviceType, name, out _);
     }
 }

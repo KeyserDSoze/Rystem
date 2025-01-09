@@ -1,6 +1,6 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    public sealed class ServiceFactoryMap
+    internal sealed class ServiceFactoryMap
     {
         public Dictionary<object, List<ServiceDescriptor>> Services { get; } = new();
         public Dictionary<string, Action<object, object>> OptionsSetter { get; } = new();
