@@ -1,13 +1,11 @@
-﻿using Microsoft.Extensions.DependencyInjection.Extensions;
-
-namespace Microsoft.Extensions.DependencyInjection
+﻿namespace Microsoft.Extensions.DependencyInjection
 {
     public static partial class ServiceCollectionExtensions
     {
         private static IServiceCollection AddFactory<TService, TImplementation, TOptions>(
             this IServiceCollection services,
                 Action<TOptions> createOptions,
-                string? name,
+                AnyOf<string, Enum>? name,
                 bool canOverrideConfiguration,
                 ServiceLifetime lifetime,
                 TImplementation? implementationInstance,
@@ -21,7 +19,8 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             var options = new TOptions();
             createOptions.Invoke(options);
-            var optionsName = name.GetOptionsName<TService>();
+            var nameAsString = name.AsString();
+            var optionsName = nameAsString.GetOptionsName<TService>();
             services.AddOrOverrideFactory<IFactoryOptions, TOptions>((serviceProvider, name) =>
             {
                 return options;
@@ -47,7 +46,7 @@ namespace Microsoft.Extensions.DependencyInjection
         }
         private static IServiceCollection AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
-            string? name,
+            AnyOf<string, Enum>? name,
             bool canOverrideConfiguration,
             ServiceLifetime lifetime,
             TImplementation? implementationInstance,
@@ -63,7 +62,8 @@ namespace Microsoft.Extensions.DependencyInjection
             TOptions options = new();
             createOptions.Invoke(options);
             var builtOptions = options.Build();
-            var optionsName = name.GetOptionsName<TService>();
+            var nameAsString = name.AsString();
+            var optionsName = nameAsString.GetOptionsName<TService>();
             services.AddOrOverrideFactory<IFactoryOptions, TBuiltOptions>((serviceProvider, name) =>
             {
                 return builtOptions.Invoke(serviceProvider);
@@ -102,7 +102,8 @@ namespace Microsoft.Extensions.DependencyInjection
             TOptions options = new();
             createOptions.Invoke(options);
             var builtOptions = await options.BuildAsync();
-            var optionsName = name.GetOptionsName<TService>();
+            var nameAsString = name.AsString();
+            var optionsName = nameAsString.GetOptionsName<TService>();
             services.AddOrOverrideFactory<IFactoryOptions, TBuiltOptions>((serviceProvider, name) =>
             {
                 return builtOptions.Invoke(serviceProvider);

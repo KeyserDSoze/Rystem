@@ -4,7 +4,7 @@
         where T : class
     {
         public Func<FallbackBuilderForServiceCollection, ValueTask>? BuilderWithRebuilding { get; set; }
-        public T Create(string? name = null)
+        public T Create(AnyOf<string, Enum>? name = null)
         {
             var fallbackBuilder = new FallbackBuilderForServiceCollection
             {

@@ -208,7 +208,7 @@ namespace Rystem.Test.TestApi.Controllers
         [HttpGet]
         public async Task<int> MultipleFactoryWithMultipleServicesAsync([FromQuery] int max, [FromQuery] bool withParallel = false)
         {
-            var factoryName = Guid.NewGuid().ToString();
+            AnyOf<string, Enum> factoryName = Guid.NewGuid().ToString();
             var services = new List<Type>();
             for (var i = 0; i < max; i++)
             {
@@ -257,6 +257,7 @@ namespace Rystem.Test.TestApi.Controllers
                         var factoryType = typeof(IFactory<>).MakeGenericType(service);
                         var factory = RuntimeServiceProvider.GetServiceProvider().GetRequiredService(factoryType);
                         var methodInfoForCreation = factory.GetType().GetMethod("Create");
+                        AnyOf<string, Enum> factoryNameAsAny = factoryName;
                         _ = methodInfoForCreation!.Invoke(factory, [factoryName]);
                     }
                     catch (Exception ex)

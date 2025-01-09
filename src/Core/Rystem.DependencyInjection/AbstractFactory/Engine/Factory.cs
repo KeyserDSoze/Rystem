@@ -10,37 +10,39 @@
             _serviceProvider = serviceProvider;
             _fallback = fallback;
         }
-        public TService? Create(string? name = null)
+        public TService? Create(AnyOf<string, Enum>? name = null)
         {
             var map = _serviceProvider.GetRequiredService<ServiceFactoryMap>();
-            var factoryName = name.GetFactoryName<TService>();
-            var decorationCount = map.DecorationCount.ContainsKey(factoryName) ? map.DecorationCount[factoryName] : 0;
+            var nameAsString = name.AsString();
+            var factoryName = nameAsString.GetFactoryName<TService>();
+            var decorationCount = map.DecorationCount.TryGetValue(factoryName, out var value) ? value : 0;
             return Create(name, decorationCount, false).FirstOrDefault();
         }
-        public TService? CreateWithoutDecoration(string? name = null)
+        public TService? CreateWithoutDecoration(AnyOf<string, Enum>? name = null)
             => Create(name, 0, false).FirstOrDefault();
-        public IEnumerable<TService> CreateAll(string? name = null)
+        public IEnumerable<TService> CreateAll(AnyOf<string, Enum>? name = null)
         {
             var map = _serviceProvider.GetRequiredService<ServiceFactoryMap>();
-            var factoryName = name.GetFactoryName<TService>();
-            var decorationCount = map.DecorationCount.ContainsKey(factoryName) ? map.DecorationCount[factoryName] : 0;
+            var nameAsString = name.AsString();
+            var factoryName = nameAsString.GetFactoryName<TService>();
+            var decorationCount = map.DecorationCount.TryGetValue(factoryName, out var value) ? value : 0;
             return Create(name, decorationCount, true);
         }
-        public IEnumerable<TService> CreateAllWithoutDecoration(string? name = null)
+        public IEnumerable<TService> CreateAllWithoutDecoration(AnyOf<string, Enum>? name = null)
             => Create(name, 0, true);
-        private IEnumerable<TService> Create(string? name, int decoration, bool enumerate)
+        private IEnumerable<TService> Create(AnyOf<string, Enum>? name, int decoration, bool enumerate)
         {
-            name ??= string.Empty;
-            var decoratorName = decoration > 0 ? name.GetDecoratorName<TService>(decoration) : name;
+            var nameAsString = name.AsString() ?? string.Empty;
+            var decoratorName = decoration > 0 ? nameAsString.GetDecoratorName<TService>(decoration) : nameAsString;
             var factoryName = decoratorName.GetFactoryName<TService>();
             IEnumerable<TService> services;
             if (enumerate && decoration == 0)
                 services = _serviceProvider.GetKeyedServices<TService>(factoryName);
             else
-                services = new List<TService>() { _serviceProvider.GetKeyedService<TService>(factoryName)! };
+                services = [_serviceProvider.GetKeyedService<TService>(factoryName)!];
             if (services.FirstOrDefault() == null && _fallback != null)
             {
-                services = new List<TService>() { _fallback.Create(name)! };
+                services = [_fallback.Create(name)!];
             }
             if (services != null)
             {
@@ -49,12 +51,12 @@
                     if (service != null)
                     {
                         if (service is IServiceForFactory factoryService)
-                            factoryService.SetFactoryName(name);
+                            factoryService.SetFactoryName(nameAsString);
                         if (service is IDecoratorService<TService> decoratorService && decoration >= 0)
                             decoratorService.SetDecoratedServices(Create(name, decoration - 1, enumerate)!);
                         if (service is IServiceWithFactoryWithOptions serviceWithCustomOptions)
                         {
-                            var optionsName = name.GetOptionsName<TService>();
+                            var optionsName = nameAsString.GetOptionsName<TService>();
                             var options = _serviceProvider.GetKeyedService<IFactoryOptions>(optionsName.GetFactoryName<IFactoryOptions>());
                             if (options != null)
                             {
@@ -69,9 +71,10 @@
             }
         }
 
-        public bool Exists(string? name = null)
+        public bool Exists(AnyOf<string, Enum>? name = null)
         {
-            var factoryName = name.GetFactoryName<TService>();
+            var nameAsString = name.AsString() ?? string.Empty;
+            var factoryName = nameAsString.GetFactoryName<TService>();
             var service = _serviceProvider.GetKeyedService<TService>(factoryName);
             return service != null;
         }

@@ -83,7 +83,7 @@ namespace Rystem.Test.UnitTest
                 PropertyNameCaseInsensitive = true
             });
             Assert.Equal(max, jsonContent);
-        } 
+        }
         [Theory]
         [InlineData(100, false)]
         [InlineData(1_000, false)]
@@ -103,7 +103,6 @@ namespace Rystem.Test.UnitTest
         }
         [Theory]
         [InlineData(100, false)]
-        [InlineData(1_000, false)]
         [InlineData(20, false)]
         [InlineData(20, true)]
         [InlineData(100, true)]

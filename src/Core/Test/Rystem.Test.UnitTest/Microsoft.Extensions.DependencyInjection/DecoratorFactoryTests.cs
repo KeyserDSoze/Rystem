@@ -13,8 +13,21 @@ namespace Rystem.Test.UnitTest.DependencyInjection
         [InlineData("singleton", ServiceLifetime.Singleton)]
         [InlineData("scoped", ServiceLifetime.Scoped)]
         [InlineData("transient", ServiceLifetime.Transient)]
-        public async Task RunAsync(string name, ServiceLifetime lifetime)
+        public async Task RunWithStringKeyAsync(string name, ServiceLifetime lifetime)
         {
+            await RunAsync(name, lifetime);
+        }
+        [Theory]
+        [InlineData(TestEnum.Singleton, ServiceLifetime.Transient)]
+        [InlineData(TestEnum.Scoped, ServiceLifetime.Transient)]
+        [InlineData(TestEnum.Transient, ServiceLifetime.Transient)]
+        public async Task RunWithEnumKeyAsync(TestEnum name, ServiceLifetime lifetime)
+        {
+            await RunAsync(name, lifetime);
+        }
+        private async Task RunAsync(AnyOf<string, Enum> name, ServiceLifetime lifetime)
+        {
+            await Task.Delay(0);
             var services = new ServiceCollection();
             services.AddFactory<IRepositoryPattern<ToSave>, RepositoryPattern<ToSave>>(
                 name,
@@ -34,7 +47,7 @@ namespace Rystem.Test.UnitTest.DependencyInjection
 
             var providerWithoutScope = services.BuildServiceProvider();
             var provider = providerWithoutScope.CreateScope().ServiceProvider;
-            
+
             var decorator = provider.GetService<IRepository<ToSave>>();
             Assert.Null(decorator.Get());
             decorator.Format = "Alzo";

@@ -10,7 +10,7 @@
            this IServiceCollection services,
             TService? implementationInstance,
             Func<IServiceProvider, object?, TService>? implementationFactory,
-            string? name,
+            AnyOf<string, Enum>? name,
             ServiceLifetime lifetime)
             where TService : class, IDecoratorService<TService>
             => services.AddDecorationEngine<TService, TService>(implementationInstance, implementationFactory, name, lifetime);
@@ -18,14 +18,15 @@
             this IServiceCollection services,
             TImplementation? implementationInstance,
             Func<IServiceProvider, object?, TService>? implementationFactory,
-            string? name,
+            AnyOf<string, Enum>? name,
             ServiceLifetime lifetime)
            where TService : class
            where TImplementation : class, TService, IDecoratorService<TService>
         {
-            var factoryName = name.GetFactoryName<TService>();
+            var nameAsString = name.AsString();
+            var factoryName = nameAsString.GetFactoryName<TService>();
             var descriptor = services.GetDescriptor<TService>(factoryName);
-            //controllare il primo factory se non c'è va installato come factory dal service descriptor che è null
+            //todo: controllare il primo factory se non c'è va installato come factory dal service descriptor che è null
             if (descriptor == null)
             {
                 descriptor = services.GetDescriptor<TService>(null);
@@ -47,7 +48,7 @@
                 var map = services.TryAddSingletonAndGetService<ServiceFactoryMap>();
                 map.DecorationCount[factoryName]++;
                 var check = true;
-                var decoratorName = name.GetDecoratorName<TService>(map.DecorationCount[factoryName]);
+                var decoratorName = nameAsString.GetDecoratorName<TService>(map.DecorationCount[factoryName]);
                 services
                     .AddEngineFactory<TService, TImplementation>(
                         decoratorName,

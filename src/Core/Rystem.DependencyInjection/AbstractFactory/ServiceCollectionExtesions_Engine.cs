@@ -5,15 +5,15 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static partial class ServiceCollectionExtensions
     {
-        private static void SendInError<TService, TImplementation>(this IServiceCollection services
+        private static void SendInError<TService, TImplementation>(this IServiceCollection services,
             AnyOf<string, Enum>? name)
             where TService : class
             where TImplementation : class, TService
         {
-            var nameAsString = name?.AsString() ?? string.Empty;
-            nameAsString = nameAsString.GetFactoryName<TService>();
+            var nameAsString = name.AsString();
+            var factoryName = nameAsString.GetFactoryName<TService>();
             _ = services.HasKeyedService<TService, TImplementation>(name, out var serviceDescriptor);
-            throw new ArgumentException($"Service {typeof(TImplementation).FullName} with name: '{nameAsString.Replace($"{typeof(TService).FullName}_", string.Empty)}' for your factory {typeof(TService).FullName} already exists in the form of {serviceDescriptor.ImplementationType?.FullName ?? serviceDescriptor.ImplementationInstance?.GetType().FullName ?? serviceDescriptor.ServiceType.FullName}");
+            throw new ArgumentException($"Service {typeof(TImplementation).FullName} with name: '{factoryName.Replace($"{typeof(TService).FullName}_", string.Empty)}' for your factory {typeof(TService).FullName} already exists in the form of {serviceDescriptor?.ImplementationType?.FullName ?? serviceDescriptor?.ImplementationInstance?.GetType().FullName ?? serviceDescriptor?.ServiceType.FullName}");
         }
         private static void InformThatItsAlreadyInstalled(ref bool check)
         {
@@ -70,7 +70,7 @@ namespace Microsoft.Extensions.DependencyInjection
             where TService : class
             where TImplementation : class, TService
         {
-            var nameAsString = name?.AsString();
+            var nameAsString = name.AsString();
             var factoryName = nameAsString.GetFactoryName<TService>();
             services.TryAddTransient<IFactory<TService>, Factory<TService>>();
             var serviceType = typeof(TService);
@@ -92,7 +92,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 if (fromDecoration)
                     services.AddOrOverrideService(serviceProvider =>
                     {
-                        return serviceProvider.GetRequiredService<IFactory<TService>>().Create(nameAsString)!;
+                        return serviceProvider.GetRequiredService<IFactory<TService>>().Create(name)!;
                     }, lifetime);
             }
             else

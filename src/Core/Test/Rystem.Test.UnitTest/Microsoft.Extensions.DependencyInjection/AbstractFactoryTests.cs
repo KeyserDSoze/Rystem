@@ -74,13 +74,31 @@ namespace Rystem.Test.UnitTest.DependencyInjection
             return;
         }
     }
+    public enum TestEnum
+    {
+        Singleton,
+        Scoped,
+        Transient
+    }
     public class AbstractFactoryTests
     {
         [Theory]
         [InlineData("singleton", ServiceLifetime.Singleton, "classicName")]
         [InlineData("scoped", ServiceLifetime.Scoped, "classicName")]
         [InlineData("transient", ServiceLifetime.Transient, "classicName")]
-        public async Task RunAsync(string name, ServiceLifetime lifetime, string classicName)
+        public async Task RunWithStringKeyAsync(string name, ServiceLifetime lifetime, string classicName)
+        {
+            await InternalRunAsync(name, lifetime, classicName);
+        }
+        [Theory]
+        [InlineData(TestEnum.Singleton, ServiceLifetime.Transient, "classicName")]
+        [InlineData(TestEnum.Scoped, ServiceLifetime.Transient, "classicName")]
+        [InlineData(TestEnum.Transient, ServiceLifetime.Transient, "classicName")]
+        public async Task RunWithEnumKeyAsync(TestEnum name, ServiceLifetime lifetime, string classicName)
+        {
+            await InternalRunAsync(name, lifetime, classicName);
+        }
+        private async Task InternalRunAsync(AnyOf<string, Enum> name, ServiceLifetime lifetime, string classicName)
         {
             var services = new ServiceCollection();
             try

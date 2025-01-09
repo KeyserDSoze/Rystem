@@ -10,7 +10,7 @@
             _serviceProvider = serviceProvider;
         }
         public required Func<FallbackBuilderForServiceProvider, T> BuilderWithServiceProvider { get; init; }
-        public T Create(string? name = null)
+        public T Create(AnyOf<string, Enum>? name = null)
         {
             return BuilderWithServiceProvider
                .Invoke(new FallbackBuilderForServiceProvider
