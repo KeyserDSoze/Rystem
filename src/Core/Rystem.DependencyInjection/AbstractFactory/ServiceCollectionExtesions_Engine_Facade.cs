@@ -86,7 +86,7 @@ namespace Microsoft.Extensions.DependencyInjection
         }
         private static async Task<IServiceCollection> AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
-            string? name,
+            AnyOf<string, Enum>? name,
             bool canOverrideConfiguration,
             ServiceLifetime lifetime,
             TImplementation? implementationInstance,

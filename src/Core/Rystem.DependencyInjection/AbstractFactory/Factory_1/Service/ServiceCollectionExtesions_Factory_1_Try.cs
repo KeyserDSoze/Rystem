@@ -3,7 +3,7 @@
     public static partial class ServiceCollectionExtensions
     {
         public static bool TryAddFactory<TService>(this IServiceCollection services,
-           string? name = null,
+           AnyOf<string, Enum>? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Transient)
            where TService : class
         {
@@ -13,7 +13,7 @@
         }
         public static bool TryAddFactory<TService, TOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
-            string? name = null,
+            AnyOf<string, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class, IServiceWithFactoryWithOptions<TOptions>
             where TOptions : class, IFactoryOptions, new()
@@ -24,7 +24,7 @@
         }
         public static bool TryAddFactory<TService, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
-            string? name = null,
+            AnyOf<string, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class, IServiceWithFactoryWithOptions<TBuiltOptions>
             where TOptions : class, IOptionsBuilder<TBuiltOptions>, new()
@@ -37,7 +37,7 @@
 
         public static async Task<bool> TryAddFactoryAsync<TService, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
-            string? name = null,
+            AnyOf<string, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class, IServiceWithFactoryWithOptions<TBuiltOptions>
             where TOptions : class, IOptionsBuilderAsync<TBuiltOptions>, new()

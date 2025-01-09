@@ -3,7 +3,7 @@
     public static partial class ServiceCollectionExtensions
     {
         public static bool AddOrOverrideFactory<TService, TImplementation>(this IServiceCollection services,
-           string? name = null,
+           AnyOf<string, Enum>? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Transient)
            where TService : class
            where TImplementation : class, TService
@@ -14,7 +14,7 @@
         }
         public static bool AddOrOverrideFactory<TService, TImplementation, TOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
-            string? name = null,
+            AnyOf<string, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
             where TImplementation : class, TService, IServiceWithFactoryWithOptions<TOptions>
@@ -26,7 +26,7 @@
         }
         public static bool AddOrOverrideFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
-            string? name = null,
+            AnyOf<string, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
             where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>
@@ -40,7 +40,7 @@
 
         public static async Task<bool> AddOrOverrideFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
-            string? name = null,
+            AnyOf<string, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
             where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>
