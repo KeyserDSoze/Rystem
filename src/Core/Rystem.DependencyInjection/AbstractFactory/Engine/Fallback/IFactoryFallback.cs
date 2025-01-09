@@ -2,6 +2,6 @@
 {
     public interface IFactoryFallback<out TService>
     {
-        TService Create(AnyOf<string, Enum>? name = null);
+        TService Create(AnyOf<string?, Enum>? name = null);
     }
 }

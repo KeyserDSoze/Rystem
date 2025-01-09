@@ -7,7 +7,7 @@ namespace System
     {
         public T3? AsT3 => TryGet<T3>(3);
         public T3 CastT3 => Get<T3>(3);
-        public bool IsT3 => Is<T3>();
+        public bool IsT3 => Index == 3;
         private protected override int NumberOfElements => 4;
         public AnyOf(object? value) : base(value)
         {

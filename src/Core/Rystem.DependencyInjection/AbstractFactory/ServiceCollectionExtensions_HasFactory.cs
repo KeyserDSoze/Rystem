@@ -4,7 +4,7 @@
     {
         public static bool HasFactory<TService>(
             this IServiceCollection services,
-            AnyOf<string, Enum>? name)
+            AnyOf<string?, Enum>? name)
             where TService : class
         {
             var nameAsString = name?.AsString();
@@ -14,7 +14,7 @@
         public static bool HasFactory(
             this IServiceCollection services,
             Type serviceType,
-            AnyOf<string, Enum>? name)
+            AnyOf<string?, Enum>? name)
         {
             var nameAsString = name?.AsString();
             return services.HasKeyedService(serviceType, nameAsString, out _);

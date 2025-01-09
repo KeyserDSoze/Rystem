@@ -10,7 +10,7 @@
             _serviceProvider = serviceProvider;
             _fallback = fallback;
         }
-        public TService? Create(AnyOf<string, Enum>? name = null)
+        public TService? Create(AnyOf<string?, Enum>? name = null)
         {
             var map = _serviceProvider.GetRequiredService<ServiceFactoryMap>();
             var nameAsString = name.AsString();
@@ -18,9 +18,9 @@
             var decorationCount = map.DecorationCount.TryGetValue(factoryName, out var value) ? value : 0;
             return Create(name, decorationCount, false).FirstOrDefault();
         }
-        public TService? CreateWithoutDecoration(AnyOf<string, Enum>? name = null)
+        public TService? CreateWithoutDecoration(AnyOf<string?, Enum>? name = null)
             => Create(name, 0, false).FirstOrDefault();
-        public IEnumerable<TService> CreateAll(AnyOf<string, Enum>? name = null)
+        public IEnumerable<TService> CreateAll(AnyOf<string?, Enum>? name = null)
         {
             var map = _serviceProvider.GetRequiredService<ServiceFactoryMap>();
             var nameAsString = name.AsString();
@@ -28,9 +28,9 @@
             var decorationCount = map.DecorationCount.TryGetValue(factoryName, out var value) ? value : 0;
             return Create(name, decorationCount, true);
         }
-        public IEnumerable<TService> CreateAllWithoutDecoration(AnyOf<string, Enum>? name = null)
+        public IEnumerable<TService> CreateAllWithoutDecoration(AnyOf<string?, Enum>? name = null)
             => Create(name, 0, true);
-        private IEnumerable<TService> Create(AnyOf<string, Enum>? name, int decoration, bool enumerate)
+        private IEnumerable<TService> Create(AnyOf<string?, Enum>? name, int decoration, bool enumerate)
         {
             var nameAsString = name.AsString() ?? string.Empty;
             var decoratorName = decoration > 0 ? nameAsString.GetDecoratorName<TService>(decoration) : nameAsString;
@@ -71,7 +71,7 @@
             }
         }
 
-        public bool Exists(AnyOf<string, Enum>? name = null)
+        public bool Exists(AnyOf<string?, Enum>? name = null)
         {
             var nameAsString = name.AsString() ?? string.Empty;
             var factoryName = nameAsString.GetFactoryName<TService>();

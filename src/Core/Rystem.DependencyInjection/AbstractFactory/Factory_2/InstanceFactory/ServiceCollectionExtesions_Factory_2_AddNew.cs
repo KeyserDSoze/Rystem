@@ -4,7 +4,7 @@
     {
         public static IServiceCollection AddNewFactory<TService, TImplementation>(this IServiceCollection services,
            Func<IServiceProvider, object?, TService> implementationFactory,
-           AnyOf<string, Enum>? name = null,
+           AnyOf<string?, Enum>? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Transient)
            where TService : class
            where TImplementation : class, TService
@@ -12,7 +12,7 @@
         public static IServiceCollection AddNewFactory<TService, TImplementation, TOptions>(this IServiceCollection services,
             Func<IServiceProvider, object?, TService> implementationFactory,
             Action<TOptions> createOptions,
-            AnyOf<string, Enum>? name = null,
+            AnyOf<string?, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
             where TImplementation : class, TService, IServiceWithFactoryWithOptions<TOptions>
@@ -21,7 +21,7 @@
         public static IServiceCollection AddNewFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Func<IServiceProvider, object?, TService> implementationFactory,
             Action<TOptions> createOptions,
-            AnyOf<string, Enum>? name = null,
+            AnyOf<string?, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
             where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>
@@ -31,7 +31,7 @@
         public static Task<IServiceCollection> AddNewFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Func<IServiceProvider, object?, TService> implementationFactory,
             Action<TOptions> createOptions,
-            AnyOf<string, Enum>? name = null,
+            AnyOf<string?, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
             where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>

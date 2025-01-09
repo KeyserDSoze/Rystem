@@ -4,7 +4,7 @@
     {
         public static IServiceCollection AddFactory<TService, TImplementation>(this IServiceCollection services,
            TImplementation implementationInstance,
-           AnyOf<string, Enum>? name = null,
+           AnyOf<string?, Enum>? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Transient)
            where TService : class
            where TImplementation : class, TService
@@ -12,7 +12,7 @@
         public static IServiceCollection AddFactory<TService, TImplementation, TOptions>(this IServiceCollection services,
            TImplementation implementationInstance,
             Action<TOptions> createOptions,
-            AnyOf<string, Enum>? name = null,
+            AnyOf<string?, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
             where TImplementation : class, TService, IServiceWithFactoryWithOptions<TOptions>
@@ -21,7 +21,7 @@
         public static IServiceCollection AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             TImplementation implementationInstance,
             Action<TOptions> createOptions,
-            AnyOf<string, Enum>? name = null,
+            AnyOf<string?, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
             where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>
@@ -31,7 +31,7 @@
         public static Task<IServiceCollection> AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             TImplementation implementationInstance,
             Action<TOptions> createOptions,
-            AnyOf<string, Enum>? name = null,
+            AnyOf<string?, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
             where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>

@@ -10,7 +10,7 @@
            this IServiceCollection services,
             TService? implementationInstance,
             Func<IServiceProvider, object?, TService>? implementationFactory,
-            AnyOf<string, Enum>? name,
+            AnyOf<string?, Enum>? name,
             ServiceLifetime lifetime)
             where TService : class, IDecoratorService<TService>
             => services.AddDecorationEngine<TService, TService>(implementationInstance, implementationFactory, name, lifetime);
@@ -18,7 +18,7 @@
             this IServiceCollection services,
             TImplementation? implementationInstance,
             Func<IServiceProvider, object?, TService>? implementationFactory,
-            AnyOf<string, Enum>? name,
+            AnyOf<string?, Enum>? name,
             ServiceLifetime lifetime)
            where TService : class
            where TImplementation : class, TService, IDecoratorService<TService>

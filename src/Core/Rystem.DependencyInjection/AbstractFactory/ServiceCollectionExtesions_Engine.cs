@@ -6,7 +6,7 @@ namespace Microsoft.Extensions.DependencyInjection
     public static partial class ServiceCollectionExtensions
     {
         private static void SendInError<TService, TImplementation>(this IServiceCollection services,
-            AnyOf<string, Enum>? name)
+            AnyOf<string?, Enum>? name)
             where TService : class
             where TImplementation : class, TService
         {
@@ -30,7 +30,7 @@ namespace Microsoft.Extensions.DependencyInjection
         private static IServiceCollection AddEngineFactoryWithoutGenerics(this IServiceCollection services,
             Type serviceType,
             Type? implementationType,
-            AnyOf<string, Enum>? name,
+            AnyOf<string?, Enum>? name,
             bool canOverrideConfiguration,
             ServiceLifetime lifetime,
             object? implementationInstance,
@@ -59,7 +59,7 @@ namespace Microsoft.Extensions.DependencyInjection
             return services;
         }
         private static IServiceCollection AddEngineFactory<TService, TImplementation>(this IServiceCollection services,
-            AnyOf<string, Enum>? name,
+            AnyOf<string?, Enum>? name,
             bool canOverrideConfiguration,
             ServiceLifetime lifetime,
             TImplementation? implementationInstance,

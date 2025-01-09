@@ -1,8 +1,8 @@
 ﻿namespace Microsoft.Extensions.DependencyInjection
 {
-    internal static class AnyOfExtensions
+    public static class AnyOfStringEnumExtensions
     {
-        public static string? AsString(this AnyOf<string, Enum>? name)
+        public static string? AsString(this AnyOf<string?, Enum>? name)
         {
             if (name == null)
                 return null;

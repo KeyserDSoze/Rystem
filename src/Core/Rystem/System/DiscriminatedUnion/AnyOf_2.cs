@@ -12,8 +12,8 @@ namespace System
         public T1? AsT1 => TryGet<T1>(1);
         public T0 CastT0 => Get<T0>(0);
         public T1 CastT1 => Get<T1>(1);
-        public bool IsT0 => Is<T0>();
-        public bool IsT1 => Is<T1>();
+        public bool IsT0 => Index == 0;
+        public bool IsT1 => Index == 1;
         private protected virtual int NumberOfElements => 2;
         public AnyOf(object? value)
         {

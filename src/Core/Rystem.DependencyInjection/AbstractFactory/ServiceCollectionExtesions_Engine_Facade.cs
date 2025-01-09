@@ -5,7 +5,7 @@
         private static IServiceCollection AddFactory<TService, TImplementation, TOptions>(
             this IServiceCollection services,
                 Action<TOptions> createOptions,
-                AnyOf<string, Enum>? name,
+                AnyOf<string?, Enum>? name,
                 bool canOverrideConfiguration,
                 ServiceLifetime lifetime,
                 TImplementation? implementationInstance,
@@ -46,7 +46,7 @@
         }
         private static IServiceCollection AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
-            AnyOf<string, Enum>? name,
+            AnyOf<string?, Enum>? name,
             bool canOverrideConfiguration,
             ServiceLifetime lifetime,
             TImplementation? implementationInstance,
@@ -86,7 +86,7 @@
         }
         private static async Task<IServiceCollection> AddFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
-            AnyOf<string, Enum>? name,
+            AnyOf<string?, Enum>? name,
             bool canOverrideConfiguration,
             ServiceLifetime lifetime,
             TImplementation? implementationInstance,

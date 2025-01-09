@@ -4,7 +4,7 @@
     {
         public static IServiceCollection AddDecoration<TService, TImplementation>(
             this IServiceCollection services,
-            AnyOf<string, Enum>? name = null,
+            AnyOf<string?, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
            where TService : class
            where TImplementation : class, TService, IDecoratorService<TService>
@@ -12,7 +12,7 @@
         public static IServiceCollection AddDecoration<TService, TImplementation>(
             this IServiceCollection services,
             TImplementation implementationInstance,
-            AnyOf<string, Enum>? name = null,
+            AnyOf<string?, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
            where TService : class
            where TImplementation : class, TService, IDecoratorService<TService>
@@ -20,7 +20,7 @@
         public static IServiceCollection AddDecoration<TService, TImplementation>(
             this IServiceCollection services,
             Func<IServiceProvider, object?, TService> implementationFactory,
-            AnyOf<string, Enum>? name = null,
+            AnyOf<string?, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
            where TService : class
            where TImplementation : class, TService, IDecoratorService<TService>

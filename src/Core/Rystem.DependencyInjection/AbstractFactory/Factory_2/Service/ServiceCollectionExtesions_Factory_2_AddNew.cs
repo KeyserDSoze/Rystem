@@ -5,21 +5,21 @@
         public static IServiceCollection AddNewFactory(this IServiceCollection services,
             Type serviceType,
             Type implementationType,
-            AnyOf<string, Enum>? name = null,
+            AnyOf<string?, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
         {
             services.AddEngineFactoryWithoutGenerics(serviceType, implementationType, name, false, lifetime, null, null, null, false, false);
             return services;
         }
         public static IServiceCollection AddNewFactory<TService, TImplementation>(this IServiceCollection services,
-           AnyOf<string, Enum>? name = null,
+           AnyOf<string?, Enum>? name = null,
            ServiceLifetime lifetime = ServiceLifetime.Transient)
            where TService : class
            where TImplementation : class, TService
             => services.AddEngineFactory<TService, TImplementation>(name, false, lifetime, null, null, () => services.SendInError<TService, TImplementation>(name), true, false);
         public static IServiceCollection AddNewFactory<TService, TImplementation, TOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
-            AnyOf<string, Enum>? name = null,
+            AnyOf<string?, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
             where TImplementation : class, TService, IServiceWithFactoryWithOptions<TOptions>
@@ -27,7 +27,7 @@
             => services.AddFactory<TService, TImplementation, TOptions>(createOptions, name, false, lifetime, null, null, () => services.SendInError<TService, TImplementation>(name), true, false);
         public static IServiceCollection AddNewFactory<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
-            AnyOf<string, Enum>? name = null,
+            AnyOf<string?, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
             where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>
@@ -36,7 +36,7 @@
             => services.AddFactory<TService, TImplementation, TOptions, TBuiltOptions>(createOptions, name, false, lifetime, null, null, () => services.SendInError<TService, TImplementation>(name), true, false);
         public static Task<IServiceCollection> AddNewFactoryAsync<TService, TImplementation, TOptions, TBuiltOptions>(this IServiceCollection services,
             Action<TOptions> createOptions,
-            AnyOf<string, Enum>? name = null,
+            AnyOf<string?, Enum>? name = null,
             ServiceLifetime lifetime = ServiceLifetime.Transient)
             where TService : class
             where TImplementation : class, TService, IServiceWithFactoryWithOptions<TBuiltOptions>

@@ -12,6 +12,37 @@ namespace Rystem.Test.UnitTest.System
     public class DiscriminatedUnionTests
     {
         [Fact]
+        public void NullCheckWithString()
+        {
+            string? value = null;
+            if (value is string x)
+            {
+                Assert.Fail();
+            }
+            AnyOf<string?, NullCheckTest> anyOf = value;
+            Assert.True(anyOf.IsT0);
+            Assert.False(anyOf.IsT1);
+            Assert.Equal(0, anyOf.Index);
+        }
+        [Fact]
+        public void NullCheckWithEnum()
+        {
+            NullCheckTest? value = null;
+            if (value is NullCheckTest x)
+            {
+                Assert.Fail();
+            }
+            AnyOf<string?, NullCheckTest?> anyOf = value;
+            Assert.True(anyOf.IsT1);
+            Assert.False(anyOf.IsT0);
+            Assert.Equal(1, anyOf.Index);
+        }
+        public enum NullCheckTest
+        {
+            First,
+            Second
+        }
+        [Fact]
         public void SerializeAndDeserialize()
         {
 
