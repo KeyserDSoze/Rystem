@@ -58,6 +58,8 @@ namespace System
             else
                 return SwitchAsync(a0, a1, a2);
         }
+        public bool TryGetT3(out T3? entity)
+           => TryGet(3, out entity);
         public static implicit operator AnyOf<T0, T1, T2, T3>(T0 entity) => new(entity, 0);
         public static implicit operator AnyOf<T0, T1, T2, T3>(T1 entity) => new(entity, 1);
         public static implicit operator AnyOf<T0, T1, T2, T3>(T2 entity) => new(entity, 2);

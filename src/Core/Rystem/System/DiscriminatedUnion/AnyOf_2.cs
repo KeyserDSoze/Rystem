@@ -63,6 +63,26 @@ namespace System
                 return a1(AsT1);
             return ValueTask.CompletedTask;
         }
+        public bool TryGetT0(out T0? entity)
+            => TryGet(0, out entity);
+        public bool TryGetT1(out T1? entity)
+            => TryGet(1, out entity);
+        private protected bool TryGet<Q>(int index, out Q? outputValue)
+        {
+            if (Index != index)
+            {
+                outputValue = default;
+                return false;
+            }
+            var value = _wrappers![index];
+            if (value?.Entity == null)
+            {
+                outputValue = default;
+                return true;
+            }
+            outputValue = (Q)value.Entity;
+            return true;
+        }
         private protected Q? TryGet<Q>(int index)
         {
             if (Index != index)

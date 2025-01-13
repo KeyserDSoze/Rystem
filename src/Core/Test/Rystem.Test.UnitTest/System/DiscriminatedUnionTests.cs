@@ -21,6 +21,7 @@ namespace Rystem.Test.UnitTest.System
             }
             AnyOf<string?, NullCheckTest> anyOf = value;
             Assert.True(anyOf.IsT0);
+            Assert.True(anyOf.TryGetT0(out _));
             Assert.False(anyOf.IsT1);
             Assert.Equal(0, anyOf.Index);
         }
@@ -34,6 +35,7 @@ namespace Rystem.Test.UnitTest.System
             }
             AnyOf<string?, NullCheckTest?> anyOf = value;
             Assert.True(anyOf.IsT1);
+            Assert.True(anyOf.TryGetT1(out _));
             Assert.False(anyOf.IsT0);
             Assert.Equal(1, anyOf.Index);
         }
@@ -445,6 +447,28 @@ namespace Rystem.Test.UnitTest.System
                 async y => { await Task.Delay(0); return string.Empty; },
                 async y => { await Task.Delay(0); return string.Empty; });
             Assert.Equal("FirstProperty", resultAsync);
+        }
+        [Fact]
+        public void TryGet()
+        {
+            var testClass = new SwitchAndMatchClass
+            {
+                Test = new FirstClass
+                {
+                    FirstProperty = "FirstProperty",
+                    SecondProperty = "SecondProperty"
+                }
+            };
+            Assert.True(testClass.Test.TryGetT0(out var first));
+            Assert.False(testClass.Test.TryGetT1(out var second));
+            Assert.False(testClass.Test.TryGetT2(out var third));
+            Assert.False(testClass.Test.TryGetT3(out var fourth));
+            Assert.False(testClass.Test.TryGetT4(out var fifth));
+            Assert.False(testClass.Test.TryGetT5(out var sixth));
+            Assert.False(testClass.Test.TryGetT6(out var seventh));
+            Assert.False(testClass.Test.TryGetT7(out var eighth));
+            Assert.Equal("FirstProperty", first!.FirstProperty);
+            Assert.Equal("SecondProperty", first!.SecondProperty);
         }
         private sealed class SwitchAndMatchClass
         {
