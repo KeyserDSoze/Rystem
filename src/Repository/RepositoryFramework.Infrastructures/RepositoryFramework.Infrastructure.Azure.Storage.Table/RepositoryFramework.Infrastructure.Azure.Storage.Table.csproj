@@ -25,8 +25,8 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Azure.Data.Tables" Version="12.9.1" />
-		<PackageReference Include="Azure.Identity" Version="1.13.1" />
+		<PackageReference Include="Azure.Data.Tables" Version="12.10.0" />
+		<PackageReference Include="Azure.Identity" Version="1.13.2" />
 	</ItemGroup>
 
 	<Choose>
