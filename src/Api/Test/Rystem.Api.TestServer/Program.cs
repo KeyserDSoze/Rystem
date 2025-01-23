@@ -21,6 +21,8 @@ builder.Services.AddTransient<IColam, Comad>();
 builder.Services.AddFactory<ISalubry, Salubry>();
 builder.Services.AddFactory<ISalubry, Salubry2>("Doma");
 builder.Services.AddFactory<ITeamCalculator, TeamCalculator>();
+builder.Services.AddFactory<IEmbeddingService, EmbeddingService1>(EmbeddingType.First);
+builder.Services.AddFactory<IEmbeddingService, EmbeddingService2>(EmbeddingType.Second);
 builder.Services.AddServerIntegrationForRystemApi();
 builder.Services.AddBusiness();
 builder.Services.AddAuthorization(x =>

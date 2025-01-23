@@ -15,10 +15,10 @@ namespace Microsoft.AspNetCore.Builder
         {
             Method = method;
             Name = forcedName ?? method.Name;
-            Parameters = method.GetParameters().Select(x =>
+            Parameters = [.. method.GetParameters().Select(x =>
             {
                 return new EndpointMethodParameterValue(x);
-            }).ToList();
+            })];
             Update();
         }
         internal void Update()

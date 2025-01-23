@@ -38,7 +38,8 @@ namespace Rystem.Api.Test.Domain
                             x.Location = ApiParameterLocation.Body;
                             x.Example = 56;
                         });
-                }, "Doma");
+                }, "Doma")
+                .AddEndpointWithFactory<IEmbeddingService>();
             return services;
         }
     }

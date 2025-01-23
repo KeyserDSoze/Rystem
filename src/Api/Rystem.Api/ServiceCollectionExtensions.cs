@@ -27,5 +27,18 @@ namespace Microsoft.Extensions.DependencyInjection
             builder.Invoke(settings);
             return services;
         }
+        public static IServiceCollection AddEndpointWithFactory<TService>(this IServiceCollection services,
+            Action<ApiEndpointBuilder<TService>>? builder = null)
+        {
+            var endpointsManager = services.TryAddSingletonAndGetService<EndpointsManager>();
+            var value = new EndpointValue(typeof(TService))
+            {
+                IsFactory = true
+            };
+            endpointsManager.Endpoints.Add(value);
+            var settings = new ApiEndpointBuilder<TService>(value, endpointsManager.RemoveAsyncSuffix);
+            builder?.Invoke(settings);
+            return services;
+        }
     }
 }

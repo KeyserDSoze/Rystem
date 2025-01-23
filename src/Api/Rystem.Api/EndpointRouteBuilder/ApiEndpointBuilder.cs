@@ -21,7 +21,7 @@ namespace Microsoft.AspNetCore.Builder
                     counter++;
                     name = $"{methodName}_{counter}";
                 }
-                _endpointValue.Methods.Add(method.GetSignature(), new EndpointMethodValue(method, name));
+                _endpointValue.Methods.Add(method.ToSignature(), new EndpointMethodValue(method, name));
             }
         }
         public ApiEndpointBuilder<T> SetEndpointName(string name)
@@ -50,7 +50,7 @@ namespace Microsoft.AspNetCore.Builder
         }
         public ApiEndpointBuilder<T> SetMethodName(MethodInfo methodInfo, string name)
         {
-            var signature = methodInfo.GetSignature();
+            var signature = methodInfo.ToSignature();
             if (_endpointValue.Methods.TryGetValue(signature, out var actualValue))
             {
                 actualValue.Name = name;
@@ -60,7 +60,7 @@ namespace Microsoft.AspNetCore.Builder
         }
         public ApiEndpointBuilder<T> Remove(MethodInfo methodInfo)
         {
-            var signature = methodInfo.GetSignature();
+            var signature = methodInfo.ToSignature();
             if (_endpointValue.Methods.ContainsKey(signature))
             {
                 _endpointValue.Methods.Remove(signature);
@@ -83,7 +83,7 @@ namespace Microsoft.AspNetCore.Builder
                 if (actualValue.Policies != null)
                     allPolicies.AddRange(actualValue.Policies);
                 allPolicies.AddRange(policies);
-                actualValue.Policies = allPolicies.Distinct().ToArray();
+                actualValue.Policies = [.. allPolicies.Distinct()];
                 actualValue.Update();
             }
             return this;
@@ -93,7 +93,7 @@ namespace Microsoft.AspNetCore.Builder
             var methodName = ApiEndpointBuilder<T>.GetName(method);
             var actualValue = _endpointValue.Methods.FirstOrDefault(x => x.Value.Name == methodName);
             if (!actualValue.Equals(default(KeyValuePair<string, EndpointMethodValue>)))
-                return AddAuthorization(actualValue.Key, Array.Empty<string>());
+                return AddAuthorization(actualValue.Key, []);
             else
                 return this;
         }
@@ -109,7 +109,7 @@ namespace Microsoft.AspNetCore.Builder
         public ApiEndpointBuilder<T> AddAuthorizationForAll()
         {
             foreach (var method in _endpointValue.Methods)
-                AddAuthorization(method.Key, Array.Empty<string>());
+                AddAuthorization(method.Key, []);
             return this;
         }
         public ApiEndpointBuilder<T> AddAuthorizationForAll(params string[] policies)
@@ -135,7 +135,7 @@ namespace Microsoft.AspNetCore.Builder
         }
         public ApiEndpointBuilder<T> SetupParameter(MethodInfo methodInfo, string parameterName, Action<EndpointMethodParameterValue> setup)
         {
-            var signature = methodInfo.GetSignature();
+            var signature = methodInfo.ToSignature();
             if (_endpointValue.Methods.TryGetValue(signature, out var actualValue))
             {
                 var value = actualValue.Parameters.FirstOrDefault(x => x.Name == parameterName);

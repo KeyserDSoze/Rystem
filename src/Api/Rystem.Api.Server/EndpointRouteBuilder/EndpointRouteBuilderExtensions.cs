@@ -21,6 +21,35 @@ namespace Microsoft.AspNetCore.Builder
                 app.UseSwaggerUI();
             }
             var endpointsManager = builder.ServiceProvider.GetRequiredService<EndpointsManager>();
+            var factoryEndpoints = endpointsManager.Endpoints.Where(x => x.IsFactory).ToList();
+            foreach (var factoryEndpoint in factoryEndpoints)
+            {
+                if (builder.ServiceProvider.GetRequiredService(typeof(IFactoryNames<>).MakeGenericType(factoryEndpoint.Type)) is IFactoryNames factoryNames)
+                {
+                    endpointsManager.Endpoints.Remove(factoryEndpoint);
+                    var names = factoryNames.List();
+                    foreach (var name in names)
+                    {
+                        var endpointValue = new EndpointValue(factoryEndpoint.Type)
+                        {
+                            FactoryName = name,
+                            BasePath = factoryEndpoint.BasePath,
+                            EndpointName = factoryEndpoint.EndpointName,
+                            IsFactory = true,
+                        };
+                        foreach (var method in factoryEndpoint.Methods)
+                        {
+                            endpointValue.Methods.Add(method.Key, new EndpointMethodValue(method.Value.Method, method.Value.Name)
+                            {
+                                Name = method.Value.Name,
+                                Policies = method.Value.Policies,
+                                EndpointUri = method.Value.EndpointUri,
+                            });
+                        }
+                        endpointsManager.Endpoints.Add(endpointValue);
+                    }
+                }
+            }
             foreach (var endpoint in endpointsManager.Endpoints)
             {
                 Generics.WithStatic(
@@ -89,12 +118,15 @@ namespace Microsoft.AspNetCore.Builder
             where T : class
         {
             var interfaceType = typeof(T);
+
             foreach (var method in endpointValue.Methods)
             {
                 var endpointMethodValue = method.Value;
-                List<RetrieverWrapper> retrievers = new();
+                List<RetrieverWrapper> retrievers = [];
                 var currentMethod = method.Value.Method;
-                endpointMethodValue.EndpointUri = $"{endpointValue?.BasePath ?? endpointsManager.BasePath}{endpointValue.EndpointName}/{(endpointValue.FactoryName != null ? $"{endpointValue.FactoryName.Match(x => x, x => x?.ToString())}/" : string.Empty)}{endpointMethodValue!.Name}";
+                var endpointName = endpointValue.EndpointName ?? string.Empty;
+                var factoryEndpointName = (endpointValue.FactoryName != null ? $"{endpointValue.FactoryName.Match(x => x, x => x?.ToString())}/" : string.Empty);
+                endpointMethodValue.EndpointUri = $"{endpointValue.BasePath ?? endpointsManager.BasePath}{endpointName}/{factoryEndpointName}{endpointMethodValue!.Name}";
                 var numberOfValueInPath = endpointMethodValue!.EndpointUri.Split('/').Length + 1;
                 foreach (var parameter in method.Value.Parameters.Where(x => x.Location == ApiParameterLocation.Path).OrderBy(x => x.Position))
                 {

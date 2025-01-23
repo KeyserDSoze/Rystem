@@ -78,6 +78,9 @@ namespace Microsoft.Extensions.DependencyInjection
             var existingServiceWithThatName = services.HasKeyedService<TService, TImplementation>(factoryName, out var serviceDescriptor);
             if (!existingServiceWithThatName || canOverrideConfiguration)
             {
+                var names = services.TryAddSingletonAndGetService<IFactoryNames<TService>, FactoryNames<TService>>();
+                if (names is FactoryNames<TService> x)
+                    x.Names.Add(name);
                 if (fromDecoration && !map.DecorationCount.ContainsKey(factoryName))
                     map.DecorationCount.Add(factoryName, new());
                 services.AddKeyedServiceEngine(serviceType,
