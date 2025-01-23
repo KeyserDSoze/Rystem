@@ -1,9 +1,9 @@
 ﻿using System.ClientModel;
 using System.Text;
 using System.Text.RegularExpressions;
-using Azure.AI.OpenAI;
 using Microsoft.Extensions.Configuration;
-using OpenAI.Chat;
+using Rystem.OpenAi;
+using Rystem.OpenAi.Chat;
 
 namespace DocsHelper
 {
@@ -178,6 +178,18 @@ namespace DocsHelper
         private static readonly string mkdocs = "site_name: Rystem\r\nsite_author: Alessandro Rapiti\r\ncopyright: © 2020\r\ntheme:\r\n  name: mkdocs\r\n  color_mode: dark\r\n  user_color_mode_toggle: true\r\nnav:\r\n  - Home: index.md\r\n  - Concepts: \r\n    - Repository: repository.md";
         public async Task CreateAsync(int? backPath)
         {
+            OpenAiServiceLocator.Configuration.AddOpenAi(x =>
+            {
+                x.ApiKey = _configuration["OpenAi:ApiKey"];
+                x.Azure.ResourceName = _configuration["OpenAi:ResourceName"];
+                x.DefaultRequestConfiguration.Chat = x =>
+                {
+                    x
+                        .WithModel(_configuration["OpenAi:ModelName"])
+                        .AddMessage(s_systemChatMessage)
+                        .SetMaxTokens(16_000);
+                };
+            });
             var splittedDirectory = Directory.GetCurrentDirectory().Split('\\');
             var rootDirectory = string.Join('\\', splittedDirectory.Take(splittedDirectory.Length - (backPath ?? 4)));
             var directoryInfo = new DirectoryInfo(rootDirectory);
@@ -212,8 +224,6 @@ namespace DocsHelper
                 await mkDocsFileWriter.WriteAsync(mkDocsCreator.ToString());
                 await mkDocsFileWriter.FlushAsync();
             }
-            var openAiClient = new AzureOpenAIClient(new Uri(_configuration["OpenAi:Endpoint"]), new ApiKeyCredential(_configuration["OpenAi:ApiKey"]));
-            var model = _configuration["OpenAi:ModelName"];
             foreach (var project in _classForProjectNavigator.Projects.Where(x => OrderBy.ContainsKey(x.Name)).OrderBy(x => OrderBy[x.Name]))
             {
                 var stringBuilder = new StringBuilder();
@@ -291,10 +301,6 @@ namespace DocsHelper
                             namespaceStringBuilder.AppendLine(testStringBuilder.ToString());
                         }
                     }
-                    var chatCompletionsOptions = new ChatCompletionOptions()
-                    {
-                        MaxOutputTokenCount = 16_000
-                    };
                     var messages = new List<ChatMessage>
                     {
                         s_systemChatMessage,
@@ -305,19 +311,16 @@ namespace DocsHelper
                         Console.WriteLine($"Project {project.Id} with namespace {@namespace.Key} too long: {namespaceStringBuilder.Length}");
                         continue;
                     }
-                    var chatClient = openAiClient.GetChatClient(model);
-                    var requests = chatClient.CompleteChatStreamingAsync(messages, chatCompletionsOptions);
-                    var documentationText = new StringBuilder();
-                    await foreach (var chatUpdate in requests)
+                    var chatClient = OpenAiServiceLocator.Instance.CreateChat();
+                    foreach (var message in messages)
                     {
-                        foreach (var contentPart in chatUpdate.ContentUpdate)
-                        {
-                            documentationText.Append(contentPart.Text);
-                        }
+                        chatClient.AddMessage(message);
                     }
+                    var requests = await chatClient.ExecuteAsync();
+                    var documentationText = requests.Choices?.FirstOrDefault()?.Message?.Content ?? string.Empty;
                     using var documentFile = new StreamWriter(fileName, false);
-                    await documentFile.WriteAsync(documentationText.ToString());
-                    allDocumentationText.AppendLine(documentationText.ToString());
+                    await documentFile.WriteAsync(documentationText);
+                    allDocumentationText.AppendLine(documentationText);
                     await Task.Delay(30_000);
                 }
                 _packageDocumentation.Add(project.Id, allDocumentationText.ToString());

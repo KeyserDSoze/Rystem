@@ -8,8 +8,8 @@
     <UserSecretsId>b83e4849-1411-4a29-808e-42c0974b0dbf</UserSecretsId>
   </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.1" />
+        <PackageReference Include="Rystem.OpenAi" Version="4.2.4" />
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\src\Core\Rystem.DependencyInjection\Rystem.DependencyInjection.csproj" />

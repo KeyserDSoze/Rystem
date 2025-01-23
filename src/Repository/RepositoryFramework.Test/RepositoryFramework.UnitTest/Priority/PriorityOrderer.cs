@@ -1,12 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using Xunit;
-using Xunit.Abstractions;
 using Xunit.Sdk;
+using Xunit.v3;
 
 namespace RepositoryFramework.UnitTest
 {
-    public class PriorityOrderer : ITestCaseOrderer, ITestCollectionOrderer
+    public class PriorityOrderer : ITestCollectionOrderer
     {
         public IEnumerable<TTestCase> OrderTestCases<TTestCase>(
             IEnumerable<TTestCase> testCases)
@@ -16,18 +15,19 @@ namespace RepositoryFramework.UnitTest
             var sortedMethods = new SortedDictionary<int, List<TTestCase>>();
             foreach (TTestCase testCase in testCases)
             {
-                var priority = testCase.TestMethod.Method
-                    .GetCustomAttributes(assemblyName)
-                    .FirstOrDefault()
-                    ?.GetNamedArgument<int>(nameof(PriorityAttribute.Priority)) ?? 0;
+                //var priority = testCase.TestMethod.Method
+                //    .GetCustomAttributes(assemblyName)
+                //    .FirstOrDefault()
+                //    ?.GetNamedArgument<int>(nameof(PriorityAttribute.Priority)) ?? 0;
 
-                GetOrCreate(sortedMethods, priority).Add(testCase);
+                //GetOrCreate(sortedMethods, priority).Add(testCase);
+                GetOrCreate(sortedMethods, 1).Add(testCase);
             }
 
             foreach (var testCase in
                 sortedMethods.Keys.SelectMany(
                     priority => sortedMethods[priority].OrderBy(
-                        testCase => testCase.TestMethod.Method.Name)))
+                        testCase => testCase.TestMethod?.MethodName)))
             {
                 yield return testCase;
             }
@@ -41,9 +41,9 @@ namespace RepositoryFramework.UnitTest
                 ? result
                 : (dictionary[key] = new TValue());
 
-        public IEnumerable<ITestCollection> OrderTestCollections(IEnumerable<ITestCollection> testCollections)
+        public IReadOnlyCollection<TTestCollection> OrderTestCollections<TTestCollection>(IReadOnlyCollection<TTestCollection> testCollections) where TTestCollection : ITestCollection
         {
-            return testCollections.OrderBy(x => x.DisplayName);
+            return [.. testCollections.OrderBy(x => x.UniqueID)];
         }
     }
 }

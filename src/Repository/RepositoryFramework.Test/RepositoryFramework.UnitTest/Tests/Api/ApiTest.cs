@@ -17,10 +17,11 @@ using RepositoryFramework.Test.Infrastructure.EntityFramework;
 using RepositoryFramework.Test.Infrastructure.EntityFramework.Models.Internal;
 using RepositoryFramework.Test.Models;
 using RepositoryFramework.Test.Repository;
+using RepositoryFramework.UnitTest;
 using Xunit;
 
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
-[assembly: TestCollectionOrderer("RepositoryFramework.UnitTest.PriorityOrderer", "RepositoryFramework.UnitTest")]
+[assembly: TestCollectionOrderer(typeof(PriorityOrderer))]
 
 namespace RepositoryFramework.UnitTest.Tests.Api
 {

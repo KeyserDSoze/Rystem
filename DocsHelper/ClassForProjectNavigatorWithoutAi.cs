@@ -1,8 +1,4 @@
-﻿using System.ClientModel;
-using System.Text;
-using Azure.AI.OpenAI;
-using Microsoft.Extensions.Configuration;
-using OpenAI.Chat;
+﻿using System.Text;
 
 namespace DocsHelper
 {
