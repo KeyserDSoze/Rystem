@@ -15,7 +15,7 @@ namespace Microsoft.Extensions.DependencyInjection
         }
         public static IServiceCollection AddEndpoint<TService>(this IServiceCollection services,
             Action<ApiEndpointBuilder<TService>> builder,
-            string? name = null)
+            AnyOf<string, Enum>? name = null)
         {
             var endpointsManager = services.TryAddSingletonAndGetService<EndpointsManager>();
             var value = new EndpointValue(typeof(TService))

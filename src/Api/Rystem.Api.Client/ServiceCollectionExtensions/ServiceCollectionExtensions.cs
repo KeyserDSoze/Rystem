@@ -23,7 +23,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
             return services;
         }
-        public static IServiceCollection AddClientForEndpointApi<T>(this IServiceCollection services, Action<HttpClientBuilder> httpClientBuilder, string? factoryName = null)
+        public static IServiceCollection AddClientForEndpointApi<T>(this IServiceCollection services, Action<HttpClientBuilder> httpClientBuilder, AnyOf<string, Enum>? factoryName = null)
             where T : class
         {
             var httpClientSettings = new HttpClientBuilder();
@@ -66,7 +66,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 chainRequest.Methods.Add(method.Key, requestMethodCreator);
                 var endpointMethodValue = method.Value;
                 var currentMethod = method.Value.Method;
-                endpointMethodValue.EndpointUri = $"{endpointsManager.BasePath}{endpointValue.EndpointName}/{(!string.IsNullOrWhiteSpace(endpointValue.FactoryName) ? $"{endpointValue.FactoryName}/" : string.Empty)}{endpointMethodValue?.Name}";
+                endpointMethodValue.EndpointUri = $"{endpointsManager.BasePath}{endpointValue.EndpointName}/{(endpointValue.FactoryName != null ? $"{endpointValue.FactoryName}/" : string.Empty)}{endpointMethodValue?.Name}";
                 requestMethodCreator.FixedPath = endpointMethodValue!.EndpointUri;
                 var streamTypeResult = method.Value.Method.ReturnType.IsGenericType &&
                        (method.Value.Method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)

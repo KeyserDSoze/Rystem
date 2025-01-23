@@ -181,8 +181,12 @@ namespace System
             var value = Value;
             if (obj == default && value == default)
                 return true;
-            var dynamicValue = ((dynamic)obj!).Value;
-            return value?.Equals(dynamicValue) ?? false;
+            if (obj is IAnyOf anyOf)
+            {
+                var dynamicValue = anyOf.Value;
+                return value?.Equals(dynamicValue) ?? false;
+            }
+            return false;
         }
         public override int GetHashCode()
             => RuntimeHelpers.GetHashCode(Value);

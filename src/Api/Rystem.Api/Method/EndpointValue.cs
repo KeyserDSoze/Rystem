@@ -9,7 +9,7 @@
         }
         public Type Type { get; }
         public Dictionary<string, EndpointMethodValue> Methods { get; } = new();
-        public string? FactoryName { get; set; }
+        public AnyOf<string, Enum>? FactoryName { get; set; }
         public string? EndpointName { get; set; }
         public string? BasePath { get; set; }
     }
