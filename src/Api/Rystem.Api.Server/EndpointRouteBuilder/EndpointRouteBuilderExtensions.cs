@@ -59,9 +59,10 @@ namespace Microsoft.AspNetCore.Builder
             }
             return builder;
         }
-        private static List<Type> s_typesToAvoid = new List<Type> { typeof(IHttpFile), typeof(IFormFile), typeof(CancellationToken) };
-        private static List<Type> s_genericTypesToAvoid = new List<Type> { typeof(Task<>), typeof(ValueTask<>), typeof(IEnumerable<>),
-        typeof(IList<>), typeof(IDictionary<,>), typeof(ICollection<>), typeof(IAsyncEnumerable<>)};
+        private static readonly List<Type> s_typesToAvoid = [typeof(IHttpFile), typeof(IFormFile), typeof(CancellationToken)];
+        private static readonly List<Type> s_genericTypesToAvoid = [ typeof(Task<>), typeof(ValueTask<>), typeof(IEnumerable<>),
+                                                                     typeof(IList<>), typeof(IDictionary<,>), typeof(ICollection<>),
+                                                                     typeof(IAsyncEnumerable<>)];
         public static void UseEndpointApiModels(this IEndpointRouteBuilder builder)
         {
             var languages = new List<ProgrammingLanguageType>() { ProgrammingLanguageType.Typescript };
@@ -135,7 +136,7 @@ namespace Microsoft.AspNetCore.Builder
                 var currentPathParameter = 0;
                 foreach (var parameter in method.Value.Parameters.OrderBy(x => x.Position))
                 {
-                    if (parameter.Type == typeof(CancellationToken))
+                    if (parameter.IsCancellationToken)
                     {
                         retrievers.Add(new RetrieverWrapper
                         {
@@ -256,9 +257,16 @@ namespace Microsoft.AspNetCore.Builder
                                                 if (value.Equals(default) && !parameter.IsRequired)
                                                     return default!;
                                                 var body = value.Value.ToString();
-                                                if (string.IsNullOrWhiteSpace(body) && !parameter.IsRequired)
-                                                    return default!;
-                                                return parameter.IsPrimitive ? body.Cast(parameter.Type) : body.FromJson(parameter.Type)!;
+                                                if (parameter.IsArrayOfBytes)
+                                                {
+                                                    return Convert.FromBase64String(body);
+                                                }
+                                                else
+                                                {
+                                                    if (string.IsNullOrWhiteSpace(body) && !parameter.IsRequired)
+                                                        return default!;
+                                                    return parameter.IsPrimitive ? body.Cast(parameter.Type) : body.FromJson(parameter.Type)!;
+                                                }
                                             }
                                         });
                                     }
@@ -270,7 +278,14 @@ namespace Microsoft.AspNetCore.Builder
                                         ExecutorAsync = async context =>
                                         {
                                             var value = await context.Request.Body.ConvertToStringAsync();
-                                            return parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
+                                            if (parameter.IsArrayOfBytes)
+                                            {
+                                                return Convert.FromBase64String(value);
+                                            }
+                                            else
+                                            {
+                                                return parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
+                                            }
                                         }
                                     });
                                 }

@@ -40,12 +40,12 @@ app.UseAuthorization();
 app
     .UseEndpointApi()
     .UseEndpointApiModels();
-app.MapPost("/handle-file", async ([FromForm] IFormFile myFile, [FromForm] IFormFile myFile2) =>
-{
-    var tempfile = Path.GetTempFileName();
-    await using var stream = File.OpenWrite(tempfile);
-    await myFile.CopyToAsync(stream);
-});
+//app.MapPost("/handle-file", async ([FromForm] IFormFile myFile, [FromForm] IFormFile myFile2) =>
+//{
+//    var tempfile = Path.GetTempFileName();
+//    await using var stream = File.OpenWrite(tempfile);
+//    await myFile.CopyToAsync(stream);
+//});
 app.MapGet("/handle2/{param:int}", async (int param) =>
 {
     return true;

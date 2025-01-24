@@ -39,7 +39,13 @@ namespace Rystem.Api.Test.Domain
                             x.Example = 56;
                         });
                 }, "Doma")
-                .AddEndpointWithFactory<IEmbeddingService>();
+                .AddEndpointWithFactory<IEmbeddingService>(endpointBuilder =>
+                {
+                    endpointBuilder.SetupParameter(x => x.SearchAsync, "container", t =>
+                    {
+                        t.Example = new Container { Name = "name", Type = ContainerType.Assistant, Attributes = [], Prompt = "example prompt" };
+                    });
+                });
             return services;
         }
     }

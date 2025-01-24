@@ -24,7 +24,7 @@ namespace Rystem.Api
             var currentEndpoint = _endpointsManager.Endpoints.SelectMany(x => x.Methods).FirstOrDefault(x => x.Value.EndpointUri == context.ApiDescription.RelativePath);
             if (currentEndpoint.Value != null)
             {
-                foreach (var parameter in currentEndpoint.Value.Parameters)
+                foreach (var parameter in currentEndpoint.Value.Parameters.Where(x => !x.IsCancellationToken))
                 {
                     switch (parameter.Location)
                     {
@@ -67,7 +67,7 @@ namespace Rystem.Api
                         case ApiParameterLocation.Body:
                             if (currentEndpoint.Value.IsMultipart)
                             {
-                                var isStreamable = parameter.StreamType != StreamType.None;
+                                var isStreamable = parameter.StreamType != StreamType.None || parameter.IsArrayOfBytes;
                                 if (operation.RequestBody == null)
                                 {
                                     operation.RequestBody = new OpenApiRequestBody
@@ -81,7 +81,8 @@ namespace Rystem.Api
                                             Schema = new OpenApiSchema
                                             {
                                                 Type = "object"
-                                            }
+                                            },
+                                            Example = GetExample(parameter)
                                         });
                                 }
                                 var content = operation.RequestBody.Content["multipart/form-data"];
@@ -90,7 +91,8 @@ namespace Rystem.Api
                                 content.Schema.Properties.Add(parameter.Name, new OpenApiSchema
                                 {
                                     Type = isStreamable ? "string" : "object",
-                                    Format = isStreamable ? "binary" : "application/json"
+                                    Format = isStreamable ? "binary" : "application/json",
+                                    Example = GetExample(parameter)
                                 });
                                 content.Encoding.Add(parameter.Name, new OpenApiEncoding
                                 {
@@ -106,12 +108,12 @@ namespace Rystem.Api
                                     Content = new Dictionary<string, OpenApiMediaType>()
                                     {
                                         {
-                                            "application/json", new OpenApiMediaType
+                                            parameter.IsArrayOfBytes ? "string" : "application/json", new OpenApiMediaType
                                             {
                                                 Schema = new OpenApiSchema
                                                 {
-                                                    Type = "string",
-                                                    Format = "string",
+                                                    Type = parameter.IsArrayOfBytes ? "string" : "object",
+                                                    Format = parameter.IsArrayOfBytes ? "string" : "application/json",
                                                     Description = parameter.Name,
                                                     Title = parameter.Name,
                                                     Example = GetExample(parameter)

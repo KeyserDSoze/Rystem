@@ -13,6 +13,8 @@ namespace Microsoft.AspNetCore.Builder
         public int Position { get; set; }
         public bool IsRequired { get; set; }
         public StreamType StreamType { get; set; }
+        public bool IsArrayOfBytes { get; }
+        public bool IsCancellationToken { get; }
         public string? ContentType { get; set; }
         public object? Example { get; set; }
         private const string SpecialStreamFromAspNetCore = "Microsoft.AspNetCore.Http.IFormFile";
@@ -36,6 +38,8 @@ namespace Microsoft.AspNetCore.Builder
             Type = parameterInfo.ParameterType;
             Name = parameterInfo.Name!;
             Location = IsPrimitive ? ApiParameterLocation.Query : ApiParameterLocation.Body;
+            IsCancellationToken = Type == typeof(CancellationToken);
+            IsArrayOfBytes = Type == typeof(byte[]);
             if (parameterInfo.GetCustomAttribute(typeof(QueryAttribute)) is QueryAttribute fromQuery)
             {
                 Location = ApiParameterLocation.Query;
