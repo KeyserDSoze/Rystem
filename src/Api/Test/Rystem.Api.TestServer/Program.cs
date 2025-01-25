@@ -23,7 +23,11 @@ builder.Services.AddFactory<ISalubry, Salubry2>("Doma");
 builder.Services.AddFactory<ITeamCalculator, TeamCalculator>();
 builder.Services.AddFactory<IEmbeddingService, EmbeddingService1>(EmbeddingType.First);
 builder.Services.AddFactory<IEmbeddingService, EmbeddingService2>(EmbeddingType.Second);
-builder.Services.AddServerIntegrationForRystemApi();
+builder.Services.AddServerIntegrationForRystemApi(x =>
+{
+    x.HasScalar = true;
+    x.HasSwagger = true;
+});
 builder.Services.AddBusiness();
 builder.Services.AddAuthorization(x =>
 {

@@ -9,9 +9,11 @@ namespace Microsoft.AspNetCore.Builder
         public bool IsPrimitive { get; }
         public Type Type { get; }
         public string Name { get; set; }
+        public string FullName { get; }
         public ApiParameterLocation Location { get; set; }
         public int Position { get; set; }
         public bool IsRequired { get; set; }
+        public bool IsNullable { get; }
         public StreamType StreamType { get; set; }
         public bool IsArrayOfBytes { get; }
         public bool IsCancellationToken { get; }
@@ -37,9 +39,11 @@ namespace Microsoft.AspNetCore.Builder
             StreamType = IsThisTypeASpecialStream(parameterInfo.ParameterType);
             Type = parameterInfo.ParameterType;
             Name = parameterInfo.Name!;
+            FullName = parameterInfo.ParameterType.FullName!;
             Location = IsPrimitive ? ApiParameterLocation.Query : ApiParameterLocation.Body;
             IsCancellationToken = Type == typeof(CancellationToken);
             IsArrayOfBytes = Type == typeof(byte[]);
+            IsNullable = Type.IsGenericType && Type.GetGenericTypeDefinition() == typeof(Nullable<>);
             if (parameterInfo.GetCustomAttribute(typeof(QueryAttribute)) is QueryAttribute fromQuery)
             {
                 Location = ApiParameterLocation.Query;

@@ -16,7 +16,7 @@ namespace Rystem.Api
         private OpenApiString? GetExample(EndpointMethodParameterValue endpointMethodParameterValue)
         {
             if (endpointMethodParameterValue.Example != null)
-                return new OpenApiString(endpointMethodParameterValue.IsPrimitive ? endpointMethodParameterValue.Example.ToString() : endpointMethodParameterValue.Example.ToJson(), false);
+                return new OpenApiString(endpointMethodParameterValue.IsPrimitive ? endpointMethodParameterValue.Example.ToString() : endpointMethodParameterValue.Example.ToJson(DefaultJsonSettings.ForEnum), false);
             return null;
         }
         public void Apply(OpenApiOperation operation, OperationFilterContext context)

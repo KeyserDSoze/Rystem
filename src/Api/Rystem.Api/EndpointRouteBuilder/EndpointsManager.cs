@@ -4,6 +4,6 @@
     {
         public string BasePath { get; set; } = "api/";
         public bool RemoveAsyncSuffix { get; set; } = true;
-        public List<EndpointValue> Endpoints { get; } = new();
+        public List<EndpointValue> Endpoints { get; } = [];
     }
 }

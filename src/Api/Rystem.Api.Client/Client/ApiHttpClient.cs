@@ -1,11 +1,11 @@
-﻿using System.IO;
-using System;
+﻿using System;
+using System.IO;
+using System.Net.Mime;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using System.Net.Mime;
 
 namespace Rystem.Api
 {
@@ -67,7 +67,7 @@ namespace Rystem.Api
                 return default;
             if (_requestChain == null)
                 return default!;
-            var signature = method.GetSignature();
+            var signature = method.ToSignature();
             var currentMethod = _requestChain.Methods[signature];
             if (!s_methods.ContainsKey(signature))
             {

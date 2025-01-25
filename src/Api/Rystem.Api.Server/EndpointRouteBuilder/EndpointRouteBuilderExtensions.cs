@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
 using Rystem.Api;
+using Scalar.AspNetCore;
 
 namespace Microsoft.AspNetCore.Builder
 {
@@ -15,10 +16,24 @@ namespace Microsoft.AspNetCore.Builder
     {
         public static IEndpointRouteBuilder UseEndpointApi(this IEndpointRouteBuilder builder)
         {
+            var endpointOptions = builder.ServiceProvider.GetRequiredService<EndpointOptions>();
             if (builder is IApplicationBuilder app)
             {
-                app.UseSwagger();
-                app.UseSwaggerUI();
+                app.UseRouting();
+                app.UseEndpoints(x =>
+                {
+                    x.MapOpenApi();
+                    if (endpointOptions.HasScalar)
+                        x.MapScalarApiReference();
+                });
+                if (endpointOptions.HasSwagger)
+                {
+                    app.UseSwagger();
+                    app.UseSwaggerUI(options =>
+                    {
+                        options.SwaggerEndpoint("/openapi/v1.json", "v1");
+                    });
+                }
             }
             var endpointsManager = builder.ServiceProvider.GetRequiredService<EndpointsManager>();
             var factoryEndpoints = endpointsManager.Endpoints.Where(x => x.IsFactory).ToList();
@@ -155,7 +170,7 @@ namespace Microsoft.AspNetCore.Builder
                                         if (!parameter.IsRequired && !context.Request.Query.ContainsKey(parameter.Name))
                                             return default!;
                                         var value = context.Request.Query[parameter.Name!].ToString();
-                                        var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
+                                        var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type, DefaultJsonSettings.ForEnum)!;
                                         return returnValue;
                                     }
                                 });
@@ -168,7 +183,7 @@ namespace Microsoft.AspNetCore.Builder
                                         if (!parameter.IsRequired && !context.Request.Cookies.ContainsKey(parameter.Name))
                                             return default!;
                                         var value = context.Request.Cookies[parameter.Name!]!.ToString();
-                                        var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
+                                        var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type, DefaultJsonSettings.ForEnum)!;
                                         return returnValue;
                                     }
                                 });
@@ -181,7 +196,7 @@ namespace Microsoft.AspNetCore.Builder
                                         if (!parameter.IsRequired && !context.Request.Headers.ContainsKey(parameter.Name))
                                             return default!;
                                         var value = context.Request.Headers[parameter.Name!].ToString();
-                                        var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
+                                        var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type, DefaultJsonSettings.ForEnum)!;
                                         return returnValue;
                                     }
                                 });
@@ -196,7 +211,7 @@ namespace Microsoft.AspNetCore.Builder
                                         if (parameter.IsRequired && values?.Length < parameter.Position)
                                             return default!;
                                         var value = values![numberOfValueInPath + currentPathParameterValue];
-                                        var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
+                                        var returnValue = parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type, DefaultJsonSettings.ForEnum)!;
                                         return returnValue;
                                     }
                                 });
@@ -265,7 +280,7 @@ namespace Microsoft.AspNetCore.Builder
                                                 {
                                                     if (string.IsNullOrWhiteSpace(body) && !parameter.IsRequired)
                                                         return default!;
-                                                    return parameter.IsPrimitive ? body.Cast(parameter.Type) : body.FromJson(parameter.Type)!;
+                                                    return parameter.IsPrimitive ? body.Cast(parameter.Type) : body.FromJson(parameter.Type, DefaultJsonSettings.ForEnum)!;
                                                 }
                                             }
                                         });
@@ -284,7 +299,7 @@ namespace Microsoft.AspNetCore.Builder
                                             }
                                             else
                                             {
-                                                return parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type)!;
+                                                return parameter.IsPrimitive ? value.Cast(parameter.Type) : value.FromJson(parameter.Type, DefaultJsonSettings.ForEnum)!;
                                             }
                                         }
                                     });

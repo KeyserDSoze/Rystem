@@ -171,7 +171,7 @@ namespace Microsoft.Extensions.DependencyInjection
                                                     }
                                                     else
                                                     {
-                                                        multipart.Add(new StringContent(parameter.IsPrimitive ? value?.ToString() : value?.ToJson(),
+                                                        multipart.Add(new StringContent(parameter.IsPrimitive ? value?.ToString() : value?.ToJson(DefaultJsonSettings.ForEnum),
                                                             parameter.IsPrimitive ? s_mediaTypeHeaderValueForText : s_mediaTypeHeaderValueForJson), parameter.Name);
                                                     }
                                                 }
@@ -185,7 +185,7 @@ namespace Microsoft.Extensions.DependencyInjection
                                     {
                                         Executor = (context, value) =>
                                         {
-                                            context.Content = new StringContent(parameter.IsPrimitive ? value?.ToString() : value.ToJson());
+                                            context.Content = new StringContent(parameter.IsPrimitive ? value?.ToString() : value.ToJson(DefaultJsonSettings.ForEnum));
                                         }
                                     });
                                 }
