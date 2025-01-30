@@ -9,7 +9,7 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Identity.Web.UI" Version="3.6.2" />
-        <PackageReference Include="Microsoft.Identity.Abstractions" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Identity.Abstractions" Version="8.1.0" />
     </ItemGroup>
 
     <ItemGroup>
