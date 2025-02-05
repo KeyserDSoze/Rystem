@@ -163,23 +163,6 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                                 services
                                     .AddUserRepositoryWithDatabaseSqlAndEntityFramework(configuration);
                                 services.
-                                    AddRepository<CalamityUniverseUser, string>(builder =>
-                                    {
-                                        builder.WithDataverse(dataverserBuilder =>
-                                        {
-                                            dataverserBuilder.Settings.Prefix = "repo_";
-                                            dataverserBuilder.Settings.SolutionName = "TestAlessandro";
-                                            if (configuration != null)
-                                                dataverserBuilder.Settings.SetConnection(configuration["ConnectionString:Dataverse:Environment"],
-                                                    new(configuration["ConnectionString:Dataverse:ClientId"],
-                                                 configuration["ConnectionString:Dataverse:ClientSecret"]));
-                                        });
-                                        builder
-                                            .AddBusiness()
-                                            .AddBusinessBeforeInsert<CalamityUniverseUserBeforeInsertBusiness>()
-                                            .AddBusinessBeforeInsert<CalamityUniverseUserBeforeInsertBusiness2>();
-                                    });
-                                services.
                                    AddRepository<Cat, Guid>(settings =>
                                    {
                                        settings
@@ -213,6 +196,23 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                                             .WithModelsApi()
                                             .WithDocumentation()
                                             .WithDefaultCors("http://example.com");
+                                services.
+                                    AddRepository<CalamityUniverseUser, string>(builder =>
+                                    {
+                                        builder.WithDataverse(dataverserBuilder =>
+                                        {
+                                            dataverserBuilder.Settings.Prefix = "repo_";
+                                            dataverserBuilder.Settings.SolutionName = "TestAlessandro";
+                                            if (configuration != null)
+                                                dataverserBuilder.Settings.SetConnection(configuration["ConnectionString:Dataverse:Environment"],
+                                                    new(configuration["ConnectionString:Dataverse:ClientId"],
+                                                 configuration["ConnectionString:Dataverse:ClientSecret"]));
+                                        });
+                                        builder
+                                            .AddBusiness()
+                                            .AddBusinessBeforeInsert<CalamityUniverseUserBeforeInsertBusiness>()
+                                            .AddBusinessBeforeInsert<CalamityUniverseUserBeforeInsertBusiness2>();
+                                    });
                             });
                         }).Build();
                 await HttpClientFactory.Instance.Host!.StartAsync();

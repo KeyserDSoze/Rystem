@@ -23,7 +23,7 @@ namespace Microsoft.Extensions.DependencyInjection
             builder
                 .Services
                 .AddWarmUp(serviceProvider => DataverseCreateTableOrMergeNewColumnsInExistingTableAsync(
-                    serviceProvider.GetService<IFactory<IQuery<T, TKey>>>()!.Create(name ?? string.Empty) as DataverseRepository<T, TKey>));
+                    serviceProvider.GetService<IFactory<IQueryPattern<T, TKey>>>()!.Create(name ?? string.Empty) as DataverseRepository<T, TKey>));
             builder.SetStorageAndBuildOptions<DataverseRepository<T, TKey>,
                 DataverseRepositoryBuilder<T, TKey>,
                 DataverseClientWrapper<T, TKey>>(
@@ -50,7 +50,7 @@ namespace Microsoft.Extensions.DependencyInjection
             builder
                 .Services
                 .AddWarmUp(serviceProvider => DataverseCreateTableOrMergeNewColumnsInExistingTableAsync(
-                    serviceProvider.GetService<IFactory<IQuery<T, TKey>>>()!.Create(name ?? string.Empty) as DataverseRepository<T, TKey>));
+                    serviceProvider.GetService<IFactory<IQueryPattern<T, TKey>>>()!.Create(name ?? string.Empty) as DataverseRepository<T, TKey>));
             builder.SetStorageAndBuildOptions<DataverseRepository<T, TKey>,
                 DataverseRepositoryBuilder<T, TKey>,
                 DataverseClientWrapper<T, TKey>>(
@@ -77,7 +77,7 @@ namespace Microsoft.Extensions.DependencyInjection
             builder
                 .Services
                 .AddWarmUp(serviceProvider => DataverseCreateTableOrMergeNewColumnsInExistingTableAsync(
-                    serviceProvider.GetService<IFactory<IQuery<T, TKey>>>()!.Create(name ?? string.Empty) as DataverseRepository<T, TKey>));
+                    serviceProvider.GetService<IFactory<IQueryPattern<T, TKey>>>()!.Create(name ?? string.Empty) as DataverseRepository<T, TKey>));
             builder.SetStorageAndBuildOptions<DataverseRepository<T, TKey>,
                 DataverseRepositoryBuilder<T, TKey>,
                 DataverseClientWrapper<T, TKey>>(

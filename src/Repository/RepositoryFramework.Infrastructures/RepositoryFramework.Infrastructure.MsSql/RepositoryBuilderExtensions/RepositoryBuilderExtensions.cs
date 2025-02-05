@@ -26,10 +26,14 @@ namespace Microsoft.Extensions.DependencyInjection
                 sqlBuilder,
                 name,
                 lifetime);
-            builder.Services.AddWarmUp(serviceProvider =>
-                (serviceProvider.GetRequiredService<IFactory<IRepository<T, TKey>>>()!.Create(name ?? string.Empty)
-                    as SqlRepository<T, TKey>)!.MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync(
-                    ));
+            builder.Services.AddWarmUp(async serviceProvider =>
+            {
+                var repository = serviceProvider.GetRequiredService<IFactory<IRepositoryPattern<T, TKey>>>()!.CreateWithoutDecoration(name ?? string.Empty);
+                if (repository is SqlRepository<T, TKey> sqlRepository)
+                {
+                    await sqlRepository.MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync();
+                }
+            });
             return builder;
         }
         /// <summary>
@@ -54,7 +58,7 @@ namespace Microsoft.Extensions.DependencyInjection
                name,
                lifetime);
             builder.Services.AddWarmUp(serviceProvider =>
-                (serviceProvider.GetRequiredService<IFactory<ICommand<T, TKey>>>()!.Create(name ?? string.Empty)
+                (serviceProvider.GetRequiredService<IFactory<ICommandPattern<T, TKey>>>()!.Create(name ?? string.Empty)
                     as SqlRepository<T, TKey>)!.MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync(
                     ));
             return builder;
@@ -81,7 +85,7 @@ namespace Microsoft.Extensions.DependencyInjection
                name,
                lifetime);
             builder.Services.AddWarmUp(serviceProvider =>
-                (serviceProvider.GetRequiredService<IFactory<IQuery<T, TKey>>>()!.Create(name ?? string.Empty)
+                (serviceProvider.GetRequiredService<IFactory<IQueryPattern<T, TKey>>>()!.Create(name ?? string.Empty)
                     as SqlRepository<T, TKey>)!.MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync(
                     ));
             return builder;

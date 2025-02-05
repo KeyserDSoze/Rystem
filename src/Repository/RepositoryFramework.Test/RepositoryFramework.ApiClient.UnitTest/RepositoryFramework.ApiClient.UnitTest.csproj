@@ -10,6 +10,7 @@
         <BuildCommand>
             npm install&amp;&amp;tsc --build --clean
         </BuildCommand>
+        <UserSecretsId>b83adbc5-3135-4640-aeb3-2273d7528307</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>
