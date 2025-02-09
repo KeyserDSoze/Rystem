@@ -13,7 +13,7 @@
       <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.1" />
       <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="9.0.1" />
       <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.1" />
-      <PackageReference Include="Microsoft.Identity.Web" Version="3.6.2" />
+      <PackageReference Include="Microsoft.Identity.Web" Version="3.7.0" />
   </ItemGroup>
 
 </Project>

@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using System.Collections.ObjectModel;
+using System.Linq.Expressions;
 
 namespace RepositoryFramework
 {
@@ -157,5 +158,109 @@ namespace RepositoryFramework
             => DefaultGroupBy;
         public LambdaExpression? DefaultGroupBy
             => (Operations.FirstOrDefault(x => x.Operation == FilterOperations.GroupBy) as LambdaFilterOperation)?.Expression;
+        public Dictionary<FilterOperations, Dictionary<string, ExpressionValue>> MapAsDictionary(FilterOperations? filter = null)
+        {
+            var dictionary = new Dictionary<FilterOperations, Dictionary<string, ExpressionValue>>();
+            foreach (var operation in Operations)
+            {
+                if (filter == null || filter == operation.Operation)
+                {
+                    if (!dictionary.ContainsKey(operation.Operation))
+                        dictionary.Add(operation.Operation, []);
+                    var values = dictionary[operation.Operation];
+                    if (operation is LambdaFilterOperation lambda && lambda.Expression != null)
+                    {
+                        ExtractValues(lambda.Expression.Body, false, values, lambda.Expression.Parameters, null);
+                    }
+                    else if (operation is ValueFilterOperation value)
+                    {
+                        var key = value.Operation.ToString();
+                        var expressionValue = new ExpressionValue
+                        {
+                            Value = value.Value != null ? (int)value.Value : 0,
+                            Operation = ExpressionType.Default
+                        };
+                        if (!values.TryAdd(key, expressionValue))
+                            values[key] = expressionValue;
+                    }
+                }
+            }
+            return dictionary;
+        }
+        private static void ExtractValues(Expression expression, bool fromRight, Dictionary<string, ExpressionValue> values, ReadOnlyCollection<ParameterExpression>? parameters, ExpressionType? expressionType)
+        {
+            switch (expression)
+            {
+                case BinaryExpression binaryExpression:
+                    ExtractValues(binaryExpression.Left, false, values, parameters, binaryExpression.NodeType);
+                    ExtractValues(binaryExpression.Right, true, values, parameters, binaryExpression.NodeType);
+                    break;
+                case MemberExpression memberExpression:
+                    if (!fromRight)
+                    {
+                        var propertyName = memberExpression.Member.Name;
+                        values[propertyName] = new ExpressionValue
+                        {
+                            Value = null,
+                            Operation = expressionType ?? ExpressionType.Default
+                        };
+                    }
+                    else
+                    {
+                        var propertyValue = EvaluateExpression(memberExpression);
+                        AddOrReplaceLastNullValue(values, propertyValue, expressionType);
+                    }
+                    break;
+                case ConstantExpression constantExpression:
+                    AddOrReplaceLastNullValue(values, constantExpression.Value, expressionType);
+                    break;
+                case UnaryExpression unaryExpression:
+                    ExtractValues(unaryExpression.Operand, false, values, parameters, expressionType);
+                    break;
+                case MethodCallExpression methodCallExpression:
+                    if (!fromRight)
+                    {
+                        var methodName = methodCallExpression.Method.Name;
+                        values[methodName] = new ExpressionValue
+                        {
+                            Value = null,
+                            Operation = expressionType ?? ExpressionType.Default
+                        };
+                    }
+                    else
+                    {
+                        var methodValue = EvaluateExpression(methodCallExpression);
+                        AddOrReplaceLastNullValue(values, methodValue, expressionType);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        private static object? EvaluateExpression(Expression expression)
+        {
+            try
+            {
+                var lambda = Expression.Lambda(expression);
+                var value = lambda.Compile().DynamicInvoke();
+                return value;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        private static void AddOrReplaceLastNullValue(Dictionary<string, ExpressionValue> values, object? newValue, ExpressionType? expressionType)
+        {
+            if (newValue != null)
+            {
+                var lastValueKey = values.Keys.LastOrDefault();
+                if (lastValueKey != null)
+                {
+                    var lastValue = values[lastValueKey];
+                    lastValue.Value ??= newValue;
+                }
+            }
+        }
     }
 }

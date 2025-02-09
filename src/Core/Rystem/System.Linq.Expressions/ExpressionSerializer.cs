@@ -1,5 +1,4 @@
 ﻿using System.Linq.Dynamic.Core;
-using System.Reflection;
 
 namespace System.Linq.Expressions
 {
@@ -26,7 +25,7 @@ namespace System.Linq.Expressions
             => DynamicExpressionParser.ParseLambda<T, TResult>(ParsingConfig.Default, false, expressionAsString);
         public static Expression<Func<TResult>> Deserialize<TResult>(string expressionAsString)
             => DynamicExpressionParser.ParseLambda<TResult>(ParsingConfig.Default, false, expressionAsString);
-        public static LambdaExpression DeserializeAsDynamic<T>(string expressionAsString) 
+        public static LambdaExpression DeserializeAsDynamic<T>(string expressionAsString)
             => DeserializeAsDynamicAndRetrieveType<T>(expressionAsString).Expression;
         public static (LambdaExpression Expression, Type Type) DeserializeAsDynamicAndRetrieveType<T>(string expressionAsString)
         {

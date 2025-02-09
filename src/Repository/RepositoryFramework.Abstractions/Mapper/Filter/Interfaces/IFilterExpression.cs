@@ -27,5 +27,6 @@ namespace RepositoryFramework
         LambdaExpression? DefaultSelect { get; }
         LambdaExpression? DefaultGroupBy { get; }
         LambdaExpression? GetFirstGroupBy<T>();
+        Dictionary<FilterOperations, Dictionary<string, ExpressionValue>> MapAsDictionary(FilterOperations? filter = null);
     }
 }
