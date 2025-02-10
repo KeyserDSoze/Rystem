@@ -64,9 +64,9 @@ namespace RepositoryFramework.UnitTest.QueryWithDifferentModelsAmongRepositoryAn
         {
             await Task.Delay(0, cancellationToken);
             var filtered = filter.Apply(_database).ToList();
-            var dictionary = filter.MapAsDictionary();
-            if (dictionary.Count > 0)
-                Assert.True(dictionary.Select(x => x.Value).SelectMany(x => x.Values).Where(x => x.Value != null).Count() > 0);
+            var filters = filter.GetFilters();
+            if (filters.Count > 0)
+                Assert.True(filters.SelectMany(x => x.Map).Select(x => x.Value).Where(x => x.Value != null).Count() > 0);
             foreach (var item in filtered?.Select(x => new Car { Id = x.Identificativo, Plate = x.Targa, NumberOfWheels = x.NumeroRuote }) ?? new List<Car>())
                 yield return Entity.Default(item, item.Id);
         }

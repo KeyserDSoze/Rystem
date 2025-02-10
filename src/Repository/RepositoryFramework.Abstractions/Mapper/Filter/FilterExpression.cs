@@ -17,8 +17,7 @@ namespace RepositoryFramework
                     value = lambda.Expression?.Serialize();
                 else if (operation is ValueFilterOperation valueQueryOperation)
                     value = valueQueryOperation.Value.ToString();
-
-                serialized.Operations.Add(new FilterOperationAsString(operation.Operation, value));
+                serialized.Operations.Add(new FilterOperationAsString(operation.Operation, operation.Request, value));
             }
             return serialized;
         }
@@ -32,56 +31,56 @@ namespace RepositoryFramework
                 return ToSerializableQuery().DeserializeAndTranslate(translator);
             return this;
         }
-        internal IFilterExpression Where(LambdaExpression expression)
+        internal IFilterExpression Where(LambdaExpression expression, FilterRequest request)
         {
             if (expression != null)
-                Operations.Add(new LambdaFilterOperation(FilterOperations.Where, expression));
+                Operations.Add(new LambdaFilterOperation(FilterOperations.Where, request, expression));
             return this;
         }
-        internal IFilterExpression Take(int top)
+        internal IFilterExpression Take(int top, FilterRequest request)
         {
-            Operations.Add(new ValueFilterOperation(FilterOperations.Top, top));
+            Operations.Add(new ValueFilterOperation(FilterOperations.Top, request, top));
             return this;
         }
-        internal IFilterExpression Skip(int skip)
+        internal IFilterExpression Skip(int skip, FilterRequest request)
         {
-            Operations.Add(new ValueFilterOperation(FilterOperations.Skip, skip));
+            Operations.Add(new ValueFilterOperation(FilterOperations.Skip, request, skip));
             return this;
         }
-        internal IFilterExpression OrderBy(LambdaExpression expression)
-        {
-            if (expression != null)
-                Operations.Add(new LambdaFilterOperation(FilterOperations.OrderBy, expression));
-            return this;
-        }
-        internal IFilterExpression OrderByDescending(LambdaExpression expression)
+        internal IFilterExpression OrderBy(LambdaExpression expression, FilterRequest request)
         {
             if (expression != null)
-                Operations.Add(new LambdaFilterOperation(FilterOperations.OrderByDescending, expression));
+                Operations.Add(new LambdaFilterOperation(FilterOperations.OrderBy, request, expression));
             return this;
         }
-        internal IFilterExpression ThenBy(LambdaExpression expression)
+        internal IFilterExpression OrderByDescending(LambdaExpression expression, FilterRequest request)
         {
             if (expression != null)
-                Operations.Add(new LambdaFilterOperation(FilterOperations.ThenBy, expression));
+                Operations.Add(new LambdaFilterOperation(FilterOperations.OrderByDescending, request, expression));
             return this;
         }
-        internal IFilterExpression ThenByDescending(LambdaExpression expression)
+        internal IFilterExpression ThenBy(LambdaExpression expression, FilterRequest request)
         {
             if (expression != null)
-                Operations.Add(new LambdaFilterOperation(FilterOperations.ThenByDescending, expression));
+                Operations.Add(new LambdaFilterOperation(FilterOperations.ThenBy, request, expression));
             return this;
         }
-        internal IFilterExpression GroupBy(LambdaExpression expression)
+        internal IFilterExpression ThenByDescending(LambdaExpression expression, FilterRequest request)
         {
             if (expression != null)
-                Operations.Add(new LambdaFilterOperation(FilterOperations.GroupBy, expression));
+                Operations.Add(new LambdaFilterOperation(FilterOperations.ThenByDescending, request, expression));
             return this;
         }
-        internal IFilterExpression Select(LambdaExpression expression)
+        internal IFilterExpression GroupBy(LambdaExpression expression, FilterRequest request)
         {
             if (expression != null)
-                Operations.Add(new LambdaFilterOperation(FilterOperations.Select, expression));
+                Operations.Add(new LambdaFilterOperation(FilterOperations.GroupBy, request, expression));
+            return this;
+        }
+        internal IFilterExpression Select(LambdaExpression expression, FilterRequest request)
+        {
+            if (expression != null)
+                Operations.Add(new LambdaFilterOperation(FilterOperations.Select, request, expression));
             return this;
         }
         public IQueryable<T> Apply<T>(IEnumerable<T> enumerable, FilterOperations operations = IFilterExpression.DefaultOperations)
@@ -91,7 +90,7 @@ namespace RepositoryFramework
         public IQueryable<T> Apply<T>(IQueryable<T> queryable, FilterOperations operations = IFilterExpression.DefaultOperations)
         {
             foreach (var operation in Operations
-                .Where(operation => operations.HasFlag(operation.Operation)))
+                .Where(operation => operation.Request == FilterRequest.Entity && operations.HasFlag(operation.Operation)))
             {
                 if (operation is LambdaFilterOperation lambda && lambda.Expression != null)
                 {
@@ -126,7 +125,7 @@ namespace RepositoryFramework
         {
             var starter = Apply(enumerable, operations);
             IQueryable<dynamic>? queryable = null;
-            foreach (var lambda in Operations.Where(x => x.Operation == FilterOperations.Select).Select(x => x as LambdaFilterOperation))
+            foreach (var lambda in Operations.Where(x => x.Request == FilterRequest.Entity && x.Operation == FilterOperations.Select).Select(x => x as LambdaFilterOperation))
                 if (lambda?.Expression != null)
                     queryable = starter.Select(lambda.Expression);
             return queryable ?? starter.Select(x => (dynamic)x!);
@@ -140,7 +139,7 @@ namespace RepositoryFramework
         {
             var starter = Apply(enumerable, operations);
             IQueryable<IGrouping<object, T>>? queryable = null;
-            foreach (var lambda in Operations.Where(x => x.Operation == FilterOperations.GroupBy).Select(x => x as LambdaFilterOperation))
+            foreach (var lambda in Operations.Where(x => x.Request == FilterRequest.Entity && x.Operation == FilterOperations.GroupBy).Select(x => x as LambdaFilterOperation))
                 if (lambda?.Expression != null)
                     queryable = starter.GroupBy(lambda.Expression);
             return queryable ?? starter.GroupBy(x => (dynamic)x!);
@@ -153,24 +152,31 @@ namespace RepositoryFramework
         public LambdaExpression? GetFirstSelect<T>()
             => DefaultSelect;
         public LambdaExpression? DefaultSelect
-            => (Operations.FirstOrDefault(x => x.Operation == FilterOperations.Select) as LambdaFilterOperation)?.Expression;
+            => (Operations.FirstOrDefault(x => x.Request == FilterRequest.Entity && x.Operation == FilterOperations.Select) as LambdaFilterOperation)?.Expression;
         public LambdaExpression? GetFirstGroupBy<T>()
             => DefaultGroupBy;
         public LambdaExpression? DefaultGroupBy
-            => (Operations.FirstOrDefault(x => x.Operation == FilterOperations.GroupBy) as LambdaFilterOperation)?.Expression;
-        public Dictionary<FilterOperations, Dictionary<string, ExpressionValue>> MapAsDictionary(FilterOperations? filter = null)
+            => (Operations.FirstOrDefault(x => x.Request == FilterRequest.Entity && x.Operation == FilterOperations.GroupBy) as LambdaFilterOperation)?.Expression;
+        public List<FilterExpressionValue> GetFilters(FilterOperations? filter = null, FilterRequest? request = null)
         {
-            var dictionary = new Dictionary<FilterOperations, Dictionary<string, ExpressionValue>>();
+            var filters = new List<FilterExpressionValue>();
             foreach (var operation in Operations)
             {
-                if (filter == null || filter == operation.Operation)
+                if ((filter == null || filter == operation.Operation) && (request == null || request == operation.Request))
                 {
-                    if (!dictionary.ContainsKey(operation.Operation))
-                        dictionary.Add(operation.Operation, []);
-                    var values = dictionary[operation.Operation];
+                    var existingFilter = filters.FirstOrDefault(x => x.Operation == operation.Operation && x.Request == operation.Request);
+                    if (existingFilter == null)
+                    {
+                        existingFilter = new FilterExpressionValue
+                        {
+                            Operation = operation.Operation,
+                            Request = operation.Request
+                        };
+                        filters.Add(existingFilter);
+                    }
                     if (operation is LambdaFilterOperation lambda && lambda.Expression != null)
                     {
-                        ExtractValues(lambda.Expression.Body, false, values, lambda.Expression.Parameters, null);
+                        ExtractValues(lambda.Expression.Body, false, existingFilter.Map, lambda.Expression.Parameters, null);
                     }
                     else if (operation is ValueFilterOperation value)
                     {
@@ -180,12 +186,12 @@ namespace RepositoryFramework
                             Value = value.Value != null ? (int)value.Value : 0,
                             Operation = ExpressionType.Default
                         };
-                        if (!values.TryAdd(key, expressionValue))
-                            values[key] = expressionValue;
+                        if (!existingFilter.Map.TryAdd(key, expressionValue))
+                            existingFilter.Map[key] = expressionValue;
                     }
                 }
             }
-            return dictionary;
+            return filters;
         }
         private static void ExtractValues(Expression expression, bool fromRight, Dictionary<string, ExpressionValue> values, ReadOnlyCollection<ParameterExpression>? parameters, ExpressionType? expressionType)
         {

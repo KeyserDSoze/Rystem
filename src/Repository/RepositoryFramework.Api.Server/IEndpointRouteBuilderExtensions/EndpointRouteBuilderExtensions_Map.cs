@@ -164,6 +164,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 var value = firstProperty.GetValue(apiMap.Model!, null);
                 filter.Operations.Add(new FilterOperationAsString(
                     FilterOperations.Where,
+                    FilterRequest.Entity,
                     $"x => x.{firstProperty.Name} == {(firstProperty.PropertyType.IsNumeric() ? value.ToString() : $"\"{value}\"")}"));
             }
             request.Sample.RequestQuery = new Dictionary<string, string>
@@ -201,15 +202,18 @@ namespace Microsoft.Extensions.DependencyInjection
                 var queryForLesser2 = $"x.{firstProperty.Name} <= {(firstProperty.PropertyType.IsNumeric() ? value!.ToString() + "2" : $"\"{value}2\"")}";
                 filter.Operations.Add(new FilterOperationAsString(
                     FilterOperations.Where,
+                    FilterRequest.Entity,
                     $"x => {query} && ({queryForLesser} || {queryForLesser2})"));
                 filter.Operations.Add(new FilterOperationAsString(
                     FilterOperations.OrderBy,
+                    FilterRequest.Entity,
                     $"x => x.{firstProperty.Name}"));
                 var secondProperty = apiMap.Model!.GetType().GetProperties().Where(x => x.PropertyType.IsPrimitive()).Skip(1).FirstOrDefault();
                 if (secondProperty != null)
                 {
                     filter.Operations.Add(new FilterOperationAsString(
                         FilterOperations.ThenBy,
+                        FilterRequest.Entity,
                         $"x => x.{secondProperty.Name}"));
                 }
             }

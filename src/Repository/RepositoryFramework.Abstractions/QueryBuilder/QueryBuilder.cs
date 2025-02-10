@@ -13,13 +13,23 @@ namespace RepositoryFramework
             _query = query;
         }
         /// <summary>
-        /// Take all elements by <paramref name="predicate"/> query.
+        /// Select a column by your query.
         /// </summary>
-        /// <param name="top">Number of elements to take.</param>
-        /// <returns>QueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        /// <param name="predicate">Based on the entity.</param>
+        /// <returns></returns>
         public QueryBuilder<T, TKey> Where(Expression<Func<T, bool>> predicate)
         {
-            _ = _operations.Where(predicate);
+            _ = _operations.Where(predicate, FilterRequest.Entity);
+            return this;
+        }
+        /// <summary>
+        /// Select a column by your query.
+        /// </summary>
+        /// <param name="predicate">Based on the key.</param>
+        /// <returns></returns>
+        public QueryBuilder<T, TKey> WhereKey(Expression<Func<TKey, bool>> predicate)
+        {
+            _ = _operations.Where(predicate, FilterRequest.Key);
             return this;
         }
         /// <summary>
@@ -29,7 +39,7 @@ namespace RepositoryFramework
         /// <returns>QueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public QueryBuilder<T, TKey> Take(int top)
         {
-            _ = _operations.Take(top);
+            _ = _operations.Take(top, FilterRequest.Entity);
             return this;
         }
         /// <summary>
@@ -39,7 +49,7 @@ namespace RepositoryFramework
         /// <returns>QueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public QueryBuilder<T, TKey> Skip(int skip)
         {
-            _ = _operations.Skip(skip);
+            _ = _operations.Skip(skip, FilterRequest.Entity);
             return this;
         }
         /// <summary>
@@ -49,7 +59,7 @@ namespace RepositoryFramework
         /// <returns>QueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public QueryBuilder<T, TKey> OrderBy(Expression<Func<T, object>> predicate)
         {
-            _ = _operations.OrderBy(predicate);
+            _ = _operations.OrderBy(predicate, FilterRequest.Entity);
             return this;
         }
         /// <summary>
@@ -59,7 +69,7 @@ namespace RepositoryFramework
         /// <returns>QueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public QueryBuilder<T, TKey> OrderBy<TProperty>(Expression<Func<T, TProperty>> predicate)
         {
-            _ = _operations.OrderBy(predicate);
+            _ = _operations.OrderBy(predicate, FilterRequest.Entity);
             return this;
         }
         /// <summary>
@@ -69,7 +79,7 @@ namespace RepositoryFramework
         /// <returns>QueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public QueryBuilder<T, TKey> OrderByDescending(Expression<Func<T, object>> predicate)
         {
-            _ = _operations.OrderByDescending(predicate);
+            _ = _operations.OrderByDescending(predicate, FilterRequest.Entity);
             return this;
         }
         /// <summary>
@@ -79,7 +89,7 @@ namespace RepositoryFramework
         /// <returns>QueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public QueryBuilder<T, TKey> OrderByDescending<TProperty>(Expression<Func<T, TProperty>> predicate)
         {
-            _ = _operations.OrderByDescending(predicate);
+            _ = _operations.OrderByDescending(predicate, FilterRequest.Entity);
             return this;
         }
         /// <summary>
@@ -89,7 +99,7 @@ namespace RepositoryFramework
         /// <returns>QueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public QueryBuilder<T, TKey> ThenBy(Expression<Func<T, object>> predicate)
         {
-            _ = _operations.ThenBy(predicate);
+            _ = _operations.ThenBy(predicate, FilterRequest.Entity);
             return this;
         }
         /// <summary>
@@ -99,7 +109,7 @@ namespace RepositoryFramework
         /// <returns>QueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public QueryBuilder<T, TKey> ThenBy<TProperty>(Expression<Func<T, TProperty>> predicate)
         {
-            _ = _operations.ThenBy(predicate);
+            _ = _operations.ThenBy(predicate, FilterRequest.Entity);
             return this;
         }
         /// <summary>
@@ -109,7 +119,7 @@ namespace RepositoryFramework
         /// <returns>QueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public QueryBuilder<T, TKey> ThenByDescending(Expression<Func<T, object>> predicate)
         {
-            _ = _operations.ThenByDescending(predicate);
+            _ = _operations.ThenByDescending(predicate, FilterRequest.Entity);
             return this;
         }
         /// <summary>
@@ -119,7 +129,7 @@ namespace RepositoryFramework
         /// <returns>QueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
         public QueryBuilder<T, TKey> ThenByDescending<TProperty>(Expression<Func<T, TProperty>> predicate)
         {
-            _ = _operations.ThenByDescending(predicate);
+            _ = _operations.ThenByDescending(predicate, FilterRequest.Entity);
             return this;
         }
         /// <summary>
@@ -131,7 +141,7 @@ namespace RepositoryFramework
         /// <returns>IEnumerable<IGrouping<<typeparamref name="TProperty"/>, <typeparamref name="T"/>>></returns>
         public IAsyncEnumerable<IAsyncGrouping<TProperty, Entity<T, TKey>>> GroupByAsync<TProperty>(Expression<Func<T, TProperty>> predicate, CancellationToken cancellationToken = default)
         {
-            _ = _operations.GroupBy(predicate);
+            _ = _operations.GroupBy(predicate, FilterRequest.Entity);
             var compiledPredicate = predicate.Compile();
             var items = QueryAsync(cancellationToken).GroupBy(x => compiledPredicate.Invoke(x.Value!));
             return items;
@@ -145,7 +155,7 @@ namespace RepositoryFramework
         public ValueTask<bool> AnyAsync(Expression<Func<T, bool>>? predicate = null, CancellationToken cancellationToken = default)
         {
             if (predicate != null)
-                _ = _operations.Where(predicate);
+                _ = _operations.Where(predicate, FilterRequest.Entity);
             Take(1);
             return _query.QueryAsync(_operations, cancellationToken).AnyAsync(cancellationToken);
         }
@@ -165,6 +175,21 @@ namespace RepositoryFramework
             return query;
         }
         /// <summary>
+        /// Take the first value of your query or default value T.
+        /// </summary>
+        /// <param name="predicate">Expression query.</param>
+        /// <param name="cancellationToken">cancellation token.</param>
+        /// <returns><typeparamref name="T"/></returns>
+        public ValueTask<Entity<T, TKey>?> FirstOrDefaultByKeyAsync(Expression<Func<TKey, bool>>? predicate = null, CancellationToken cancellationToken = default)
+        {
+            if (predicate != null)
+                _ = WhereKey(predicate);
+            Take(1);
+            var query = _query
+                .QueryAsync(_operations, cancellationToken).FirstOrDefaultAsync(cancellationToken);
+            return query;
+        }
+        /// <summary>
         /// Take the first value of your query.
         /// </summary>
         /// <param name="predicate">Expression query.</param>
@@ -174,6 +199,21 @@ namespace RepositoryFramework
         {
             if (predicate != null)
                 _ = Where(predicate);
+            Take(1);
+            var query = _query
+                .QueryAsync(_operations, cancellationToken).FirstAsync(cancellationToken);
+            return query;
+        }
+        /// <summary>
+        /// Take the first value of your query.
+        /// </summary>
+        /// <param name="predicate">Expression query.</param>
+        /// <param name="cancellationToken">cancellation token.</param>
+        /// <returns><typeparamref name="T"/></returns>
+        public ValueTask<Entity<T, TKey>> FirstByKeyAsync(Expression<Func<TKey, bool>>? predicate = null, CancellationToken cancellationToken = default)
+        {
+            if (predicate != null)
+                _ = WhereKey(predicate);
             Take(1);
             var query = _query
                 .QueryAsync(_operations, cancellationToken).FirstAsync(cancellationToken);
@@ -204,7 +244,7 @@ namespace RepositoryFramework
         {
             FilterExpression operations = new();
             foreach (var where in _operations.Operations.Where(x => x.Operation == FilterOperations.Where))
-                operations.Where((where as LambdaFilterOperation)!.Expression!);
+                operations.Where((where as LambdaFilterOperation)!.Expression!, FilterRequest.Entity);
             Skip((page - 1) * pageSize);
             Take(pageSize);
             var query = await ToListAsync(cancellationToken).NoContext();
@@ -226,7 +266,7 @@ namespace RepositoryFramework
         /// <returns>List<<typeparamref name="T"/>></returns>
         public async ValueTask<List<T>> ToListAsEntityAsync(CancellationToken cancellationToken = default)
         {
-            List<T> entities = new();
+            List<T> entities = [];
             await foreach (var entity in _query.QueryAsync(_operations, cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -280,7 +320,7 @@ namespace RepositoryFramework
         /// <returns>ValueTask<decimal></returns>
         public ValueTask<TProperty> SumAsync<TProperty>(Expression<Func<T, TProperty>> predicate, CancellationToken cancellationToken = default)
         {
-            _operations.Select(predicate);
+            _operations.Select(predicate, FilterRequest.Entity);
             return _query.OperationAsync(OperationType<TProperty>.Sum, _operations, cancellationToken);
         }
 
@@ -293,7 +333,7 @@ namespace RepositoryFramework
         /// <returns>ValueTask<decimal></returns>
         public ValueTask<TProperty> AverageAsync<TProperty>(Expression<Func<T, TProperty>> predicate, CancellationToken cancellationToken = default)
         {
-            _operations.Select(predicate);
+            _operations.Select(predicate, FilterRequest.Entity);
             return _query.OperationAsync(OperationType<TProperty>.Average, _operations, cancellationToken);
         }
 
@@ -306,7 +346,7 @@ namespace RepositoryFramework
         /// <returns>ValueTask<decimal></returns>
         public ValueTask<TProperty> MaxAsync<TProperty>(Expression<Func<T, TProperty>> predicate, CancellationToken cancellationToken = default)
         {
-            _operations.Select(predicate);
+            _operations.Select(predicate, FilterRequest.Entity);
             return _query.OperationAsync(OperationType<TProperty>.Max, _operations, cancellationToken);
         }
 
@@ -319,7 +359,7 @@ namespace RepositoryFramework
         /// <returns>ValueTask<decimal></returns>
         public ValueTask<TProperty> MinAsync<TProperty>(Expression<Func<T, TProperty>> predicate, CancellationToken cancellationToken = default)
         {
-            _operations.Select(predicate);
+            _operations.Select(predicate, FilterRequest.Entity);
             return _query.OperationAsync(OperationType<TProperty>.Min, _operations, cancellationToken);
         }
     }

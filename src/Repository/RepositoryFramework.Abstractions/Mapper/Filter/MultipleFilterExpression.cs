@@ -56,7 +56,7 @@ namespace RepositoryFramework
             => FilterByType<T>().GetFirstGroupBy<T>();
         public LambdaExpression? DefaultGroupBy
             => FilterByDefault().DefaultGroupBy;
-        public Dictionary<FilterOperations, Dictionary<string, ExpressionValue>> MapAsDictionary(FilterOperations? filter = null)
-            => FilterByDefault().MapAsDictionary(filter);
+        public List<FilterExpressionValue> GetFilters(FilterOperations? filter = null, FilterRequest? request = null)
+            => FilterByDefault().GetFilters(filter, request);
     }
 }

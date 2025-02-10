@@ -15,9 +15,9 @@ namespace RepositoryFramework
                 foreach (var operation in Operations)
                 {
                     if (operation.Operation == FilterOperations.Top || operation.Operation == FilterOperations.Skip)
-                        query.Operations.Add(new ValueFilterOperation(operation.Operation, operation.Value != null ? long.Parse(operation.Value) : null));
+                        query.Operations.Add(new ValueFilterOperation(operation.Operation, operation.Request, operation.Value != null ? long.Parse(operation.Value) : null));
                     else
-                        query.Operations.Add(new LambdaFilterOperation(operation.Operation, operation.Value?.DeserializeAsDynamic<T>()));
+                        query.Operations.Add(new LambdaFilterOperation(operation.Operation, operation.Request, operation.Value?.DeserializeAsDynamic<T>()));
                 }
             return query;
         }

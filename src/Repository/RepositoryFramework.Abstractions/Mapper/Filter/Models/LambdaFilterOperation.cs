@@ -2,5 +2,5 @@
 
 namespace RepositoryFramework
 {
-    public record LambdaFilterOperation(FilterOperations Operation, LambdaExpression? Expression) : FilteringOperation(Operation);
+    public record LambdaFilterOperation(FilterOperations Operation, FilterRequest Request, LambdaExpression? Expression) : FilteringOperation(Operation, Request);
 }

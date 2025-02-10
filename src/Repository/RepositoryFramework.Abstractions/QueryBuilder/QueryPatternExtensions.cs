@@ -61,6 +61,18 @@ namespace System.Linq
             where TKey : notnull
             => new QueryBuilder<T, TKey>(entity).Where(predicate);
         /// <summary>
+        /// Take all elements by <paramref name="predicate"/> query.
+        /// </summary>
+        /// <typeparam name="T">Model used for your repository.</typeparam>
+        /// <typeparam name="TKey">Key to manage your data from repository.</typeparam>
+        /// <param name="entity"></param>
+        /// <param name="predicate">Query request.</param>
+        /// <returns>QueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public static QueryBuilder<T, TKey> WhereKey<T, TKey>(this IQueryPattern<T, TKey> entity,
+            Expression<Func<TKey, bool>> predicate)
+            where TKey : notnull
+            => new QueryBuilder<T, TKey>(entity).WhereKey(predicate);
+        /// <summary>
         /// Take first <paramref name="top"/> elements.
         /// </summary>
         /// <typeparam name="T">Model used for your repository.</typeparam>

@@ -92,12 +92,13 @@ namespace RepositoryFramework
                     if (operation.Operation == FilterOperations.Top || operation.Operation == FilterOperations.Skip)
                     {
                         filter.Operations.Add(new ValueFilterOperation(
-                        operation.Operation, operation.Value != null ? long.Parse(operation.Value) : null));
+                        operation.Operation, FilterRequest.Entity, operation.Value != null ? long.Parse(operation.Value) : null));
                     }
                     else
                     {
                         filter.Operations.Add(new LambdaFilterOperation(
                         operation.Operation,
+                        operation.Request,
                         translation.Transform(operation.Value)));
                     }
                 }
