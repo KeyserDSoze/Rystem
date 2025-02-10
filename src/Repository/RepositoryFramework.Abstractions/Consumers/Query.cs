@@ -26,7 +26,8 @@ namespace RepositoryFramework
             _businessManager = businessManager;
             _translator = translator;
         }
-
+        public ValueTask<bool> BootstrapAsync(CancellationToken cancellationToken = default)
+            => _query.BootstrapAsync(cancellationToken);
         public Task<State<T, TKey>> ExistAsync(TKey key, CancellationToken cancellationToken = default)
             => _businessManager?.HasBusinessBeforeExist == true || _businessManager?.HasBusinessAfterExist == true ?
                 _businessManager.ExistAsync(_query, key, cancellationToken) : _query.ExistAsync(key, cancellationToken);

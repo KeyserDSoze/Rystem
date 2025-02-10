@@ -76,6 +76,11 @@ namespace RepositoryFramework.UnitTest.Unitary
             throw new NotImplementedException();
         }
 
+        public ValueTask<bool> BootstrapAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<State<Translatable, string>> DeleteAsync(string key, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();

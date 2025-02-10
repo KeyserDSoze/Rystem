@@ -12,6 +12,11 @@ namespace RepositoryFramework.Test.Repository
             throw new NotImplementedException();
         }
 
+        public ValueTask<bool> BootstrapAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<State<ExtremelyRareUser, string>> DeleteAsync(string key, CancellationToken cancellationToken = default)
         {
             throw new ArgumentException("dasdsada");

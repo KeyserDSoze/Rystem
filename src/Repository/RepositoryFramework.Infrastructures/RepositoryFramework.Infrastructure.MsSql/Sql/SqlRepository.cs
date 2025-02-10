@@ -137,6 +137,24 @@ namespace RepositoryFramework.Infrastructure.MsSql
         }
         internal async Task MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync()
         {
+
+        }
+
+        public ValueTask DisposeAsync()
+            => _connection.DisposeAsync();
+
+        public void Dispose()
+        {
+            _ = DisposeAsync();
+        }
+
+        public void SetFactoryName(string name)
+        {
+            return;
+        }
+
+        public async ValueTask<bool> BootstrapAsync(CancellationToken cancellationToken = default)
+        {
             if (_options!.PrimaryKey == null)
                 throw new ArgumentException($"Please install a key in your repository sql for table {_options.TableName}");
             using SqlConnection sqlConnection = new(_options.ConnectionString);
@@ -168,19 +186,7 @@ namespace RepositoryFramework.Infrastructure.MsSql
                 command = new SqlCommand(_options.GetCreationalQueryForTable(), sqlConnection);
                 await command.ExecuteNonQueryAsync();
             }
-        }
-
-        public ValueTask DisposeAsync()
-            => _connection.DisposeAsync();
-
-        public void Dispose()
-        {
-            _ = DisposeAsync();
-        }
-
-        public void SetFactoryName(string name)
-        {
-            return;
+            return true;
         }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -79,6 +78,11 @@ namespace RepositoryFramework.UnitTest.CustomRepository.SpecialKeys.Models
         }
 
         public IAsyncEnumerable<Entity<ClassAnimal, ClassAnimalKey>> QueryAsync(IFilterExpression filter, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ValueTask<bool> BootstrapAsync(CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }

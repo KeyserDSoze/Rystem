@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Cache
@@ -22,9 +21,9 @@ namespace RepositoryFramework.Cache
         public void SetFactoryName(string name)
         {
             if (QueryFactory != null && QueryFactory.Exists(name))
-                _query = QueryFactory.CreateWithoutDecoration(name);
+                _query = QueryFactory.CreateWithoutDecoration(name)!;
             else if (RepositoryFactory != null && RepositoryFactory.Exists(name))
-                _query = RepositoryFactory.CreateWithoutDecoration(name);
+                _query = RepositoryFactory.CreateWithoutDecoration(name)!;
             _factoryName = name;
         }
         private string _factoryName = string.Empty;
@@ -46,6 +45,8 @@ namespace RepositoryFramework.Cache
             DistributedCacheOptions = distributedCacheOptions ?? DistributedCacheOptions<T, TKey>.Default;
             _cacheName = typeof(T).Name;
         }
+        public ValueTask<bool> BootstrapAsync(CancellationToken cancellationToken = default)
+            => _query.BootstrapAsync(cancellationToken);
         private string GetKeyAsString(RepositoryMethods method, TKey key)
             => $"{method}_{_cacheName}_{_factoryName}_{KeySettings<TKey>.Instance.AsString(key)}";
         private protected Task RemoveExistAndGetCacheAsync(TKey key, bool inMemory, bool inDistributed, CancellationToken cancellationToken = default)
@@ -117,7 +118,7 @@ namespace RepositoryFramework.Cache
 
             return value.Response;
         }
-        private static readonly List<Entity<T, TKey>> s_empty = new();
+        private static readonly List<Entity<T, TKey>> s_empty = [];
         public async IAsyncEnumerable<Entity<T, TKey>> QueryAsync(IFilterExpression filter,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
@@ -126,7 +127,7 @@ namespace RepositoryFramework.Cache
             var value = await RetrieveValueAsync(RepositoryMethods.Query, keyAsString,
                 async () =>
                 {
-                    List<Entity<T, TKey>> items = new();
+                    List<Entity<T, TKey>> items = [];
                     await foreach (var item in _query.QueryAsync(filter, cancellationToken)!)
                         items.Add(item);
                     return items;

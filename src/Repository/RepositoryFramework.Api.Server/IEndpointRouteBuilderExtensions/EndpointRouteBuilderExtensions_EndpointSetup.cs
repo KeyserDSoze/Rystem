@@ -9,6 +9,30 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static partial class EndpointRouteBuilderExtensions
     {
+        private static void AddBootstrap<T, TKey, TService>(IEndpointRouteBuilder app,
+            string uri,
+            string name,
+            string factoryName,
+            ApiAuthorization? authorization,
+            List<string> furtherPolicies)
+            where TKey : notnull
+            where TService : class
+        {
+            app.AddApi<T, TKey, TService>(uri, name, factoryName, authorization, furtherPolicies,
+                RepositoryMethods.Bootstrap, null,
+                async (TKey key, TService service, CancellationToken cancellationToken) =>
+                {
+                    var response = await Try.WithDefaultOnCatchValueTaskAsync(() =>
+                    {
+                        var queryService = service as IBootstrapPattern;
+                        return queryService!.BootstrapAsync(cancellationToken);
+                    });
+                    if (response.Exception != null)
+                        return Results.Problem(response.Exception.Message, string.Empty, StatusCodes.Status500InternalServerError);
+                    return Results.Json(response.Entity, RepositoryOptions.JsonSerializerOptions);
+                }
+            );
+        }
         private static void AddGet<T, TKey, TService>(IEndpointRouteBuilder app,
             string uri,
             string name,

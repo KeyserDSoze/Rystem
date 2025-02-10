@@ -84,10 +84,12 @@ namespace Microsoft.Extensions.DependencyInjection
                sqlBuilder,
                name,
                lifetime);
-            builder.Services.AddWarmUp(serviceProvider =>
-                (serviceProvider.GetRequiredService<IFactory<IQueryPattern<T, TKey>>>()!.Create(name ?? string.Empty)
-                    as SqlRepository<T, TKey>)!.MsSqlCreateTableOrMergeNewColumnsInExistingTableAsync(
-                    ));
+            builder.Services.AddWarmUp(async serviceProvider =>
+            {
+                var queryPattern = serviceProvider.GetRequiredService<IFactory<IQueryPattern<T, TKey>>>()!.Create(name ?? string.Empty);
+                if (queryPattern != null)
+                    await queryPattern.BootstrapAsync();
+            });
             return builder;
         }
     }

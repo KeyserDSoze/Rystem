@@ -17,6 +17,7 @@ namespace RepositoryFramework.Api.Client
         public string UpdatePath { get; }
         public string DeletePath { get; }
         public string BatchPath { get; }
+        public string BootstrapPath { get; }
         public ApiClientSettings(string? startingPath, string? version, string? name, string? factoryName)
         {
             StartingPath = startingPath ?? "api";
@@ -47,6 +48,7 @@ namespace RepositoryFramework.Api.Client
             else
                 UpdatePath = $"{basePath}{nameof(RepositoryMethods.Update)}?key={{0}}";
             BatchPath = $"{basePath}{nameof(RepositoryMethods.Batch)}/Stream";
+            BootstrapPath = $"{basePath}{nameof(RepositoryMethods.Bootstrap)}";
         }
     }
 }

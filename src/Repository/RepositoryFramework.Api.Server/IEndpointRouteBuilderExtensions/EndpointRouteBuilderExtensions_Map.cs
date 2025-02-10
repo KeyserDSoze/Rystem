@@ -110,9 +110,18 @@ namespace Microsoft.Extensions.DependencyInjection
                 case RepositoryMethods.Batch:
                     MapBatch<T, TKey>(api, request);
                     break;
+                case RepositoryMethods.Bootstrap:
+                    MatBoostrap<T, TKey>(api, request);
+                    break;
             }
             api.Requests.Add(request);
             return app;
+        }
+        private static void MatBoostrap<T, TKey>(ApiMap apiMap, RequestApiMap request)
+            where TKey : notnull
+        {
+            request.Description = $"Bootstrap a {typeof(T).Name} entity.";
+            request.Sample.Response = true;
         }
         private static void MapExists<T, TKey>(ApiMap apiMap, RequestApiMap request)
             where TKey : notnull

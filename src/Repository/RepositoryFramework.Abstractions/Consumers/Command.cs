@@ -23,6 +23,8 @@ namespace RepositoryFramework
             _commandFactory = commandFactory;
             _businessManager = businessManager;
         }
+        public ValueTask<bool> BootstrapAsync(CancellationToken cancellationToken = default)
+            => _command.BootstrapAsync(cancellationToken);
         public Task<State<T, TKey>> InsertAsync(TKey key, T value, CancellationToken cancellationToken = default)
             => _businessManager?.HasBusinessBeforeInsert == true || _businessManager?.HasBusinessAfterInsert == true ?
                 _businessManager.InsertAsync(_command, key, value, cancellationToken) : _command.InsertAsync(key, value, cancellationToken);

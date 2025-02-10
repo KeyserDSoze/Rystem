@@ -29,6 +29,12 @@ namespace Microsoft.Extensions.DependencyInjection
                 new() {
                     new()
                     {
+                        Name = nameof(AddBootstrap),
+                        DefaultHttpMethod = "Get",
+                        Method = RepositoryMethods.Bootstrap
+                    },
+                    new()
+                    {
                        Name = nameof(AddGet),
                        DefaultHttpMethod = "Get",
                        Method = RepositoryMethods.Get
@@ -82,6 +88,12 @@ namespace Microsoft.Extensions.DependencyInjection
                 new() {
                     new()
                     {
+                        Name = nameof(AddBootstrap),
+                        DefaultHttpMethod = "Get",
+                        Method = RepositoryMethods.Bootstrap
+                    },
+                    new()
+                    {
                        Name = nameof(AddGet),
                        DefaultHttpMethod = "Get",
                        Method = RepositoryMethods.Get
@@ -109,7 +121,13 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 PatternType.Command,
                 new() {
-                     new()
+                    new()
+                    {
+                        Name = nameof(AddBootstrap),
+                        DefaultHttpMethod = "Get",
+                        Method = RepositoryMethods.Bootstrap
+                    },
+                    new()
                     {
                        Name = nameof(AddInsert),
                        DefaultHttpMethod = "Post",

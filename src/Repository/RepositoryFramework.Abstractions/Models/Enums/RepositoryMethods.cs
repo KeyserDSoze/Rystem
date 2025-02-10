@@ -15,6 +15,7 @@
         Get = 32,
         Query = 64,
         Operation = 128,
-        All = 255,
+        Bootstrap = 256,
+        All = Insert | Update | Delete | Batch | Exist | Get | Query | Operation | Bootstrap,
     }
 }

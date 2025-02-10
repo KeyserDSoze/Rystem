@@ -127,5 +127,10 @@ namespace RepositoryFramework.Test.Infrastructure.EntityFramework
             }
             return false;
         }
+
+        public ValueTask<bool> BootstrapAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

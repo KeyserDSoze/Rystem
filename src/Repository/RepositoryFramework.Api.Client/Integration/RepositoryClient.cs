@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Api.Client
@@ -198,6 +199,12 @@ namespace RepositoryFramework.Api.Client
         public void SetFactoryName(string name)
         {
             FactoryName = name;
+        }
+
+        public async ValueTask<bool> BootstrapAsync(CancellationToken cancellationToken = default)
+        {
+            var client = await EnrichedClientAsync(RepositoryMethods.Bootstrap).NoContext();
+            return await GetAsJson<bool>(client, _options!.BootstrapPath, cancellationToken).NoContext();
         }
     }
 }

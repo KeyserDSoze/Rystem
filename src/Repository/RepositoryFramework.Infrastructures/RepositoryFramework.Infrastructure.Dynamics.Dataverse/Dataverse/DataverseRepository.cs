@@ -158,5 +158,8 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
                 }
             }
         }
+        //todo: implement this method and avoid the use of the AddFactoryAsync and the IOptionsBuilderAsync
+        public ValueTask<bool> BootstrapAsync(CancellationToken cancellationToken = default)
+            => ValueTask.FromResult(true);
     }
 }

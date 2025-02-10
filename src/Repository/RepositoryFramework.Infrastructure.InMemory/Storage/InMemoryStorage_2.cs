@@ -23,7 +23,7 @@ namespace RepositoryFramework.InMemory
         {
             Options = options;
         }
-        public static string GetKeyAsString(TKey key) 
+        public static string GetKeyAsString(TKey key)
             => KeySettings<TKey>.Instance.AsString(key);
 
         private static int GetRandomNumber(Range range)
@@ -219,6 +219,8 @@ namespace RepositoryFramework.InMemory
                 }
             }
         }
-
+        //todo: implement this method and avoid the use of the AddFactoryAsync and the IOptionsBuilderAsync
+        public ValueTask<bool> BootstrapAsync(CancellationToken cancellationToken = default)
+            => ValueTask.FromResult(true);
     }
 }
