@@ -3,6 +3,9 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.PowerPlatform.Dataverse.Client;
+using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Messages;
+using Microsoft.Xrm.Sdk.Metadata;
 using Microsoft.Xrm.Sdk.Query;
 
 namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
@@ -158,8 +161,48 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
                 }
             }
         }
-        //todo: implement this method and avoid the use of the AddFactoryAsync and the IOptionsBuilderAsync
-        public ValueTask<bool> BootstrapAsync(CancellationToken cancellationToken = default)
-            => ValueTask.FromResult(true);
+        public async ValueTask<bool> BootstrapAsync(CancellationToken cancellationToken = default)
+        {
+            RetrieveEntityRequest retrieveEntityRequest = new()
+            {
+                LogicalName = Settings.LogicalTableName,
+                EntityFilters = EntityFilters.All
+            };
+            var response = await Try.WithDefaultOnCatchAsync(
+                () => Client.ExecuteAsync(retrieveEntityRequest)).NoContext();
+            if (response.Entity == default)
+            {
+                CreateEntityRequest createrequest = new()
+                {
+                    SolutionUniqueName = Settings.SolutionName,
+                    Entity = new EntityMetadata
+                    {
+                        SchemaName = Settings.TableNameWithPrefix,
+                        DisplayName = new Label(Settings.TableName, 1033),
+                        DisplayCollectionName = new Label(Settings.TableName, 1033),
+                        Description = new Label(Settings.Description ?? $"A table to store information about {Settings.TableName} entity.", 1033),
+                        OwnershipType = OwnershipTypes.UserOwned,
+                        IsActivity = false,
+
+                    },
+                    PrimaryAttribute = new StringAttributeMetadata
+                    {
+                        SchemaName = Settings.PrimaryKeyWithPrefix,
+                        RequiredLevel = new AttributeRequiredLevelManagedProperty(AttributeRequiredLevel.None),
+                        MaxLength = 100,
+                        FormatName = StringFormatName.Text,
+                        DisplayName = new Label(Settings.PrimaryKey, 1033),
+                        Description = new Label($"The primary attribute for the {Settings.TableName} entity.", 1033)
+                    }
+
+                };
+                var creationResponse = await Try.WithDefaultOnCatchAsync(
+                    () => Client.ExecuteAsync(createrequest)).NoContext();
+                if (creationResponse.Entity == default)
+                    throw new ArgumentException($"Error in table creation for {Settings.TableName}");
+            }
+            await Settings.CheckIfExistColumnsAsync().NoContext();
+            return true;
+        }
     }
 }

@@ -29,17 +29,17 @@ namespace File.UnitTest
                 "blobstorage")
                 .ToResult()
                 .WithInMemoryIntegration("inmemory")
-                //.WithSharepointIntegrationAsync(x =>
-                //{
-                //    x.TenantId = configuration["Sharepoint:TenantId"];
-                //    x.ClientId = configuration["Sharepoint:ClientId"];
-                //    x.ClientSecret = configuration["Sharepoint:ClientSecret"];
-                //    x.MapWithSiteNameAndDocumentLibraryName("TechnoGym", "Foglione");
-                //    //x.MapOnlyDocumentLibraryName("Foglione");
-                //    //x.MapWithRootSiteAndDocumentLibraryName("Foglione");
-                //    //x.MapWithSiteIdAndDocumentLibraryId(configuration["Sharepoint:SiteId"],
-                //    //    configuration["Sharepoint:DocumentLibraryId"]);
-                //}, "sharepoint").ToResult()
+                .WithSharepointIntegrationAsync(x =>
+                {
+                    x.TenantId = configuration["Sharepoint:TenantId"];
+                    x.ClientId = configuration["Sharepoint:ClientId"];
+                    x.ClientSecret = configuration["Sharepoint:ClientSecret"];
+                    x.MapWithSiteNameAndDocumentLibraryName(configuration["Sharepoint:SiteName"], configuration["Sharepoint:DocumentLibraryName"]);
+                    //x.MapOnlyDocumentLibraryName("Foglione");
+                    //x.MapWithRootSiteAndDocumentLibraryName("Foglione");
+                    //x.MapWithSiteIdAndDocumentLibraryId(configuration["Sharepoint:SiteId"],
+                    //    configuration["Sharepoint:DocumentLibraryId"]);
+                }, "sharepoint").ToResult()
                 .WithFileStorageIntegrationAsync(x =>
                 {
                     x.ShareName = "supertest";

@@ -22,8 +22,12 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             builder
                 .Services
-                .AddWarmUp(serviceProvider => DataverseCreateTableOrMergeNewColumnsInExistingTableAsync(
-                    serviceProvider.GetService<IFactory<IQueryPattern<T, TKey>>>()!.Create(name ?? string.Empty) as DataverseRepository<T, TKey>));
+                    .AddWarmUp(async serviceProvider =>
+                    {
+                        var repository = serviceProvider.GetService<IFactory<IRepositoryPattern<T, TKey>>>()!.Create(name ?? string.Empty);
+                        if (repository != null)
+                            await repository.BootstrapAsync();
+                    });
             builder.SetStorageAndBuildOptions<DataverseRepository<T, TKey>,
                 DataverseRepositoryBuilder<T, TKey>,
                 DataverseClientWrapper<T, TKey>>(
@@ -49,8 +53,12 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             builder
                 .Services
-                .AddWarmUp(serviceProvider => DataverseCreateTableOrMergeNewColumnsInExistingTableAsync(
-                    serviceProvider.GetService<IFactory<IQueryPattern<T, TKey>>>()!.Create(name ?? string.Empty) as DataverseRepository<T, TKey>));
+                    .AddWarmUp(async serviceProvider =>
+                    {
+                        var repository = serviceProvider.GetService<IFactory<ICommandPattern<T, TKey>>>()!.Create(name ?? string.Empty);
+                        if (repository != null)
+                            await repository.BootstrapAsync();
+                    });
             builder.SetStorageAndBuildOptions<DataverseRepository<T, TKey>,
                 DataverseRepositoryBuilder<T, TKey>,
                 DataverseClientWrapper<T, TKey>>(
@@ -76,8 +84,12 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             builder
                 .Services
-                .AddWarmUp(serviceProvider => DataverseCreateTableOrMergeNewColumnsInExistingTableAsync(
-                    serviceProvider.GetService<IFactory<IQueryPattern<T, TKey>>>()!.Create(name ?? string.Empty) as DataverseRepository<T, TKey>));
+                    .AddWarmUp(async serviceProvider =>
+                    {
+                        var repository = serviceProvider.GetService<IFactory<IQueryPattern<T, TKey>>>()!.Create(name ?? string.Empty);
+                        if (repository != null)
+                            await repository.BootstrapAsync();
+                    });
             builder.SetStorageAndBuildOptions<DataverseRepository<T, TKey>,
                 DataverseRepositoryBuilder<T, TKey>,
                 DataverseClientWrapper<T, TKey>>(

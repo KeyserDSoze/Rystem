@@ -202,7 +202,7 @@ namespace RepositoryFramework.UnitTest.Tests.Api
                                         builder.WithDataverse(dataverserBuilder =>
                                         {
                                             dataverserBuilder.Settings.Prefix = "repo_";
-                                            dataverserBuilder.Settings.SolutionName = "TestAlessandro";
+                                            dataverserBuilder.Settings.SolutionName = "Solution001";
                                             if (configuration != null)
                                                 dataverserBuilder.Settings.SetConnection(configuration["ConnectionString:Dataverse:Environment"],
                                                     new(configuration["ConnectionString:Dataverse:ClientId"],

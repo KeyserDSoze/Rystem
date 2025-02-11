@@ -1,12 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Rystem.Test.UnitTest.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Rystem.Test.UnitTest.Models;
 using Xunit;
 
 namespace Rystem.Test.UnitTest.Linq
@@ -25,8 +25,10 @@ namespace Rystem.Test.UnitTest.Linq
             services.AddDbContext<SampleContext>(options =>
             {
                 options.UseSqlServer(configuration["ConnectionString:Database"]);
-            }, ServiceLifetime.Scoped);
+            }, ServiceLifetime.Transient);
             _serviceProvider = services.BuildServiceProvider().CreateScope().ServiceProvider;
+            var context = _serviceProvider.GetService<SampleContext>();
+            context.Database.EnsureCreated();
         }
         internal enum MakeType
         {
