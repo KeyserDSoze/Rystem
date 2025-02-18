@@ -32,9 +32,9 @@
             {
                 IList newArray = Array.CreateInstance(array.GetType().GetElementType()!, array.Length - 1);
                 IList oldArray = array;
-                int adder = 0;
+                var adder = 0;
                 value = null;
-                for (int i = 0; i < oldArray.Count; i++)
+                for (var i = 0; i < oldArray.Count; i++)
                 {
                     if (i != index)
                         newArray[i - adder] = oldArray[i];

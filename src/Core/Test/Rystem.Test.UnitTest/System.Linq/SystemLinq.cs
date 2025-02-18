@@ -27,7 +27,7 @@ namespace Rystem.Test.UnitTest.Linq
                 options.UseSqlServer(configuration["ConnectionString:Database"]);
             }, ServiceLifetime.Transient);
             _serviceProvider = services.BuildServiceProvider().CreateScope().ServiceProvider;
-            var context = _serviceProvider.GetService<SampleContext>();
+            var context = _serviceProvider.GetService<SampleContext>()!;
             context.Database.EnsureCreated();
         }
         internal enum MakeType
