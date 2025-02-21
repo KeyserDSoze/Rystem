@@ -7,7 +7,7 @@ namespace RepositoryFramework.UnitTest.CustomRepository.SpecialKeys.Models
 {
     public class ClassAnimalRepository : IRepository<ClassAnimal, ClassAnimalKey>
     {
-        private static readonly Dictionary<string, Dictionary<int, Dictionary<Guid, ClassAnimal>>> s_dic = new();
+        private static readonly Dictionary<string, Dictionary<int, Dictionary<Guid, ClassAnimal>>> s_dic = [];
         public IAsyncEnumerable<BatchResult<ClassAnimal, ClassAnimalKey>> BatchAsync(BatchOperations<ClassAnimal, ClassAnimalKey> operations, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
@@ -27,9 +27,9 @@ namespace RepositoryFramework.UnitTest.CustomRepository.SpecialKeys.Models
         public async Task<State<ClassAnimal, ClassAnimalKey>> DeleteAsync(ClassAnimalKey key, CancellationToken cancellationToken = default)
         {
             await Task.Delay(0, cancellationToken).NoContext();
-            if (s_dic.ContainsKey(key.Id) && s_dic[key.Id].ContainsKey(key.Key) && s_dic[key.Id][key.Key].ContainsKey(key.ValKey))
+            if (s_dic.TryGetValue(key.Id, out var value) && value.TryGetValue(key.Key, out var innerValue) && innerValue.ContainsKey(key.ValKey))
             {
-                s_dic[key.Id][key.Key].Remove(key.ValKey);
+                innerValue.Remove(key.ValKey);
                 return true;
             }
             return false;
@@ -44,9 +44,9 @@ namespace RepositoryFramework.UnitTest.CustomRepository.SpecialKeys.Models
         public async Task<ClassAnimal?> GetAsync(ClassAnimalKey key, CancellationToken cancellationToken = default)
         {
             await Task.Delay(0, cancellationToken).NoContext();
-            if (s_dic.ContainsKey(key.Id) && s_dic[key.Id].ContainsKey(key.Key) && s_dic[key.Id][key.Key].ContainsKey(key.ValKey))
+            if (s_dic.TryGetValue(key.Id, out var value) && value.TryGetValue(key.Key, out var innerValue) && innerValue.TryGetValue(key.ValKey, out var lastValue))
             {
-                return s_dic[key.Id][key.Key][key.ValKey];
+                return lastValue;
             }
             return default;
         }
@@ -55,23 +55,22 @@ namespace RepositoryFramework.UnitTest.CustomRepository.SpecialKeys.Models
         {
             await Task.Delay(0, cancellationToken).NoContext();
             if (!s_dic.ContainsKey(key.Id))
-                s_dic.Add(key.Id, new());
+                s_dic.Add(key.Id, []);
             if (!s_dic[key.Id].ContainsKey(key.Key))
-                s_dic[key.Id].Add(key.Key, new());
-            if (!s_dic[key.Id][key.Key].ContainsKey(key.ValKey))
+                s_dic[key.Id].Add(key.Key, []);
+            if (s_dic[key.Id][key.Key].TryAdd(key.ValKey, value))
             {
-                s_dic[key.Id][key.Key].Add(key.ValKey, value);
                 return true;
             }
             return false;
         }
 
-        public async Task<State<ClassAnimal, ClassAnimalKey>> UpdateAsync(ClassAnimalKey key, ClassAnimal value, CancellationToken cancellationToken = default)
+        public async Task<State<ClassAnimal, ClassAnimalKey>> UpdateAsync(ClassAnimalKey key, ClassAnimal animalValue, CancellationToken cancellationToken = default)
         {
             await Task.Delay(0, cancellationToken).NoContext();
-            if (s_dic.ContainsKey(key.Id) && s_dic[key.Id].ContainsKey(key.Key) && s_dic[key.Id][key.Key].ContainsKey(key.ValKey))
+            if (s_dic.TryGetValue(key.Id, out var value) && value.TryGetValue(key.Key, out var innerValue) && innerValue.ContainsKey(key.ValKey))
             {
-                s_dic[key.Id][key.Key][key.ValKey] = value;
+                innerValue[key.ValKey] = animalValue;
                 return true;
             }
             return false;
