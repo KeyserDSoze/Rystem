@@ -25,7 +25,7 @@ namespace System.Reflection
         {
             foreach (var property in Self.PropertyType.FetchProperties())
             {
-                Sons.Add(PropertyStrategy.Instance.CreateProperty(property, this, _furtherParameters));
+                Sons.Add(PropertyStrategy.Instance.CreateProperty(property, this, FurtherParameters));
             }
         }
     }

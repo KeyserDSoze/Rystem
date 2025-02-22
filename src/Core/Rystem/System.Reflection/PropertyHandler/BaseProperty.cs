@@ -9,23 +9,22 @@ namespace System.Reflection
         public PropertyInfo Self { get; }
         public PropertyType Type { get; private protected set; }
         public PropertyType GenericType { get; }
-        public List<BaseProperty> Sons { get; } = new();
+        public List<BaseProperty> Sons { get; } = [];
         public Type[]? Generics { get; private protected set; }
         public string NavigationPath { get; }
-        private readonly Dictionary<string, object> _furtherProperties = new();
+        private readonly Dictionary<string, object> _furtherProperties = [];
         public T GetProperty<T>(string key)
             => (T)_furtherProperties[key];
         public int Deep { get; }
         public int EnumerableDeep { get; private protected set; }
         public Type AssemblyType => Self.PropertyType;
-        private readonly List<PropertyInfo> _valueFromContextStack = new();
+        private readonly List<PropertyInfo> _valueFromContextStack = [];
         public List<BaseProperty> Primitives { get; }
         public List<BaseProperty> NonPrimitives { get; }
-        private protected readonly IFurtherParameter[] _furtherParameters;
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Critical Code Smell", "S1699:Constructors should only call non-overridable methods", Justification = "Needed for logic flow.")]
+        private protected readonly IFurtherParameter[] FurtherParameters;
         protected BaseProperty(PropertyInfo info, BaseProperty? father, IFurtherParameter[] furtherParameters)
         {
-            _furtherParameters = furtherParameters;
+            FurtherParameters = furtherParameters;
             Self = info;
             Father = father;
             ConstructWell();
@@ -43,8 +42,8 @@ namespace System.Reflection
             Deep = NavigationPath.Split('.').Length;
             foreach (var parameter in furtherParameters)
                 _furtherProperties.Add(parameter.Key, ((dynamic)parameter).Creator.Compile().Invoke(this));
-            Primitives = Sons.Where(x => x.Type == PropertyType.Primitive || x.Type == PropertyType.Flag).ToList();
-            NonPrimitives = Sons.Where(x => x.Type != PropertyType.Primitive && x.Type != PropertyType.Flag).ToList();
+            Primitives = [.. Sons.Where(x => x.Type == PropertyType.Primitive || x.Type == PropertyType.Flag)];
+            NonPrimitives = [.. Sons.Where(x => x.Type != PropertyType.Primitive && x.Type != PropertyType.Flag)];
         }
         protected abstract void ConstructWell();
         public abstract IEnumerable<BaseProperty> GetQueryableProperty();
@@ -71,7 +70,7 @@ namespace System.Reflection
             BasePropertyNameValue basePropertyNameValue = new();
             if (context == null)
                 return basePropertyNameValue;
-            int counter = 0;
+            var counter = 0;
             foreach (var item in _valueFromContextStack)
             {
                 context = item.GetValue(context);

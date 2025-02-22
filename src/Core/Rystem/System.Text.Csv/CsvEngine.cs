@@ -1,4 +1,6 @@
 ﻿using System.Collections;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Reflection;
 
 namespace System.Text.Csv
@@ -15,14 +17,14 @@ namespace System.Text.Csv
                     {
                         Max = 1,
                         NavigationPath = basePropertyNameValue.NavigationPath,
-                        Rows = new()
+                        Rows = []
                     });
                 var map = Map[basePropertyNameValue.NavigationPath];
                 if (map.Rows.Count <= index)
-                    map.Rows.Add(new() { Columns = new() });
+                    map.Rows.Add(new() { Columns = [] });
                 var row = map.Rows[index];
                 if (!row.Columns.ContainsKey(basePropertyNameValue.Name!))
-                    row.Columns.Add(basePropertyNameValue.Name!, new());
+                    row.Columns.Add(basePropertyNameValue.Name!, []);
                 var listOfValues = row.Columns[basePropertyNameValue.Name!];
                 listOfValues.Add(basePropertyNameValue.Value?.ToString() ?? string.Empty);
                 if (listOfValues.Count > map.Max)
@@ -39,65 +41,40 @@ namespace System.Text.Csv
         {
             public required Dictionary<string, List<string>> Columns { get; init; }
         }
-        public static string Convert<T>(IEnumerable<T> values)
+        public static string Convert<T>(IEnumerable<T> values, CsvEngineConfiguration<T> configuration)
         {
             var showcase = typeof(T).ToShowcase();
-            var tableHandler = new MapHandler() { Map = new() };
+            var tableHandler = new MapHandler() { Map = [] };
             var counter = 0;
             foreach (var value in values)
             {
-                ConvertOne(showcase.Properties, Array.Empty<int>());
+                ConvertOne(value, tableHandler, showcase.Properties, [], ref counter);
                 counter++;
-
-                void ConvertOne(List<BaseProperty> properties, int[] indexes)
-                {
-                    foreach (var property in properties)
-                    {
-                        if (property.Type == PropertyType.Primitive || property.Type == PropertyType.Flag)
-                        {
-                            var entry = property.NamedValue(value, indexes);
-                            tableHandler.Add(counter, entry);
-                        }
-                        else if (property.Type == PropertyType.Complex)
-                        {
-                            ConvertOne(property.Sons, indexes);
-                        }
-                        else
-                        {
-                            var innerValues = property.Value(value, indexes) as IEnumerable;
-                            var innerIndex = 0;
-                            if (innerValues != null)
-                            {
-                                var innerIndexes = new int[indexes.Length + 1];
-                                indexes.CopyTo(innerIndexes, 0);
-                                foreach (var innerValue in innerValues)
-                                {
-                                    innerIndexes[innerIndexes.Length - 1] = innerIndex;
-                                    ConvertOne(property.Sons, innerIndexes);
-                                    innerIndex++;
-                                }
-                            }
-                        }
-                    }
-                }
             }
 
             var header = new StringBuilder();
-            foreach (var map in tableHandler.Map.Select(x => x.Value))
+            foreach (var map in tableHandler.Map.Where(x => !configuration.ToAvoid.ContainsKey(x.Key)).Select(x => x.Value))
             {
                 if (map.Max < 2)
                 {
-                    foreach (var key in map.Rows.First().Columns.Select(x => x.Key))
-                        if (string.IsNullOrWhiteSpace(map.NavigationPath))
-                            header.Append($"{key},");
-                        else
-                            header.Append($"{map.NavigationPath}.{key},");
+                    foreach (var key in map.Rows.First().Columns.Where(x => !configuration.ToAvoid.ContainsKey(x.Key)).Select(x => x.Key))
+                    {
+                        var name = string.IsNullOrWhiteSpace(map.NavigationPath) ? key : $"{map.NavigationPath}.{key}";
+                        var value = configuration.Headers.TryGetValue(name, out var replacingName) ? replacingName :
+                            (string.IsNullOrWhiteSpace(map.NavigationPath) || !configuration.UseExtendedName ? key : name);
+                        header.Append(CheckIfContainsEscapeCharactersAndConfigurations(value, configuration));
+                    }
                 }
                 else
                 {
-                    foreach (var key in map.Rows.First().Columns.Select(x => x.Key))
-                        for (int i = 0; i < map.Max; i++)
-                            header.Append($"{map.NavigationPath}[{i}].{key},");
+                    foreach (var key in map.Rows.First().Columns.Where(x => !configuration.ToAvoid.ContainsKey(x.Key)).Select(x => x.Key))
+                        for (var i = 0; i < map.Max; i++)
+                        {
+                            var name = string.IsNullOrWhiteSpace(map.NavigationPath) ? key : $"{map.NavigationPath}.{key}";
+                            var value = configuration.Headers.TryGetValue(name, out var replacingName) ? $"{replacingName}[{i}]" :
+                                (!configuration.UseExtendedName ? map.NavigationPath : $"{map.NavigationPath}[{i}].{key}");
+                            header.Append(CheckIfContainsEscapeCharactersAndConfigurations(value, configuration));
+                        }
                 }
             }
             var rows = new StringBuilder[counter];
@@ -109,22 +86,60 @@ namespace System.Text.Csv
                     if (rows[internalCounter] == null)
                         rows[internalCounter] = new StringBuilder();
                     var stringBuilder = rows[internalCounter];
-                    foreach (var columnValues in row.Select(x => x.Value))
+                    foreach (var columnValues in row.Where(x => !configuration.ToAvoid.ContainsKey(x.Key)).Select(x => x.Value))
                     {
-                        if (stringBuilder.Length > 0)
-                            stringBuilder.Append(',');
-                        stringBuilder.Append(string.Join(',', columnValues.Select(x => CheckIfContainsEscapeCharacters(x))));
+                        stringBuilder.Append(string.Join(string.Empty, columnValues.Select(x => CheckIfContainsEscapeCharactersAndConfigurations(x, configuration))));
                         for (var i = columnValues.Count; i < map.Max; i++)
-                            stringBuilder.Append(',');
+                            stringBuilder.Append(configuration.Delimiter);
                     }
                     internalCounter++;
                 }
             }
-
-            string CheckIfContainsEscapeCharacters(string value)
-                => value.Contains(',') || value.Contains('"') ? $"\"{value}\"" : value;
-
-            return $"{header.ToString().Trim(',')}{'\n'}{string.Join('\n', rows.Select(x => x.ToString()))}";
+            var headerAsString = header.ToString();
+            foreach (var delimiterAsChar in configuration.Delimiter.Reverse())
+            {
+                headerAsString = headerAsString.Trim(delimiterAsChar);
+            }
+            return $"{headerAsString}{'\n'}{string.Join('\n', rows.Select(x => x.ToString()[0..^(configuration.Delimiter.Length)]))}";
         }
+        private static void ConvertOne(object? value, MapHandler tableHandler, List<BaseProperty> properties, int[] indexes, ref int counter)
+        {
+            foreach (var property in properties)
+            {
+                if (property.Type == PropertyType.Primitive || property.Type == PropertyType.Flag)
+                {
+                    var entry = property.NamedValue(value, indexes);
+                    tableHandler.Add(counter, entry);
+                }
+                else if (property.Type == PropertyType.Complex)
+                {
+                    ConvertOne(value, tableHandler, property.Sons, indexes, ref counter);
+                }
+                else
+                {
+                    var innerIndex = 0;
+                    if (property.Value(value, indexes) is IEnumerable innerValues)
+                    {
+                        var innerIndexes = new int[indexes.Length + 1];
+                        indexes.CopyTo(innerIndexes, 0);
+                        foreach (var innerValue in innerValues)
+                        {
+                            innerIndexes[^1] = innerIndex;
+                            ConvertOne(value, tableHandler, property.Sons, innerIndexes, ref counter);
+                            innerIndex++;
+                        }
+                    }
+                }
+            }
+        }
+        private static string CheckIfContainsEscapeCharactersAndConfigurations<T>(string value, CsvEngineConfiguration<T> configuration)
+        {
+            var hasDelimiter = value.Contains(configuration.Delimiter) || configuration.ForExcel;
+            if (hasDelimiter && value.Contains('"'))
+                value = value.Replace(QuoteCharacter, DoubleQuoteCharacter);
+            return hasDelimiter ? $"\"{value}\"{configuration.Delimiter}" : $"{value}{configuration.Delimiter}";
+        }
+        private const string QuoteCharacter = "\"";
+        private const string DoubleQuoteCharacter = "\"\"";
     }
 }

@@ -24,7 +24,7 @@ namespace System.Reflection
                 {
                     if (!generic.IsPrimitive())
                         foreach (var property in generic.FetchProperties())
-                            Sons.Add(PropertyStrategy.Instance.CreateProperty(property, this, _furtherParameters));
+                            Sons.Add(PropertyStrategy.Instance.CreateProperty(property, this, FurtherParameters));
                 }
         }
     }
