@@ -1,9 +1,8 @@
-﻿using Google.Apis.Auth.OAuth2;
-
-namespace Rystem.Authentication.Social
+﻿namespace Rystem.Authentication.Social
 {
     public class SocialLoginWithSecretsAndRedirectSettings : SocialLoginWithSecretsSettings
     {
+        private const string HttpScheme = "http";
         public List<string>? AllowedDomains { get; set; }
         public override bool IsActive => ClientId != null && ClientSecret != null && AllowedDomains != null && AllowedDomains.Count > 0;
         public string? CheckDomain(string? domain)
@@ -12,9 +11,11 @@ namespace Rystem.Authentication.Social
             {
                 return AllowedDomains?.FirstOrDefault();
             }
-            else if (AllowedDomains?.Contains(domain) == true)
+            else
             {
-                return domain;
+                var domainFromUri = domain.StartsWith(HttpScheme) ? new Uri(domain).Host : domain;
+                if (AllowedDomains?.Contains(domainFromUri) == true)
+                    return domain;
             }
             return default;
         }

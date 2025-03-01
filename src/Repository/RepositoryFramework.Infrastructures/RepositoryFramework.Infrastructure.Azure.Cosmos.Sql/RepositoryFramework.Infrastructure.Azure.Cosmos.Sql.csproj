@@ -30,7 +30,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Azure.Identity" Version="1.13.2" />
-		<PackageReference Include="Microsoft.Azure.Cosmos" Version="3.47.1" />
+		<PackageReference Include="Microsoft.Azure.Cosmos" Version="3.47.2" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.2" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 	</ItemGroup>

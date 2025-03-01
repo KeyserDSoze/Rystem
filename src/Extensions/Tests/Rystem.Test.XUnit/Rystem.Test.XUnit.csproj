@@ -28,7 +28,7 @@
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
         <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="9.0.2" />
         <PackageReference Include="xunit.v3" Version="1.1.0" />
-        <PackageReference Include="Xunit.DependencyInjection" Version="10.2.0" />
+        <PackageReference Include="Xunit.DependencyInjection" Version="10.2.1" />
     </ItemGroup>
     <Choose>
         <When Condition=" '$(Configuration)'=='Debug' ">

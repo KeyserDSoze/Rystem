@@ -4,11 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build-css": "node-sass --include-path Styles --output-style compressed Styles/rystem.scss --output wwwroot/css"
+    "build-css": "sass --style=compressed Styles/rystem.scss wwwroot/css/rystem.css"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "node-sass": "^9.0.0"
+    "sass": "^9.0.0"
   }
 }
