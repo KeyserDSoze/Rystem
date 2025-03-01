@@ -47,7 +47,7 @@ namespace Rystem.Authentication.Social
         }
         private const string Email = "email";
         private const string PreferredUser = "preferred_username";
-        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? domain = null, CancellationToken cancellationToken = default)
+        public async Task<AnyOf<TokenResponse?, string>> CheckTokenAndGetUsernameAsync(string code, string? domain = null, CancellationToken cancellationToken = default)
         {
             if (!string.IsNullOrWhiteSpace(code))
             {
@@ -101,6 +101,11 @@ namespace Rystem.Authentication.Social
                                 }
                             }
                         }
+                    }
+                    else
+                    {
+                        var errorMessage = await response.Content.ReadAsStringAsync(cancellationToken);
+                        return errorMessage;
                     }
                 }
             }

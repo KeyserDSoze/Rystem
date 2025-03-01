@@ -4,35 +4,35 @@ using Rystem.Authentication.Social.TestApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSocialLogin(x =>
+builder.Services.AddSocialLogin<SocialUserProvider>(x =>
 {
     x.Google.ClientId = builder.Configuration["SocialLogin:Google:ClientId"];
     x.Google.ClientSecret = builder.Configuration["SocialLogin:Google:ClientSecret"];
-    x.Google.AllowedDomains = [.. builder.Configuration["SocialLogin:Google:AllowedDomains"]!.Split(',')];
+    x.Google.AddUris([.. builder.Configuration["SocialLogin:Google:AllowedDomains"]!.Split(',')]);
     x.Microsoft.ClientId = builder.Configuration["SocialLogin:Microsoft:ClientId"];
     x.Microsoft.ClientSecret = builder.Configuration["SocialLogin:Microsoft:ClientSecret"];
-    x.Microsoft.AllowedDomains = [.. builder.Configuration["SocialLogin:Microsoft:AllowedDomains"]!.Split(',')];
+    x.Microsoft.AddUris([.. builder.Configuration["SocialLogin:Microsoft:AllowedDomains"]!.Split(',')]);
     x.GitHub.ClientId = builder.Configuration["SocialLogin:GitHub:ClientId"];
     x.GitHub.ClientSecret = builder.Configuration["SocialLogin:GitHub:ClientSecret"];
     x.Linkedin.ClientId = builder.Configuration["SocialLogin:Linkedin:ClientId"];
     x.Linkedin.ClientSecret = builder.Configuration["SocialLogin:Linkedin:ClientSecret"];
-    x.Linkedin.AllowedDomains = [.. builder.Configuration["SocialLogin:Linkedin:AllowedDomains"]!.Split(',')];
+    x.Linkedin.AddUris([.. builder.Configuration["SocialLogin:Linkedin:AllowedDomains"]!.Split(',')]);
     x.X.ClientId = builder.Configuration["SocialLogin:X:ClientId"];
     x.X.ClientSecret = builder.Configuration["SocialLogin:X:ClientSecret"];
-    x.X.AllowedDomains = [.. builder.Configuration["SocialLogin:X:AllowedDomains"]!.Split(',')];
+    x.X.AddUris([.. builder.Configuration["SocialLogin:X:AllowedDomains"]!.Split(',')]);
     x.Instagram.ClientId = builder.Configuration["SocialLogin:Instagram:ClientId"];
     x.Instagram.ClientSecret = builder.Configuration["SocialLogin:Instagram:ClientSecret"];
-    x.Instagram.AllowedDomains = [.. builder.Configuration["SocialLogin:Instagram:AllowedDomains"]!.Split(',')];
+    x.Instagram.AddUris([.. builder.Configuration["SocialLogin:Instagram:AllowedDomains"]!.Split(',')]);
     x.Pinterest.ClientId = builder.Configuration["SocialLogin:Pinterest:ClientId"];
     x.Pinterest.ClientSecret = builder.Configuration["SocialLogin:Pinterest:ClientSecret"];
-    x.Pinterest.AllowedDomains = [.. builder.Configuration["SocialLogin:Pinterest:AllowedDomains"]!.Split(',')];
+    x.Pinterest.AddUris([.. builder.Configuration["SocialLogin:Pinterest:AllowedDomains"]!.Split(',')]);
 },
 x =>
 {
     x.BearerTokenExpiration = TimeSpan.FromHours(1);
     x.RefreshTokenExpiration = TimeSpan.FromDays(10);
-});
-builder.Services.AddSocialUserProvider<SocialUserProvider>();
+},
+ServiceLifetime.Transient);
 builder.Services.AddRepository<SocialRole, string>(repositoryBuilder =>
 {
     repositoryBuilder.WithInMemory(x =>

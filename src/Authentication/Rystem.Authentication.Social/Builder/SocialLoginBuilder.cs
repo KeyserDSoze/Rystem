@@ -1,4 +1,6 @@
-﻿namespace Rystem.Authentication.Social
+﻿using Microsoft.Extensions.DependencyInjection;
+
+namespace Rystem.Authentication.Social
 {
     public sealed class SocialLoginBuilder
     {

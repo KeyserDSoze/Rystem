@@ -18,7 +18,7 @@ namespace Rystem.Authentication.Social
             _loginBuilder = loginBuilder;
         }
         private const string Bearer = nameof(Bearer);
-        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? domain = null, CancellationToken cancellationToken = default)
+        public async Task<AnyOf<TokenResponse?, string>> CheckTokenAndGetUsernameAsync(string code, string? domain = null, CancellationToken cancellationToken = default)
         {
             var settings = _loginBuilder.GitHub;
             var client = _clientFactory.CreateClient(Constants.GitHubAuthenticationClient);
@@ -53,6 +53,11 @@ namespace Rystem.Authentication.Social
                         }
                     }
                 }
+            }
+            else
+            {
+                var errorMessage = await response.Content.ReadAsStringAsync(cancellationToken);
+                return errorMessage;
             }
             return TokenResponse.Empty;
         }

@@ -5,14 +5,17 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection AddSocialLogin(this IServiceCollection services,
+        public static IServiceCollection AddSocialLogin<TProvider>(this IServiceCollection services,
             Action<SocialLoginBuilder> settings,
-            Action<BearerTokenOptions>? action = null)
+            Action<BearerTokenOptions>? action = null,
+            ServiceLifetime userProviderLifeTime = ServiceLifetime.Transient)
+            where TProvider : class, ISocialUserProvider
         {
             services.AddHttpContextAccessor();
             services
                 .AddAuthentication()
                 .AddBearerToken(action!);
+            services.AddService<ISocialUserProvider, TProvider>(userProviderLifeTime);
             services.AddFactory<ITokenChecker, GoogleTokenChecker>(ProviderType.Google.ToString());
             services.AddFactory<ITokenChecker, MicrosoftTokenChecker>(ProviderType.Microsoft.ToString());
             services.AddFactory<ITokenChecker, FacebookTokenChecker>(ProviderType.Facebook.ToString());
@@ -112,12 +115,6 @@ namespace Microsoft.Extensions.DependencyInjection
                     x.BaseAddress = new Uri("https://open.tiktokapis.com/v2/");
                 });
             }
-            return services;
-        }
-        public static IServiceCollection AddSocialUserProvider<TProvider>(this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Transient)
-            where TProvider : class, ISocialUserProvider
-        {
-            services.AddService<ISocialUserProvider, TProvider>(lifetime);
             return services;
         }
     }

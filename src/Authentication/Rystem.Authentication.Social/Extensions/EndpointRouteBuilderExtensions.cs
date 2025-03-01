@@ -42,11 +42,20 @@ namespace Microsoft.Extensions.DependencyInjection
                     {
                         try
                         {
-                            response = await tokenChecker.CheckTokenAndGetUsernameAsync(code, domain, cancellationToken);
+                            var entity = await tokenChecker.CheckTokenAndGetUsernameAsync(code, domain, cancellationToken);
+                            if (entity.IsT0)
+                            {
+                                response = entity.AsT0;
+                            }
+                            else
+                            {
+                                return Results.Problem(entity.AsT1);
+                            }
                         }
                         catch (Exception ex)
                         {
-                            logger?.LogError(ex, "Error checking token.");
+                            logger?.LogError(ex, "Token acquisition error.");
+                            return Results.Problem(ex.Message);
                         }
                     }
                     if (response != null && !string.IsNullOrWhiteSpace(response.Username))

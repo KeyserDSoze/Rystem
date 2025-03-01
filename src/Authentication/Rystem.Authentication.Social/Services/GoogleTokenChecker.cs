@@ -17,7 +17,7 @@ namespace Rystem.Authentication.Social
             _clientFactory = clientFactory;
             _loginBuilder = loginBuilder;
         }
-        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? domain = null, CancellationToken cancellationToken = default)
+        public async Task<AnyOf<TokenResponse?, string>> CheckTokenAndGetUsernameAsync(string code, string? domain = null, CancellationToken cancellationToken = default)
         {
             var settings = _loginBuilder.Google;
             domain = settings.CheckDomain(domain);
@@ -46,6 +46,11 @@ namespace Rystem.Authentication.Social
                         ]
                         };
                     }
+                }
+                else
+                {
+                    var errorMessage = await response.Content.ReadAsStringAsync(cancellationToken);
+                    return errorMessage;
                 }
             }
             return TokenResponse.Empty;

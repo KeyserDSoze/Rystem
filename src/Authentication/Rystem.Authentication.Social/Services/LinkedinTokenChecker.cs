@@ -18,7 +18,7 @@ namespace Rystem.Authentication.Social
             _loginBuilder = loginBuilder;
         }
         private const string Bearer = nameof(Bearer);
-        public async Task<TokenResponse?> CheckTokenAndGetUsernameAsync(string code, string? domain = null, CancellationToken cancellationToken = default)
+        public async Task<AnyOf<TokenResponse?, string>> CheckTokenAndGetUsernameAsync(string code, string? domain = null, CancellationToken cancellationToken = default)
         {
             if (!string.IsNullOrWhiteSpace(code))
             {
@@ -61,6 +61,11 @@ namespace Rystem.Authentication.Social
                                 }
                             }
                         }
+                    }
+                    else
+                    {
+                        var errorMessage = await response.Content.ReadAsStringAsync(cancellationToken);
+                        return errorMessage;
                     }
                 }
             }
