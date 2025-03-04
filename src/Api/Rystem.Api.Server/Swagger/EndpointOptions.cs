@@ -1,4 +1,6 @@
-﻿namespace Rystem.Api
+﻿using System.Diagnostics.Contracts;
+
+namespace Rystem.Api
 {
     public sealed class EndpointOptions
     {

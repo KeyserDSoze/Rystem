@@ -46,7 +46,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
             var blobClient = Options!.Client.GetBlobClient(GetFileName(key));
             var entityWithKey = Entity.Default(value, key);
             var response = await blobClient.UploadAsync(new BinaryData(entityWithKey.ToJson()), cancellationToken).NoContext();
-            return State.Default<T, TKey>(response.Value != null, value);
+            return State.Default(response.Value != null, value, key);
         }
 
         public async IAsyncEnumerable<Entity<T, TKey>> QueryAsync(IFilterExpression filter,

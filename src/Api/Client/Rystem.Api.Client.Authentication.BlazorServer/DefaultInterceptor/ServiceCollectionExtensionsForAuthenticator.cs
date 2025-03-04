@@ -23,5 +23,22 @@ namespace Microsoft.Extensions.DependencyInjection
                 .AddEnhancerForEndpoint<TokenManager<T>, T>();
             return services;
         }
+        public static IServiceCollection AddSocialAuthenticationForAllEndpoints(this IServiceCollection services, Action<AuthorizationSettings> settings)
+        {
+            var options = new AuthorizationSettings();
+            settings.Invoke(options);
+            services
+                .AddEnhancerForAllEndpoints<SocialTokenManager>();
+            return services;
+        }
+        public static IServiceCollection AddSocialAuthenticationForEndpoint<T>(this IServiceCollection services, Action<AuthorizationSettings> settings)
+            where T : class
+        {
+            var options = new AuthorizationSettings();
+            settings.Invoke(options);
+            services
+                .AddEnhancerForEndpoint<SocialTokenManager<T>, T>();
+            return services;
+        }
     }
 }

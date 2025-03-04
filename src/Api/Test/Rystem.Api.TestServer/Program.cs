@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Identity.Web;
+using RepositoryFramework.InMemory;
 using Rystem.Api.Test.Domain;
 using Rystem.Api.TestServer.Clients;
 
@@ -23,6 +24,10 @@ builder.Services.AddFactory<ISalubry, Salubry2>("Doma");
 builder.Services.AddFactory<ITeamCalculator, TeamCalculator>();
 builder.Services.AddFactory<IEmbeddingService, EmbeddingService1>(EmbeddingType.First);
 builder.Services.AddFactory<IEmbeddingService, EmbeddingService2>(EmbeddingType.Second);
+builder.Services.AddRepository<Container, Guid>(repositoryBuilder =>
+{
+    repositoryBuilder.WithInMemory();
+});
 builder.Services.AddServerIntegrationForRystemApi(x =>
 {
     x.HasScalar = true;
@@ -36,6 +41,9 @@ builder.Services.AddAuthorization(x =>
         t.RequireClaim("name");
     });
 });
+builder.Services.AddApiFromRepositoryFramework()
+    .WithSwagger()
+    .WithDefaultCorsWithAllOrigins();
 var app = builder.Build();
 
 app.UseHttpsRedirection();
@@ -44,6 +52,10 @@ app.UseAuthorization();
 app
     .UseEndpointApi()
     .UseEndpointApiModels();
+app.UseApiFromRepositoryFramework()
+    .SetPolicyForAll()
+    .With("policy")
+    .Build();
 //app.MapPost("/handle-file", async ([FromForm] IFormFile myFile, [FromForm] IFormFile myFile2) =>
 //{
 //    var tempfile = Path.GetTempFileName();

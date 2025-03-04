@@ -6,6 +6,10 @@ namespace System.Text
     {
         public static string ToBase64(this string value)
             => Convert.ToBase64String(Encoding.UTF8.GetBytes(value));
+        public static string ToBase64(this Stream stream)
+            => Convert.ToBase64String(stream.ToArray());
+        public static string ToBase64(this byte[] byteArray)
+            => Convert.ToBase64String(byteArray);
         public static string ToBase64<T>(this T entity)
             => entity.ToJson().ToBase64();
         public static string FromBase64(this string encodedValue)

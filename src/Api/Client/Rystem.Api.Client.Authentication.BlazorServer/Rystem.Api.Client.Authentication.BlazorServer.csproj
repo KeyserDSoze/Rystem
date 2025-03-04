@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -35,17 +35,20 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Identity.Web" Version="3.7.1" />
 	</ItemGroup>
-	
+
 	<Choose>
 		<When Condition=" '$(Configuration)'=='Debug' ">
 			<ItemGroup>
 				<ProjectReference Include="..\..\Rystem.Api.Client\Rystem.Api.Client.csproj" />
-			</ItemGroup>
+                <ProjectReference Include="..\..\..\Authentication\Rystem.Authentication.Social.Blazor\Rystem.Authentication.Social.Blazor.csproj" />
+            </ItemGroup>
 		</When>
 		<When Condition=" '$(Configuration)'!='Debug' ">
 			<ItemGroup>
 				<PackageReference Include="Rystem.Api.Client" Version="9.0.17" />
-			</ItemGroup>
+                <PackageReference Include="Rystem.Authentication.Social.Blazor" Version="9.0.17" />
+
+            </ItemGroup>
 		</When>
 	</Choose>
 </Project>

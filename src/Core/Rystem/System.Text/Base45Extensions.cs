@@ -18,10 +18,15 @@ namespace System.Text
             }
         }
         public static string ToBase45(this string value)
+            => Encoding.UTF8.GetBytes(value).ToBase45();
+        public static string ToBase45<T>(this T entity)
+            => entity.ToJson().ToBase45();
+        public static string ToBase45(this Stream stream)
+            => stream.ToArray().ToBase45();
+        public static string ToBase45(this byte[] bytes)
         {
             StringBuilder stringBuilder = new();
-            var bytes = Encoding.UTF8.GetBytes(value);
-            for (int i = 0; i < bytes.Length; i += 2)
+            for (var i = 0; i < bytes.Length; i += 2)
             {
                 var values = bytes.Skip(i).Take(2).ToList();
                 int? second = default;
@@ -32,7 +37,6 @@ namespace System.Text
             }
             return stringBuilder.ToString();
         }
-        public static string ToBase45<T>(this T entity) => entity.ToJson().ToBase45();
         public static string FromBase45(this string encondedValue)
         {
             int remainder = encondedValue.Length % 3;

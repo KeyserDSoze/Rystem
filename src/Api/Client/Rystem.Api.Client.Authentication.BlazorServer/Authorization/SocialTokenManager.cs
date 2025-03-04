@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Components;
 using Rystem.Authentication.Social.Blazor;
 
-namespace RepositoryFramework.Api.Client.Authorization
+namespace Rystem.Api.Client
 {
-    internal sealed class SocialTokenManager : ITokenManager
+    internal class SocialTokenManager : IRequestEnhancer
     {
         private readonly SocialLoginManager _socialLoginManager;
         private readonly NavigationManager? _navigationManager;
@@ -14,18 +14,19 @@ namespace RepositoryFramework.Api.Client.Authorization
             _socialLoginManager = socialLoginManager;
             _navigationManager = navigationManager;
         }
-        public async Task EnrichWithAuthorizationAsync(HttpClient client)
+
+        public async ValueTask EnhanceAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var tokenResponse = await Try.WithDefaultOnCatchAsync(() => GetTokenAsync()).NoContext();
             if (tokenResponse?.Exception == null && tokenResponse?.Entity != null)
             {
-                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResponse);
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResponse);
             }
         }
-        public Task<string?> GetTokenAsync()
+        private Task<string?> GetTokenAsync()
             => RefreshTokenAsync();
 
-        public async Task<string?> RefreshTokenAsync()
+        private async Task<string?> RefreshTokenAsync()
         {
             var token = await _socialLoginManager.FetchTokenAsync();
             if (token != default)

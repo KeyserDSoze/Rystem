@@ -298,7 +298,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 s_serviceProviderForPopulation = serviceCollection.BuildServiceProvider().CreateScope().ServiceProvider;
             }
             var populationService = s_serviceProviderForPopulation.GetService<IPopulation<T>>()!;
-            return populationService.Populate(1, 1)[0];
+            var entity = populationService.Populate(1, 1)[0];
+            return entity;
         }
         private static string? s_mapAsJson;
         private static bool s_mapAlreadyAdded = false;
