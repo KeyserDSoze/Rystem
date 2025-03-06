@@ -18,7 +18,7 @@ namespace RepositoryFramework.UnitTest.Repository
 {
     public class AllIntegrationTest
     {
-        private sealed class BlobStorageConnectionService : IConnectionService<BlobContainerClientWrapper>
+        private sealed class BlobStorageConnectionService : IConnectionService<AppUser, AppUserKey, BlobContainerClientWrapper>
         {
             private readonly IConfiguration _configuration;
             private static readonly ConcurrentDictionary<string, bool> s_creationCheck = [];
@@ -42,7 +42,7 @@ namespace RepositoryFramework.UnitTest.Repository
                 return blobContainerClientWrapper;
             }
         }
-        private sealed class TableStorageConnectionService : IConnectionService<TableClientWrapper<AppUser, AppUserKey>>
+        private sealed class TableStorageConnectionService : IConnectionService<AppUser, AppUserKey, TableClientWrapper<AppUser, AppUserKey>>
         {
             private readonly IConfiguration _configuration;
 

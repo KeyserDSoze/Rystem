@@ -55,14 +55,14 @@ namespace RepositoryFramework
         }
         public TRepositoryBuilder SetStorageAndServiceConnection<TStorage, TConnectionService, TConnectionClient>(string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern
-            where TConnectionService : class, IConnectionService<TConnectionClient>
+            where TConnectionService : class, IConnectionService<T, TKey, TConnectionClient>
             where TConnectionClient : class
         {
             SetDefaultFrameworkBeforeStorage<TStorage>(name, serviceLifetime);
             Services
                 .AddFactory<TRepositoryPattern, TStorage>(_currentName, serviceLifetime);
             Services
-                .AddFactory<IConnectionService<TConnectionClient>, TConnectionService>(_currentName, serviceLifetime);
+                .AddFactory<IConnectionService<T, TKey, TConnectionClient>, TConnectionService>(_currentName, serviceLifetime);
             return Builder;
         }
         public TRepositoryBuilder SetStorageAndBuildOptions<TStorage, TStorageOptions, TConnection>(

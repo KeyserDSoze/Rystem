@@ -20,7 +20,7 @@ namespace Microsoft.Extensions.DependencyInjection
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TKey : notnull
-            where TConnectionService : class, IConnectionService<TableClientWrapper<T, TKey>>
+            where TConnectionService : class, IConnectionService<T, TKey, TableClientWrapper<T, TKey>>
             where TKeyReader : class, ITableStorageKeyReader<T, TKey>
         {
             builder.SetStorageAndServiceConnection<TableStorageRepository<T, TKey>, TConnectionService, TableClientWrapper<T, TKey>>(name, serviceLifetime);
@@ -43,7 +43,7 @@ namespace Microsoft.Extensions.DependencyInjection
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TKey : notnull
-            where TConnectionService : class, IConnectionService<TableClientWrapper<T, TKey>>
+            where TConnectionService : class, IConnectionService<T, TKey, TableClientWrapper<T, TKey>>
             where TKeyReader : class, ITableStorageKeyReader<T, TKey>
         {
             builder.SetStorageAndServiceConnection<TableStorageRepository<T, TKey>, TConnectionService, TableClientWrapper<T, TKey>>(name, serviceLifetime);
@@ -66,7 +66,7 @@ namespace Microsoft.Extensions.DependencyInjection
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TKey : notnull
-            where TConnectionService : class, IConnectionService<TableClientWrapper<T, TKey>>
+            where TConnectionService : class, IConnectionService<T, TKey, TableClientWrapper<T, TKey>>
             where TKeyReader : class, ITableStorageKeyReader<T, TKey>
         {
             builder.SetStorageAndServiceConnection<TableStorageRepository<T, TKey>, TConnectionService, TableClientWrapper<T, TKey>>(name, serviceLifetime);

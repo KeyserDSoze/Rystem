@@ -26,7 +26,7 @@ namespace RepositoryFramework
             where TConnection : class, IFactoryOptions;
         TRepositoryBuilder SetStorageAndServiceConnection<TStorage, TConnectionService, TConnectionClient>(string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern
-            where TConnectionService : class, IConnectionService<TConnectionClient>
+            where TConnectionService : class, IConnectionService<T, TKey, TConnectionClient>
             where TConnectionClient : class;
         TRepositoryBuilder SetStorage<TStorage>(string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern;

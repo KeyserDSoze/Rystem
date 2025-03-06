@@ -35,12 +35,12 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
         private TableStorageSettings<T, TKey>? Settings => _options.Settings;
         private readonly IFactory<ITableStorageKeyReader<T, TKey>>? _keyReaderFactory;
         private ITableStorageKeyReader<T, TKey>? _keyReader;
-        private readonly IFactory<IConnectionService<TableClientWrapper<T, TKey>>> _connectionServiceFactory;
+        private readonly IFactory<IConnectionService<T, TKey, TableClientWrapper<T, TKey>>> _connectionServiceFactory;
         private TableClientWrapper<T, TKey>? _options;
         public TableStorageRepository(
             IFactory<ITableStorageKeyReader<T, TKey>>? keyReaderFactory = null,
             ITableStorageKeyReader<T, TKey>? keyReader = null,
-            IFactory<IConnectionService<TableClientWrapper<T, TKey>>>? connectionServiceFactory = null)
+            IFactory<IConnectionService<T, TKey, TableClientWrapper<T, TKey>>>? connectionServiceFactory = null)
         {
             _keyReaderFactory = keyReaderFactory;
             _keyReader = keyReader!;

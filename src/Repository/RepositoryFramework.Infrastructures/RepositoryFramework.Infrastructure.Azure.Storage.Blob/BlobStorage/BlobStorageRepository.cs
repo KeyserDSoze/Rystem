@@ -8,14 +8,14 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
     internal sealed class BlobStorageRepository<T, TKey> : IRepository<T, TKey>, IServiceWithFactoryWithOptions<BlobContainerClientWrapper>
         where TKey : notnull
     {
-        private readonly IFactory<IConnectionService<BlobContainerClientWrapper>>? _connectionServiceFactory;
+        private readonly IFactory<IConnectionService<T, TKey, BlobContainerClientWrapper>>? _connectionServiceFactory;
 
         public void SetOptions(BlobContainerClientWrapper options)
         {
             Options = options;
         }
         public BlobContainerClientWrapper? Options { get; set; }
-        public BlobStorageRepository(BlobContainerClientWrapper? options = null, IFactory<IConnectionService<BlobContainerClientWrapper>>? connectionServiceFactory = null)
+        public BlobStorageRepository(BlobContainerClientWrapper? options = null, IFactory<IConnectionService<T, TKey, BlobContainerClientWrapper>>? connectionServiceFactory = null)
         {
             Options = options;
             _connectionServiceFactory = connectionServiceFactory;

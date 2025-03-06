@@ -19,7 +19,7 @@ namespace Microsoft.Extensions.DependencyInjection
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TKey : notnull
-            where TConnectionService : class, IConnectionService<BlobContainerClientWrapper>
+            where TConnectionService : class, IConnectionService<T, TKey, BlobContainerClientWrapper>
         {
             builder.SetStorageAndServiceConnection<BlobStorageRepository<T, TKey>, TConnectionService, BlobContainerClientWrapper>(
                 name,
@@ -40,7 +40,7 @@ namespace Microsoft.Extensions.DependencyInjection
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TKey : notnull
-            where TConnectionService : class, IConnectionService<BlobContainerClientWrapper>
+            where TConnectionService : class, IConnectionService<T, TKey, BlobContainerClientWrapper>
         {
             builder.SetStorageAndServiceConnection<BlobStorageRepository<T, TKey>, TConnectionService, BlobContainerClientWrapper>(
                 name,
@@ -61,7 +61,7 @@ namespace Microsoft.Extensions.DependencyInjection
             string? name = null,
             ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TKey : notnull
-            where TConnectionService : class, IConnectionService<BlobContainerClientWrapper>
+            where TConnectionService : class, IConnectionService<T, TKey, BlobContainerClientWrapper>
         {
             builder.SetStorageAndServiceConnection<BlobStorageRepository<T, TKey>, TConnectionService, BlobContainerClientWrapper>(
                 name,

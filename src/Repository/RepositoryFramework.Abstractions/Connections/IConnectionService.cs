@@ -1,7 +1,8 @@
 ﻿namespace RepositoryFramework
 {
-    public interface IConnectionService<T>
+    public interface IConnectionService<T, TKey, TConnection>
+        where TKey : notnull
     {
-        T GetConnection(string entityName, string? factoryName = null);
+        TConnection GetConnection(string entityName, string? factoryName = null);
     }
 }
