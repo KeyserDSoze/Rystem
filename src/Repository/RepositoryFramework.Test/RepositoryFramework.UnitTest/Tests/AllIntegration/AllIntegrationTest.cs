@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
@@ -20,6 +21,7 @@ namespace RepositoryFramework.UnitTest.Repository
         private sealed class BlobStorageConnectionService : IConnectionService<BlobContainerClientWrapper>
         {
             private readonly IConfiguration _configuration;
+            private static readonly ConcurrentDictionary<string, bool> s_creationCheck = [];
 
             public BlobStorageConnectionService(IConfiguration configuration)
             {
@@ -27,10 +29,16 @@ namespace RepositoryFramework.UnitTest.Repository
             }
             public BlobContainerClientWrapper GetConnection(string entityName, string? factoryName = null)
             {
+                var tenantId = string.Empty;
                 var blobContainerClientWrapper = new BlobContainerClientWrapper
                 {
                     Client = new BlobContainerClient(_configuration["ConnectionString:Storage"], entityName.ToLower())
                 };
+                if (!s_creationCheck.ContainsKey(tenantId))
+                {
+                    blobContainerClientWrapper.Client.CreateIfNotExists();
+                    s_creationCheck.TryAdd(tenantId, true);
+                }
                 return blobContainerClientWrapper;
             }
         }

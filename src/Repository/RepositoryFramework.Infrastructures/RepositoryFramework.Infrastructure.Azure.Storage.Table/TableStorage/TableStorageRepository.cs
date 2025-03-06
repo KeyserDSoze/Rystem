@@ -20,14 +20,16 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
                 _keyReader = _keyReaderFactory.Create(name);
             if (_connectionServiceFactory != null)
             {
-                var connectionService = _connectionServiceFactory.Create(name);
-                if (connectionService != null)
+                if (_connectionServiceFactory.Exists(name))
                 {
-                    _options = connectionService.GetConnection(typeof(T).Name, name);
+                    var connectionService = _connectionServiceFactory.Create(name);
+                    if (connectionService != null)
+                    {
+                        _options = connectionService.GetConnection(typeof(T).Name, name);
+                    }
                 }
             }
-            if (_keyReader == null)
-                _keyReader = new DefaultTableStorageKeyReader<T, TKey>();
+            _keyReader ??= new DefaultTableStorageKeyReader<T, TKey>();
         }
         private TableClient Client => _options!.Client;
         private TableStorageSettings<T, TKey>? Settings => _options.Settings;

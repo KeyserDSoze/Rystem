@@ -90,7 +90,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
          CancellationToken cancellationToken = default)
         {
 #warning to refactor
-            List<T> items = new();
+            List<T> items = [];
             await foreach (var item in QueryAsync(filter, cancellationToken))
                 items.Add(item.Value!);
             var select = filter.GetFirstSelect<T>();
@@ -124,9 +124,14 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
         {
             if (_connectionServiceFactory != null)
             {
-                var connectionService = _connectionServiceFactory.Create(name);
-                if (connectionService != null)
-                    Options = connectionService.GetConnection(typeof(T).Name, name);
+                if (_connectionServiceFactory.Exists(name))
+                {
+                    var connectionService = _connectionServiceFactory.Create(name);
+                    if (connectionService != null)
+                    {
+                        Options = connectionService.GetConnection(typeof(T).Name, name);
+                    }
+                }
             }
             return;
         }
