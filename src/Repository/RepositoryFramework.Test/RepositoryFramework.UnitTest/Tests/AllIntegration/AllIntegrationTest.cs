@@ -78,47 +78,45 @@ namespace RepositoryFramework.UnitTest.Repository
             {
                 case "entityframework":
                     services
-                        .AddUserRepositoryWithDatabaseSqlAndEntityFramework(configuration);
+                        .AddUserRepositoryWithDatabaseSqlAndEntityFramework(configuration, "entityframework");
                     break;
                 case "tablestorage":
-                    services
-                        .AddRepositoryAsync<AppUser, AppUserKey>(async settings =>
-                        {
-                            await settings
-                            .WithTableStorageAsync(builder =>
-                            {
-                                builder.Settings.ConnectionString = configuration["ConnectionString:Storage"];
-                                builder
-                                .WithTableStorageKeyReader<TableStorageKeyReader>()
-                                    .WithPartitionKey(x => x.Id, x => x.Id)
-                                    .WithRowKey(x => x.Username)
-                                    .WithTimestamp(x => x.CreationTime);
-                            });
-                        }).ToResult();
-                    break;
                 case "tablestorage2":
                     services
-                        .AddRepository<AppUser, AppUserKey>(settings =>
-                        {
-                            settings
-                                .WithTableStorage<AppUser, AppUserKey, TableStorageConnectionService, TableStorageKeyReader>();
-                        });
+                         .AddRepositoryAsync<AppUser, AppUserKey>(async settings =>
+                         {
+                             await settings
+                             .WithTableStorageAsync(builder =>
+                             {
+                                 builder.Settings.ConnectionString = configuration["ConnectionString:Storage"];
+                                 builder
+                                 .WithTableStorageKeyReader<TableStorageKeyReader>()
+                                     .WithPartitionKey(x => x.Id, x => x.Id)
+                                     .WithRowKey(x => x.Username)
+                                     .WithTimestamp(x => x.CreationTime);
+                             }, "tablestorage");
+                         }).ToResult();
+                    services
+                      .AddRepository<AppUser, AppUserKey>(settings =>
+                      {
+                          settings
+                              .WithTableStorage<AppUser, AppUserKey, TableStorageConnectionService, TableStorageKeyReader>("tablestorage2");
+                      });
                     break;
                 case "blobstorage":
-                    services
-                        .AddRepositoryAsync<AppUser, AppUserKey>(async settings =>
-                        {
-                            await settings
-                                .WithBlobStorageAsync(x => x.Settings.ConnectionString = configuration["ConnectionString:Storage"])
-                                .NoContext();
-                        }).ToResult();
-                    break;
                 case "blobstorage2":
+                    services
+                      .AddRepositoryAsync<AppUser, AppUserKey>(async settings =>
+                      {
+                          await settings
+                              .WithBlobStorageAsync(x => x.Settings.ConnectionString = configuration["ConnectionString:Storage"], "blobstorage")
+                              .NoContext();
+                      }).ToResult();
                     services
                         .AddRepository<AppUser, AppUserKey>(settings =>
                         {
                             settings
-                                .WithBlobStorage<AppUser, AppUserKey, BlobStorageConnectionService>();
+                                .WithBlobStorage<AppUser, AppUserKey, BlobStorageConnectionService>("blobstorage2");
                         });
                     break;
                 case "cosmos":
@@ -129,13 +127,14 @@ namespace RepositoryFramework.UnitTest.Repository
                             x.Settings.ConnectionString = configuration["ConnectionString:CosmosSql"];
                             x.Settings.DatabaseName = "unittestdatabase";
                             x.WithId(x => new AppUserKey(x.Id));
-                        }).NoContext();
+                        }, "cosmos").NoContext();
                     })
-                        .ToResult();
+                       .ToResult();
                     break;
             }
             services.Finalize(out var serviceProvider);
-            return serviceProvider.GetService<IRepository<AppUser, AppUserKey>>()!;
+            var factory = serviceProvider.GetService<IFactory<IRepository<AppUser, AppUserKey>>>()!;
+            return factory.Create(injectionedStorage)!;
         }
 
         [Theory]

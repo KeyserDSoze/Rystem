@@ -9,7 +9,7 @@ namespace Microsoft.Extensions.DependencyInjection
     public static class ServiceCollectionExtensions
     {
         public static IServiceCollection AddUserRepositoryWithDatabaseSqlAndEntityFramework(this IServiceCollection services,
-            IConfiguration configuration)
+            IConfiguration configuration, string? name = null)
         {
             services.AddDbContext<SampleContext>(options =>
             {
@@ -18,7 +18,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
             services.AddRepository<AppUser, AppUserKey>(repositoryBuilder =>
                 {
-                    repositoryBuilder.SetStorage<AppUserStorage>();
+                    repositoryBuilder.SetStorage<AppUserStorage>(name);
                     repositoryBuilder.Translate<User>()
                         .With(x => x.Id, x => x.Identificativo)
                         .With(x => x.Username, x => x.Nome)
