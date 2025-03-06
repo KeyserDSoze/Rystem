@@ -8,14 +8,17 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
     internal sealed class BlobStorageRepository<T, TKey> : IRepository<T, TKey>, IServiceWithFactoryWithOptions<BlobContainerClientWrapper>
         where TKey : notnull
     {
+        private readonly IFactory<IConnectionService<BlobContainerClientWrapper>>? _connectionServiceFactory;
+
         public void SetOptions(BlobContainerClientWrapper options)
         {
             Options = options;
         }
         public BlobContainerClientWrapper? Options { get; set; }
-        public BlobStorageRepository(BlobContainerClientWrapper? options = null)
+        public BlobStorageRepository(BlobContainerClientWrapper? options = null, IFactory<IConnectionService<BlobContainerClientWrapper>>? connectionServiceFactory = null)
         {
             Options = options;
+            _connectionServiceFactory = connectionServiceFactory;
         }
         private string GetFileName(TKey key)
             => $"{Options?.Prefix}{KeySettings<TKey>.Instance.AsString(key)}";
@@ -119,6 +122,12 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
         }
         public void SetFactoryName(string name)
         {
+            if (_connectionServiceFactory != null)
+            {
+                var connectionService = _connectionServiceFactory.Create(name);
+                if (connectionService != null)
+                    Options = connectionService.GetConnection(typeof(T).Name, name);
+            }
             return;
         }
         //todo: implement this method and avoid the use of the AddFactoryAsync and the IOptionsBuilderAsync

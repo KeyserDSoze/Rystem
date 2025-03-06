@@ -24,6 +24,10 @@ namespace RepositoryFramework
             where TStorage : class, TRepositoryPattern, IServiceWithFactoryWithOptions<TConnection>
             where TStorageOptions : class, IOptionsBuilderAsync<TConnection>, new()
             where TConnection : class, IFactoryOptions;
+        TRepositoryBuilder SetStorageAndServiceConnection<TStorage, TConnectionService, TConnectionClient>(string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
+            where TStorage : class, TRepositoryPattern
+            where TConnectionService : class, IConnectionService<TConnectionClient>
+            where TConnectionClient : class;
         TRepositoryBuilder SetStorage<TStorage>(string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
             where TStorage : class, TRepositoryPattern;
         Func<Task>? AfterBuildAsync { get; set; }

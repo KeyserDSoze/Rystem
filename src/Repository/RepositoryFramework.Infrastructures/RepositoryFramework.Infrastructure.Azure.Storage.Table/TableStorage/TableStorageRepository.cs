@@ -16,19 +16,33 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
         }
         public void SetFactoryName(string name)
         {
-            _keyReader = _keyReaderFactory.Create(name);
+            if (_keyReaderFactory != null)
+                _keyReader = _keyReaderFactory.Create(name);
+            if (_connectionServiceFactory != null)
+            {
+                var connectionService = _connectionServiceFactory.Create(name);
+                if (connectionService != null)
+                {
+                    _options = connectionService.GetConnection(typeof(T).Name, name);
+                }
+            }
+            if (_keyReader == null)
+                _keyReader = new DefaultTableStorageKeyReader<T, TKey>();
         }
         private TableClient Client => _options!.Client;
         private TableStorageSettings<T, TKey>? Settings => _options.Settings;
-        private readonly IFactory<ITableStorageKeyReader<T, TKey>> _keyReaderFactory;
-        private ITableStorageKeyReader<T, TKey> _keyReader;
+        private readonly IFactory<ITableStorageKeyReader<T, TKey>>? _keyReaderFactory;
+        private ITableStorageKeyReader<T, TKey>? _keyReader;
+        private readonly IFactory<IConnectionService<TableClientWrapper<T, TKey>>> _connectionServiceFactory;
         private TableClientWrapper<T, TKey>? _options;
         public TableStorageRepository(
-            IFactory<ITableStorageKeyReader<T, TKey>> keyReaderFactory,
-            ITableStorageKeyReader<T, TKey>? keyReader = null)
+            IFactory<ITableStorageKeyReader<T, TKey>>? keyReaderFactory = null,
+            ITableStorageKeyReader<T, TKey>? keyReader = null,
+            IFactory<IConnectionService<TableClientWrapper<T, TKey>>>? connectionServiceFactory = null)
         {
             _keyReaderFactory = keyReaderFactory;
             _keyReader = keyReader!;
+            _connectionServiceFactory = connectionServiceFactory;
         }
         private sealed class TableEntity : ITableEntity
         {

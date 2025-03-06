@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
 {
-    internal sealed class TableClientWrapper<T, TKey> : IFactoryOptions
+    public sealed class TableClientWrapper<T, TKey> : IFactoryOptions
         where TKey : notnull
     {
         public TableClient Client { get; set; } = null!;

@@ -2,8 +2,13 @@
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
+using Azure.Data.Tables;
+using Azure.Storage.Blobs;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using RepositoryFramework.Infrastructure.Azure.Storage.Blob;
+using RepositoryFramework.Infrastructure.Azure.Storage.Table;
 using RepositoryFramework.Test.Domain;
 using RepositoryFramework.UnitTest.Tests.AllIntegration.TableStorage;
 using Xunit;
@@ -12,6 +17,52 @@ namespace RepositoryFramework.UnitTest.Repository
 {
     public class AllIntegrationTest
     {
+        private sealed class BlobStorageConnectionService : IConnectionService<BlobContainerClientWrapper>
+        {
+            private readonly IConfiguration _configuration;
+
+            public BlobStorageConnectionService(IConfiguration configuration)
+            {
+                _configuration = configuration;
+            }
+            public BlobContainerClientWrapper GetConnection(string entityName, string? factoryName = null)
+            {
+                var blobContainerClientWrapper = new BlobContainerClientWrapper
+                {
+                    Client = new BlobContainerClient(_configuration["ConnectionString:Storage"], entityName.ToLower())
+                };
+                return blobContainerClientWrapper;
+            }
+        }
+        private sealed class TableStorageConnectionService : IConnectionService<TableClientWrapper<AppUser, AppUserKey>>
+        {
+            private readonly IConfiguration _configuration;
+
+            public TableStorageConnectionService(IConfiguration configuration)
+            {
+                _configuration = configuration;
+            }
+            public TableClientWrapper<AppUser, AppUserKey> GetConnection(string entityName, string? factoryName = null)
+            {
+                var serviceClient = new TableServiceClient(_configuration["ConnectionString:Storage"]);
+                var tableClient = new TableClient(_configuration["ConnectionString:Storage"], entityName.ToLower());
+                var tableStorageClientWrapper = new TableClientWrapper<AppUser, AppUserKey>
+                {
+                    Client = tableClient,
+                    Settings = new TableStorageSettings<AppUser, AppUserKey>
+                    {
+                        PartitionKey = "Id",
+                        RowKey = "Username",
+                        Timestamp = "CreationTime",
+                        PartitionKeyFromKeyFunction = x => x.Id.ToString(),
+                        PartitionKeyFunction = x => x.Id.ToString(),
+                        RowKeyFunction = x => x.Username,
+                        TimestampFunction = x => x.CreationTime
+                    }
+                };
+                return tableStorageClientWrapper;
+            }
+        }
         private static IRepository<AppUser, AppUserKey> GetCorrectIntegration(string injectionedStorage)
         {
             var services = DiUtility.CreateDependencyInjectionWithConfiguration(out var configuration);
@@ -37,6 +88,14 @@ namespace RepositoryFramework.UnitTest.Repository
                             });
                         }).ToResult();
                     break;
+                case "tablestorage2":
+                    services
+                        .AddRepository<AppUser, AppUserKey>(settings =>
+                        {
+                            settings
+                                .WithTableStorage<AppUser, AppUserKey, TableStorageConnectionService, TableStorageKeyReader>();
+                        });
+                    break;
                 case "blobstorage":
                     services
                         .AddRepositoryAsync<AppUser, AppUserKey>(async settings =>
@@ -45,6 +104,14 @@ namespace RepositoryFramework.UnitTest.Repository
                                 .WithBlobStorageAsync(x => x.Settings.ConnectionString = configuration["ConnectionString:Storage"])
                                 .NoContext();
                         }).ToResult();
+                    break;
+                case "blobstorage2":
+                    services
+                        .AddRepository<AppUser, AppUserKey>(settings =>
+                        {
+                            settings
+                                .WithBlobStorage<AppUser, AppUserKey, BlobStorageConnectionService>();
+                        });
                     break;
                 case "cosmos":
                     services.AddRepositoryAsync<AppUser, AppUserKey>(async settings =>
@@ -66,7 +133,9 @@ namespace RepositoryFramework.UnitTest.Repository
         [Theory]
         [InlineData("entityframework")]
         [InlineData("tablestorage")]
+        [InlineData("tablestorage2")]
         [InlineData("blobstorage")]
+        [InlineData("blobstorage2")]
         [InlineData("cosmos")]
         public async Task AllCommandsAndQueryAsync(string whatKindOfStorage)
         {

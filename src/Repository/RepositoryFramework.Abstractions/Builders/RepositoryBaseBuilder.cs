@@ -53,6 +53,18 @@ namespace RepositoryFramework
                 .NoContext();
             return Builder;
         }
+        public TRepositoryBuilder SetStorageAndServiceConnection<TStorage, TConnectionService, TConnectionClient>(string? name = null, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
+            where TStorage : class, TRepositoryPattern
+            where TConnectionService : class, IConnectionService<TConnectionClient>
+            where TConnectionClient : class
+        {
+            SetDefaultFrameworkBeforeStorage<TStorage>(name, serviceLifetime);
+            Services
+                .AddFactory<TRepositoryPattern, TStorage>(_currentName, serviceLifetime);
+            Services
+                .AddFactory<IConnectionService<TConnectionClient>, TConnectionService>(_currentName, serviceLifetime);
+            return Builder;
+        }
         public TRepositoryBuilder SetStorageAndBuildOptions<TStorage, TStorageOptions, TConnection>(
             Action<TStorageOptions> options,
             string? name = null,

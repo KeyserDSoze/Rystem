@@ -1,7 +1,4 @@
-﻿using Azure.Core;
-using Azure.Identity;
-using Azure.Storage.Blobs;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Azure.Storage.Blobs;
 
 namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
 {
