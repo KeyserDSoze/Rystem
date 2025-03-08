@@ -99,6 +99,7 @@ namespace Rystem.Authentication.Social.Blazor
                 }
                 catch
                 {
+                    await LogoutAsync();
                     token = await CreateTokenAsync();
                 }
             }
