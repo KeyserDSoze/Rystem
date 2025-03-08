@@ -56,6 +56,7 @@ namespace Rystem.Authentication.Social.Blazor
                     }
                     catch (Exception)
                     {
+                        await LogoutAsync();
                         return default;
                     }
                 }
