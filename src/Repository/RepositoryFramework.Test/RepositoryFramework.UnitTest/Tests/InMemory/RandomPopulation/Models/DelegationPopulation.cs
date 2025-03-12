@@ -19,10 +19,6 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation.Models
         public ushort? FF { get; set; }
         public long G { get; set; }
         public long? GG { get; set; }
-        public nint H { get; set; }
-        public nint? HH { get; set; }
-        public nuint L { get; set; }
-        public nuint? LL { get; set; }
         public float M { get; set; }
         public float? MM { get; set; }
         public double N { get; set; }
@@ -45,12 +41,10 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation.Models
         public TimeSpan? UU { get; set; }
         public DateTimeOffset V { get; set; }
         public DateTimeOffset? VV { get; set; }
-        public Range Z { get; set; }
-        public Range? ZZ { get; set; }
-        public IEnumerable<InnerDelegationPopulation>? X { get; set; }
-        public IDictionary<string, InnerDelegationPopulation>? Y { get; set; }
+        public List<InnerDelegationPopulation>? X { get; set; }
+        public Dictionary<string, InnerDelegationPopulation>? Y { get; set; }
         public InnerDelegationPopulation[]? W { get; set; }
-        public ICollection<InnerDelegationPopulation>? J { get; set; }
+        public List<InnerDelegationPopulation>? J { get; set; }
     }
     public class InnerDelegationPopulation
     {

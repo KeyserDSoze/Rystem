@@ -12,10 +12,10 @@
         <ProjectReference Include="..\..\Rystem.Api.Client\Rystem.Api.Client.csproj" />
         <ProjectReference Include="..\Rystem.Api.Test.Domain\Rystem.Api.Test.Domain.csproj" />
         <ProjectReference Include="..\Rystem.Api.TestServer\Rystem.Api.TestServer.csproj" />
-        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.2" NoWarn="NU1605" />
-        <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="9.0.2" NoWarn="NU1605" />
-        <PackageReference Include="Microsoft.Identity.Web" Version="3.7.1" />
-        <PackageReference Include="Microsoft.Identity.Web.UI" Version="3.7.1" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.3" NoWarn="NU1605" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="9.0.3" NoWarn="NU1605" />
+        <PackageReference Include="Microsoft.Identity.Web" Version="3.8.0" />
+        <PackageReference Include="Microsoft.Identity.Web.UI" Version="3.8.0" />
     </ItemGroup>
 
 </Project>

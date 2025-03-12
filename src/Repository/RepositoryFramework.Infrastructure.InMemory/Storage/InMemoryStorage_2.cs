@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.InMemory
@@ -101,7 +102,7 @@ namespace RepositoryFramework.InMemory
                 if (!cancellationToken.IsCancellationRequested)
                 {
                     var keyAsString = GetKeyAsString(key);
-                    return _values.TryGetValue(keyAsString, out var value) ? value.Value : default;
+                    return _values.TryGetValue(keyAsString, out var value) ? (value.Value != null ? value.Value.ToJson().FromJson<T>() : default) : default;
                 }
                 else
                     throw new TaskCanceledException();
@@ -115,6 +116,7 @@ namespace RepositoryFramework.InMemory
             => ExecuteAsync(RepositoryMethods.Insert, () =>
             {
                 var keyAsString = GetKeyAsString(key);
+                value = value.ToJson().FromJson<T>();
                 if (!_values.ContainsKey(keyAsString))
                 {
                     _values.TryAdd(keyAsString, Entity.Default(value, key));
@@ -128,6 +130,7 @@ namespace RepositoryFramework.InMemory
             => ExecuteAsync(RepositoryMethods.Update, () =>
             {
                 var keyAsString = GetKeyAsString(key);
+                value = value.ToJson().FromJson<T>();
                 if (_values.ContainsKey(keyAsString))
                 {
                     _values[keyAsString] = Entity.Default(value, key);
@@ -153,7 +156,11 @@ namespace RepositoryFramework.InMemory
                 foreach (var item in filter.Apply(_values.Select(x => x.Value.Value)))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    yield return _values.First(x => x.Value.Value.Equals(item)).Value;
+                    var value = _values.First(x => x.Value.Value.Equals(item)).Value;
+                    if (value.Value != null)
+                        yield return Entity.Default(value.Value != null ? value.Value.ToJson().FromJson<T>() : default, value.Key);
+                    else
+                        yield return value;
                 }
             }
             else

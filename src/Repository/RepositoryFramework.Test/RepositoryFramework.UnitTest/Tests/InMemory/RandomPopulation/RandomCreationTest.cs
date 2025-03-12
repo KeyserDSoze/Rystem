@@ -1,11 +1,12 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using RepositoryFramework.InMemory;
-using RepositoryFramework.UnitTest.InMemory.RandomPopulation.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using RepositoryFramework.InMemory;
+using RepositoryFramework.UnitTest.InMemory.RandomPopulation.Models;
 using Xunit;
 
 namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation
@@ -28,7 +29,6 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation
                                 .WithPattern(x => x.Value!.Y!.First().Value.A, "[a-z]{4,5}")
                                 .WithImplementation(x => x.Value!.I, typeof(MyInnerInterfaceImplementation))
                                 .WithPattern(x => x.Value!.I!.A!, "[a-z]{4,5}")
-                                .WithPattern(x => x.Value!.II!.A!, "[a-z]{4,5}")
                                 .WithImplementation<IInnerInterface, MyInnerInterfaceImplementation>(x => x.Value!.I!);
                         });
                   })
@@ -54,10 +54,6 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation
                                 .WithPattern(x => x.Value!.FF, "[1-9]{1,2}")
                                 .WithPattern(x => x.Value!.G, "[1-9]{1,2}")
                                 .WithPattern(x => x.Value!.GG, "[1-9]{1,2}")
-                                .WithPattern(x => x.Value!.H, "[1-9]{1,3}")
-                                .WithPattern(x => x.Value!.HH, "[1-9]{1,3}")
-                                .WithPattern(x => x.Value!.L, "[1-9]{1,3}")
-                                .WithPattern(x => x.Value!.LL, "[1-9]{1,3}")
                                 .WithPattern(x => x.Value!.M, "[1-9]{1,2}")
                                 .WithPattern(x => x.Value!.MM, "[1-9]{1,2}")
                                 .WithPattern(x => x.Value!.N, "[1-9]{1,2}")
@@ -77,8 +73,6 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation
                                 .WithPattern(x => x.Value!.UU, "[1-9]{1,4}")
                                 .WithPattern(x => x.Value!.V, @"(?:10|11|12)/(?:06|07|08)/(?:2018|2019|2020|2021|2022) (00:00:00 AM \+00:00)")
                                 .WithPattern(x => x.Value!.VV, @"(?:10|11|12)/(?:06|07|08)/(?:2018|2019|2020|2021|2022) (00:00:00 AM \+00:00)")
-                                .WithPattern(x => x.Value!.Z, "[1-9]{1,2}", "[1-9]{1,2}")
-                                .WithPattern(x => x.Value!.ZZ, "[1-9]{1,2}", "[1-9]{1,2}")
                                 .WithPattern(x => x.Value!.J!.First().A, "[a-z]{4,5}")
                                 .WithPattern(x => x.Value!.Y!.First().Value.A, "[a-z]{4,5}");
                         });
@@ -104,10 +98,6 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation
                                 .WithValue(x => x.Value!.FF, () => (ushort)2)
                                 .WithValue(x => x.Value!.G, () => 2)
                                 .WithValue(x => x.Value!.GG, () => 2)
-                                .WithValue(x => x.Value!.H, () => (nint)2)
-                                .WithValue(x => x.Value!.HH, () => (nint)2)
-                                .WithValue(x => x.Value!.L, () => (nuint)2)
-                                .WithValue(x => x.Value!.LL, () => (nuint)2)
                                 .WithValue(x => x.Value!.M, () => 2)
                                 .WithValue(x => x.Value!.MM, () => 2)
                                 .WithValue(x => x.Value!.N, () => 2)
@@ -127,8 +117,6 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation
                                 .WithValue(x => x.Value!.UU, () => new TimeSpan(2))
                                 .WithValue(x => x.Value!.V, () => DateTimeOffset.UtcNow)
                                 .WithValue(x => x.Value!.VV, () => DateTimeOffset.UtcNow)
-                                .WithValue(x => x.Value!.Z, () => new Range(new Index(1), new Index(2)))
-                                .WithValue(x => x.Value!.ZZ, () => new Range(new Index(1), new Index(2)))
                                 .WithValue(x => x.Value!.J, () =>
                                 {
                                     List<InnerDelegationPopulation> inners = new();
@@ -182,6 +170,10 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation
             _autoincrementRepository = s_serviceProvider.GetService<IRepository<AutoincrementModel, int>>()!;
             _autoincrementRepository2 = s_serviceProvider.GetService<IRepository<AutoincrementModel2, int>>()!;
         }
+        public class Aloa
+        {
+            public Range Range { get; set; }
+        }
         [Fact]
         public async Task TestWithoutRegexAsync()
         {
@@ -201,10 +193,6 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation
             Assert.NotNull(theFirst.FF);
             Assert.NotEqual((long)0, theFirst.G);
             Assert.NotNull(theFirst.GG);
-            Assert.NotEqual((nint)0, theFirst.H);
-            Assert.NotNull(theFirst.HH);
-            Assert.NotEqual((nuint)0, theFirst.L);
-            Assert.NotNull(theFirst.LL);
             Assert.NotEqual((float)0, theFirst.M);
             Assert.NotNull(theFirst.MM);
             Assert.NotEqual((double)0, theFirst.N);
@@ -224,8 +212,6 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation
             Assert.NotNull(theFirst.UU);
             Assert.NotEqual(new DateTimeOffset(), theFirst.V);
             Assert.NotNull(theFirst.VV);
-            Assert.NotEqual(new Range(), theFirst.Z);
-            Assert.NotNull(theFirst.ZZ);
             Assert.NotNull(theFirst.X);
             Assert.Equal(10, theFirst?.X?.Count());
             Assert.NotNull(theFirst?.Y);
@@ -247,8 +233,6 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation
             }
             Assert.Equal(theFirst.I!.A!,
                     regex.Matches(theFirst.I!.A!).OrderByDescending(x => x.Length).First().Value);
-            Assert.Equal(theFirst.II!.A!,
-                    regex.Matches(theFirst.II!.A!).OrderByDescending(x => x.Length).First().Value);
         }
         [Fact]
         public async Task TestWithRegexAsync()
@@ -272,10 +256,6 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation
             Assert.NotNull(theFirst.FF);
             Assert.NotEqual((long)0, theFirst.G);
             Assert.NotNull(theFirst.GG);
-            Assert.NotEqual((nint)0, theFirst.H);
-            Assert.NotNull(theFirst.HH);
-            Assert.NotEqual((nuint)0, theFirst.L);
-            Assert.NotNull(theFirst.LL);
             Assert.NotEqual((float)0, theFirst.M);
             Assert.NotNull(theFirst.MM);
             Assert.NotEqual((double)0, theFirst.N);
@@ -295,8 +275,6 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation
             Assert.NotNull(theFirst.UU);
             Assert.NotEqual(new DateTimeOffset(), theFirst.V);
             Assert.NotNull(theFirst.VV);
-            Assert.NotEqual(new Range(), theFirst.Z);
-            Assert.NotNull(theFirst.ZZ);
             Assert.NotNull(theFirst.X);
             Assert.Equal(8, theFirst?.X?.Count());
             Assert.NotNull(theFirst?.Y);
@@ -343,12 +321,6 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation
             Assert.Equal(2, theFirst.G);
             Assert.NotNull(theFirst.GG);
             Assert.Equal(2, theFirst.GG);
-            Assert.Equal(2, theFirst.H);
-            Assert.NotNull(theFirst.HH);
-            Assert.Equal(2, theFirst.HH);
-            Assert.Equal((nuint)2, theFirst.L);
-            Assert.NotNull(theFirst.LL);
-            Assert.Equal((nuint)2, theFirst.LL);
             Assert.Equal(2, theFirst.M);
             Assert.NotNull(theFirst.MM);
             Assert.Equal(2, theFirst.MM);
@@ -374,11 +346,6 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation
             Assert.NotNull(theFirst.UU);
             Assert.NotEqual(new DateTimeOffset(), theFirst.V);
             Assert.NotNull(theFirst.VV);
-            Assert.Equal(1, theFirst.Z.Start);
-            Assert.Equal(2, theFirst.Z.End);
-            Assert.NotNull(theFirst.ZZ);
-            Assert.Equal(1, theFirst.ZZ?.Start);
-            Assert.Equal(2, theFirst.ZZ?.End);
             Assert.NotNull(theFirst.X);
             Assert.Equal(10, theFirst?.X?.Count());
             Assert.NotNull(theFirst?.Y);

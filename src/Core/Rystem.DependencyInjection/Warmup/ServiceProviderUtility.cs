@@ -12,7 +12,10 @@ namespace Rystem
             foreach (var buildEvent in AfterBuildEvents)
             {
                 var scope = providers.CreateScope();
-                _ = await Try.WithDefaultOnCatchAsync(() => buildEvent.Invoke(scope.ServiceProvider));
+                _ = await Try.WithDefaultOnCatchAsync(() =>
+                {
+                    return buildEvent.Invoke(scope.ServiceProvider);
+                });
                 scope.Dispose();
             }
         }

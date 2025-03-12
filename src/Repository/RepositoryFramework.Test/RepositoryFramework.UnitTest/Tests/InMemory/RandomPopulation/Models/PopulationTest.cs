@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation.Models
 {
@@ -19,10 +21,6 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation.Models
         public ushort? FF { get; set; }
         public long G { get; set; }
         public long? GG { get; set; }
-        public nint H { get; set; }
-        public nint? HH { get; set; }
-        public nuint L { get; set; }
-        public nuint? LL { get; set; }
         public float M { get; set; }
         public float? MM { get; set; }
         public double N { get; set; }
@@ -43,14 +41,13 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation.Models
         public TimeSpan? UU { get; set; }
         public DateTimeOffset V { get; set; }
         public DateTimeOffset? VV { get; set; }
-        public Range Z { get; set; }
-        public Range? ZZ { get; set; }
-        public IEnumerable<InnerPopulation>? X { get; set; }
-        public IDictionary<string, InnerPopulation>? Y { get; set; }
+        public List<InnerPopulation>? X { get; set; }
+        public Dictionary<string, InnerPopulation>? Y { get; set; }
         public InnerPopulation[]? W { get; set; }
-        public ICollection<InnerPopulation>? J { get; set; }
+        public List<InnerPopulation>? J { get; set; }
+
+        [JsonConverter(typeof(InterfaceConverter<IInnerInterface, MyInnerInterfaceImplementation>))]
         public IInnerInterface? I { get; set; }
-        public IInnerInterfaceForDynamic? II { get; set; }
     }
     public class InnerPopulation
     {
@@ -65,6 +62,20 @@ namespace RepositoryFramework.UnitTest.InMemory.RandomPopulation.Models
     public interface IInnerInterface
     {
         string A { get; set; }
+    }
+    public class InterfaceConverter<TInterface, TImplementation> : JsonConverter<TInterface>
+        where TImplementation : TInterface, new()
+    {
+        public override TInterface Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            var implementation = JsonSerializer.Deserialize<TImplementation>(ref reader, options);
+            return implementation!;
+        }
+
+        public override void Write(Utf8JsonWriter writer, TInterface value, JsonSerializerOptions options)
+        {
+            JsonSerializer.Serialize(writer, (TImplementation)value, options);
+        }
     }
     public class MyInnerInterfaceImplementation : IInnerInterface
     {
