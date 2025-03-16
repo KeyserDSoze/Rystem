@@ -1,0 +1,45 @@
+﻿@using Microsoft.AspNetCore.WebUtilities
+@using RepositoryFramework
+@using System.Globalization
+@inject IJSRuntime JSRuntime
+@inject IRepository<Userone, string> Repository
+@inject NavigationManager NavigationManager
+
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>
+
+@code {
+    private Userone? user;
+    private string userId = "1";
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && user?.Language == null)
+        {
+            var browserLanguage = await JSRuntime.InvokeAsync<string>("getBrowserLanguage");
+            var language = browserLanguage.Split('-').First();
+            user.Language = language;
+            await Repository.UpdateAsync(userId, user);
+            NavigationManager.Refresh(true);
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("key", out var key))
+        {
+            userId = key.First();
+        }
+        user = await Repository.GetAsync(userId);
+        if (user?.Language != null)
+        {
+            CultureInfo.DefaultThreadCurrentCulture = new CultureInfo(user.Language);
+            CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo(user.Language);
+        }
+    }
+}

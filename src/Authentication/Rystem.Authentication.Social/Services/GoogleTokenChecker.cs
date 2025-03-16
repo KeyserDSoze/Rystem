@@ -38,12 +38,12 @@ namespace Rystem.Authentication.Social
                             Claims =
                             [
                                 new Claim(ClaimTypes.Email, payload.Email),
-                            new Claim(ClaimTypes.Name, payload.Name),
-                            new Claim(ClaimTypes.GivenName, payload.FamilyName),
-                            new Claim(ClaimTypes.Locality, payload.Locale),
-                            new Claim(ClaimTypes.NameIdentifier, payload.Subject),
-                            new Claim(ClaimTypes.Thumbprint, payload.Picture),
-                        ]
+                                new Claim(ClaimTypes.Name, payload.Name),
+                                new Claim(ClaimTypes.GivenName, payload.FamilyName),
+                                new Claim(ClaimTypes.Locality, payload.Locale),
+                                new Claim(ClaimTypes.NameIdentifier, payload.Subject),
+                                new Claim(ClaimTypes.Thumbprint, payload.Picture),
+                            ]
                         };
                     }
                 }

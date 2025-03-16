@@ -23,6 +23,7 @@
                         "Rystem.RepositoryFramework.Infrastructure.MsSql", "RepositoryFramework.Web.Components", "Rystem.Content.Infrastructure.Azure.Storage.Blob",
                         "Rystem.Content.Infrastructure.InMemory", "Rystem.Content.Infrastructure.M365.Sharepoint",
                         "Rystem.Content.Infrastructure.Azure.Storage.File", "Rystem.Api.Server", "Rystem.Api.Client",
+                        "Rystem.Localization",
                         "Rystem.Authentication.Social", "Rystem.Authentication.Social.Blazor", "rystem.authentication.social.react")
             .CreateSon()
             .AddProject("Rystem.Queue", "Rystem.RepositoryFramework.Cache.Azure.Storage.Blob",

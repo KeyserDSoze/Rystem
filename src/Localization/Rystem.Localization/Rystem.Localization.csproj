@@ -1,0 +1,47 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <DebugSymbols>true</DebugSymbols>
+        <EmbedAllSources>true</EmbedAllSources>
+        <DebugType>portable</DebugType>
+        <Authors>Alessandro Rapiti</Authors>
+        <Company>Alessandro Rapiti</Company>
+        <Product>Rystem</Product>
+        <Description>Rystem is a open-source framework to improve the System namespace in .Net</Description>
+        <Copyright>2024</Copyright>
+        <PackageIcon>rystem.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Localization/Rystem.Localization</RepositoryUrl>
+        <PackageId>Rystem.Localization</PackageId>
+        <Version>9.0.26</Version>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    </PropertyGroup>
+    <Choose>
+        <When Condition=" '$(Configuration)'=='Debug' ">
+            <ItemGroup>
+                <ProjectReference Include="..\..\Core\Rystem.DependencyInjection\Rystem.DependencyInjection.csproj" />
+                <ProjectReference Include="..\..\Repository\RepositoryFramework.Abstractions\RepositoryFramework.Abstractions.csproj" />
+            </ItemGroup>
+        </When>
+        <When Condition=" '$(Configuration)'!='Debug' ">
+            <ItemGroup>
+                <PackageReference Include="Rystem.DependencyInjection" Version="9.0.26" />
+                <PackageReference Include="Rystem.RepositoryFramework.Abstractions" Version="9.0.26" />
+            </ItemGroup>
+        </When>
+    </Choose>
+    <ItemGroup>
+        <None Update="rystem.png">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+        <None Update="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+</Project>
