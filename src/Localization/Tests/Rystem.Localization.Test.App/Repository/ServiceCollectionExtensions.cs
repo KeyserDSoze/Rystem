@@ -1,11 +1,48 @@
-﻿using RepositoryFramework;
+﻿using System.Globalization;
+using RepositoryFramework;
 using RepositoryFramework.InMemory;
 
 namespace Rystem.Localization.Test.App
 {
     public static class ServiceCollectionExtensions
     {
+        public sealed class LocalizationMiddleware : IMiddleware
+        {
+            private readonly IRepository<Userone, string> _userRepository;
 
+            public LocalizationMiddleware(IRepository<Userone, string> userRepository)
+            {
+                _userRepository = userRepository;
+            }
+            public async Task InvokeAsync(HttpContext context, RequestDelegate next)
+            {
+                if (context.Request.Cookies.TryGetValue("lang", out var cookieLanguage))
+                {
+                    var language = cookieLanguage;
+                    CultureInfo.CurrentCulture = new CultureInfo(language ?? "en");
+                    CultureInfo.CurrentUICulture = new CultureInfo(language ?? "en");
+                }
+                //else if (context.Request.Query.TryGetValue("key", out var key))
+                //{
+                //    var userId = key.First();
+                //    var user = await _userRepository.GetAsync(userId);
+                //    CultureInfo.CurrentCulture = new CultureInfo(user.Language ?? "en");
+                //    CultureInfo.CurrentUICulture = new CultureInfo(user.Language ?? "en");
+                //    context.Response.Cookies.Append("language", user.Language ?? "en", new CookieOptions
+                //    {
+                //        Expires = DateTimeOffset.UtcNow.AddDays(30),
+                //        HttpOnly = true,
+                //        Secure = context.Request.IsHttps
+                //    });
+                //}
+                await next(context);
+            }
+        }
+        public static IApplicationBuilder AddLocalizationMiddleware(this IApplicationBuilder app)
+        {
+            app.UseMiddleware<LocalizationMiddleware>();
+            return app;
+        }
         public static IServiceCollection AddLocalizationForRystem(this IServiceCollection services)
         {
             services.AddRepository<Userone, string>(x => x.WithInMemory());

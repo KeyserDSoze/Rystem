@@ -9,8 +9,10 @@
         <PackageReference Include="Microsoft.Identity.Abstractions" Version="8.2.0" />
     </ItemGroup>
     <ItemGroup>
+        <ProjectReference Include="..\..\..\Localization\Rystem.Localization\Rystem.Localization.csproj" />
         <ProjectReference Include="..\..\..\Repository\RepositoryFramework.Api.Client.Authentication.BlazorServer\RepositoryFramework.Api.Client.Authentication.BlazorServer.csproj" />
         <ProjectReference Include="..\..\..\Repository\RepositoryFramework.Api.Client\RepositoryFramework.Api.Client.csproj" />
+        <ProjectReference Include="..\..\..\Repository\RepositoryFramework.Infrastructure.InMemory\RepositoryFramework.Infrastructure.InMemory.csproj" />
         <ProjectReference Include="..\..\Rystem.Authentication.Social.Blazor\Rystem.Authentication.Social.Blazor.csproj" />
     </ItemGroup>
 

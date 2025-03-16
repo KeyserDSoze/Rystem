@@ -9,4 +9,6 @@
 @using Rystem.Localization.Test.App
 @using Rystem.Localization.Test.App.Components
 
-@inject IRystemLocalizer<TheDictionary> Localizer
+@inject IRepositoryLocalizer<TheDictionary> Localizer
+@inject TheDictionary InstanceOfLocalizer
+@inject NavigationManager NavigationManager

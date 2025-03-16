@@ -3,17 +3,15 @@ using RepositoryFramework;
 
 namespace Rystem.Localization
 {
-    internal sealed class Languages<T> : ILanguages<T>, IServiceForFactory
+    internal sealed class Languages<T> : ILanguages<T>
     {
         public RystemLocalizationFiles<T> Localizer { get; } = new RystemLocalizationFiles<T>
         {
             AllLanguages = []
         };
-        private string? _factoryName;
-        public void SetFactoryName(string name)
-        {
-            _factoryName = name;
-        }
+        private readonly AnyOf<string?, Enum>? _factoryName;
+        public Languages(AnyOf<string?, Enum>? factoryName)
+             => _factoryName = factoryName;
 
         public async ValueTask WarmUpAsync(IServiceProvider serviceProvider)
         {

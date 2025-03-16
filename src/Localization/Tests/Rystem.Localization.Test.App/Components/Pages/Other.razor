@@ -1,4 +1,4 @@
-﻿@page "/"
+﻿@page "/other"
 
 <PageTitle>Home</PageTitle>
 
@@ -30,13 +30,13 @@
     @InstanceOfLocalizer.TheSecondPage.Title["something"]
 </h5>
 
-<div @onclick="@GoToOther">Go other</div>
+<div @onclick="@GoToOther">Go home</div>
 
 Welcome to your new app.
 
 @code {
     private void GoToOther()
     {
-        NavigationManager.NavigateTo("/other");
+        NavigationManager.NavigateTo("/");
     }
 }

@@ -17,29 +17,42 @@
     private string userId = "1";
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && user?.Language == null)
+        if (firstRender)
         {
-            var browserLanguage = await JSRuntime.InvokeAsync<string>("getBrowserLanguage");
-            var language = browserLanguage.Split('-').First();
-            user.Language = language;
-            await Repository.UpdateAsync(userId, user);
-            NavigationManager.Refresh(true);
+            if (user?.Language != null)
+            {
+                var cookieLanguage = await JSRuntime.InvokeAsync<string>("getLanguageCookie");
+                if (cookieLanguage != user.Language)
+                {
+                    await JSRuntime.InvokeVoidAsync("setLanguageCookie", user.Language);
+                    NavigationManager.Refresh(true);
+                }
+            }
+            else
+            {
+                var browserLanguage = await JSRuntime.InvokeAsync<string>("getBrowserLanguage");
+                var language = browserLanguage.Split('-').First();
+                user.Language = language;
+                await Repository.UpdateAsync(userId, user);
+                await JSRuntime.InvokeVoidAsync("setLanguageCookie", language);
+                NavigationManager.Refresh(true);
+            }
         }
         await base.OnAfterRenderAsync(firstRender);
     }
     protected override async Task OnInitializedAsync()
     {
         var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
-        
+
         if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("key", out var key))
         {
             userId = key.First();
         }
         user = await Repository.GetAsync(userId);
-        if (user?.Language != null)
-        {
-            CultureInfo.DefaultThreadCurrentCulture = new CultureInfo(user.Language);
-            CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo(user.Language);
-        }
+        // if (user?.Language != null)
+        // {
+        //     CultureInfo.DefaultThreadCurrentCulture = new CultureInfo(user.Language);
+        //     CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo(user.Language);
+        // }
     }
 }

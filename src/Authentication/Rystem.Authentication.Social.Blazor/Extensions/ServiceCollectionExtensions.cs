@@ -1,4 +1,5 @@
-﻿using Microsoft.Identity.Abstractions;
+﻿using System.Net.Http;
+using Microsoft.Identity.Abstractions;
 using Rystem.Authentication.Social.Blazor;
 
 namespace Microsoft.Extensions.DependencyInjection
@@ -19,6 +20,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 x.BaseAddress = new Uri(options.ApiUrl!);
             });
             services.AddTransient<SocialLoginManager>();
+            services.AddSingleton<LocalizationMiddleware>();
             services.AddScoped<IAuthorizationHeaderProvider, SocialLoginAuthorizationHeaderProvider>();
             return services;
         }

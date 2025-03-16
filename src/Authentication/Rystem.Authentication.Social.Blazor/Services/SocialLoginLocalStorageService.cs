@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Globalization;
+using System.Text.Json;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
@@ -71,5 +72,25 @@ namespace Rystem.Authentication.Social.Blazor
 
         public ValueTask DeleteTokenAsync()
             => _jSRuntime.InvokeVoidAsync(LocalStorageSetterName, TokenKey, null);
+        public async ValueTask SetLanguageAsync<TUser>(TUser user)
+            where TUser : ILocalizedSocialUser
+        {
+            if (user?.Language != null)
+            {
+                var cookieLanguage = await _jSRuntime.InvokeAsync<string>("languageManager.get");
+                if (cookieLanguage != user.Language)
+                {
+                    await _jSRuntime.InvokeVoidAsync("languageManager.set", user.Language);
+                }
+                CultureInfo.CurrentCulture = new CultureInfo(user.Language);
+                CultureInfo.CurrentUICulture = new CultureInfo(user.Language);
+            }
+            else
+            {
+                var browserLanguage = await _jSRuntime.InvokeAsync<string>("languageManager.getBrowserLanguage");
+                var language = browserLanguage.Split('-').First();
+                await _jSRuntime.InvokeVoidAsync("languageManager.set", language);
+            }
+        }
     }
 }

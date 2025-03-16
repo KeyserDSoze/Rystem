@@ -11,7 +11,8 @@ namespace Rystem.Authentication.Social.TestApi.Services
             return Task.FromResult((new SuperSocialUser
             {
                 Username = $"a {username}",
-                Email = username
+                Email = username,
+                Language = "it"
             } as ISocialUser)!);
         }
 
@@ -20,13 +21,16 @@ namespace Rystem.Authentication.Social.TestApi.Services
             await Task.CompletedTask;
             yield return new Claim(ClaimTypes.Name, response.Username!);
             yield return new Claim(ClaimTypes.Upn, "something");
+            yield return new Claim(RystemClaimTypes.Language, "it");
         }
     }
-    public sealed class SuperSocialUser : ISocialUser
+    public sealed class SuperSocialUser : ISocialUser, ILocalizedSocialUser
     {
         [JsonPropertyName("e")]
         public required string Email { get; set; }
         [JsonPropertyName("u")]
         public string? Username { get; set; }
+        [JsonPropertyName("l")]
+        public string? Language { get; set; }
     }
 }

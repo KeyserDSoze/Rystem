@@ -1,4 +1,5 @@
 ﻿using Rystem.Authentication.Social.TestApi.Models;
+using Rystem.Localization.Test.App;
 using RystemAuthentication.Social.TestBlazorApp.Components;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,8 +21,9 @@ builder.Services.AddRepository<SocialRole, string>(repositoryBuilder =>
     });
 });
 builder.Services.AddDefaultSocialLoginAuthorizationInterceptorForApiHttpClient();
+builder.Services.AddLocalizationFromRystem();
 var app = builder.Build();
-
+await app.Services.WarmUpAsync();
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -34,7 +36,7 @@ app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 app.UseAntiforgery();
-
+app.UseSocialLoginAuthorization();
 app
     .MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

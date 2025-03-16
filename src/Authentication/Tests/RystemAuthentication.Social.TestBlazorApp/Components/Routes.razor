@@ -4,6 +4,12 @@
 @using Rystem.Authentication.Social.TestApi.Models
 
 <SocialAuthenticationRouter AppAssembly="typeof(Program).Assembly" DefaultLayout="typeof(Layout.MainLayout)" SetUser="SetUserAsync" TUser="SocialUser">
+    <LoginPage>
+        <h1>Your customization here.</h1>
+    </LoginPage>
+    <NotFound>
+        <h1>Not Found</h1>
+    </NotFound>
 </SocialAuthenticationRouter>
 
 

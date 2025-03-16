@@ -1,6 +1,6 @@
 ﻿namespace Rystem.Localization
 {
-    public interface IRystemLocalizer<T>
+    public interface IRepositoryLocalizer<T>
     {
         T Instance { get; }
     }

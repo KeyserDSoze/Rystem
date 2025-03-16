@@ -10,6 +10,32 @@
 
 Welcome to your new app.
 
+<h2>
+    @Localizer.Instance.Value
+</h2>
+<h3>
+    @Localizer.Instance.TheFirstPage.Title
+</h3>
+<h4>
+    @Localizer.Instance.TheFirstPage.Description
+</h4>
+<h5>
+    @Localizer.Instance.TheSecondPage.Title["something"]
+</h5>
+
+<h2>
+    @InstanceOfLocalizer.Value
+</h2>
+<h3>
+    @InstanceOfLocalizer.TheFirstPage.Title
+</h3>
+<h4>
+    @InstanceOfLocalizer.TheFirstPage.Description
+</h4>
+<h5>
+    @InstanceOfLocalizer.TheSecondPage.Title["something"]
+</h5>
+
 @User
 @if (Roles != null)
 {

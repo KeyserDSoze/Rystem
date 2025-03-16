@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-
-namespace Rystem.Authentication.Social
+﻿namespace Rystem.Authentication.Social
 {
     public interface ISocialUser
     {

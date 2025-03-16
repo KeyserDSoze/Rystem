@@ -10,11 +10,15 @@
 }
 else if (Rendered)
 {
-    <SocialLogin></SocialLogin>
+    <SocialLogin>
+        @LoginPage
+    </SocialLogin>
 }
 @code {
     [Parameter]
     public required RenderFragment ChildContent { get; set; }
+    [Parameter]
+    public RenderFragment? LoginPage { get; set; }
     [Parameter]
     public SetUser<TUser>? SetUser { get; set; }
     private SocialUserWrapper<TUser>? User { get; set; }
@@ -28,12 +32,13 @@ else if (Rendered)
             if (token != default)
             {
                 await LocalStorage.DeleteStateAsync();
-            }
-            if (token != default)
-            {
                 User = await Manager.MeAsync<TUser>();
                 if (User != null)
                 {
+                    if (User.User is ILocalizedSocialUser localizedUser)
+                    {
+                        await LocalStorage.SetLanguageAsync(localizedUser);
+                    }
                     User.LogoutAsync = LogoutAsync;
                     if (SetUser != null)
                         await SetUser(User.User);

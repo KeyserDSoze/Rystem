@@ -2,15 +2,15 @@
 
 namespace Rystem.Localization
 {
-    internal class RystemLocalizer<T> : IRystemLocalizer<T>
+    internal class RepositoryLocalizer<T> : IRepositoryLocalizer<T>
     {
         private readonly ILanguages<T> _languages;
 
-        public RystemLocalizer(ILanguages<T> languages)
+        public RepositoryLocalizer(ILanguages<T> languages)
         {
             _languages = languages;
         }
-        private static readonly CultureInfo _defaultLanguage = new("en");
+        private static readonly CultureInfo s_defaultLanguage = new("en");
         private T GetLanguage()
         {
             var language = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
@@ -18,12 +18,16 @@ namespace Rystem.Localization
             {
                 return value;
             }
-            else if (_languages.Localizer.AllLanguages.TryGetValue(_defaultLanguage.TwoLetterISOLanguageName, out var defaultValue))
+            else if (_languages.Localizer.AllLanguages.TryGetValue(s_defaultLanguage.TwoLetterISOLanguageName, out var defaultValue))
             {
                 return defaultValue;
             }
             return _languages.Localizer.AllLanguages.First().Value;
         }
         public T Instance => GetLanguage();
+        public static implicit operator T(RepositoryLocalizer<T> localizer)
+        {
+            return localizer.Instance;
+        }
     }
 }

@@ -18,14 +18,18 @@ namespace Rystem.Localization
                 Action<IRepositoryBuilder<T, string>> repositoryBuilder,
                 AnyOf<string?, Enum>? name = null,
                 Func<IServiceProvider, Task>? storageWarmup = null)
+               where T : class
         {
             services.AddRepository(repositoryBuilder);
             if (storageWarmup != null)
             {
                 services.AddWarmUp(storageWarmup);
             }
-            services.AddFactory<IRystemLocalizer<T>, RystemLocalizer<T>>(name, ServiceLifetime.Singleton);
-            services.AddFactory<ILanguages<T>, Languages<T>>(name, ServiceLifetime.Singleton);
+            var languages = new Languages<T>(name);
+            services.AddFactory<ILanguages<T>>(languages, name, ServiceLifetime.Singleton);
+            var localizer = new RepositoryLocalizer<T>(languages);
+            services.AddFactory<IRepositoryLocalizer<T>>(localizer, name, ServiceLifetime.Singleton);
+            services.AddFactory((_, _) => localizer.Instance, name, ServiceLifetime.Transient);
             services.AddWarmUp(async (serviceProvider) =>
             {
                 var localizer = (serviceProvider.GetRequiredService<IFactory<ILanguages<T>>>()).Create(name);
@@ -53,7 +57,7 @@ namespace Rystem.Localization
             {
                 services.AddWarmUp(storageWarmup);
             }
-            services.AddFactory<IRystemLocalizer<T>, RystemLocalizer<T>>(name, ServiceLifetime.Singleton);
+            services.AddFactory<IRepositoryLocalizer<T>, RepositoryLocalizer<T>>(name, ServiceLifetime.Singleton);
             services.AddFactory<ILanguages<T>, Languages<T>>(name, ServiceLifetime.Singleton);
             services.AddWarmUp(async (serviceProvider) =>
             {
