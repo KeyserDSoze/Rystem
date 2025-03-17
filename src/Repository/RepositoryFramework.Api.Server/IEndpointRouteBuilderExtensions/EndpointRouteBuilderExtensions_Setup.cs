@@ -73,14 +73,17 @@ namespace Microsoft.Extensions.DependencyInjection
                         {
                             if (!service.ExposedMethods.HasFlag(currentMethod.Method))
                                 continue;
-                            var isNotImplemented = false;
-                            Try.WithDefaultOnCatch(() =>
+                            if (!service.ImplementationType.HasInterface<IDefaultIntegration>())
                             {
-                                var instructions = method.GetBodyAsString();
-                                isNotImplemented = instructions.Contains(NotImplementedExceptionIlOperation);
-                            });
-                            if (isNotImplemented)
-                                continue;
+                                var isNotImplemented = false;
+                                Try.WithDefaultOnCatch(() =>
+                                {
+                                    var instructions = method.GetBodyAsString();
+                                    isNotImplemented = instructions.Contains(NotImplementedExceptionIlOperation);
+                                });
+                                if (isNotImplemented)
+                                    continue;
+                            }
                             var uri = $"{settings.StartingPath}/{currentName}/{(string.IsNullOrWhiteSpace(service.FactoryName) ? string.Empty : $"{service.FactoryName}/")}{currentMethod.Method}";
                             _ = typeof(EndpointRouteBuilderExtensions).GetMethod(currentMethod.Name, BindingFlags.NonPublic | BindingFlags.Static)!
                                .MakeGenericMethod(modelType, service.KeyType, service.InterfaceType)

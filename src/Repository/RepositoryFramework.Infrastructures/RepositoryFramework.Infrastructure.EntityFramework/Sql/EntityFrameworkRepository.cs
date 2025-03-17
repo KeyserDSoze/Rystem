@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.EntityFramework
 {
-    internal sealed class EntityFrameworkRepository<T, TKey, TEntityModel, TContext> : IRepository<T, TKey>, IServiceWithFactoryWithOptions<EntityFrameworkOptions<T, TKey, TEntityModel, TContext>>
+    internal sealed class EntityFrameworkRepository<T, TKey, TEntityModel, TContext> : IRepository<T, TKey>, IServiceWithFactoryWithOptions<EntityFrameworkOptions<T, TKey, TEntityModel, TContext>>, IDefaultIntegration
         where TEntityModel : class
         where TKey : notnull
         where TContext : DbContext

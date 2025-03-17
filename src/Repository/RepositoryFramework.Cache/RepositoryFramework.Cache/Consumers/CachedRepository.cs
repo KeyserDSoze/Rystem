@@ -2,7 +2,7 @@
 
 namespace RepositoryFramework.Cache
 {
-    internal sealed class CachedRepository<T, TKey> : CachedQuery<T, TKey>, IRepository<T, TKey>, IDecoratorService<IRepository<T, TKey>>, IDecoratorService<ICommand<T, TKey>>, IServiceForFactory
+    internal sealed class CachedRepository<T, TKey> : CachedQuery<T, TKey>, IRepository<T, TKey>, IDecoratorService<IRepository<T, TKey>>, IDecoratorService<ICommand<T, TKey>>, IServiceForFactory, IDefaultIntegration
          where TKey : notnull
     {
         private IRepository<T, TKey>? _repository;

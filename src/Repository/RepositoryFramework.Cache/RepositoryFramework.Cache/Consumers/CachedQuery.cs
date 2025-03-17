@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Cache
 {
-    internal class CachedQuery<T, TKey> : IQuery<T, TKey>, IDecoratorService<IQuery<T, TKey>>, IServiceForFactory
+    internal class CachedQuery<T, TKey> : IQuery<T, TKey>, IDecoratorService<IQuery<T, TKey>>, IServiceForFactory, IDefaultIntegration
          where TKey : notnull
     {
         private protected IQuery<T, TKey> _query;

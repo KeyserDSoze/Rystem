@@ -10,7 +10,7 @@ using Microsoft.Xrm.Sdk.Query;
 
 namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
 {
-    internal sealed class DataverseRepository<T, TKey> : IRepository<T, TKey>, IServiceWithFactoryWithOptions<DataverseClientWrapper<T, TKey>>
+    internal sealed class DataverseRepository<T, TKey> : IRepository<T, TKey>, IServiceWithFactoryWithOptions<DataverseClientWrapper<T, TKey>>, IDefaultIntegration
         where TKey : notnull
     {
         public void SetOptions(DataverseClientWrapper<T, TKey> options)

@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.MsSql
 {
-    internal sealed class SqlRepository<T, TKey> : IRepository<T, TKey>, IAsyncDisposable, IDisposable, IServiceWithFactoryWithOptions<MsSqlOptions<T, TKey>>
+    internal sealed class SqlRepository<T, TKey> : IRepository<T, TKey>, IAsyncDisposable, IDisposable, IServiceWithFactoryWithOptions<MsSqlOptions<T, TKey>>, IDefaultIntegration
         where TKey : notnull
     {
         public void SetOptions(MsSqlOptions<T, TKey> options)

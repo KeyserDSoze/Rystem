@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
 {
-    internal sealed class TableStorageRepositoryBuilder<T, TKey> : ITableStorageRepositoryBuilder<T, TKey>, IOptionsBuilderAsync<TableClientWrapper<T, TKey>>
+    internal sealed class TableStorageRepositoryBuilder<T, TKey> : ITableStorageRepositoryBuilder<T, TKey>, IOptionsBuilderAsync<TableClientWrapper<T, TKey>>, IDefaultIntegration
         where TKey : notnull
     {
         private readonly TableStorageSettings<T, TKey> _settings = new();

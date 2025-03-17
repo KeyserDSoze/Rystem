@@ -17,6 +17,13 @@ namespace System.Reflection
         /// Check if type has that interface.
         /// </summary>
         /// <param name="type">Type to check.</param>
+        /// <returns>bool</returns>
+        public static bool HasInterface<T>(this Type type)
+            => type.HasInterface(typeof(T));
+        /// <summary>
+        /// Check if type has that interface.
+        /// </summary>
+        /// <param name="type">Type to check.</param>
         /// <param name="interfaceType">Type of interface to find.</param>
         /// <returns>bool</returns>
         public static bool HasInterface(this Type type, Type interfaceType)

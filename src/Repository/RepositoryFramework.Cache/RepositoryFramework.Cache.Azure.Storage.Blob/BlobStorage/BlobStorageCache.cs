@@ -2,7 +2,7 @@
 
 namespace RepositoryFramework.Cache.Azure.Storage.Blob
 {
-    internal sealed class BlobStorageCache<T, TKey> : IDistributedCache<T, TKey>
+    internal sealed class BlobStorageCache<T, TKey> : IDistributedCache<T, TKey>, IDefaultIntegration
         where TKey : notnull
     {
         private readonly IRepository<BlobStorageCacheModel, string> _repository;

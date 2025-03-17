@@ -6,8 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.InMemory
 {
-    internal class InMemoryStorage<T, TKey> : IRepository<T, TKey>,
-        IServiceWithFactoryWithOptions<RepositoryBehaviorSettings<T, TKey>>
+    internal class InMemoryStorage<T, TKey> : IRepository<T, TKey>, IServiceWithFactoryWithOptions<RepositoryBehaviorSettings<T, TKey>>, IDefaultIntegration
         where TKey : notnull
     {
         public void SetOptions(RepositoryBehaviorSettings<T, TKey> options)
