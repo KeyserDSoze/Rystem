@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.IO;
+using System.Net;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -19,6 +20,9 @@ namespace RepositoryFramework.Api.Client
         }
         private readonly KeySettings<TKey> _keySettings;
         private readonly IEnumerable<IRepositoryClientInterceptor>? _clientInterceptors;
+        private readonly IEnumerable<IRepositoryResponseClientInterceptor>? _responseClientInterceptors;
+        private readonly IEnumerable<IRepositoryClientResponseInterceptor<T>>? _specificResponseClientInterceptors;
+        private readonly IEnumerable<IRepositoryResponseClientInterceptor<T, TKey>>? _specificResponseClientInterceptorsWithKeys;
         private readonly IEnumerable<IRepositoryClientInterceptor<T>>? _specificClientInterceptors;
         private readonly IEnumerable<IRepositoryClientInterceptor<T, TKey>>? _specificClientInterceptorsWithKeys;
         public RepositoryClient(IHttpClientFactory httpClientFactory,
@@ -31,7 +35,12 @@ namespace RepositoryFramework.Api.Client
             _clientInterceptors = serviceProvider.GetServices<IRepositoryClientInterceptor>();
             _specificClientInterceptors = serviceProvider.GetServices<IRepositoryClientInterceptor<T>>();
             _specificClientInterceptorsWithKeys = serviceProvider.GetServices<IRepositoryClientInterceptor<T, TKey>>();
+            _responseClientInterceptors = serviceProvider.GetServices<IRepositoryResponseClientInterceptor>();
+            _specificResponseClientInterceptors = serviceProvider.GetServices<IRepositoryClientResponseInterceptor<T>>();
+            _specificResponseClientInterceptorsWithKeys = serviceProvider.GetServices<IRepositoryResponseClientInterceptor<T, TKey>>();
+            _hasResponseInterceptors = _responseClientInterceptors != null || _specificResponseClientInterceptors != null || _specificResponseClientInterceptorsWithKeys != null;
         }
+        private readonly bool _hasResponseInterceptors = false;
         private bool _clientAlreadyEnriched = false;
         private Task<HttpClient> EnrichedClientAsync(RepositoryMethods api)
         {
@@ -57,19 +66,40 @@ namespace RepositoryFramework.Api.Client
                 return _httpClient;
             }
         }
-        private static async Task<TResult?> PostAsJson<TMessage, TResult>(HttpClient client, string path, TMessage message, CancellationToken cancellationToken)
+        private async Task<HttpResponseMessage> CheckResponseMessageAsync(HttpClient client, HttpResponseMessage response, Func<HttpClient, Task<HttpResponseMessage>> request, CancellationToken cancellationToken)
+        {
+            if (!_hasResponseInterceptors)
+                return await EnsureSuccessStatusCodeAsync(response, cancellationToken);
+            if (_responseClientInterceptors != null)
+                foreach (var interceptor in _responseClientInterceptors)
+                    response = await interceptor.CheckResponseAsync(client, response, request).NoContext();
+            if (_specificResponseClientInterceptors != null)
+                foreach (var interpector in _specificResponseClientInterceptors)
+                    response = await interpector.CheckResponseAsync(client, response, request).NoContext();
+            if (_specificResponseClientInterceptorsWithKeys != null)
+                foreach (var interpector in _specificResponseClientInterceptorsWithKeys)
+                    response = await interpector.CheckResponseAsync(client, response, request).NoContext();
+            return await EnsureSuccessStatusCodeAsync(response, cancellationToken);
+        }
+        private static async Task<HttpResponseMessage> EnsureSuccessStatusCodeAsync(HttpResponseMessage message, CancellationToken cancellationToken)
+        {
+            if (message.StatusCode != HttpStatusCode.OK)
+                throw new HttpRequestException(await message.Content.ReadAsStringAsync(cancellationToken).NoContext());
+            return message;
+        }
+        private async Task<TResult?> PostAsJson<TMessage, TResult>(HttpClient client, string path, TMessage message, CancellationToken cancellationToken)
         {
             var response = await client.PostAsJsonAsync(path, message, cancellationToken).NoContext();
-            response.EnsureSuccessStatusCode();
+            response = await CheckResponseMessageAsync(client, response, x => x.PostAsJsonAsync(path, message, cancellationToken), cancellationToken).NoContext();
             var result = await response.Content.ReadAsStringAsync(cancellationToken).NoContext();
             if (!string.IsNullOrWhiteSpace(result))
                 return result.FromJson<TResult>(RepositoryOptions.JsonSerializerOptions);
             return default;
         }
-        private static async Task<TResult?> GetAsJson<TResult>(HttpClient client, string path, CancellationToken cancellationToken)
+        private async Task<TResult?> GetAsJson<TResult>(HttpClient client, string path, CancellationToken cancellationToken)
         {
             var response = await client.GetAsync(path, cancellationToken).NoContext();
-            response.EnsureSuccessStatusCode();
+            response = await CheckResponseMessageAsync(client, response, x => x.GetAsync(path, cancellationToken), cancellationToken).NoContext();
             var result = await response.Content.ReadAsStringAsync(cancellationToken).NoContext();
             if (!string.IsNullOrWhiteSpace(result))
                 return result.FromJson<TResult>(RepositoryOptions.JsonSerializerOptions);
@@ -130,7 +160,14 @@ namespace RepositoryFramework.Api.Client
                 Content = jsonContent
             };
             var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).NoContext();
-            await EnsureSuccessStatusCodeAsync(response, cancellationToken).NoContext();
+            response = await CheckResponseMessageAsync(client, response, x =>
+            {
+                var request = new HttpRequestMessage(HttpMethod.Post, _options!.QueryPath)
+                {
+                    Content = new StringContent(value.ToJson(), Encoding.UTF8, ApplicationJson)
+                };
+                return x.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            }, cancellationToken);
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).NoContext();
             var items = JsonSerializer.DeserializeAsyncEnumerable<Entity<T, TKey>>(stream, RepositoryOptions.JsonSerializerOptions, cancellationToken);
             if (items != null)
@@ -140,20 +177,15 @@ namespace RepositoryFramework.Api.Client
                         yield return item;
                 }
         }
-        private static async Task EnsureSuccessStatusCodeAsync(HttpResponseMessage message, CancellationToken cancellationToken)
-        {
-            if (message.StatusCode != HttpStatusCode.OK)
-                throw new HttpRequestException(await message.Content.ReadAsStringAsync(cancellationToken).NoContext());
-        }
+
         public async ValueTask<TProperty> OperationAsync<TProperty>(OperationType<TProperty> operation,
             IFilterExpression filter, CancellationToken cancellationToken = default)
         {
             var client = await EnrichedClientAsync(RepositoryMethods.Operation).NoContext();
             var value = filter.Serialize();
-            var response = await client.PostAsJsonAsync(
-                string.Format(_options!.OperationPath, operation.Name, GetPrimitiveNameOrAssemblyQualifiedName()),
-                value, cancellationToken).NoContext();
-            response.EnsureSuccessStatusCode();
+            var operationPath = string.Format(_options!.OperationPath, operation.Name, GetPrimitiveNameOrAssemblyQualifiedName());
+            var response = await client.PostAsJsonAsync(operationPath, value, cancellationToken).NoContext();
+            response = await CheckResponseMessageAsync(client, response, x => x.PostAsJsonAsync(operationPath, value, cancellationToken), cancellationToken).NoContext();
             var result = await response.Content.ReadFromJsonAsync<TProperty>(cancellationToken: cancellationToken).NoContext();
             return result!;
 
@@ -185,7 +217,14 @@ namespace RepositoryFramework.Api.Client
                 Content = new StringContent(operations.ToJson(), Encoding.UTF8, "application/json")
             };
             var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).NoContext();
-            await EnsureSuccessStatusCodeAsync(response, cancellationToken).NoContext();
+            response = await CheckResponseMessageAsync(client, response, x =>
+            {
+                var request = new HttpRequestMessage(HttpMethod.Post, _options!.BatchPath)
+                {
+                    Content = new StringContent(operations.ToJson(), Encoding.UTF8, "application/json")
+                };
+                return x.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            }, cancellationToken).NoContext();
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).NoContext();
             var items = JsonSerializer.DeserializeAsyncEnumerable<BatchResult<T, TKey>>(stream, RepositoryOptions.JsonSerializerOptions, cancellationToken);
             if (items != null)

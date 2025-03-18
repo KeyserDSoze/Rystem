@@ -23,7 +23,9 @@ namespace Microsoft.Extensions.DependencyInjection
             authenticatorSettings?.Invoke(options);
             services.TryAddSingleton(options);
             services.TryAddService<ITokenManager, TTokenManager>(serviceLifetime);
-            return services.TryAddService<IRepositoryClientInterceptor, BearerAuthenticator>(serviceLifetime);
+            return services
+                    .TryAddService<IRepositoryClientInterceptor, BearerAuthenticator>(serviceLifetime)
+                    .TryAddService<IRepositoryResponseClientInterceptor, BearerAuthenticator>(serviceLifetime);
         }
         /// <summary>
         /// Add JWT specific interceptor for your <typeparamref name="T"/> client. Interceptor runs before every request.
@@ -43,7 +45,8 @@ namespace Microsoft.Extensions.DependencyInjection
             services.TryAddSingleton(options);
             services.TryAddService<ITokenManager, TTokenManager>(serviceLifetime);
             return services
-                .TryAddService<IRepositoryClientInterceptor<T>, BearerAuthenticator<T>>(serviceLifetime);
+               .TryAddService<IRepositoryClientInterceptor<T>, BearerAuthenticator<T>>(serviceLifetime)
+               .TryAddService<IRepositoryClientResponseInterceptor<T>, BearerAuthenticator<T>>(serviceLifetime);
         }
         /// <summary>
         /// Add JWT specific interceptor for your <typeparamref name="T"/> client. Interceptor runs before every request.

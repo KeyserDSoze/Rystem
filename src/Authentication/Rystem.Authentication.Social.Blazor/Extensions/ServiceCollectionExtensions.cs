@@ -1,5 +1,4 @@
-﻿using System.Net.Http;
-using Microsoft.Identity.Abstractions;
+﻿using Microsoft.Identity.Abstractions;
 using Rystem.Authentication.Social.Blazor;
 
 namespace Microsoft.Extensions.DependencyInjection
