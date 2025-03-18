@@ -1,4 +1,4 @@
-name: Authentication.Social.Blazor.Abstractions.Nuget
+name: Authentication.Social.Abstractions.Nuget
 on:
   push:
     branches:
