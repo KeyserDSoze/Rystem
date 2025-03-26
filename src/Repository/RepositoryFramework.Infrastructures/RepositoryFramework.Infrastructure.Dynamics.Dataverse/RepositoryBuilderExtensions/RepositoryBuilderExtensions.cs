@@ -17,7 +17,8 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IRepositoryBuilder<T, TKey> WithDataverse<T, TKey>(
             this IRepositoryBuilder<T, TKey> builder,
             Action<IDataverseRepositoryBuilder<T, TKey>> dataverseBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             builder
@@ -33,7 +34,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 DataverseClientWrapper<T, TKey>>(
                     dataverseBuilder,
                     name,
-                    ServiceLifetime.Singleton);
+                    lifetime);
             return builder;
         }
         /// <summary>
@@ -48,7 +49,8 @@ namespace Microsoft.Extensions.DependencyInjection
         public static ICommandBuilder<T, TKey> WithDataverse<T, TKey>(
             this ICommandBuilder<T, TKey> builder,
             Action<IDataverseRepositoryBuilder<T, TKey>> dataverseBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             builder
@@ -64,7 +66,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 DataverseClientWrapper<T, TKey>>(
                     dataverseBuilder,
                     name,
-                    ServiceLifetime.Singleton);
+                    lifetime);
             return builder;
         }
         /// <summary>
@@ -79,7 +81,8 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IQueryBuilder<T, TKey> WithDataverse<T, TKey>(
             this IQueryBuilder<T, TKey> builder,
             Action<IDataverseRepositoryBuilder<T, TKey>> dataverseBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             builder
@@ -95,7 +98,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 DataverseClientWrapper<T, TKey>>(
                     dataverseBuilder,
                     name,
-                    ServiceLifetime.Singleton);
+                    lifetime);
             return builder;
         }
     }

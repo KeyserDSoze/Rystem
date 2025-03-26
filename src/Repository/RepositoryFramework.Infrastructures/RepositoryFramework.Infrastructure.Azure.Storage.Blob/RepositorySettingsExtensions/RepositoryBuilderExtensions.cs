@@ -17,7 +17,8 @@ namespace Microsoft.Extensions.DependencyInjection
         public static async Task<IRepositoryBuilder<T, TKey>> WithBlobStorageAsync<T, TKey>(
             this IRepositoryBuilder<T, TKey> builder,
             Action<IBlobStorageRepositoryBuilder<T, TKey>> blobStorageBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             await builder.SetStorageAndBuildOptionsAsync<BlobStorageRepository<T, TKey>,
@@ -25,7 +26,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 BlobContainerClientWrapper>(
                 blobStorageBuilder,
                 name,
-                ServiceLifetime.Singleton)
+                lifetime)
                 .NoContext();
             return builder;
         }
@@ -41,7 +42,8 @@ namespace Microsoft.Extensions.DependencyInjection
         public static async Task<ICommandBuilder<T, TKey>> WithBlobStorageAsync<T, TKey>(
             this ICommandBuilder<T, TKey> builder,
             Action<IBlobStorageRepositoryBuilder<T, TKey>> blobStorageBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             await builder.SetStorageAndBuildOptionsAsync<BlobStorageRepository<T, TKey>,
@@ -49,7 +51,7 @@ namespace Microsoft.Extensions.DependencyInjection
                BlobContainerClientWrapper>(
                blobStorageBuilder,
                name,
-               ServiceLifetime.Singleton)
+               lifetime)
                .NoContext();
             return builder;
         }
@@ -65,7 +67,8 @@ namespace Microsoft.Extensions.DependencyInjection
         public static async Task<IQueryBuilder<T, TKey>> WithBlobStorageAsync<T, TKey>(
             this IQueryBuilder<T, TKey> builder,
             Action<IBlobStorageRepositoryBuilder<T, TKey>> blobStorageBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             await builder.SetStorageAndBuildOptionsAsync<BlobStorageRepository<T, TKey>,
@@ -73,7 +76,7 @@ namespace Microsoft.Extensions.DependencyInjection
                BlobContainerClientWrapper>(
                blobStorageBuilder,
                name,
-               ServiceLifetime.Singleton)
+               lifetime)
                .NoContext();
             return builder;
         }

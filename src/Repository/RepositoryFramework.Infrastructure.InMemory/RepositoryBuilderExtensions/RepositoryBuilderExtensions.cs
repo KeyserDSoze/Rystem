@@ -16,7 +16,8 @@ namespace RepositoryFramework.InMemory
         public static IRepositoryBuilder<T, TKey> WithInMemory<T, TKey>(
             this IRepositoryBuilder<T, TKey> builder,
             Action<IRepositoryInMemoryBuilder<T, TKey>>? inMemoryBuilder = null,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             builder.SetStorageAndBuildOptions<InMemoryStorage<T, TKey>, RepositoryInMemoryBuilder<T, TKey>, RepositoryBehaviorSettings<T, TKey>>(
@@ -27,7 +28,7 @@ namespace RepositoryFramework.InMemory
                     inMemoryBuilder?.Invoke(options);
                 },
                 name,
-                ServiceLifetime.Singleton);
+                lifetime);
             return builder;
         }
         /// <summary>
@@ -42,7 +43,8 @@ namespace RepositoryFramework.InMemory
         public static ICommandBuilder<T, TKey> WithInMemory<T, TKey>(
             this ICommandBuilder<T, TKey> builder,
             Action<IRepositoryInMemoryBuilder<T, TKey>>? inMemoryBuilder = null,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             builder.SetStorageAndBuildOptions<InMemoryStorage<T, TKey>, RepositoryInMemoryBuilder<T, TKey>, RepositoryBehaviorSettings<T, TKey>>(
@@ -53,7 +55,7 @@ namespace RepositoryFramework.InMemory
                     inMemoryBuilder?.Invoke(options);
                 },
                 name,
-                ServiceLifetime.Singleton);
+                lifetime);
             return builder;
         }
         /// <summary>
@@ -68,7 +70,8 @@ namespace RepositoryFramework.InMemory
         public static IQueryBuilder<T, TKey> WithInMemory<T, TKey>(
             this IQueryBuilder<T, TKey> builder,
             Action<IRepositoryInMemoryBuilder<T, TKey>>? inMemoryBuilder = null,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             builder.SetStorageAndBuildOptions<InMemoryStorage<T, TKey>, RepositoryInMemoryBuilder<T, TKey>, RepositoryBehaviorSettings<T, TKey>>(
@@ -79,7 +82,7 @@ namespace RepositoryFramework.InMemory
                     inMemoryBuilder?.Invoke(options);
                 },
                 name,
-                ServiceLifetime.Singleton);
+                lifetime);
             return builder;
         }
     }

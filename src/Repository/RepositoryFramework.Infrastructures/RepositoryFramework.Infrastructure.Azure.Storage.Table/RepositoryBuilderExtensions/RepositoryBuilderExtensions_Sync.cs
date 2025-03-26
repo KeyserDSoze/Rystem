@@ -17,9 +17,10 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IRepositoryBuilder<T, TKey> WithTableStorage<T, TKey>(
             this IRepositoryBuilder<T, TKey> builder,
             Action<ITableStorageRepositoryBuilder<T, TKey>> tableStorageBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
-            => builder.WithTableStorageAsync(tableStorageBuilder, name).ToResult();
+            => builder.WithTableStorageAsync(tableStorageBuilder, name, lifetime).ToResult();
         /// <summary>
         /// Add a default table storage service for your command pattern.
         /// </summary>
@@ -32,9 +33,10 @@ namespace Microsoft.Extensions.DependencyInjection
         public static ICommandBuilder<T, TKey> WithTableStorage<T, TKey>(
             this ICommandBuilder<T, TKey> builder,
             Action<ITableStorageRepositoryBuilder<T, TKey>> tableStorageBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
-            => builder.WithTableStorageAsync(tableStorageBuilder, name).ToResult();
+            => builder.WithTableStorageAsync(tableStorageBuilder, name, lifetime).ToResult();
         /// <summary>
         /// Add a default table storage service for your query pattern.
         /// </summary>
@@ -47,8 +49,9 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IQueryBuilder<T, TKey> WithTableStorage<T, TKey>(
             this IQueryBuilder<T, TKey> builder,
             Action<ITableStorageRepositoryBuilder<T, TKey>> tableStorageBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
-            => builder.WithTableStorageAsync(tableStorageBuilder, name).ToResult();
+            => builder.WithTableStorageAsync(tableStorageBuilder, name, lifetime).ToResult();
     }
 }

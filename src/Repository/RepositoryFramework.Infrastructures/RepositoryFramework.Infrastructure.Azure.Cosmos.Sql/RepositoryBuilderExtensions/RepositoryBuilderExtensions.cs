@@ -17,7 +17,8 @@ namespace Microsoft.Extensions.DependencyInjection
         public static async Task<IRepositoryBuilder<T, TKey>> WithCosmosSqlAsync<T, TKey>(
            this IRepositoryBuilder<T, TKey> builder,
             Action<ICosmosSqlRepositoryBuilder<T, TKey>> cosmosSqlBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             await builder.SetStorageAndBuildOptionsAsync<CosmosSqlRepository<T, TKey>,
@@ -27,7 +28,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 {
                     options.Services = builder.Services;
                     cosmosSqlBuilder.Invoke(options);
-                }, name, ServiceLifetime.Singleton).NoContext();
+                }, name, lifetime).NoContext();
             return builder;
         }
         /// <summary>
@@ -42,7 +43,8 @@ namespace Microsoft.Extensions.DependencyInjection
         public static async Task<ICommandBuilder<T, TKey>> WithCosmosSqlAsync<T, TKey>(
            this ICommandBuilder<T, TKey> builder,
             Action<ICosmosSqlRepositoryBuilder<T, TKey>> cosmosSqlBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             await builder.SetStorageAndBuildOptionsAsync<CosmosSqlRepository<T, TKey>,
@@ -52,7 +54,7 @@ namespace Microsoft.Extensions.DependencyInjection
                  {
                      options.Services = builder.Services;
                      cosmosSqlBuilder.Invoke(options);
-                 }, name, ServiceLifetime.Singleton).NoContext();
+                 }, name, lifetime).NoContext();
             return builder;
         }
         /// <summary>
@@ -67,7 +69,8 @@ namespace Microsoft.Extensions.DependencyInjection
         public static async Task<IQueryBuilder<T, TKey>> WithCosmosSqlAsync<T, TKey>(
            this IQueryBuilder<T, TKey> builder,
             Action<ICosmosSqlRepositoryBuilder<T, TKey>> cosmosSqlBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             await builder.SetStorageAndBuildOptionsAsync<CosmosSqlRepository<T, TKey>,
@@ -77,7 +80,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 {
                     options.Services = builder.Services;
                     cosmosSqlBuilder.Invoke(options);
-                }, name, ServiceLifetime.Singleton).NoContext();
+                }, name, lifetime).NoContext();
             return builder;
         }
     }

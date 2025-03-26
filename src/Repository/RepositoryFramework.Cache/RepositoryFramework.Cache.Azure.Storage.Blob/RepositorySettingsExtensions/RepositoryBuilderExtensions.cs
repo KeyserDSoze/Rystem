@@ -21,7 +21,8 @@ namespace Microsoft.Extensions.DependencyInjection
            this IRepositoryBuilder<T, TKey> builder,
                 Action<IBlobStorageRepositoryBuilder<BlobStorageCacheModel, string>> blobStorageBuilder,
                 Action<DistributedCacheOptions<T, TKey>>? cacheOptions = null,
-                string? name = null)
+                string? name = null,
+                ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             var keyName = $"{typeof(IRepository<BlobStorageCacheModel, string>).FullName}_{name}";
@@ -29,11 +30,11 @@ namespace Microsoft.Extensions.DependencyInjection
                 builder.Services.AddRepository<BlobStorageCacheModel, string>(repositoryBuilder =>
                 {
                     repositoryBuilder
-                        .WithBlobStorageAsync(blobStorageBuilder, name)
+                        .WithBlobStorageAsync(blobStorageBuilder, name, lifetime)
                         .ToResult();
                 });
             return builder
-                .WithDistributedCache<T, TKey, BlobStorageCache<T, TKey>>(cacheOptions, name, ServiceLifetime.Singleton);
+                .WithDistributedCache<T, TKey, BlobStorageCache<T, TKey>>(cacheOptions, name, lifetime);
         }
         /// <summary>
         /// Add Azure Blob Storage cache mechanism for your command pattern.
@@ -49,7 +50,8 @@ namespace Microsoft.Extensions.DependencyInjection
            this ICommandBuilder<T, TKey> builder,
                 Action<IBlobStorageRepositoryBuilder<BlobStorageCacheModel, string>> blobStorageBuilder,
                 Action<DistributedCacheOptions<T, TKey>>? cacheOptions = null,
-                string? name = null)
+                string? name = null,
+                ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             var keyName = $"{typeof(IRepository<BlobStorageCacheModel, string>).FullName}_{name}";
@@ -57,11 +59,11 @@ namespace Microsoft.Extensions.DependencyInjection
                 builder.Services.AddRepository<BlobStorageCacheModel, string>(repositoryBuilder =>
                 {
                     repositoryBuilder
-                        .WithBlobStorageAsync(blobStorageBuilder, name)
+                        .WithBlobStorageAsync(blobStorageBuilder, name, lifetime)
                         .ToResult();
                 });
             return builder
-                .WithDistributedCache<T, TKey, BlobStorageCache<T, TKey>>(cacheOptions, name, ServiceLifetime.Singleton);
+                .WithDistributedCache<T, TKey, BlobStorageCache<T, TKey>>(cacheOptions, name, lifetime);
         }
         /// <summary>
         /// Add Azure Blob Storage cache mechanism for your query pattern.
@@ -77,7 +79,8 @@ namespace Microsoft.Extensions.DependencyInjection
            this IQueryBuilder<T, TKey> builder,
                 Action<IBlobStorageRepositoryBuilder<BlobStorageCacheModel, string>> blobStorageBuilder,
                 Action<DistributedCacheOptions<T, TKey>>? cacheOptions = null,
-                string? name = null)
+                string? name = null,
+                ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             var keyName = $"{typeof(IRepository<BlobStorageCacheModel, string>).FullName}_{name}";
@@ -85,11 +88,11 @@ namespace Microsoft.Extensions.DependencyInjection
                 builder.Services.AddRepository<BlobStorageCacheModel, string>(repositoryBuilder =>
                 {
                     repositoryBuilder
-                        .WithBlobStorageAsync(blobStorageBuilder, name)
+                        .WithBlobStorageAsync(blobStorageBuilder, name, lifetime)
                         .ToResult();
                 });
             return builder
-                .WithDistributedCache<T, TKey, BlobStorageCache<T, TKey>>(cacheOptions, name, ServiceLifetime.Singleton);
+                .WithDistributedCache<T, TKey, BlobStorageCache<T, TKey>>(cacheOptions, name, lifetime);
         }
     }
 }

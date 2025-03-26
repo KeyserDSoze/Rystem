@@ -18,7 +18,7 @@ namespace RepositoryFramework.InMemory
             return;
         }
         public RepositoryBehaviorSettings<T, TKey>? Options { get; set; }
-        private readonly ConcurrentDictionary<string, Entity<T, TKey>> _values = new();
+        private static readonly ConcurrentDictionary<string, Entity<T, TKey>> _values = new();
         public InMemoryStorage(RepositoryBehaviorSettings<T, TKey>? options = null)
         {
             Options = options;

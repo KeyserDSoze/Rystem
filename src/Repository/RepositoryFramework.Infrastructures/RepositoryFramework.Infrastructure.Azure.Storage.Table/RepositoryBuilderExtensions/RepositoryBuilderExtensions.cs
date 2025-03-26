@@ -17,7 +17,8 @@ namespace Microsoft.Extensions.DependencyInjection
         public static async Task<IRepositoryBuilder<T, TKey>> WithTableStorageAsync<T, TKey>(
             this IRepositoryBuilder<T, TKey> builder,
             Action<ITableStorageRepositoryBuilder<T, TKey>> tableStorageBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             await builder.SetStorageAndBuildOptionsAsync<TableStorageRepository<T, TKey>,
@@ -30,7 +31,7 @@ namespace Microsoft.Extensions.DependencyInjection
                         options.Settings.ModelType = typeof(T);
                     },
                     name,
-                    ServiceLifetime.Singleton)
+                    lifetime)
                 .NoContext();
             return builder;
         }
@@ -46,7 +47,8 @@ namespace Microsoft.Extensions.DependencyInjection
         public static async Task<ICommandBuilder<T, TKey>> WithTableStorageAsync<T, TKey>(
             this ICommandBuilder<T, TKey> builder,
             Action<ITableStorageRepositoryBuilder<T, TKey>> tableStorageBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             await builder.SetStorageAndBuildOptionsAsync<TableStorageRepository<T, TKey>,
@@ -59,7 +61,7 @@ namespace Microsoft.Extensions.DependencyInjection
                         options.Settings.ModelType = typeof(T);
                     },
                     name,
-                    ServiceLifetime.Singleton)
+                    lifetime)
                 .NoContext();
             return builder;
         }
@@ -75,7 +77,8 @@ namespace Microsoft.Extensions.DependencyInjection
         public static async Task<IQueryBuilder<T, TKey>> WithTableStorageAsync<T, TKey>(
             this IQueryBuilder<T, TKey> builder,
             Action<ITableStorageRepositoryBuilder<T, TKey>> tableStorageBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
         {
             await builder.SetStorageAndBuildOptionsAsync<TableStorageRepository<T, TKey>,
@@ -88,7 +91,7 @@ namespace Microsoft.Extensions.DependencyInjection
                          options.Settings.ModelType = typeof(T);
                      },
                      name,
-                     ServiceLifetime.Singleton)
+                     lifetime)
                  .NoContext();
             return builder;
         }

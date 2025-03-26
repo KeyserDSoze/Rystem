@@ -17,9 +17,10 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IRepositoryBuilder<T, TKey> WithCosmosSql<T, TKey>(
            this IRepositoryBuilder<T, TKey> builder,
             Action<ICosmosSqlRepositoryBuilder<T, TKey>> cosmosSqlBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
-            => builder.WithCosmosSqlAsync(cosmosSqlBuilder, name).ToResult();
+            => builder.WithCosmosSqlAsync(cosmosSqlBuilder, name, lifetime).ToResult();
         /// <summary>
         /// Add a default cosmos sql service for your command pattern.
         /// </summary>
@@ -32,9 +33,10 @@ namespace Microsoft.Extensions.DependencyInjection
         public static ICommandBuilder<T, TKey> WithCosmosSql<T, TKey>(
            this ICommandBuilder<T, TKey> builder,
             Action<ICosmosSqlRepositoryBuilder<T, TKey>> cosmosSqlBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
-            => builder.WithCosmosSqlAsync(cosmosSqlBuilder, name).ToResult();
+            => builder.WithCosmosSqlAsync(cosmosSqlBuilder, name, lifetime).ToResult();
         /// <summary>
         /// Add a default cosmos sql service for your query pattern.
         /// </summary>
@@ -47,8 +49,9 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IQueryBuilder<T, TKey> WithCosmosSql<T, TKey>(
            this IQueryBuilder<T, TKey> builder,
             Action<ICosmosSqlRepositoryBuilder<T, TKey>> cosmosSqlBuilder,
-            string? name = null)
+            string? name = null,
+            ServiceLifetime lifetime = ServiceLifetime.Singleton)
             where TKey : notnull
-            => builder.WithCosmosSqlAsync(cosmosSqlBuilder, name).ToResult();
+            => builder.WithCosmosSqlAsync(cosmosSqlBuilder, name, lifetime).ToResult();
     }
 }
