@@ -19,7 +19,7 @@
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Table</RepositoryUrl>
 		<PackageId>Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Table</PackageId>
-		<Version>9.0.30</Version>
+		<Version>9.0.31</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	</PropertyGroup>
@@ -37,7 +37,7 @@
 		</When>
 		<When Condition=" '$(Configuration)'!='Debug' ">
 			<ItemGroup>
-				<PackageReference Include="Rystem.RepositoryFramework.Abstractions" Version="9.0.30" />
+				<PackageReference Include="Rystem.RepositoryFramework.Abstractions" Version="9.0.31" />
 			</ItemGroup>
 		</When>
 	</Choose>
