@@ -22,7 +22,9 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 var services = app.ServiceProvider.GetService<RepositoryFrameworkRegistry>();
                 foreach (var service in services!.Services.GroupBy(x => x.Value.ModelType))
+                {
                     _ = app.UseApiFromRepository(service.Key, ApiSettings.Instance, authorization);
+                }
                 return app;
             });
 
@@ -45,6 +47,8 @@ namespace Microsoft.Extensions.DependencyInjection
             var currentName = modelType.Name;
             if (settings.Names.ContainsKey(modelType.FullName!))
                 currentName = settings.Names[modelType.FullName!];
+            else if (modelType.IsGenericType)
+                currentName = $"{modelType.Name}{string.Join('_', modelType.GetGenericArguments().Select(x => x.Name))}";
             if (app is IApplicationBuilder applicationBuilder)
             {
                 if (ApiSettings.Instance.HasSwagger && !ApiSettings.Instance.SwaggerInstalled)

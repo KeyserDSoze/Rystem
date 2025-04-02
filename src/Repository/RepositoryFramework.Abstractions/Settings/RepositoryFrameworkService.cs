@@ -16,7 +16,7 @@ namespace RepositoryFramework
         public PatternType Type { get; }
         public string FactoryName { get; }
         public List<string> Policies { get; } = new();
-        public string Key => $"{ModelType.Name}-{KeyType.Name}-{Type}-{FactoryName}";
+        public string Key => $"{(ModelType.IsGenericType ? $"{ModelType.Name}_{string.Join('_', ModelType.GetGenericArguments().Select(x => x.Name))}" : ModelType.Name)}-{(KeyType.IsGenericType ? $"{KeyType.Name}_{string.Join('_', KeyType.GetGenericArguments().Select(x => x.Name))}" : KeyType.Name)}-{Type}-{FactoryName}";
         public RepositoryFrameworkService(Type keyType, Type modelType, PatternType type, string name)
         {
             KeyType = keyType;

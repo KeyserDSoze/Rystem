@@ -23,6 +23,13 @@ namespace RepositoryFramework.Api.Client
             StartingPath = startingPath ?? "api";
             Version = version;
             Name = name;
+            if (Name == null)
+            {
+                if (typeof(T).IsGenericType)
+                    Name = $"{typeof(T).Name}{string.Join('_', typeof(T).GetGenericArguments().Select(x => x.Name))}";
+                else
+                    Name = typeof(T).Name;
+            }
             FactoryName = factoryName;
             var basePath = $"{StartingPath}/{(string.IsNullOrWhiteSpace(Version) ? string.Empty : $"{Version}/")}{Name ?? typeof(T).Name}/{(string.IsNullOrWhiteSpace(FactoryName) ? string.Empty : $"{FactoryName}/")}";
             if (KeySettings<TKey>.Instance.IsJsonable)
