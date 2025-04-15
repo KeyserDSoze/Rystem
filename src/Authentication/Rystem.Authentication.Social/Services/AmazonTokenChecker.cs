@@ -17,7 +17,7 @@ namespace Rystem.Authentication.Social
             {
                 var client = _clientFactory.CreateClient(Constants.AmazonAuthenticationClient);
                 client.DefaultRequestHeaders.Add("Authorization", $"Bearer {code}");
-                var response = await client.GetAsync(string.Empty);
+                var response = await client.GetAsync(string.Empty, cancellationToken);
                 if (response.IsSuccessStatusCode)
                 {
                     var message = await response.Content.ReadFromJsonAsync<AuthenticationResponse>();
