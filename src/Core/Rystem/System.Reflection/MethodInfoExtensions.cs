@@ -16,6 +16,6 @@
         public static string GetSignature(this MethodInfo methodInfo)
             => $"{methodInfo.Name}_{methodInfo.ReturnParameter?.ParameterType?.FullName}-{string.Join('-', methodInfo.GetParameters().Select(x => x.ParameterType.FullName))}";
         public static string ToSignature(this MethodInfo methodInfo)
-            => $"{methodInfo.ReturnParameter?.ToString() ?? "void"} {methodInfo.Name}({string.Join(", ", methodInfo.GetParameters().Select(x => x.ParameterType.FullName))})";
+            => $"{methodInfo.ReturnParameter?.ToString().Trim() ?? "void"} {methodInfo.Name.Trim()}({string.Join(", ", methodInfo.GetParameters().Select(x => x.ParameterType.FullName)).Trim()})";
     }
 }
