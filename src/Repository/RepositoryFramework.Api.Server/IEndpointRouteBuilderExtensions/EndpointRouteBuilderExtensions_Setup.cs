@@ -27,6 +27,29 @@ namespace Microsoft.Extensions.DependencyInjection
                 }
                 return app;
             });
+        /// <summary>
+        /// Configures API authorization using services from a repository framework.
+        /// </summary>
+        /// <typeparam name="TEndpointRouteBuilder">Specifies the type that provides the routing capabilities for the API.</typeparam>
+        /// <typeparam name="TEntity">Defines the type of the entity that will be managed by the repository framework.</typeparam>
+        /// <typeparam name="TKey">Indicates the type used as the key for identifying entities in the repository.</typeparam>
+        /// <param name="app">Represents the application builder used to configure the API endpoints.</param>
+        /// <returns>Returns an instance of an API authorization builder for further configuration.</returns>
+        public static IApiAuthorizationBuilder UseApiFromRepositoryFramework<TEndpointRouteBuilder, TEntity, TKey>(
+          this TEndpointRouteBuilder app,
+          string? name = null)
+          where TEndpointRouteBuilder : IEndpointRouteBuilder
+            where TKey : notnull
+              => new ApiAuthorizationBuilder(authorization =>
+              {
+                  var services = app.ServiceProvider.GetService<RepositoryFrameworkRegistry>();
+                  name ??= string.Empty;
+                  foreach (var service in services!.Services.Where(x => x.Value.KeyType == typeof(TKey) && x.Value.ModelType == typeof(TEntity) && x.Value.FactoryName == name).GroupBy(x => x.Value.ModelType))
+                  {
+                      _ = app.UseApiFromRepository(service.Key, ApiSettings.Instance, authorization);
+                  }
+                  return app;
+              });
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S3011:Reflection should not be used to increase accessibility of classes, methods, or fields", Justification = "I need reflection in this point to allow the creation of T methods at runtime.")]
         private static TEndpointRouteBuilder UseApiFromRepository<TEndpointRouteBuilder>(
