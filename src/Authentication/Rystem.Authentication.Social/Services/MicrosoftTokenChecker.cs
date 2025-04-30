@@ -57,7 +57,7 @@ namespace Rystem.Authentication.Social
                 {
                     var client = _clientFactory.CreateClient(Constants.MicrosoftAuthenticationClient);
                     client.DefaultRequestHeaders.Add("Origin", domain);
-                    var content = new StringContent(string.Format(PostMessage, code, settings.ClientId, $"{domain.Trim('/')}/"), s_mediaTypeHeaderValue);
+                    var content = new StringContent(string.Format(PostMessage, code, settings.ClientId, domain), s_mediaTypeHeaderValue);
                     var response = await client.PostAsync(string.Empty, content, cancellationToken);
                     if (response.IsSuccessStatusCode)
                     {
