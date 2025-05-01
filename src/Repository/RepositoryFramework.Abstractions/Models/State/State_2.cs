@@ -5,7 +5,7 @@ namespace RepositoryFramework
     public class State<T, TKey>
         where TKey : notnull
     {
-        [JsonPropertyName("isOk")]
+        [JsonPropertyName("i")]
         public bool IsOk { get; set; }
         [JsonPropertyName("e")]
         public Entity<T, TKey>? Entity { get; set; }

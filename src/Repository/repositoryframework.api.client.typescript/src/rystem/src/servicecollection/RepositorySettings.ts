@@ -1,9 +1,15 @@
 import { RepositoryEndpoint } from "../models/RepositoryEndpoint";
-
+export interface ITransformer<T> {
+    toPlain: (input: T | any) => any;
+    fromPlain: (input: any) => T;
+}
 export class RepositorySettings {
     name: string;
     uri: string | null;
     path: string | null;
+    case: "PascalCase" | "CamelCase";
+    transformer?: ITransformer<any>; // For T
+    keyTransformer?: ITransformer<any>; // For TKey
     complexKey: boolean;
     private headersEnrichers: Array<(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any) => HeadersInit>;
     private errorsHandlers: Array<(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any) => boolean >;
@@ -12,6 +18,7 @@ export class RepositorySettings {
         this.name = "";
         this.uri = null;
         this.path = null;
+        this.case = "PascalCase";
         this.complexKey = false;
         this.headersEnrichers = new Array<(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any) => HeadersInit>();
         this.errorsHandlers = new Array<(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any) => boolean>();

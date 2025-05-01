@@ -1,4 +1,4 @@
-﻿import { BatchElement } from "./BatchElement";
+﻿import { BatchOperation } from "./BatchOperation";
 import { Batch } from "./Batch";
 import { Repository } from "../Repository";
 import { RepositoryEndpoint } from "../../models/RepositoryEndpoint";
@@ -12,37 +12,40 @@ export class BatchBuilder<T, TKey> {
 
     constructor(repository: Repository<T, TKey>) {
         this.batch = {
-            v: [] as Array<BatchElement<T, TKey>>
+            values: [] as Array<BatchOperation<T, TKey>>
         } as Batch<T, TKey>;
         this.repository = repository;
     }
     addInsert(key: TKey, value: T): BatchBuilder<T, TKey> {
-        this.batch.v.push({
-            c: 1,
-            k: key,
-            v: value
-        } as BatchElement<T, TKey>);
+        this.batch.values.push({
+            command: 1,
+            key: key,
+            value: value
+        } as BatchOperation<T, TKey>);
         return this;
     }
     addUpdate(key: TKey, value: T): BatchBuilder<T, TKey> {
-        this.batch.v.push({
-            c: 2,
-            k: key,
-            v: value
-        } as BatchElement<T, TKey>);
+        this.batch.values.push({
+            command: 2,
+            key: key,
+            value: value
+        } as BatchOperation<T, TKey>);
         return this;
     }
     addDelete(key: TKey): BatchBuilder<T, TKey> {
-        this.batch.v.push({
-            c: 4,
-            k: key
-        } as BatchElement<T, TKey>);
+        this.batch.values.push({
+            command: 4,
+            key: key
+        } as BatchOperation<T, TKey>);
         return this;
     }
     execute(): Promise<Array<BatchResult<T, TKey>>> {
         return this.repository.makeRequest<Array<BatchResult<T, TKey>>>(RepositoryEndpoint.Batch,
             `Batch`, 'POST',
             this.batch,
+            false,
+            false,
+            false,
             {
                 'content-type': 'application/json;charset=UTF-8',
             });
@@ -54,6 +57,9 @@ export class BatchBuilder<T, TKey> {
             `Batch`, 'POST',
             entityReader,
             this.batch,
+            false,
+            false,
+            false,
             {
                 'content-type': 'application/json;charset=UTF-8',
             }, cancellationToken);

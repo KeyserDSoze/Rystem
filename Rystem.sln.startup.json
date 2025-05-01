@@ -24,6 +24,12 @@
         "RepositoryFramework.WebClient": {}
       }
     },
+    "Repository.Typescript": {
+      "Projects": {
+        "RepositoryFramework.WebApi": {},
+        "repositoryframework.api.client.typescript": {}
+      }
+    },
     "Api": {
       "Projects": {
         "Rystem.Api.TestServer": {},

@@ -6,8 +6,6 @@
   "description": "It can simplify the integration with rystem repository server.",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
-  "dependencies": {
-  },
   "devDependencies": {
     "@types/react": "19.0.10",
     "@types/react-dom": "19.0.4",

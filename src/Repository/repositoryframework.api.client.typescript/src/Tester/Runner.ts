@@ -6,7 +6,7 @@ export async function Runner() {
     const x = Math.floor(Math.random() * (30000 - 0 + 1)) + 0;
     const id = `${x}_Key_4942b090-f6a0-45a4-a188-286807f6bb9c`;
     const iperUser = {
-        id: id,
+        identifier: id,
         name: "corazon",
         email: "calcutta@gmail.com",
         port: 324324,
@@ -32,7 +32,7 @@ export async function Runner() {
         const x1 = Math.floor(Math.random() * (30000 - 0 + 1)) + 0;
         const id1 = `${x1}_Key_4942b090-f6a0-45a4-a188-286807f6bb9c`;
         const iperUser1 = {
-            id: id1,
+            identifier: id1,
             name: "corazon1",
             email: "calcutt1a@gmail.com",
             port: 3243241,
@@ -50,12 +50,12 @@ export async function Runner() {
     console.log(batchResults);
     let queryResults = await repository.query().executeAsStream(x => console.log(x));
     console.log(queryResults);
-    queryResults = await repository.query().filter(`x => x.id == "${id}"`).execute();
+    queryResults = await repository.query().filter(`x => x.Id == "${id}"`).execute();
     console.log(queryResults);
     queryResults = await repository.query()
         .where()
         .openRoundBracket()
-        .select(x => x.id)
+        .select(x => x.identifier)
         .equal(id)
         .build()
         .orderBy(x => x.name)
@@ -65,7 +65,7 @@ export async function Runner() {
         .query()
         .where()
         .openRoundBracket()
-        .select(x => x.id)
+        .select(x => x.identifier)
         .equal(id)
         .count();
     console.log(count);
@@ -73,7 +73,7 @@ export async function Runner() {
         .query()
         .where()
         .openRoundBracket()
-        .select(x => x.id)
+        .select(x => x.identifier)
         .equal(id)
         .sum(x => x.port);
     console.log(sum);

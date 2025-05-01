@@ -180,11 +180,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 //app.UseHttpsRedirection();
 app
-    .UseApiFromRepositoryFramework<WebApplication, SuperUser, string>("inmemory")
-    .SetPolicy(RepositoryMethods.All)
-    .With("aa")
-    .Build();
-app
     .UseApiFromRepositoryFramework()
     .WithNoAuthorization();
 //.WithDefaultAuthorization();

@@ -73,6 +73,9 @@ export class QueryBuilder<T, TKey> {
             RepositoryEndpoint.Query,
             `Query`, 'POST',
             this.filters,
+            false,
+            true,
+            false,
             {
                 'content-type': 'application/json;charset=UTF-8',
             });
@@ -84,6 +87,9 @@ export class QueryBuilder<T, TKey> {
             `Query`, 'POST',
             entityReader,
             this.filters,
+            false,
+            true,
+            false,
             {
                 'content-type': 'application/json;charset=UTF-8',
             }, cancellationToken);
@@ -123,6 +129,9 @@ export class QueryBuilder<T, TKey> {
         return this.repository.makeRequest<number>(RepositoryEndpoint.Operation,
             `Operation?op=${operation}&returnType=${returnType}`, 'POST',
             this.filters,
+            false,
+            true,
+            true,
             {
                 'content-type': 'application/json;charset=UTF-8',
             });
