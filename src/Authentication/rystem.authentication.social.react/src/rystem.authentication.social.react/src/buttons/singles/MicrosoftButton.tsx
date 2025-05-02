@@ -4,7 +4,7 @@ import { MicrosoftLoginButton } from "../graphics/MicrosoftLoginButton";
 export const MicrosoftButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();
     if (settings.microsoft.clientId) {
-        const redirectUri = `${settings.redirectDomain}/`;
+        const redirectUri = `${settings.redirectDomain}/account/login`;
         const oauthUrl = `https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?client_id=${settings.microsoft.clientId}
                 &response_type=code
                 &redirect_uri=${redirectUri}
