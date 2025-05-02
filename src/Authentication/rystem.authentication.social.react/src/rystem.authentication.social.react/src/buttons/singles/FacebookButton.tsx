@@ -7,7 +7,7 @@ const _window: any = window;
 export const FacebookButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();
     if (settings.facebook.clientId) {
-        const redirectUri = `${settings.redirectDomain}/account/login`;
+        const redirectUri = `${settings.redirectDomain}${settings.redirectPath}`;
         const scope = "email,public_profile";
         const return_scopes = true;
         const auth_type = "";

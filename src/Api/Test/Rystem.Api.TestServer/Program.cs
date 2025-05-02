@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Identity.Web;
 using RepositoryFramework.InMemory;
 using Rystem.Api.Test.Domain;

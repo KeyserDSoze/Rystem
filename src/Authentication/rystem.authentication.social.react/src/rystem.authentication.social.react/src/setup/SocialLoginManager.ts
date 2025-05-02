@@ -9,8 +9,13 @@ export class SocialLoginManager {
         this.refresher = () => { };
     }
     public static Instance(settings: SocialLoginSettings | null): SocialLoginManager {
-        if (SocialLoginManager.instance == null)
+        if (SocialLoginManager.instance == null) {
+            if (settings == null)
+                settings = {} as SocialLoginSettings;
             SocialLoginManager.instance = new SocialLoginManager(settings);
+            if (settings.redirectPath == null || settings.redirectPath == undefined)
+                settings.redirectPath = "/account/login";
+        }
         return SocialLoginManager.instance;
     }
     public updateToken(provider: ProviderType, code: string): Promise<SocialToken> {
@@ -36,6 +41,7 @@ export class SocialLoginManager {
                         this.refresher();
                     })
                     .catch(() => {
+                        localStorage.removeItem("socialUserToken");
                         this.settings.onLoginFailure({ code: 10, message: "error getting user.", provider: provider });
                     });
                 return tok;

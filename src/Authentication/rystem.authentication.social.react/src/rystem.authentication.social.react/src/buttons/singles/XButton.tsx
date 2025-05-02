@@ -4,7 +4,7 @@ import { XLoginButton } from "../graphics/XLoginButton";
 export const XButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();
     if (settings.x.clientId) {
-        const redirectUri = `${settings.redirectDomain}/account/login`;
+        const redirectUri = `${settings.redirectDomain}${settings.redirectPath}`;
         const oauthUrl = `https://twitter.com/i/oauth2/authorize?response_type=code
             &client_id=${settings.x.clientId}
             &redirect_uri=${redirectUri}

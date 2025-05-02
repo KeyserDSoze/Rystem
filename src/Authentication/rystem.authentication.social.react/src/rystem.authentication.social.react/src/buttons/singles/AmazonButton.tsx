@@ -13,7 +13,7 @@ const scopeData = {
 export const AmazonButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();
     if (settings.amazon.clientId) {
-        const redirectUri = `${settings.redirectDomain}/account/login`;
+        const redirectUri = `${settings.redirectDomain}${settings.redirectPath}`;
         const onClick = (handleResponse: (code: string) => void, handleError: (message: string) => void) => {
             _window.amazon.Login.authorize(
                 { scope, scopeData, token, redirectUri, state },

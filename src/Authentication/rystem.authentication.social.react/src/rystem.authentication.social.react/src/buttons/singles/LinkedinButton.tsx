@@ -4,7 +4,7 @@ import { LinkedInLoginButton } from "../graphics/LinkedInLoginButton";
 export const LinkedinButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();
     if (settings.linkedin.clientId) {
-        const redirectUri = `${settings.redirectDomain}/account/login`;
+        const redirectUri = `${settings.redirectDomain}${settings.redirectPath}`;
         const scope = "profile email openid";
         const uri = `https://www.linkedin.com/oauth/v2/authorization?response_type=code
                     &client_id=${settings.linkedin.clientId}

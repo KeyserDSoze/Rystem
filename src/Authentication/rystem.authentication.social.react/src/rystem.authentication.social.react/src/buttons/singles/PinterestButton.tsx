@@ -4,7 +4,7 @@ import { PinterestLoginButton } from "../graphics/PinterestLoginButton";
 export const PinterestButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
     const settings = getSocialLoginSettings();
     if (settings.pinterest.clientId) {
-        const redirectUri = `${settings.redirectDomain}/account/login`;
+        const redirectUri = `${settings.redirectDomain}${settings.redirectPath}`;
         const oauthUrl = `https://www.pinterest.com/oauth/?client_id=${settings.pinterest.clientId}
             &scope=boards:read,pins:read,user_accounts:read
             &state=${ProviderType.Pinterest}

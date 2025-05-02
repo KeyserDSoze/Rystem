@@ -3,7 +3,9 @@
 export interface SocialLoginSettings {
     apiUri: string;
     redirectDomain: string;
+    redirectPath: string;
     automaticRefresh: boolean;
+    identityTransformer?: IIdentityTransformer<any>;
     onLoginFailure: (data: SocialLoginErrorResponse) => void;
     title: string | null;
     google: SocialParameter;
@@ -16,4 +18,10 @@ export interface SocialLoginSettings {
     instagram: SocialParameter;
     pinterest: SocialParameter;
     tiktok: SocialParameter;
+}
+
+export interface IIdentityTransformer<TIdentity> {
+    toPlain: (input: TIdentity | any) => any;
+    fromPlain: (input: any) => TIdentity;
+    retrieveUsername: (input: TIdentity) => string;
 }
