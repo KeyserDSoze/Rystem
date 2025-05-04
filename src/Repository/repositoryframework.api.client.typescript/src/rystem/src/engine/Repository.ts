@@ -248,10 +248,8 @@ export class Repository<T, TKey> implements IRepository<T, TKey> {
 
     insert(key: TKey, value: T): Promise<State<T, TKey>> {
         if (!this.settings.complexKey) {
-            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Insert, `Insert?key=${key}`, 'POST', {
-                value: value,
-                key: key
-            } as Entity<T, TKey>, false, false, false, {
+            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Insert, `Insert?key=${key}`, 'POST', value,
+                false, false, false, {
                 'content-type': 'application/json;charset=UTF-8'
             });
         } else {
@@ -266,10 +264,8 @@ export class Repository<T, TKey> implements IRepository<T, TKey> {
 
     update(key: TKey, value: T): Promise<State<T, TKey>> {
         if (!this.settings.complexKey) {
-            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Update, `Update?key=${key}`, 'POST', {
-                value: value,
-                key: key
-            } as Entity<T, TKey>, false, false, false, {
+            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Update, `Update?key=${key}`, 'POST', value,
+                false, false, false, {
                 'content-type': 'application/json;charset=UTF-8'
             });
         } else {
