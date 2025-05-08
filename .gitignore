@@ -359,6 +359,9 @@ MigrationBackup/
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
 
+# Remove build from client
+/src/Repository/repositoryframework.api.client.typescript/build/*
+
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /src/Extensions/Web/Rystem.Web.Components/package-lock.json

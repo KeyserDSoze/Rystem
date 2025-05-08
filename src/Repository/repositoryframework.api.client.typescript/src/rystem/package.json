@@ -1,12 +1,13 @@
 {
   "name": "rystem.repository.client",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "author": "Alessandro Rapiti <alessandro.rapiti44@gmail.com>",
   "license": "MIT",
   "description": "It can simplify the integration with rystem repository server.",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "devDependencies": {
+    "@types/node": "^22.15.16",
     "@types/react": "19.0.10",
     "@types/react-dom": "19.0.4",
     "@typescript-eslint/parser": "8.24.1",
