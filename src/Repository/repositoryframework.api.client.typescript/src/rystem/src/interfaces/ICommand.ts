@@ -7,3 +7,10 @@ export interface ICommand<T, TKey> {
     delete(key: TKey): Promise<State<T, TKey>>;
     batch(): BatchBuilder<T, TKey>;
 }
+
+export interface ICommandPattern {
+    insert(key: any, value: any): Promise<State<any, any>>;
+    update(key: any, value: any): Promise<State<any, any>>;
+    delete(key: any): Promise<State<any, any>>;
+    batch(): BatchBuilder<any, any>;
+}

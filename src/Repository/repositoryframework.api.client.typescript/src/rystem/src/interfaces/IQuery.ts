@@ -6,3 +6,9 @@ export interface IQuery<T, TKey> {
     exist(key: TKey): Promise<State<T, TKey>>;
     query(): QueryBuilder<T, TKey>;
 }
+
+export interface IQueryPattern {
+    get(key: any): Promise<any>;
+    exist(key: any): Promise<State<any, any>>;
+    query(): QueryBuilder<any, any>;
+}

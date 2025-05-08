@@ -1,11 +1,12 @@
 import './App.css';
 import logo from './logo.svg';
-import { Runner } from './Tester/Runner';
+import { Runner, RunnerWithAny } from './Tester/Runner';
 import { Setup } from "./Tester/Setup";
 
 function App() {
     Setup();
     Runner();
+    RunnerWithAny();
     return (
         <div className="App">
             <header className="App-header">

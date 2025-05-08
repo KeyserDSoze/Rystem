@@ -1,7 +1,7 @@
 import { Repository } from "../engine/Repository";
-import { ICommand } from "../interfaces/ICommand";
-import { IQuery } from "../interfaces/IQuery";
-import { IRepository } from "../interfaces/IRepository";
+import { ICommand, ICommandPattern } from "../interfaces/ICommand";
+import { IQuery, IQueryPattern } from "../interfaces/IQuery";
+import { IRepository, IRepositoryPattern } from "../interfaces/IRepository";
 import { RepositorySettings } from "./RepositorySettings";
 
 export class RepositoryServices {
@@ -35,6 +35,33 @@ export class RepositoryServices {
                     return wrapper.repository as ICommand<T, TKey>;
                 else
                     return wrapper.repository as IQuery<T, TKey>;
+            }
+        }
+
+        throw new Error(`${type} with '${name}' has a wrong setup.`);
+    }
+    public static RepositoryPattern(name: string): IRepositoryPattern {
+        return RepositoryServices.InstancePattern(name, RepositoryType.Repository) as IRepositoryPattern;
+    }
+    public static CommandPattern(name: string): ICommandPattern {
+        return RepositoryServices.InstancePattern(name, RepositoryType.Command) as ICommandPattern;
+    }
+    public static QueryPattern(name: string): IQueryPattern {
+        return RepositoryServices.InstancePattern(name, RepositoryType.Query) as IQueryPattern;
+    }
+    private static InstancePattern(name: string, type: RepositoryType): IRepositoryPattern | ICommandPattern | IQueryPattern {
+        if (!RepositoryServices.instance) {
+            RepositoryServices.instance = new RepositoryServices();
+        }
+        if (RepositoryServices.instance.repositories.has(name)) {
+            const wrapper = RepositoryServices.instance.repositories.get(name);
+            if (wrapper != undefined && wrapper.type == type) {
+                if (wrapper.type == RepositoryType.Repository)
+                    return wrapper.repository as IRepositoryPattern;
+                else if (wrapper.type == RepositoryType.Command)
+                    return wrapper.repository as ICommandPattern;
+                else
+                    return wrapper.repository as IQueryPattern;
             }
         }
 
