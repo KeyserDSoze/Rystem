@@ -26,7 +26,7 @@
 
 	<ItemGroup>
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.1" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.2" />
 	</ItemGroup>
 
 	<Choose>
