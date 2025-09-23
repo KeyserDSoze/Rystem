@@ -51,12 +51,12 @@ RepositoryServices
         .addRepository<IperUser, string>(x => {
             x.name = "test";
             x.path = "SuperUser";
-            x.addHeadersEnricher((...args) => {
+            x.addHeadersEnricher(async (...args) => {
                 return {
                     "Authorization-UI": "Bearer dsjadjalsdjalsdjalsda"
                 }
             });
-            x.addHeadersEnricher((endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any) => {
+            x.addHeadersEnricher(async (endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any) => {
                 return {
                     "Authorization-UI2": "Bearer dsjadjalsdjalsdjalsda"
                 }

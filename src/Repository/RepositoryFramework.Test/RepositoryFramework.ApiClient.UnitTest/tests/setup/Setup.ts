@@ -9,12 +9,12 @@ export function Setup() {
         .addRepository<IperUser, string>(x => {
             x.name = "test";
             x.path = "SuperUser";
-            x.addHeadersEnricher((...args) => {
+            x.addHeadersEnricher(async (...args) => {
                 return {
                     "Authorization-UI": "Bearer dsjadjalsdjalsdjalsda"
                 };
             });
-            x.addErrorHandler((endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any) => {
+            x.addErrorHandler(async (endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any) => {
                 return (err as string).startsWith("big error");
             });
         })

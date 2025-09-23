@@ -166,7 +166,7 @@ export class Repository<T, TKey> implements IRepository<T, TKey> {
         while (retry) {
             response = await fetch(uri, {
                 method: method,
-                headers: this.settings.enrichHeaders(endpoint, uri, method, headers, body),
+                headers: await this.settings.enrichHeaders(endpoint, uri, method, headers, body),
                 body: body == null ? null : JSON.stringify(skipSerialization ? body : this.serializeRequestBody(body, bodyIsKey))
             })
                 .then(async res => {
@@ -175,8 +175,8 @@ export class Repository<T, TKey> implements IRepository<T, TKey> {
                         throw json;
                     return json;
                 })
-                .catch((err: any): null => {
-                    retry = this.settings.manageError(endpoint, uri, method, headers, body, err);
+                .catch(async (err: any): Promise<null> => {
+                    retry = await this.settings.manageError(endpoint, uri, method, headers, body, err);
                     return null;
                 })
                 .then(res => {
@@ -205,7 +205,7 @@ export class Repository<T, TKey> implements IRepository<T, TKey> {
         let response: Array<TResponse> = [];
         await fetch(uri, {
             method: method,
-            headers: this.settings.enrichHeaders(endpoint, uri, method, headers, body),
+            headers: await this.settings.enrichHeaders(endpoint, uri, method, headers, body),
             body: body == null ? null : JSON.stringify(skipSerialization ? body : this.serializeRequestBody(body, bodyIsKey))
         })
             .then(async res => {

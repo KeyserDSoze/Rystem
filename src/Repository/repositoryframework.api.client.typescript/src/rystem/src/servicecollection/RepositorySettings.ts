@@ -11,8 +11,8 @@ export class RepositorySettings {
     transformer?: ITransformer<any>; // For T
     keyTransformer?: ITransformer<any>; // For TKey
     complexKey: boolean;
-    private headersEnrichers: Array<(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any) => HeadersInit>;
-    private errorsHandlers: Array<(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any) => boolean >;
+    private headersEnrichers: Array<(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any) => Promise<HeadersInit>>;
+    private errorsHandlers: Array<(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any) => Promise<boolean>>;
 
     constructor() {
         this.name = "";
@@ -20,19 +20,19 @@ export class RepositorySettings {
         this.path = null;
         this.case = "PascalCase";
         this.complexKey = false;
-        this.headersEnrichers = new Array<(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any) => HeadersInit>();
-        this.errorsHandlers = new Array<(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any) => boolean>();
+        this.headersEnrichers = new Array<(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any) => Promise<HeadersInit>>();
+        this.errorsHandlers = new Array<(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any) => Promise<boolean>>();
     }
 
-    public addHeadersEnricher(enricher: (endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any) => HeadersInit): this {
+    public addHeadersEnricher(enricher: (endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any) => Promise<HeadersInit>): this {
         this.headersEnrichers.push(enricher);
         return this;
     }
-    public addErrorHandler(handler: (endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any) => boolean): this {
+    public addErrorHandler(handler: (endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any) => Promise<boolean>): this {
         this.errorsHandlers.push(handler);
         return this;
     }
-    public enrichHeaders(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit | undefined, body: any): HeadersInit {
+    public async enrichHeaders(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit | undefined, body: any): Promise<HeadersInit> {
         const requestHeaders: HeadersInit = new Headers();
 
         const setHeaders = (currentHeaders: HeadersInit) => {
@@ -48,14 +48,14 @@ export class RepositorySettings {
         }
         
         for (let enricher of this.headersEnrichers) {
-            setHeaders(enricher(endpoint, uri, method, requestHeaders, body));
+            setHeaders(await enricher(endpoint, uri, method, requestHeaders, body));
         }
         return requestHeaders;
     }
-    public manageError(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any): boolean {
+    public async manageError(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any): Promise<boolean> {
         let retry: boolean = this.errorsHandlers.length > 0;
         for (let handler of this.errorsHandlers)
-            retry &&= handler(endpoint, uri, method, headers, body, err);
+            retry &&= await handler(endpoint, uri, method, headers, body, err);
         return retry;
     }
 }

@@ -34,12 +34,12 @@ export function Setup() {
             x.path = "SuperUser";
             x.case = "PascalCase";
             x.transformer = IperUserTransformer2;
-            x.addHeadersEnricher((...args) => {
+            x.addHeadersEnricher(async (...args) => {
                 return {
                     "Authorization-UI": "Bearer dsjadjalsdjalsdjalsda"
                 };
             });
-            x.addErrorHandler((endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any) => {
+            x.addErrorHandler(async (endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any) => {
                 return err.Message ?? "error";
             });
         })
