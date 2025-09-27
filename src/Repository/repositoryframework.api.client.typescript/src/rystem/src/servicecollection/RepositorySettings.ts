@@ -10,6 +10,7 @@ export class RepositorySettings {
     case: "PascalCase" | "CamelCase";
     transformer?: ITransformer<any>; // For T
     keyTransformer?: ITransformer<any>; // For TKey
+    keySeparator: string;
     complexKey: boolean;
     private headersEnrichers: Array<(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any) => Promise<HeadersInit>>;
     private errorsHandlers: Array<(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any) => Promise<boolean>>;
@@ -20,6 +21,7 @@ export class RepositorySettings {
         this.path = null;
         this.case = "PascalCase";
         this.complexKey = false;
+        this.keySeparator = "|||";
         this.headersEnrichers = new Array<(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any) => Promise<HeadersInit>>();
         this.errorsHandlers = new Array<(endpoint: RepositoryEndpoint, uri: string, method: string, headers: HeadersInit, body: any, err: any) => Promise<boolean>>();
     }

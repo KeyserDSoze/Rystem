@@ -236,9 +236,39 @@ export class Repository<T, TKey> implements IRepository<T, TKey> {
         return response;
     }
 
+    // Helper: is primitive
+    private isPrimitive(value: unknown): boolean {
+        return (
+            value === null ||
+            (typeof value !== "object" && typeof value !== "function")
+        );
+    }
+
+    // Helper: deterministic object -> string conversion
+    private objectToString(obj: unknown): string {
+        if (obj == null)
+            return String(obj);
+        if (Array.isArray(obj))
+            return obj.map(v => String(v)).join(this.settings.keySeparator);
+        if (typeof obj === "object")
+            return Object.values(obj as Record<string, unknown>).map(v => String(v)).join(this.settings.keySeparator);
+        return String(obj);
+    }
+
+    // Helper: convert key to plain representation for querystring when no keyTransformer is present
+    private keyToPlainForQuery(key: any): string {
+        const keyTransformer = this.settings.keyTransformer as any | undefined;
+        if (keyTransformer?.toPlain)
+            return String(keyTransformer.toPlain(key));
+        if (this.isPrimitive(key))
+            return String(key);
+        return this.objectToString(key);
+    }
+
     get(key: TKey): Promise<T> {
         if (!this.settings.complexKey) {
-            return this.makeRequest<T>(RepositoryEndpoint.Get, `Get?key=${key}`, 'GET');
+            const keyString = encodeURIComponent(this.keyToPlainForQuery(key));
+            return this.makeRequest<T>(RepositoryEndpoint.Get, `Get?key=${keyString}`, 'GET');
         } else {
             return this.makeRequest<T>(RepositoryEndpoint.Get, `Get`, 'POST', key, true, false, false, {
                 'content-type': 'application/json;charset=UTF-8'
@@ -248,7 +278,8 @@ export class Repository<T, TKey> implements IRepository<T, TKey> {
 
     insert(key: TKey, value: T): Promise<State<T, TKey>> {
         if (!this.settings.complexKey) {
-            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Insert, `Insert?key=${key}`, 'POST', value,
+            const keyString = encodeURIComponent(this.keyToPlainForQuery(key));
+            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Insert, `Insert?key=${keyString}`, 'POST', value,
                 false, false, false, {
                 'content-type': 'application/json;charset=UTF-8'
             });
@@ -264,7 +295,8 @@ export class Repository<T, TKey> implements IRepository<T, TKey> {
 
     update(key: TKey, value: T): Promise<State<T, TKey>> {
         if (!this.settings.complexKey) {
-            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Update, `Update?key=${key}`, 'POST', value,
+            const keyString = encodeURIComponent(this.keyToPlainForQuery(key));
+            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Update, `Update?key=${keyString}`, 'POST', value,
                 false, false, false, {
                 'content-type': 'application/json;charset=UTF-8'
             });
@@ -280,7 +312,8 @@ export class Repository<T, TKey> implements IRepository<T, TKey> {
 
     exist(key: TKey): Promise<State<T, TKey>> {
         if (!this.settings.complexKey) {
-            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Exist, `Exist?key=${key}`, 'GET');
+            const keyString = encodeURIComponent(this.keyToPlainForQuery(key));
+            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Exist, `Exist?key=${keyString}`, 'GET');
         } else {
             return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Exist, `Exist`, 'POST', key, true, false, false, {
                 'content-type': 'application/json;charset=UTF-8'
@@ -290,7 +323,8 @@ export class Repository<T, TKey> implements IRepository<T, TKey> {
 
     delete(key: TKey): Promise<State<T, TKey>> {
         if (!this.settings.complexKey) {
-            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Delete, `Delete?key=${key}`, 'GET');
+            const keyString = encodeURIComponent(this.keyToPlainForQuery(key));
+            return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Delete, `Delete?key=${keyString}`, 'GET');
         } else {
             return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Delete, `Delete`, 'POST', key, true, false, false, {
                 'content-type': 'application/json;charset=UTF-8'
