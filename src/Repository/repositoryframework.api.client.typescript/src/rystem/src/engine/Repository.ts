@@ -267,7 +267,7 @@ export class Repository<T, TKey> implements IRepository<T, TKey> {
 
     get(key: TKey): Promise<T> {
         if (!this.settings.complexKey) {
-            const keyString = encodeURIComponent(this.keyToPlainForQuery(key));
+            const keyString = this.keyToPlainForQuery(key);
             return this.makeRequest<T>(RepositoryEndpoint.Get, `Get?key=${keyString}`, 'GET');
         } else {
             return this.makeRequest<T>(RepositoryEndpoint.Get, `Get`, 'POST', key, true, false, false, {
@@ -278,7 +278,7 @@ export class Repository<T, TKey> implements IRepository<T, TKey> {
 
     insert(key: TKey, value: T): Promise<State<T, TKey>> {
         if (!this.settings.complexKey) {
-            const keyString = encodeURIComponent(this.keyToPlainForQuery(key));
+            const keyString = this.keyToPlainForQuery(key);
             return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Insert, `Insert?key=${keyString}`, 'POST', value,
                 false, false, false, {
                 'content-type': 'application/json;charset=UTF-8'
@@ -295,7 +295,7 @@ export class Repository<T, TKey> implements IRepository<T, TKey> {
 
     update(key: TKey, value: T): Promise<State<T, TKey>> {
         if (!this.settings.complexKey) {
-            const keyString = encodeURIComponent(this.keyToPlainForQuery(key));
+            const keyString = this.keyToPlainForQuery(key);
             return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Update, `Update?key=${keyString}`, 'POST', value,
                 false, false, false, {
                 'content-type': 'application/json;charset=UTF-8'
@@ -312,7 +312,7 @@ export class Repository<T, TKey> implements IRepository<T, TKey> {
 
     exist(key: TKey): Promise<State<T, TKey>> {
         if (!this.settings.complexKey) {
-            const keyString = encodeURIComponent(this.keyToPlainForQuery(key));
+            const keyString = this.keyToPlainForQuery(key);
             return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Exist, `Exist?key=${keyString}`, 'GET');
         } else {
             return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Exist, `Exist`, 'POST', key, true, false, false, {
@@ -323,7 +323,7 @@ export class Repository<T, TKey> implements IRepository<T, TKey> {
 
     delete(key: TKey): Promise<State<T, TKey>> {
         if (!this.settings.complexKey) {
-            const keyString = encodeURIComponent(this.keyToPlainForQuery(key));
+            const keyString = this.keyToPlainForQuery(key);
             return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Delete, `Delete?key=${keyString}`, 'GET');
         } else {
             return this.makeRequest<State<T, TKey>>(RepositoryEndpoint.Delete, `Delete`, 'POST', key, true, false, false, {
