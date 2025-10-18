@@ -1,0 +1,59 @@
+{
+  "name": "rystem-mcp",
+  "version": "1.0.0",
+  "description": "Rystem Framework Model Context Protocol - Tools, Resources, and Prompts for developers",
+  "tools": [
+    {
+      "name": "ddd",
+      "path": "/mcp/tools/ddd.md",
+      "title": "Domain-Driven Design (DDD) Pattern",
+      "description": "Description"
+    },
+    {
+      "name": "install-rystem",
+      "path": "/mcp/tools/install-rystem.md",
+      "title": "Install Rystem Package",
+      "description": "Description"
+    },
+    {
+      "name": "repository-setup",
+      "path": "/mcp/tools/repository-setup.md",
+      "title": "Repository Pattern Setup",
+      "description": "Description"
+    }
+  ],
+  "resources": [
+    {
+      "name": "background-jobs",
+      "path": "/mcp/resources/background-jobs.md",
+      "title": "Background Jobs",
+      "description": "Overview"
+    },
+    {
+      "name": "concurrency",
+      "path": "/mcp/resources/concurrency.md",
+      "title": "Concurrency Control",
+      "description": "Overview"
+    },
+    {
+      "name": "content-repo",
+      "path": "/mcp/resources/content-repo.md",
+      "title": "Content Repository",
+      "description": "Overview"
+    }
+  ],
+  "prompts": [
+    {
+      "name": "auth-flow",
+      "path": "/mcp/prompts/auth-flow.md",
+      "title": "Authentication Flow Setup",
+      "description": "Context"
+    },
+    {
+      "name": "service-setup",
+      "path": "/mcp/prompts/service-setup.md",
+      "title": "Service Setup with Dependency Injection",
+      "description": "Context"
+    }
+  ]
+}
