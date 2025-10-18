@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, writeFileSync, existsSync, statSync } from 'fs';
+import { readdirSync, readFileSync, writeFileSync, existsSync, statSync, mkdirSync, copyFileSync } from 'fs';
 import { join, relative, dirname, parse } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -22,6 +22,7 @@ interface McpManifest {
 }
 
 const MCP_DIR = join(__dirname, '..', 'src', 'mcp');
+const OUTPUT_DIR = join(__dirname, '..', 'public', 'mcp');
 const OUTPUT_FILE = join(__dirname, '..', 'public', 'mcp-manifest.json');
 
 function extractMetadata(content: string): { title?: string; description?: string } {
@@ -43,6 +44,12 @@ function scanMcpDirectory(dir: string, type: 'tools' | 'resources' | 'prompts'):
     return items;
   }
 
+  // Create output directory for this type
+  const outputPath = join(OUTPUT_DIR, type);
+  if (!existsSync(outputPath)) {
+    mkdirSync(outputPath, { recursive: true });
+  }
+
   const files = readdirSync(fullPath);
 
   for (const file of files) {
@@ -54,6 +61,10 @@ function scanMcpDirectory(dir: string, type: 'tools' | 'resources' | 'prompts'):
       const metadata = extractMetadata(content);
       const { name } = parse(file);
 
+      // Copy the file to public/mcp/
+      const destPath = join(outputPath, file);
+      copyFileSync(filePath, destPath);
+
       items.push({
         name,
         path: `/mcp/${type}/${file}`,
@@ -61,7 +72,7 @@ function scanMcpDirectory(dir: string, type: 'tools' | 'resources' | 'prompts'):
         description: metadata.description,
       });
 
-      console.log(`✓ Found ${type}: ${name}`);
+      console.log(`✓ Copied ${type}: ${name}`);
     }
   }
 
@@ -80,10 +91,12 @@ function main() {
     prompts: scanMcpDirectory(MCP_DIR, 'prompts'),
   };
 
-  // Ensure public directory exists
+  // Ensure output directories exist
+  if (!existsSync(OUTPUT_DIR)) {
+    mkdirSync(OUTPUT_DIR, { recursive: true });
+  }
   const publicDir = dirname(OUTPUT_FILE);
   if (!existsSync(publicDir)) {
-    const { mkdirSync } = require('fs');
     mkdirSync(publicDir, { recursive: true });
   }
 
