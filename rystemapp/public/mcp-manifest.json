@@ -16,6 +16,12 @@
       "description": "Description"
     },
     {
+      "name": "project-setup",
+      "path": "/mcp/tools/project-setup.md",
+      "title": "New Project Setup with Domain Architecture",
+      "description": "Complete guide to setup a new project with modular domain architecture, supporting both single and multiple domain structures using Rystem Framework"
+    },
+    {
       "name": "repository-setup",
       "path": "/mcp/tools/repository-setup.md",
       "title": "Repository Pattern Setup",
