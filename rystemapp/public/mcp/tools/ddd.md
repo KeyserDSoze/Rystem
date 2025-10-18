@@ -1,4 +1,4 @@
-# Domain-Driven Design (DDD) Pattern
+﻿# Domain-Driven Design (DDD) Pattern
 
 This tool provides guidance for implementing DDD patterns using Rystem, including entities, value objects, aggregates, and domain services.
 

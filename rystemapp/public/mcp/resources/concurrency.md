@@ -1,4 +1,4 @@
-# Concurrency Control
+﻿# Concurrency Control
 
 > Implement distributed locks and prevent race conditions with Rystem Concurrency
 

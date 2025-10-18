@@ -1,4 +1,4 @@
-# Repository Pattern Setup
+﻿# Repository Pattern Setup
 
 > Setup Rystem Repository Framework for CQRS and Repository pattern implementations
 

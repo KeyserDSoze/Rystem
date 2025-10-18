@@ -86,51 +86,121 @@ Each project is **nominally unique**, without domain suffixes.
 
 ## 🧱 Multiple Domain Architecture
 
-When the application manages multiple domains (e.g., **Orders**, **Shipments**, **Customers**), each domain becomes a complete and independent subset with its own vertical structure.
+When the application manages multiple domains (e.g., **Orders**, **Shipments**, **Customers**), **the general structure changes significantly**: each domain becomes a **completely isolated folder** containing its own vertical slice of the architecture.
+
+### 🔄 Key Difference
+
+In multiple domain architecture, **each domain has its own folder at the root level** (`src/[DomainName]`), and inside each domain folder you'll find the same structure as a single domain project.
 
 ### Example Structure
 
 ```
 src/
-├── domains/
-│   ├── [ProjectName].Orders.Core
-│   ├── [ProjectName].Shipments.Core
-│   └── [ProjectName].Customers.Core
+├── Orders/                           # Orders Domain (isolated)
+│   ├── domains/
+│   │   └── [ProjectName].Orders.Core
+│   ├── business/
+│   │   └── [ProjectName].Orders.Business
+│   ├── infrastructures/
+│   │   └── [ProjectName].Orders.Storage
+│   ├── applications/
+│   │   └── [ProjectName].Orders.Api      # API specific for Orders domain
+│   └── tests/
+│       └── [ProjectName].Orders.Test
 │
-├── business/
-│   ├── [ProjectName].Orders.Business
-│   ├── [ProjectName].Shipments.Business
-│   └── [ProjectName].Customers.Business
+├── Shipments/                        # Shipments Domain (isolated)
+│   ├── domains/
+│   │   └── [ProjectName].Shipments.Core
+│   ├── business/
+│   │   └── [ProjectName].Shipments.Business
+│   ├── infrastructures/
+│   │   └── [ProjectName].Shipments.Storage
+│   ├── applications/
+│   │   └── [ProjectName].Shipments.Api   # API specific for Shipments domain
+│   └── tests/
+│       └── [ProjectName].Shipments.Test
 │
-├── infrastructures/
-│   ├── [ProjectName].Orders.Storage
-│   ├── [ProjectName].Shipments.Storage
-│   └── [ProjectName].Customers.Storage
+├── Customers/                        # Customers Domain (isolated)
+│   ├── domains/
+│   │   └── [ProjectName].Customers.Core
+│   ├── business/
+│   │   └── [ProjectName].Customers.Business
+│   ├── infrastructures/
+│   │   └── [ProjectName].Customers.Storage
+│   ├── applications/
+│   │   └── [ProjectName].Customers.Api   # API specific for Customers domain
+│   └── tests/
+│       └── [ProjectName].Customers.Test
 │
-├── applications/
-│   ├── [ProjectName].Api                # Unified API for all domains
-│   └── [projectname].app                # React frontend, modular for domains
-│
-├── tests/
-│   ├── [ProjectName].Orders.Test
-│   ├── [ProjectName].Shipments.Test
-│   └── [ProjectName].Customers.Test
+└── app/                              # Frontend Domain (if unified frontend)
+    └── [projectname].app             # React app with all domain modules
+    # OR micro-frontends aggregator if using micro-frontend architecture
 ```
 
-Each domain can be managed and versioned independently but integrated into a single API Gateway (`[ProjectName].Api`).
+### 📱 Frontend Architecture in Multiple Domains
+
+#### Option 1: Unified Frontend (Recommended)
+Create a dedicated **`app`** domain folder containing a single React application that aggregates all backend domains:
+
+```
+src/
+├── app/
+│   └── [projectname].app/
+│       ├── src/
+│       │   ├── domains/
+│       │   │   ├── orders/        # Orders UI module
+│       │   │   ├── shipments/     # Shipments UI module
+│       │   │   └── customers/     # Customers UI module
+│       │   ├── shared/
+│       │   └── app.tsx
+│       └── package.json
+```
+
+#### Option 2: Micro-Frontends
+If each domain has its own frontend, **still create the `app` domain** to host the aggregator/shell:
+
+```
+src/
+├── Orders/
+│   └── applications/
+│       ├── [ProjectName].Orders.Api
+│       └── [projectname].orders.app    # Orders micro-frontend
+├── Shipments/
+│   └── applications/
+│       ├── [ProjectName].Shipments.Api
+│       └── [projectname].shipments.app # Shipments micro-frontend
+└── app/
+    └── [projectname].shell.app         # Shell/Aggregator for micro-frontends
+```
+
+**Important:** Even with micro-frontends, the `app` domain contains the **shell application** that orchestrates and loads the individual micro-frontends.
+
+### 🎯 Benefits of Domain Folders
+
+- **Complete Isolation**: Each domain is a self-contained unit
+- **Independent Deployment**: Domains can be deployed separately
+- **Team Organization**: Different teams can own different domain folders
+- **Clear Boundaries**: No confusion about which code belongs to which domain
+- **Scalability**: Easy to add/remove domains without affecting others
 
 ---
 
 ## ⚙️ Naming Rules
 
-| Project Type         | Single Domain              | Multiple Domain                          |
+| Project Type         | Single Domain              | Multiple Domain (Folder-Based)           |
 |---------------------|---------------------------|------------------------------------------|
+| **Folder Structure**| `src/[layer]/[project]`   | `src/[DomainName]/[layer]/[project]`    |
 | Domain              | [ProjectName].Core        | [ProjectName].[DomainName].Core         |
 | Business Layer      | [ProjectName].Business    | [ProjectName].[DomainName].Business     |
 | Infrastructure Layer| [ProjectName].Storage     | [ProjectName].[DomainName].Storage      |
 | Test                | [ProjectName].Test        | [ProjectName].[DomainName].Test         |
-| API                 | [ProjectName].Api         | [ProjectName].Api                       |
-| Frontend App        | [projectname].app         | [projectname].app                       |
+| API                 | [ProjectName].Api         | [ProjectName].[DomainName].Api          |
+| Frontend App        | [projectname].app         | [projectname].app (in `src/app/`)       |
+
+**Key Points:**
+- **Single Domain**: All layers at root level (`src/domains/`, `src/business/`, etc.)
+- **Multiple Domain**: Each domain in its own folder (`src/Orders/`, `src/Shipments/`, etc.)
+- **Frontend**: Always in dedicated `src/app/` folder for multiple domains
 
 ---
 
@@ -181,16 +251,43 @@ Each storage implements interfaces defined in the `Core` through `Rystem.Reposit
 
 ## 🚀 Creating a New Domain
 
-When adding a new domain, automatically create the projects:
+### Single Domain Project
+When using a single domain, the structure is already defined (no additional domains needed).
 
-```
-ProjectName.DomainName.Core
-ProjectName.DomainName.Business
-ProjectName.DomainName.Storage
-ProjectName.DomainName.Test
-```
+### Multiple Domain Project
+When adding a new domain to a multiple domain architecture:
 
-And register them in the `ProjectName.Api` with the relevant module.
+1. **Create the domain folder** at root level:
+   ```bash
+   mkdir src/[DomainName]
+   ```
+
+2. **Inside the domain folder, replicate the single domain structure**:
+   ```
+   src/[DomainName]/
+   ├── domains/
+   │   └── [ProjectName].[DomainName].Core
+   ├── business/
+   │   └── [ProjectName].[DomainName].Business
+   ├── infrastructures/
+   │   └── [ProjectName].[DomainName].Storage
+   ├── applications/
+   │   └── [ProjectName].[DomainName].Api
+   └── tests/
+       └── [ProjectName].[DomainName].Test
+   ```
+
+3. **Update the frontend** (`src/app/[projectname].app`) to include the new domain module
+
+4. **Optional**: Configure API Gateway or service mesh to route requests to the new domain API
+
+**Example**: Adding a "Payments" domain:
+```bash
+mkdir src/Payments
+cd src/Payments
+mkdir domains business infrastructures applications tests
+# Then create projects inside each folder following the naming convention
+```
 
 ---
 
@@ -406,30 +503,106 @@ Always create `.csproj` files in all project folders targeting **.NET 9**:
 
 ### Multiple Domain Project
 
-For multiple domains, repeat steps 2-4 for each domain with the naming convention:
+For multiple domains, **each domain gets its own root folder** with the complete structure inside:
 
-```bash
-# Example for Orders domain (replace "Orders" with your actual domain name)
-cd domains
-dotnet new classlib -n [ProjectName].Orders.Core -f net9.0
-dotnet add [ProjectName].Orders.Core package Rystem.DependencyInjection -v 9.1.3
+1. **Create Solution**
+   ```bash
+   dotnet new sln -n [ProjectName]
+   mkdir src
+   cd src
+   ```
 
-cd ../business
-dotnet new classlib -n [ProjectName].Orders.Business -f net9.0
-dotnet add [ProjectName].Orders.Business package Rystem.DependencyInjection -v 9.1.3
-dotnet add [ProjectName].Orders.Business reference ../domains/[ProjectName].Orders.Core/[ProjectName].Orders.Core.csproj
+2. **Create First Domain Folder (e.g., Orders)**
+   ```bash
+   mkdir Orders
+   cd Orders
+   mkdir domains business infrastructures applications tests
+   ```
 
-cd ../infrastructures
-dotnet new classlib -n [ProjectName].Orders.Storage -f net9.0
-dotnet add [ProjectName].Orders.Storage package Rystem.DependencyInjection -v 9.1.3
-dotnet add [ProjectName].Orders.Storage package Rystem.RepositoryFramework.Infrastructure.EntityFramework -v 9.1.3
-dotnet add [ProjectName].Orders.Storage reference ../domains/[ProjectName].Orders.Core/[ProjectName].Orders.Core.csproj
+3. **Create Core Domain**
+   ```bash
+   cd domains
+   dotnet new classlib -n [ProjectName].Orders.Core -f net9.0
+   dotnet add [ProjectName].Orders.Core package Rystem.DependencyInjection -v 9.1.3
+   cd ..
+   dotnet sln ../../[ProjectName].sln add domains/[ProjectName].Orders.Core/[ProjectName].Orders.Core.csproj
+   ```
 
-cd ../tests
-dotnet new xunit -n [ProjectName].Orders.Test -f net9.0
-dotnet add [ProjectName].Orders.Test package Rystem.Test.XUnit -v 9.1.3
-dotnet add [ProjectName].Orders.Test reference ../business/[ProjectName].Orders.Business/[ProjectName].Orders.Business.csproj
-dotnet add [ProjectName].Orders.Test reference ../infrastructures/[ProjectName].Orders.Storage/[ProjectName].Orders.Storage.csproj
+4. **Create Business Layer**
+   ```bash
+   cd business
+   dotnet new classlib -n [ProjectName].Orders.Business -f net9.0
+   dotnet add [ProjectName].Orders.Business package Rystem.DependencyInjection -v 9.1.3
+   dotnet add [ProjectName].Orders.Business reference ../domains/[ProjectName].Orders.Core/[ProjectName].Orders.Core.csproj
+   cd ..
+   dotnet sln ../../[ProjectName].sln add business/[ProjectName].Orders.Business/[ProjectName].Orders.Business.csproj
+   ```
+
+5. **Create Storage Layer**
+   ```bash
+   cd infrastructures
+   dotnet new classlib -n [ProjectName].Orders.Storage -f net9.0
+   dotnet add [ProjectName].Orders.Storage package Rystem.DependencyInjection -v 9.1.3
+   dotnet add [ProjectName].Orders.Storage package Rystem.RepositoryFramework.Infrastructure.EntityFramework -v 9.1.3
+   dotnet add [ProjectName].Orders.Storage reference ../domains/[ProjectName].Orders.Core/[ProjectName].Orders.Core.csproj
+   cd ..
+   dotnet sln ../../[ProjectName].sln add infrastructures/[ProjectName].Orders.Storage/[ProjectName].Orders.Storage.csproj
+   ```
+
+6. **Create API**
+   ```bash
+   cd applications
+   dotnet new webapi -n [ProjectName].Orders.Api -f net9.0
+   dotnet add [ProjectName].Orders.Api package Rystem.DependencyInjection.Web -v 9.1.3
+   dotnet add [ProjectName].Orders.Api package Rystem.Api.Server -v 9.1.3
+   dotnet add [ProjectName].Orders.Api reference ../business/[ProjectName].Orders.Business/[ProjectName].Orders.Business.csproj
+   dotnet add [ProjectName].Orders.Api reference ../infrastructures/[ProjectName].Orders.Storage/[ProjectName].Orders.Storage.csproj
+   cd ..
+   dotnet sln ../../[ProjectName].sln add applications/[ProjectName].Orders.Api/[ProjectName].Orders.Api.csproj
+   ```
+
+7. **Create Test Project**
+   ```bash
+   cd tests
+   dotnet new xunit -n [ProjectName].Orders.Test -f net9.0
+   dotnet add [ProjectName].Orders.Test package Rystem.Test.XUnit -v 9.1.3
+   dotnet add [ProjectName].Orders.Test reference ../business/[ProjectName].Orders.Business/[ProjectName].Orders.Business.csproj
+   dotnet add [ProjectName].Orders.Test reference ../infrastructures/[ProjectName].Orders.Storage/[ProjectName].Orders.Storage.csproj
+   cd ..
+   dotnet sln ../../[ProjectName].sln add tests/[ProjectName].Orders.Test/[ProjectName].Orders.Test.csproj
+   ```
+
+8. **Go back to src and repeat for other domains** (e.g., Shipments, Customers)
+   ```bash
+   cd ..  # Back to src/
+   # Repeat steps 2-7 for each additional domain
+   ```
+
+9. **Create Frontend App Domain**
+   ```bash
+   mkdir app
+   cd app
+   npx create-vite [projectname].app --template react-ts
+   cd ..
+   ```
+
+**Result Structure:**
+```
+src/
+├── Orders/
+│   ├── domains/
+│   ├── business/
+│   ├── infrastructures/
+│   ├── applications/
+│   └── tests/
+├── Shipments/
+│   ├── domains/
+│   ├── business/
+│   ├── infrastructures/
+│   ├── applications/
+│   └── tests/
+└── app/
+    └── [projectname].app/
 ```
 
 ---

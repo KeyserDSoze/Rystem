@@ -55,15 +55,61 @@ tags: ["ddd", "pattern", "architecture", "entities"]
 This tool provides guidance for implementing DDD patterns...
 ```
 
+## Versioning
+
+The MCP manifest version is **automatically synchronized** with the `package.json` version.
+
+### How to Update the Version
+
+To update the MCP manifest version:
+
+1. **Update package.json:**
+   ```bash
+   npm version patch   # 1.0.0 → 1.0.1
+   npm version minor   # 1.0.0 → 1.1.0
+   npm version major   # 1.0.0 → 2.0.0
+   ```
+
+2. **Rebuild the manifest:**
+   ```bash
+   npm run build-mcp
+   ```
+
+The version from `package.json` will automatically be used in `mcp-manifest.json`.
+
+### Auto-Update in GitHub Copilot and VS Code
+
+**Important:** GitHub Copilot and VS Code MCP clients typically cache the manifest based on the version number.
+
+**To force an update:**
+
+1. ✅ **Increment the version** in `package.json`
+2. ✅ **Rebuild and deploy** (`npm run build-mcp` + `npm run build`)
+3. ✅ **Push to GitHub** (triggers GitHub Pages deployment)
+4. ⏱️ **Wait for cache expiration** (usually 5-30 minutes)
+5. 🔄 **Or manually refresh** in VS Code: `Cmd/Ctrl + Shift + P` → "Developer: Reload Window"
+
+**Cache behavior:**
+- GitHub Copilot checks for manifest updates periodically
+- VS Code MCP extension respects HTTP cache headers
+- Incrementing the version number helps force updates
+
+**Best practice:** Use semantic versioning:
+- `MAJOR.MINOR.PATCH` (e.g., `1.2.3`)
+- **PATCH** (1.0.x): Bug fixes, documentation updates
+- **MINOR** (1.x.0): New tools/resources/prompts
+- **MAJOR** (x.0.0): Breaking changes in tool interfaces
+
 ## Build Process
 
 When you run `npm run build-mcp`:
 
-1. ✅ Reads all `.md` files from `tools/`, `resources/`, and `prompts/`
-2. ✅ Extracts metadata from YAML frontmatter
-3. ✅ Removes frontmatter from the published files
-4. ✅ Copies clean markdown to `public/mcp/`
-5. ✅ Generates `public/mcp-manifest.json` with all metadata
+1. ✅ Reads version from `package.json`
+2. ✅ Reads all `.md` files from `tools/`, `resources/`, and `prompts/`
+3. ✅ Extracts metadata from YAML frontmatter
+4. ✅ Removes frontmatter from the published files
+5. ✅ Copies clean markdown to `public/mcp/`
+6. ✅ Generates `public/mcp-manifest.json` with all metadata and version
 
 ## Fallback Behavior
 

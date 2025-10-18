@@ -24,6 +24,7 @@ interface McpManifest {
 const MCP_DIR = join(__dirname, '..', 'src', 'mcp');
 const OUTPUT_DIR = join(__dirname, '..', 'public', 'mcp');
 const OUTPUT_FILE = join(__dirname, '..', 'public', 'mcp-manifest.json');
+const PACKAGE_JSON_PATH = join(__dirname, '..', 'package.json');
 
 interface Metadata {
   title?: string;
@@ -88,9 +89,10 @@ function scanMcpDirectory(dir: string, type: 'tools' | 'resources' | 'prompts'):
       const metadata = extractMetadata(content);
       const { name } = parse(file);
 
-      // Write the file WITHOUT frontmatter to public/mcp/
+      // Write the file WITHOUT frontmatter to public/mcp/ with UTF-8 BOM
       const destPath = join(outputPath, file);
-      writeFileSync(destPath, metadata.content, 'utf-8');
+      const utf8BOM = '\uFEFF';
+      writeFileSync(destPath, utf8BOM + metadata.content, 'utf-8');
 
       items.push({
         name,
@@ -109,9 +111,19 @@ function scanMcpDirectory(dir: string, type: 'tools' | 'resources' | 'prompts'):
 function main() {
   console.log('🔧 Building MCP manifest...\n');
 
+  // Read version from package.json
+  let version = '1.0.0'; // fallback version
+  try {
+    const packageJson = JSON.parse(readFileSync(PACKAGE_JSON_PATH, 'utf-8'));
+    version = packageJson.version || version;
+    console.log(`📦 Using version from package.json: ${version}\n`);
+  } catch (error) {
+    console.warn('⚠️  Could not read package.json, using default version:', version);
+  }
+
   const manifest: McpManifest = {
     name: 'rystem-mcp',
-    version: '1.0.0',
+    version: version,
     description: 'Rystem Framework Model Context Protocol - Tools, Resources, and Prompts for developers',
     tools: scanMcpDirectory(MCP_DIR, 'tools'),
     resources: scanMcpDirectory(MCP_DIR, 'resources'),

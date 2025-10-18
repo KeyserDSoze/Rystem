@@ -1,6 +1,6 @@
 {
   "name": "rystem-mcp",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Rystem Framework Model Context Protocol - Tools, Resources, and Prompts for developers",
   "tools": [
     {

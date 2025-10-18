@@ -1,4 +1,4 @@
-# Background Jobs
+﻿# Background Jobs
 
 > Configure and use Rystem background jobs for scheduled and recurring tasks
 
