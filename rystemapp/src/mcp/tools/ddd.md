@@ -1,8 +1,11 @@
+---
+title: "Domain-Driven Design (DDD) Pattern"
+description: "Setup DDD pattern with entities, aggregates, value objects, and repositories using Rystem Framework"
+category: "architecture"
+tags: ["ddd", "pattern", "architecture", "entities"]
+---
+
 # Domain-Driven Design (DDD) Pattern
-
-> Implement Domain-Driven Design patterns with Rystem Repository Framework
-
-## Description
 
 This tool provides guidance for implementing DDD patterns using Rystem, including entities, value objects, aggregates, and domain services.
 

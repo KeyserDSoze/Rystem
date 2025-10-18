@@ -25,13 +25,40 @@ const MCP_DIR = join(__dirname, '..', 'src', 'mcp');
 const OUTPUT_DIR = join(__dirname, '..', 'public', 'mcp');
 const OUTPUT_FILE = join(__dirname, '..', 'public', 'mcp-manifest.json');
 
-function extractMetadata(content: string): { title?: string; description?: string } {
+interface Metadata {
+  title?: string;
+  description?: string;
+  content: string; // Content without frontmatter
+}
+
+function extractMetadata(content: string): Metadata {
+  // Check for YAML frontmatter
+  const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/;
+  const match = content.match(frontmatterRegex);
+
+  if (match) {
+    // Parse YAML frontmatter
+    const frontmatter = match[1];
+    const contentWithoutFrontmatter = match[2];
+
+    const titleMatch = frontmatter.match(/title:\s*["']?(.+?)["']?\s*$/m);
+    const descMatch = frontmatter.match(/description:\s*["']?(.+?)["']?\s*$/m);
+
+    return {
+      title: titleMatch ? titleMatch[1] : undefined,
+      description: descMatch ? descMatch[1] : undefined,
+      content: contentWithoutFrontmatter,
+    };
+  }
+
+  // Fallback to H1 title if no frontmatter
   const titleMatch = content.match(/^#\s+(.+)$/m);
   const descMatch = content.match(/^##\s+(.+)$/m) || content.match(/^>\s+(.+)$/m);
 
   return {
     title: titleMatch ? titleMatch[1] : undefined,
     description: descMatch ? descMatch[1] : undefined,
+    content: content,
   };
 }
 
@@ -61,9 +88,9 @@ function scanMcpDirectory(dir: string, type: 'tools' | 'resources' | 'prompts'):
       const metadata = extractMetadata(content);
       const { name } = parse(file);
 
-      // Copy the file to public/mcp/
+      // Write the file WITHOUT frontmatter to public/mcp/
       const destPath = join(outputPath, file);
-      copyFileSync(filePath, destPath);
+      writeFileSync(destPath, metadata.content, 'utf-8');
 
       items.push({
         name,
@@ -72,7 +99,7 @@ function scanMcpDirectory(dir: string, type: 'tools' | 'resources' | 'prompts'):
         description: metadata.description,
       });
 
-      console.log(`✓ Copied ${type}: ${name}`);
+      console.log(`✓ Copied ${type}: ${name} (title: ${metadata.title || name})`);
     }
   }
 

@@ -7,7 +7,7 @@
       "name": "ddd",
       "path": "/mcp/tools/ddd.md",
       "title": "Domain-Driven Design (DDD) Pattern",
-      "description": "Description"
+      "description": "Setup DDD pattern with entities, aggregates, value objects, and repositories using Rystem Framework"
     },
     {
       "name": "install-rystem",
