@@ -1,19 +1,19 @@
 import { useParams } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import Sidebar, { DocEntry } from '../components/Sidebar'
+import Sidebar, { DocNode } from '../components/Sidebar'
 import MarkdownViewer from '../components/MarkdownViewer'
 import { AlertCircle, Loader2 } from 'lucide-react'
 
 export default function DocsPage() {
   const { docPath } = useParams<{ docPath?: string }>()
-  const [docs, setDocs] = useState<DocEntry[]>([])
+  const [docs, setDocs] = useState<DocNode[]>([])
   const [content, setContent] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // Load docs index
   useEffect(() => {
-    fetch('/Rystem/generated/index.json')
+    fetch('/generated/index.json')
       .then((res) => res.json())
       .then((data) => {
         setDocs(data)
@@ -37,7 +37,7 @@ export default function DocsPage() {
     setError(null)
 
     const decodedPath = decodeURIComponent(docPath)
-    fetch(`/Rystem/generated/${decodedPath}`)
+    fetch(`/generated/${decodedPath}`)
       .then((res) => {
         if (!res.ok) throw new Error('Document not found')
         return res.text()
@@ -67,7 +67,7 @@ export default function DocsPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)]">
+    <div className="flex h-full">
       <Sidebar docs={docs} currentPath={docPath} />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl px-6 py-8">

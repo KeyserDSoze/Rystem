@@ -1,20 +1,34 @@
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync, readdirSync, statSync } from 'fs';
-import { join, relative, dirname, sep } from 'path';
+import { join, relative, dirname, sep, basename } from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-interface DocEntry {
-  path: string;
+interface DocNode {
+  id: string;
+  name: string;
   title: string;
-  relativePath: string;
-  category?: string;
+  path?: string;
+  children?: DocNode[];
+  type: 'category' | 'folder' | 'file';
 }
 
 const PACKAGES_ROOT = join(__dirname, '..', '..', 'src');
-const OUTPUT_DIR = join(__dirname, '..', 'src', 'generated');
+const OUTPUT_DIR = join(__dirname, '..', 'public', 'generated');
 const INDEX_FILE = join(OUTPUT_DIR, 'index.json');
+
+// Directories to exclude from scanning
+const EXCLUDED_DIRS = [
+  'node_modules',
+  'bin',
+  'obj',
+  '.git',
+  '.vs',
+  'TestResults',
+  'packages',
+  'wwwroot',
+];
 
 function ensureDirectoryExists(dirPath: string) {
   if (!existsSync(dirPath)) {
@@ -22,8 +36,14 @@ function ensureDirectoryExists(dirPath: string) {
   }
 }
 
-function findAllReadmes(dir: string, baseDir: string = dir): DocEntry[] {
-  const entries: DocEntry[] = [];
+function shouldExcludeDirectory(dirName: string): boolean {
+  return EXCLUDED_DIRS.some(excluded => 
+    dirName.toLowerCase().includes(excluded.toLowerCase())
+  );
+}
+
+function findAllReadmes(dir: string, baseDir: string = dir): DocNode[] {
+  const entries: DocNode[] = [];
 
   if (!existsSync(dir)) {
     console.warn(`Directory not found: ${dir}`);
@@ -31,28 +51,25 @@ function findAllReadmes(dir: string, baseDir: string = dir): DocEntry[] {
   }
 
   const items = readdirSync(dir);
+  let hasReadme = false;
+  const subdirs: string[] = [];
 
+  // First pass: check for README and collect subdirectories
   for (const item of items) {
     const fullPath = join(dir, item);
     const stat = statSync(fullPath);
 
     if (stat.isDirectory()) {
-      // Recursively search subdirectories
-      entries.push(...findAllReadmes(fullPath, baseDir));
-    } else if (item.toLowerCase() === 'readme.md') {
-      const relativePath = relative(baseDir, fullPath);
-      const pathParts = relativePath.split(sep);
-      
-      // Extract category from path (e.g., "Core", "Repository", "Extensions")
-      let category = 'Other';
-      if (pathParts.length > 0) {
-        category = pathParts[0];
+      if (!shouldExcludeDirectory(item)) {
+        subdirs.push(item);
       }
-
-      // Extract title from the directory name or first heading in README
-      let title = pathParts[pathParts.length - 2] || 'Root';
+    } else if (item.toLowerCase() === 'readme.md') {
+      hasReadme = true;
+      hasReadme = true;
+      const relativePath = relative(baseDir, fullPath);
       
-      // Try to extract title from README content
+      // Extract title from README content
+      let title = basename(dir);
       try {
         const content = readFileSync(fullPath, 'utf-8');
         const match = content.match(/^#\s+(.+)$/m);
@@ -65,13 +82,6 @@ function findAllReadmes(dir: string, baseDir: string = dir): DocEntry[] {
 
       const outputPath = join(OUTPUT_DIR, relativePath);
       
-      entries.push({
-        path: relativePath,
-        title,
-        relativePath: relativePath.replace(/\\/g, '/'),
-        category,
-      });
-
       // Copy README to output directory
       ensureDirectoryExists(dirname(outputPath));
       copyFileSync(fullPath, outputPath);
@@ -79,42 +89,129 @@ function findAllReadmes(dir: string, baseDir: string = dir): DocEntry[] {
     }
   }
 
+  // If this directory has a README, create a node for it
+  if (hasReadme) {
+    const relativePath = relative(baseDir, join(dir, 'README.md'));
+    const dirName = basename(dir);
+    
+    let title = dirName;
+    const readmePath = join(dir, 'README.md');
+    try {
+      const content = readFileSync(readmePath, 'utf-8');
+      const match = content.match(/^#\s+(.+)$/m);
+      if (match) {
+        title = match[1];
+      }
+    } catch (error) {
+      // Title already set to dirName
+    }
+
+    const node: DocNode = {
+      id: relativePath.replace(/\\/g, '/').replace(/\/README\.md$/i, ''),
+      name: dirName,
+      title: title,
+      path: relativePath.replace(/\\/g, '/'),
+      type: 'file',
+      children: [],
+    };
+
+    // Process subdirectories
+    for (const subdir of subdirs) {
+      const subdirPath = join(dir, subdir);
+      const subdirNodes = findAllReadmes(subdirPath, baseDir);
+      if (subdirNodes.length > 0) {
+        node.children!.push(...subdirNodes);
+      }
+    }
+
+    // If no children, remove the children property
+    if (node.children!.length === 0) {
+      delete node.children;
+    }
+
+    return [node];
+  } else {
+    // No README in this directory, but process subdirectories
+    for (const subdir of subdirs) {
+      const subdirPath = join(dir, subdir);
+      entries.push(...findAllReadmes(subdirPath, baseDir));
+    }
+  }
+
   return entries;
 }
 
+function buildCategoryTree(): DocNode[] {
+  const categories: DocNode[] = [];
+  
+  if (!existsSync(PACKAGES_ROOT)) {
+    console.error(`Source directory not found: ${PACKAGES_ROOT}`);
+    return categories;
+  }
+
+  const categoryDirs = readdirSync(PACKAGES_ROOT);
+  
+  for (const categoryDir of categoryDirs) {
+    const categoryPath = join(PACKAGES_ROOT, categoryDir);
+    const stat = statSync(categoryPath);
+    
+    if (!stat.isDirectory() || shouldExcludeDirectory(categoryDir)) {
+      continue;
+    }
+
+    console.log(`\n📁 Processing category: ${categoryDir}`);
+    
+    const categoryNodes = findAllReadmes(categoryPath, PACKAGES_ROOT);
+    
+    if (categoryNodes.length > 0) {
+      const categoryNode: DocNode = {
+        id: categoryDir,
+        name: categoryDir,
+        title: categoryDir,
+        type: 'category',
+        children: categoryNodes,
+      };
+      
+      categories.push(categoryNode);
+    }
+  }
+  
+  return categories;
+}
+
+function countNodes(nodes: DocNode[]): number {
+  let count = 0;
+  for (const node of nodes) {
+    count++;
+    if (node.children) {
+      count += countNodes(node.children);
+    }
+  }
+  return count;
+}
+
 function main() {
-  console.log('🔍 Scanning for README files...\n');
+  console.log('🔍 Scanning for README files in Rystem packages...\n');
   
   // Ensure output directory exists
   ensureDirectoryExists(OUTPUT_DIR);
 
-  // Find all READMEs
-  const docs = findAllReadmes(PACKAGES_ROOT);
-
-  // Sort by category and title
-  docs.sort((a, b) => {
-    if (a.category !== b.category) {
-      return (a.category || '').localeCompare(b.category || '');
-    }
-    return a.title.localeCompare(b.title);
-  });
+  // Build the category tree
+  const tree = buildCategoryTree();
 
   // Write index.json
-  writeFileSync(INDEX_FILE, JSON.stringify(docs, null, 2), 'utf-8');
+  writeFileSync(INDEX_FILE, JSON.stringify(tree, null, 2), 'utf-8');
   
-  console.log(`\n✅ Generated documentation index with ${docs.length} entries`);
+  const totalDocs = countNodes(tree);
+  
+  console.log(`\n✅ Generated documentation tree with ${totalDocs} entries`);
   console.log(`📄 Index file: ${relative(join(__dirname, '..'), INDEX_FILE)}\n`);
 
   // Print summary by category
-  const categories = new Map<string, number>();
-  docs.forEach(doc => {
-    const cat = doc.category || 'Other';
-    categories.set(cat, (categories.get(cat) || 0) + 1);
-  });
-
   console.log('📊 Summary by category:');
-  categories.forEach((count, category) => {
-    console.log(`   ${category}: ${count} packages`);
+  tree.forEach(category => {
+    const count = countNodes(category.children || []);
+    console.log(`   ${category.name}: ${count} packages`);
   });
 }
 

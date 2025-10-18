@@ -28,7 +28,7 @@ export default function McpPage() {
 
   // Load MCP manifest
   useEffect(() => {
-    fetch('/Rystem/mcp-manifest.json')
+    fetch('/mcp-manifest.json')
       .then((res) => res.json())
       .then((data) => {
         setManifest(data)
@@ -45,7 +45,7 @@ export default function McpPage() {
   const loadItem = (type: string, item: McpItem) => {
     setSelectedItem({ type, item })
     setContentLoading(true)
-    fetch(`/Rystem${item.path}`)
+    fetch(item.path)
       .then((res) => res.text())
       .then((text) => {
         setItemContent(text)
@@ -126,7 +126,7 @@ export default function McpPage() {
               Version {manifest.version}
             </span>
             <a
-              href="/Rystem/mcp-manifest.json"
+              href="/mcp-manifest.json"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center space-x-1 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400"
