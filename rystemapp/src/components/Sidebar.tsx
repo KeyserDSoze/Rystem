@@ -9,6 +9,7 @@ export interface DocNode {
   path?: string
   children?: DocNode[]
   type: 'category' | 'folder' | 'file'
+  packageType?: 'nuget' | 'npm'
 }
 
 interface SidebarProps {
@@ -17,7 +18,9 @@ interface SidebarProps {
 }
 
 function TreeNode({ node, currentPath, level = 0 }: { node: DocNode; currentPath?: string; level?: number }) {
-  const [isExpanded, setIsExpanded] = useState(true)
+  // Apri solo la categoria "Core" di default (level 0), chiudi le altre categorie
+  const shouldBeOpenByDefault = level === 0 ? node.id === 'Core' : true
+  const [isExpanded, setIsExpanded] = useState(shouldBeOpenByDefault)
   const hasChildren = node.children && node.children.length > 0
   const isActive = currentPath === node.path
 
@@ -34,7 +37,18 @@ function TreeNode({ node, currentPath, level = 0 }: { node: DocNode; currentPath
           style={{ paddingLeft: `${level * 12 + 12}px` }}
         >
           <FileText className="w-3 h-3 flex-shrink-0" />
-          <span className="truncate">{node.title}</span>
+          <span className="truncate flex-1">{node.title}</span>
+          {node.packageType && (
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${
+                node.packageType === 'nuget'
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+                  : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300'
+              }`}
+            >
+              {node.packageType === 'nuget' ? 'C#' : 'TS'}
+            </span>
+          )}
         </Link>
         {hasChildren && isExpanded && (
           <div className="mt-1 space-y-1">

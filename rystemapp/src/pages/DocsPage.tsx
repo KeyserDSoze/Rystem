@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import Sidebar, { DocNode } from '../components/Sidebar'
 import MarkdownViewer from '../components/MarkdownViewer'
@@ -6,6 +6,7 @@ import { AlertCircle, Loader2 } from 'lucide-react'
 
 export default function DocsPage() {
   const { docPath } = useParams<{ docPath?: string }>()
+  const navigate = useNavigate()
   const [docs, setDocs] = useState<DocNode[]>([])
   const [content, setContent] = useState<string>('')
   const [loading, setLoading] = useState(true)
@@ -18,18 +19,22 @@ export default function DocsPage() {
       .then((data) => {
         setDocs(data)
         setLoading(false)
+        
+        // Se non c'è un docPath, reindirizza a Core/Rystem/README.md
+        if (!docPath) {
+          navigate('/docs/Core%2FRystem%2FREADME.md', { replace: true })
+        }
       })
       .catch((err) => {
         console.error('Failed to load docs index:', err)
         setError('Failed to load documentation index')
         setLoading(false)
       })
-  }, [])
+  }, [docPath, navigate])
 
   // Load specific document
   useEffect(() => {
     if (!docPath) {
-      setContent('# Welcome to Rystem Documentation\n\nSelect a package from the sidebar to get started.')
       return
     }
 

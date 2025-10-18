@@ -1,44 +1,113 @@
 [
   {
+    "id": "Core",
+    "name": "Core",
+    "title": "Core",
+    "type": "category",
+    "children": [
+      {
+        "id": "Core/Rystem",
+        "name": "Rystem",
+        "title": "Rystem",
+        "path": "Core/Rystem/README.md",
+        "type": "file",
+        "packageName": "Rystem",
+        "packageType": "nuget"
+      },
+      {
+        "id": "Core/Rystem.DependencyInjection",
+        "name": "DependencyInjection",
+        "title": "DependencyInjection",
+        "path": "Core/Rystem.DependencyInjection/README.md",
+        "type": "file",
+        "packageName": "Rystem.DependencyInjection",
+        "packageType": "nuget"
+      },
+      {
+        "id": "DependencyInjection",
+        "name": "DependencyInjection",
+        "title": "DependencyInjection",
+        "type": "folder",
+        "children": [
+          {
+            "id": "Core/Rystem.DependencyInjection.Web",
+            "name": "Web",
+            "title": "Web",
+            "path": "Core/Rystem.DependencyInjection.Web/README.md",
+            "type": "file",
+            "packageName": "Rystem.DependencyInjection.Web",
+            "packageType": "nuget"
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "Api",
     "name": "Api",
     "title": "Api",
     "type": "category",
     "children": [
       {
-        "id": "Api/Client/Rystem.Api.Client.Authentication.BlazorServer",
-        "name": "Rystem.Api.Client.Authentication.BlazorServer",
-        "title": "Rystem.Api.Client.Authentication.BlazorServer",
-        "path": "Api/Client/Rystem.Api.Client.Authentication.BlazorServer/README.md",
-        "type": "file"
-      },
-      {
-        "id": "Api/Client/Rystem.Api.Client.Authentication.BlazorWasm",
-        "name": "Rystem.Api.Client.Authentication.BlazorWasm",
-        "title": "Rystem.Api.Client.Authentication.BlazorWasm",
-        "path": "Api/Client/Rystem.Api.Client.Authentication.BlazorWasm/README.md",
-        "type": "file"
+        "id": "Client",
+        "name": "Client",
+        "title": "Client",
+        "type": "folder",
+        "children": [
+          {
+            "id": "Client.Authentication",
+            "name": "Authentication",
+            "title": "Authentication",
+            "type": "folder",
+            "children": [
+              {
+                "id": "Api/Client/Rystem.Api.Client.Authentication.BlazorServer",
+                "name": "BlazorServer",
+                "title": "BlazorServer",
+                "path": "Api/Client/Rystem.Api.Client.Authentication.BlazorServer/README.md",
+                "type": "file",
+                "packageName": "Rystem.Api.Client.Authentication.BlazorServer",
+                "packageType": "nuget"
+              },
+              {
+                "id": "Api/Client/Rystem.Api.Client.Authentication.BlazorWasm",
+                "name": "BlazorWasm",
+                "title": "BlazorWasm",
+                "path": "Api/Client/Rystem.Api.Client.Authentication.BlazorWasm/README.md",
+                "type": "file",
+                "packageName": "Rystem.Api.Client.Authentication.BlazorWasm",
+                "packageType": "nuget"
+              }
+            ]
+          }
+        ]
       },
       {
         "id": "Api/Rystem.Api",
-        "name": "Rystem.Api",
-        "title": "Rystem.Api",
+        "name": "Api",
+        "title": "Api",
         "path": "Api/Rystem.Api/README.md",
-        "type": "file"
+        "type": "file",
+        "packageName": "Rystem.Api",
+        "packageType": "nuget"
       },
       {
         "id": "Api/Rystem.Api.Client",
-        "name": "Rystem.Api.Client",
-        "title": "Rystem.Api.Client",
+        "name": "Client",
+        "title": "Client",
         "path": "Api/Rystem.Api.Client/README.md",
-        "type": "file"
+        "type": "file",
+        "packageName": "Rystem.Api.Client",
+        "packageType": "nuget"
       },
       {
         "id": "Api/Rystem.Api.Server",
-        "name": "Rystem.Api.Server",
-        "title": "Rystem.Api.Server",
+        "name": "Server",
+        "title": "Server",
         "path": "Api/Rystem.Api.Server/README.md",
-        "type": "file"
+        "type": "file",
+        "packageName": "Rystem.Api.Server",
+        "packageType": "nuget"
       }
     ]
   },
@@ -50,38 +119,62 @@
     "children": [
       {
         "id": "Authentication/Rystem.Authentication.Social",
-        "name": "Rystem.Authentication.Social",
-        "title": "Rystem.Authentication.Social",
+        "name": "Social",
+        "title": "Social",
         "path": "Authentication/Rystem.Authentication.Social/README.md",
-        "type": "file"
-      },
-      {
-        "id": "Authentication/Rystem.Authentication.Social.Abstractions",
-        "name": "Rystem.Authentication.Social.Abstractions",
-        "title": "Rystem.Authentication.Social.Abstractions",
-        "path": "Authentication/Rystem.Authentication.Social.Abstractions/README.md",
-        "type": "file"
-      },
-      {
-        "id": "Authentication/Rystem.Authentication.Social.Blazor",
-        "name": "Rystem.Authentication.Social.Blazor",
-        "title": "Rystem.Authentication.Social.Blazor",
-        "path": "Authentication/Rystem.Authentication.Social.Blazor/README.md",
-        "type": "file"
-      },
-      {
-        "id": "Authentication/rystem.authentication.social.react",
-        "name": "rystem.authentication.social.react",
-        "title": "React + TypeScript + Vite",
-        "path": "Authentication/rystem.authentication.social.react/README.md",
         "type": "file",
+        "packageName": "Rystem.Authentication.Social",
+        "packageType": "nuget"
+      },
+      {
+        "id": "Social",
+        "name": "Social",
+        "title": "Social",
+        "type": "folder",
         "children": [
           {
+            "id": "Authentication/Rystem.Authentication.Social.Abstractions",
+            "name": "Abstractions",
+            "title": "Abstractions",
+            "path": "Authentication/Rystem.Authentication.Social.Abstractions/README.md",
+            "type": "file",
+            "packageName": "Rystem.Authentication.Social.Abstractions",
+            "packageType": "nuget"
+          },
+          {
+            "id": "Authentication/Rystem.Authentication.Social.Blazor",
+            "name": "Blazor",
+            "title": "Blazor",
+            "path": "Authentication/Rystem.Authentication.Social.Blazor/README.md",
+            "type": "file",
+            "packageName": "Rystem.Authentication.Social.Blazor",
+            "packageType": "nuget"
+          }
+        ]
+      },
+      {
+        "id": "social",
+        "name": "social",
+        "title": "social",
+        "type": "folder",
+        "children": [
+          {
+            "id": "Authentication/rystem.authentication.social.react",
+            "name": "react",
+            "title": "react",
+            "path": "Authentication/rystem.authentication.social.react/README.md",
+            "type": "file",
+            "packageName": "rystem.authentication.social.react",
+            "packageType": "npm"
+          },
+          {
             "id": "Authentication/rystem.authentication.social.react/src/rystem.authentication.social.react",
-            "name": "rystem.authentication.social.react",
-            "title": "Social logins",
+            "name": "react",
+            "title": "react",
             "path": "Authentication/rystem.authentication.social.react/src/rystem.authentication.social.react/README.md",
-            "type": "file"
+            "type": "file",
+            "packageName": "rystem.authentication.social.react",
+            "packageType": "npm"
           }
         ]
       }
@@ -96,75 +189,80 @@
       {
         "id": "Content",
         "name": "Content",
-        "title": "Content Framework",
+        "title": "Content",
         "path": "Content/README.md",
         "type": "file",
+        "packageName": "Content",
+        "packageType": "nuget"
+      },
+      {
+        "id": "Content/Rystem.Content.Abstractions",
+        "name": "Abstractions",
+        "title": "Abstractions",
+        "path": "Content/Rystem.Content.Abstractions/README.md",
+        "type": "file",
+        "packageName": "Rystem.Content.Abstractions",
+        "packageType": "nuget"
+      },
+      {
+        "id": "Infrastructure",
+        "name": "Infrastructure",
+        "title": "Infrastructure",
+        "type": "folder",
         "children": [
           {
-            "id": "Content/Rystem.Content.Abstractions",
-            "name": "Rystem.Content.Abstractions",
-            "title": "Rystem.Content.Abstractions",
-            "path": "Content/Rystem.Content.Abstractions/README.md",
-            "type": "file"
-          },
-          {
-            "id": "Content/Rystem.Content.Infrastructures/Rystem.Content.Infrastructure.Azure.Storage.Blob",
-            "name": "Rystem.Content.Infrastructure.Azure.Storage.Blob",
-            "title": "Rystem.Content.Infrastructure.Azure.Storage.Blob",
-            "path": "Content/Rystem.Content.Infrastructures/Rystem.Content.Infrastructure.Azure.Storage.Blob/README.md",
-            "type": "file"
-          },
-          {
-            "id": "Content/Rystem.Content.Infrastructures/Rystem.Content.Infrastructure.Azure.Storage.File",
-            "name": "Rystem.Content.Infrastructure.Azure.Storage.File",
-            "title": "Rystem.Content.Infrastructure.Azure.Storage.File",
-            "path": "Content/Rystem.Content.Infrastructures/Rystem.Content.Infrastructure.Azure.Storage.File/README.md",
-            "type": "file"
+            "id": "Infrastructure.Storage",
+            "name": "Storage",
+            "title": "Storage",
+            "type": "folder",
+            "children": [
+              {
+                "id": "Content/Rystem.Content.Infrastructures/Rystem.Content.Infrastructure.Azure.Storage.Blob",
+                "name": "Blob",
+                "title": "Blob",
+                "path": "Content/Rystem.Content.Infrastructures/Rystem.Content.Infrastructure.Azure.Storage.Blob/README.md",
+                "type": "file",
+                "packageName": "Rystem.Content.Infrastructure.Storage.Blob",
+                "packageType": "nuget"
+              },
+              {
+                "id": "Content/Rystem.Content.Infrastructures/Rystem.Content.Infrastructure.Azure.Storage.File",
+                "name": "File",
+                "title": "File",
+                "path": "Content/Rystem.Content.Infrastructures/Rystem.Content.Infrastructure.Azure.Storage.File/README.md",
+                "type": "file",
+                "packageName": "Rystem.Content.Infrastructure.Storage.File",
+                "packageType": "nuget"
+              }
+            ]
           },
           {
             "id": "Content/Rystem.Content.Infrastructures/Rystem.Content.Infrastructure.InMemory",
-            "name": "Rystem.Content.Infrastructure.InMemory",
-            "title": "Rystem.Content.Infrastructure.InMemory",
+            "name": "InMemory",
+            "title": "InMemory",
             "path": "Content/Rystem.Content.Infrastructures/Rystem.Content.Infrastructure.InMemory/README.md",
-            "type": "file"
+            "type": "file",
+            "packageName": "Rystem.Content.Infrastructure.InMemory",
+            "packageType": "nuget"
           },
           {
-            "id": "Content/Rystem.Content.Infrastructures/Rystem.Content.Infrastructure.M365.Sharepoint",
-            "name": "Rystem.Content.Infrastructure.M365.Sharepoint",
-            "title": "Rystem.Content.Infrastructure.M365.Sharepoint",
-            "path": "Content/Rystem.Content.Infrastructures/Rystem.Content.Infrastructure.M365.Sharepoint/README.md",
-            "type": "file"
+            "id": "Infrastructure.M365",
+            "name": "M365",
+            "title": "M365",
+            "type": "folder",
+            "children": [
+              {
+                "id": "Content/Rystem.Content.Infrastructures/Rystem.Content.Infrastructure.M365.Sharepoint",
+                "name": "Sharepoint",
+                "title": "Sharepoint",
+                "path": "Content/Rystem.Content.Infrastructures/Rystem.Content.Infrastructure.M365.Sharepoint/README.md",
+                "type": "file",
+                "packageName": "Rystem.Content.Infrastructure.M365.Sharepoint",
+                "packageType": "nuget"
+              }
+            ]
           }
         ]
-      }
-    ]
-  },
-  {
-    "id": "Core",
-    "name": "Core",
-    "title": "Core",
-    "type": "category",
-    "children": [
-      {
-        "id": "Core/Rystem",
-        "name": "Rystem",
-        "title": "Table of Contents",
-        "path": "Core/Rystem/README.md",
-        "type": "file"
-      },
-      {
-        "id": "Core/Rystem.DependencyInjection",
-        "name": "Rystem.DependencyInjection",
-        "title": "Rystem.DependencyInjection",
-        "path": "Core/Rystem.DependencyInjection/README.md",
-        "type": "file"
-      },
-      {
-        "id": "Core/Rystem.DependencyInjection.Web",
-        "name": "Rystem.DependencyInjection.Web",
-        "title": "Rystem.DependencyInjection.Web",
-        "path": "Core/Rystem.DependencyInjection.Web/README.md",
-        "type": "file"
       }
     ]
   },
@@ -176,52 +274,115 @@
     "children": [
       {
         "id": "Extensions/BackgroundJob/Rystem.BackgroundJob",
-        "name": "Rystem.BackgroundJob",
-        "title": "Rystem.BackgroundJob",
+        "name": "BackgroundJob",
+        "title": "BackgroundJob",
         "path": "Extensions/BackgroundJob/Rystem.BackgroundJob/README.md",
-        "type": "file"
+        "type": "file",
+        "packageName": "Rystem.BackgroundJob",
+        "packageType": "nuget"
       },
       {
         "id": "Extensions/Concurrency/Rystem.Concurrency",
-        "name": "Rystem.Concurrency",
-        "title": "Rystem.Concurrency",
+        "name": "Concurrency",
+        "title": "Concurrency",
         "path": "Extensions/Concurrency/Rystem.Concurrency/README.md",
-        "type": "file"
+        "type": "file",
+        "packageName": "Rystem.Concurrency",
+        "packageType": "nuget"
       },
       {
-        "id": "Extensions/Concurrency/Rystem.Concurrency.Redis",
-        "name": "Rystem.Concurrency.Redis",
-        "title": "Rystem.Concurrency.Redis",
-        "path": "Extensions/Concurrency/Rystem.Concurrency.Redis/README.md",
-        "type": "file"
+        "id": "Concurrency",
+        "name": "Concurrency",
+        "title": "Concurrency",
+        "type": "folder",
+        "children": [
+          {
+            "id": "Extensions/Concurrency/Rystem.Concurrency.Redis",
+            "name": "Redis",
+            "title": "Redis",
+            "path": "Extensions/Concurrency/Rystem.Concurrency.Redis/README.md",
+            "type": "file",
+            "packageName": "Rystem.Concurrency.Redis",
+            "packageType": "nuget"
+          }
+        ]
       },
       {
-        "id": "Extensions/Localization/Rystem.Localization.Multiple",
-        "name": "Rystem.Localization.Multiple",
-        "title": "Rystem.Localization.Multiple",
-        "path": "Extensions/Localization/Rystem.Localization.Multiple/README.md",
-        "type": "file"
+        "id": "Localization",
+        "name": "Localization",
+        "title": "Localization",
+        "type": "folder",
+        "children": [
+          {
+            "id": "Extensions/Localization/Rystem.Localization.Multiple",
+            "name": "Multiple",
+            "title": "Multiple",
+            "path": "Extensions/Localization/Rystem.Localization.Multiple/README.md",
+            "type": "file",
+            "packageName": "Rystem.Extensions.Localization.Multiple",
+            "packageType": "nuget"
+          }
+        ]
       },
       {
         "id": "Extensions/Queue/Rystem.Queue",
-        "name": "Rystem.Queue",
-        "title": "Rystem.Queue",
+        "name": "Queue",
+        "title": "Queue",
         "path": "Extensions/Queue/Rystem.Queue/README.md",
-        "type": "file"
+        "type": "file",
+        "packageName": "Rystem.Queue",
+        "packageType": "nuget"
       },
       {
-        "id": "Extensions/Tests/Rystem.Test.XUnit",
-        "name": "Rystem.Test.XUnit",
-        "title": "Rystem.Test.XUnit",
-        "path": "Extensions/Tests/Rystem.Test.XUnit/README.md",
-        "type": "file"
+        "id": "Test",
+        "name": "Test",
+        "title": "Test",
+        "type": "folder",
+        "children": [
+          {
+            "id": "Extensions/Tests/Rystem.Test.XUnit",
+            "name": "XUnit",
+            "title": "XUnit",
+            "path": "Extensions/Tests/Rystem.Test.XUnit/README.md",
+            "type": "file",
+            "packageName": "Rystem.Test.XUnit",
+            "packageType": "nuget"
+          }
+        ]
       },
       {
-        "id": "Extensions/Web/Rystem.Web.Components",
-        "name": "Rystem.Web.Components",
-        "title": "Rystem.Web.Components",
-        "path": "Extensions/Web/Rystem.Web.Components/README.md",
-        "type": "file"
+        "id": "Web",
+        "name": "Web",
+        "title": "Web",
+        "type": "folder",
+        "children": [
+          {
+            "id": "Extensions/Web/Rystem.Web.Components",
+            "name": "Components",
+            "title": "Components",
+            "path": "Extensions/Web/Rystem.Web.Components/README.md",
+            "type": "file",
+            "packageName": "Rystem.Web.Components",
+            "packageType": "nuget"
+          }
+        ]
+      },
+      {
+        "id": "web",
+        "name": "web",
+        "title": "web",
+        "type": "folder",
+        "children": [
+          {
+            "id": "Extensions/Web/Rystem.Web.Components",
+            "name": "components",
+            "title": "components",
+            "path": "Extensions/Web/Rystem.Web.Components/README.md",
+            "type": "file",
+            "packageName": "rystem.web.components",
+            "packageType": "npm"
+          }
+        ]
       }
     ]
   },
@@ -233,10 +394,12 @@
     "children": [
       {
         "id": "Localization/Rystem.Localization",
-        "name": "Rystem.Localization",
-        "title": "Rystem Localization Library",
+        "name": "Localization",
+        "title": "Localization",
         "path": "Localization/Rystem.Localization/README.md",
-        "type": "file"
+        "type": "file",
+        "packageName": "Rystem.Localization",
+        "packageType": "nuget"
       }
     ]
   },
@@ -249,128 +412,258 @@
       {
         "id": "Repository",
         "name": "Repository",
-        "title": "Repository Framework",
+        "title": "Repository",
         "path": "Repository/README.md",
         "type": "file",
+        "packageName": "Repository",
+        "packageType": "nuget"
+      },
+      {
+        "id": "Repository/RepositoryFramework.Abstractions",
+        "name": "Abstractions",
+        "title": "Abstractions",
+        "path": "Repository/RepositoryFramework.Abstractions/README.md",
+        "type": "file",
+        "packageName": "Rystem.RepositoryFramework.Abstractions",
+        "packageType": "nuget"
+      },
+      {
+        "id": "Api",
+        "name": "Api",
+        "title": "Api",
+        "type": "folder",
         "children": [
           {
-            "id": "Repository/RepositoryFramework.Abstractions",
-            "name": "RepositoryFramework.Abstractions",
-            "title": "RepositoryFramework.Abstractions",
-            "path": "Repository/RepositoryFramework.Abstractions/README.md",
-            "type": "file"
-          },
-          {
             "id": "Repository/RepositoryFramework.Api.Client",
-            "name": "RepositoryFramework.Api.Client",
-            "title": "RepositoryFramework.Api.Client",
+            "name": "Client",
+            "title": "Client",
             "path": "Repository/RepositoryFramework.Api.Client/README.md",
-            "type": "file"
+            "type": "file",
+            "packageName": "Rystem.RepositoryFramework.Api.Client",
+            "packageType": "nuget"
           },
           {
-            "id": "Repository/RepositoryFramework.Api.Client.Authentication.BlazorServer",
-            "name": "RepositoryFramework.Api.Client.Authentication.BlazorServer",
-            "title": "RepositoryFramework.Api.Client.Authentication.BlazorServer",
-            "path": "Repository/RepositoryFramework.Api.Client.Authentication.BlazorServer/README.md",
-            "type": "file"
-          },
-          {
-            "id": "Repository/RepositoryFramework.Api.Client.Authentication.BlazorWasm",
-            "name": "RepositoryFramework.Api.Client.Authentication.BlazorWasm",
-            "title": "RepositoryFramework.Api.Client.Authentication.BlazorWasm",
-            "path": "Repository/RepositoryFramework.Api.Client.Authentication.BlazorWasm/README.md",
-            "type": "file"
-          },
-          {
-            "id": "Repository/repositoryframework.api.client.typescript/src/rystem",
-            "name": "rystem",
-            "title": "Client for Repository Framework",
-            "path": "Repository/repositoryframework.api.client.typescript/src/rystem/README.md",
-            "type": "file"
+            "id": "Api.Client",
+            "name": "Client",
+            "title": "Client",
+            "type": "folder",
+            "children": [
+              {
+                "id": "Api.Client.Authentication",
+                "name": "Authentication",
+                "title": "Authentication",
+                "type": "folder",
+                "children": [
+                  {
+                    "id": "Repository/RepositoryFramework.Api.Client.Authentication.BlazorServer",
+                    "name": "BlazorServer",
+                    "title": "BlazorServer",
+                    "path": "Repository/RepositoryFramework.Api.Client.Authentication.BlazorServer/README.md",
+                    "type": "file",
+                    "packageName": "Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer",
+                    "packageType": "nuget"
+                  },
+                  {
+                    "id": "Repository/RepositoryFramework.Api.Client.Authentication.BlazorWasm",
+                    "name": "BlazorWasm",
+                    "title": "BlazorWasm",
+                    "path": "Repository/RepositoryFramework.Api.Client.Authentication.BlazorWasm/README.md",
+                    "type": "file",
+                    "packageName": "Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm",
+                    "packageType": "nuget"
+                  }
+                ]
+              }
+            ]
           },
           {
             "id": "Repository/RepositoryFramework.Api.Server",
-            "name": "RepositoryFramework.Api.Server",
-            "title": "RepositoryFramework.Api.Server",
+            "name": "Server",
+            "title": "Server",
             "path": "Repository/RepositoryFramework.Api.Server/README.md",
-            "type": "file"
-          },
+            "type": "file",
+            "packageName": "Rystem.RepositoryFramework.Api.Server",
+            "packageType": "nuget"
+          }
+        ]
+      },
+      {
+        "id": "Repository/repositoryframework.api.client.typescript/src/rystem",
+        "name": "client",
+        "title": "client",
+        "path": "Repository/repositoryframework.api.client.typescript/src/rystem/README.md",
+        "type": "file",
+        "packageName": "rystem.repository.client",
+        "packageType": "npm"
+      },
+      {
+        "id": "Repository/RepositoryFramework.Cache/RepositoryFramework.Cache",
+        "name": "Cache",
+        "title": "Cache",
+        "path": "Repository/RepositoryFramework.Cache/RepositoryFramework.Cache/README.md",
+        "type": "file",
+        "packageName": "Rystem.RepositoryFramework.Cache",
+        "packageType": "nuget"
+      },
+      {
+        "id": "Cache",
+        "name": "Cache",
+        "title": "Cache",
+        "type": "folder",
+        "children": [
           {
-            "id": "Repository/RepositoryFramework.Cache/RepositoryFramework.Cache",
-            "name": "RepositoryFramework.Cache",
-            "title": "RepositoryFramework.Cache",
-            "path": "Repository/RepositoryFramework.Cache/RepositoryFramework.Cache/README.md",
-            "type": "file"
-          },
-          {
-            "id": "Repository/RepositoryFramework.Cache/RepositoryFramework.Cache.Azure.Storage.Blob",
-            "name": "RepositoryFramework.Cache.Azure.Storage.Blob",
-            "title": "RepositoryFramework.Cache.Azure.Storage.Blob",
-            "path": "Repository/RepositoryFramework.Cache/RepositoryFramework.Cache.Azure.Storage.Blob/README.md",
-            "type": "file"
-          },
+            "id": "Cache.Azure",
+            "name": "Azure",
+            "title": "Azure",
+            "type": "folder",
+            "children": [
+              {
+                "id": "Cache.Azure.Storage",
+                "name": "Storage",
+                "title": "Storage",
+                "type": "folder",
+                "children": [
+                  {
+                    "id": "Repository/RepositoryFramework.Cache/RepositoryFramework.Cache.Azure.Storage.Blob",
+                    "name": "Blob",
+                    "title": "Blob",
+                    "path": "Repository/RepositoryFramework.Cache/RepositoryFramework.Cache.Azure.Storage.Blob/README.md",
+                    "type": "file",
+                    "packageName": "Rystem.RepositoryFramework.Cache.Azure.Storage.Blob",
+                    "packageType": "nuget"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Infrastructure",
+        "name": "Infrastructure",
+        "title": "Infrastructure",
+        "type": "folder",
+        "children": [
           {
             "id": "Repository/RepositoryFramework.Infrastructure.InMemory",
-            "name": "RepositoryFramework.Infrastructure.InMemory",
-            "title": "RepositoryFramework.Infrastructure.InMemory",
+            "name": "InMemory",
+            "title": "InMemory",
             "path": "Repository/RepositoryFramework.Infrastructure.InMemory/README.md",
-            "type": "file"
+            "type": "file",
+            "packageName": "Rystem.RepositoryFramework.Infrastructure.InMemory",
+            "packageType": "nuget"
           },
           {
-            "id": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Cosmos.Sql",
-            "name": "RepositoryFramework.Infrastructure.Azure.Cosmos.Sql",
-            "title": "RepositoryFramework.Infrastructure.Azure.Cosmos.Sql",
-            "path": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Cosmos.Sql/README.md",
-            "type": "file"
+            "id": "Infrastructure.Azure",
+            "name": "Azure",
+            "title": "Azure",
+            "type": "folder",
+            "children": [
+              {
+                "id": "Infrastructure.Azure.Cosmos",
+                "name": "Cosmos",
+                "title": "Cosmos",
+                "type": "folder",
+                "children": [
+                  {
+                    "id": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Cosmos.Sql",
+                    "name": "Sql",
+                    "title": "Sql",
+                    "path": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Cosmos.Sql/README.md",
+                    "type": "file",
+                    "packageName": "Rystem.RepositoryFramework.Infrastructure.Azure.Cosmos.Sql",
+                    "packageType": "nuget"
+                  }
+                ]
+              },
+              {
+                "id": "Infrastructure.Azure.Storage",
+                "name": "Storage",
+                "title": "Storage",
+                "type": "folder",
+                "children": [
+                  {
+                    "id": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Blob",
+                    "name": "Blob",
+                    "title": "Blob",
+                    "path": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Blob/README.md",
+                    "type": "file",
+                    "packageName": "Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob",
+                    "packageType": "nuget"
+                  },
+                  {
+                    "id": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Table",
+                    "name": "Table",
+                    "title": "Table",
+                    "path": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Table/README.md",
+                    "type": "file",
+                    "packageName": "Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Table",
+                    "packageType": "nuget"
+                  }
+                ]
+              }
+            ]
           },
           {
-            "id": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Blob",
-            "name": "RepositoryFramework.Infrastructure.Azure.Storage.Blob",
-            "title": "RepositoryFramework.Infrastructure.Azure.Storage.Blob",
-            "path": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Blob/README.md",
-            "type": "file"
-          },
-          {
-            "id": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Table",
-            "name": "RepositoryFramework.Infrastructure.Azure.Storage.Table",
-            "title": "RepositoryFramework.Infrastructure.Azure.Storage.Table",
-            "path": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Table/README.md",
-            "type": "file"
-          },
-          {
-            "id": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Dynamics.Dataverse",
-            "name": "RepositoryFramework.Infrastructure.Dynamics.Dataverse",
-            "title": "RepositoryFramework.Infrastructure.Dynamics.Dataverse",
-            "path": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Dynamics.Dataverse/README.md",
-            "type": "file"
+            "id": "Infrastructure.Dynamics",
+            "name": "Dynamics",
+            "title": "Dynamics",
+            "type": "folder",
+            "children": [
+              {
+                "id": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Dynamics.Dataverse",
+                "name": "Dataverse",
+                "title": "Dataverse",
+                "path": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Dynamics.Dataverse/README.md",
+                "type": "file",
+                "packageName": "Rystem.RepositoryFramework.Infrastructure.Dynamics.Dataverse",
+                "packageType": "nuget"
+              }
+            ]
           },
           {
             "id": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.EntityFramework",
-            "name": "RepositoryFramework.Infrastructure.EntityFramework",
-            "title": "RepositoryFramework.Infrastructure.EntityFramework",
+            "name": "EntityFramework",
+            "title": "EntityFramework",
             "path": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.EntityFramework/README.md",
-            "type": "file"
+            "type": "file",
+            "packageName": "Rystem.RepositoryFramework.Infrastructure.EntityFramework",
+            "packageType": "nuget"
           },
           {
             "id": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.MsSql",
-            "name": "RepositoryFramework.Infrastructure.MsSql",
-            "title": "RepositoryFramework.Infrastructure.MsSql",
+            "name": "MsSql",
+            "title": "MsSql",
             "path": "Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.MsSql/README.md",
-            "type": "file"
-          },
-          {
-            "id": "Repository/RepositoryFramework.MigrationTools",
-            "name": "RepositoryFramework.MigrationTools",
-            "title": "RepositoryFramework.MigrationTools",
-            "path": "Repository/RepositoryFramework.MigrationTools/README.md",
-            "type": "file"
-          },
+            "type": "file",
+            "packageName": "Rystem.RepositoryFramework.Infrastructure.MsSql",
+            "packageType": "nuget"
+          }
+        ]
+      },
+      {
+        "id": "Repository/RepositoryFramework.MigrationTools",
+        "name": "MigrationTools",
+        "title": "MigrationTools",
+        "path": "Repository/RepositoryFramework.MigrationTools/README.md",
+        "type": "file",
+        "packageName": "Rystem.RepositoryFramework.MigrationTools",
+        "packageType": "nuget"
+      },
+      {
+        "id": "Web",
+        "name": "Web",
+        "title": "Web",
+        "type": "folder",
+        "children": [
           {
             "id": "Repository/RepositoryFramework.Web/RepositoryFramework.Web.Components",
-            "name": "RepositoryFramework.Web.Components",
-            "title": "RepositoryFramework.Web.Components",
+            "name": "Components",
+            "title": "Components",
             "path": "Repository/RepositoryFramework.Web/RepositoryFramework.Web.Components/README.md",
-            "type": "file"
+            "type": "file",
+            "packageName": "Rystem.RepositoryFramework.Web.Components",
+            "packageType": "nuget"
           }
         ]
       }
