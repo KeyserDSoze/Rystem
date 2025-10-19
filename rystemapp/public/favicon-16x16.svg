@@ -1,0 +1,5 @@
+<!-- Favicon 16x16 - Simplified R -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+  <circle cx="8" cy="8" r="7.5" fill="#DC2626" stroke="#B91C1C" stroke-width="0.5"/>
+  <text x="8" y="8" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">R</text>
+</svg>

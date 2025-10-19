@@ -1,0 +1,5 @@
+<!-- Favicon 32x32 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <circle cx="16" cy="16" r="15" fill="#DC2626" stroke="#B91C1C" stroke-width="1"/>
+  <text x="16" y="16" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">R</text>
+</svg>

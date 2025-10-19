@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Red circle background -->
+  <circle cx="50" cy="50" r="48" fill="#DC2626" stroke="#B91C1C" stroke-width="2"/>
+  
+  <!-- White "R" letter -->
+  <text 
+    x="50" 
+    y="50" 
+    font-family="Arial, sans-serif" 
+    font-size="60" 
+    font-weight="bold" 
+    fill="#FFFFFF" 
+    text-anchor="middle" 
+    dominant-baseline="central">
+    R
+  </text>
+</svg>
