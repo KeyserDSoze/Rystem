@@ -1,0 +1,18 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "prompts": [
+      {
+        "name": "auth-flow",
+        "description": "Context",
+        "arguments": []
+      },
+      {
+        "name": "service-setup",
+        "description": "Context",
+        "arguments": []
+      }
+    ]
+  },
+  "id": 1
+}

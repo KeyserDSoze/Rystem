@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "endpoints": {
+    "initialize": "https://rystem.net/mcp-server.json",
+    "tools": {
+      "list": "https://rystem.net/mcp-tools-list.json"
+    },
+    "resources": {
+      "list": "https://rystem.net/mcp-resources-list.json"
+    },
+    "prompts": {
+      "list": "https://rystem.net/mcp-prompts-list.json"
+    }
+  },
+  "capabilities": {
+    "tools": true,
+    "resources": true,
+    "prompts": true
+  },
+  "serverInfo": {
+    "name": "rystem-mcp",
+    "description": "Rystem Framework Model Context Protocol - Tools, Resources, and Prompts for developers",
+    "homepage": "https://rystem.net",
+    "documentation": "https://rystem.net/MCP-SERVER.md",
+    "repository": "https://github.com/KeyserDSoze/Rystem"
+  },
+  "transport": "static-http",
+  "contentBase": "https://rystem.net/mcp/"
+}

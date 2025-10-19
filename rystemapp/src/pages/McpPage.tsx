@@ -44,7 +44,7 @@ export default function McpPage() {
       })
   }, [])
 
-  // Load item from URL parameters on mount
+  // Load item from URL parameters on mount, or show guide by default
   useEffect(() => {
     if (!manifest) return
 
@@ -69,8 +69,38 @@ export default function McpPage() {
       if (item) {
         loadItem(type, item)
       }
+    } else {
+      // No URL params, load the Getting Started guide by default
+      loadGettingStartedGuide()
     }
   }, [manifest, searchParams])
+
+  // Load Getting Started guide
+  const loadGettingStartedGuide = () => {
+    setSelectedItem({ 
+      type: 'guide', 
+      item: { 
+        name: 'getting-started',
+        path: '/MCP-SERVER.md',
+        title: 'MCP Server Guide',
+        description: 'How to use Rystem MCP Server with AI tools'
+      }
+    })
+    setContentLoading(true)
+    fetch('/MCP-SERVER.md')
+      .then((res) => res.arrayBuffer())
+      .then((buffer) => {
+        const decoder = new TextDecoder('utf-8')
+        const text = decoder.decode(buffer)
+        setItemContent(text)
+        setContentLoading(false)
+      })
+      .catch((err) => {
+        console.error('Failed to load guide:', err)
+        setItemContent('# Error\n\nFailed to load getting started guide')
+        setContentLoading(false)
+      })
+  }
 
   // Load specific MCP item content
   const loadItem = (type: string, item: McpItem) => {
@@ -202,6 +232,39 @@ export default function McpPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Getting Started Guide */}
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                📖 Getting Started
+              </h2>
+              <button
+                onClick={() => {
+                  loadGettingStartedGuide()
+                  // Clear URL params for guide
+                  setSearchParams({})
+                }}
+                className={`w-full text-left p-4 rounded-lg border transition-colors ${
+                  selectedItem?.type === 'guide'
+                    ? 'bg-primary-50 border-primary-300 dark:bg-primary-900 dark:border-primary-700'
+                    : 'bg-white border-gray-200 hover:border-primary-300 dark:bg-gray-800 dark:border-gray-700 dark:hover:border-primary-700'
+                }`}
+              >
+                <div className="flex items-start space-x-3">
+                  <FileText className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+                    selectedItem?.type === 'guide' ? 'text-primary-600' : 'text-gray-500'
+                  }`} />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                      MCP Server Guide
+                    </h3>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                      How to use Rystem MCP Server with AI tools (GitHub Copilot, Claude, Cursor)
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+
             {/* Tools */}
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">

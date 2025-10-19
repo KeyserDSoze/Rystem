@@ -1,0 +1,26 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "resources": [
+      {
+        "uri": "https://rystem.net/mcp/resources/background-jobs.md",
+        "name": "background-jobs",
+        "description": "Overview",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "https://rystem.net/mcp/resources/concurrency.md",
+        "name": "concurrency",
+        "description": "Overview",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "https://rystem.net/mcp/resources/content-repo.md",
+        "name": "content-repo",
+        "description": "Overview",
+        "mimeType": "text/markdown"
+      }
+    ]
+  },
+  "id": 1
+}

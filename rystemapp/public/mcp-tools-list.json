@@ -1,0 +1,44 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "tools": [
+      {
+        "name": "ddd",
+        "description": "Setup DDD pattern with entities, aggregates, value objects, and repositories using Rystem Framework",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      {
+        "name": "install-rystem",
+        "description": "Description",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      {
+        "name": "project-setup",
+        "description": "Complete guide to setup a new project with modular domain architecture, supporting both single and multiple domain structures using Rystem Framework",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      {
+        "name": "repository-setup",
+        "description": "Description",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    ]
+  },
+  "id": 1
+}
