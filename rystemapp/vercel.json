@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "name": "rystem-docs",
   "regions": ["iad1"],
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
@@ -36,13 +35,6 @@
       ]
     }
   ],
-  "functions": {
-    "api/mcp.ts": {
-      "runtime": "nodejs20.x",
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
   "env": {
     "NODE_ENV": "production"
   }

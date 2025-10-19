@@ -4,6 +4,9 @@
   "version": "0.0.1",
   "type": "module",
   "description": "Rystem Documentation & MCP Static Site Generator",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "vite",
     "dev:api": "npm run prebuild && tsx server-local.ts",
