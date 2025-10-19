@@ -138,95 +138,159 @@ function main() {
   console.log('✓ Generated mcp-prompts-list.json (Prompts list)');
 
   // 5. Generate README for MCP integration
-  const readmeContent = `# Rystem MCP Server (Static)
+  const readmeContent = `# Rystem MCP Server
 
-This directory contains static JSON responses for Model Context Protocol (MCP) integration.
+Model Context Protocol (MCP) integration for Rystem Framework documentation and tools.
 
-## 🌐 Endpoints
+## 🌐 Domain Architecture
 
-All endpoints are available at: \`https://rystem.net/\`
+Rystem uses two domains for different purposes:
 
-- **Initialize**: \`mcp-server.json\` - Server capabilities and info
-- **Tools**: \`mcp-tools-list.json\` - List of available tools
-- **Resources**: \`mcp-resources-list.json\` - List of available resources
-- **Prompts**: \`mcp-prompts-list.json\` - List of available prompts
+- **📖 Documentation Site**: \`https://rystem.net\` (GitHub Pages)
+  - Static documentation, guides, and API references
+  - Static MCP JSON files (legacy support)
+  
+- **⚡ MCP Server**: \`https://rystem.cloud/mcp\` (Vercel)
+  - Live Model Context Protocol server
+  - Dynamic tools, resources, and prompts
+  - JSON-RPC 2.0 over HTTP
 
-## 📚 Content
+## � Quick Start - MCP Server
 
-Tool/Resource/Prompt content is available at:
-- Tools: \`/mcp/tools/{name}.md\`
-- Resources: \`/mcp/resources/{name}.md\`
-- Prompts: \`/mcp/prompts/{name}.md\`
+**Use this endpoint for all AI tools:**
 
-## 🔧 GitHub Copilot Configuration
-
-Add to your \`.github/copilot-instructions.md\` or VS Code settings:
-
-\`\`\`json
-{
-  "github.copilot.chat.codeGeneration.instructions": [
-    {
-      "text": "Use Rystem Framework patterns and best practices from https://rystem.net/mcp-manifest.json"
-    }
-  ]
-}
+\`\`\`
+https://rystem.cloud/mcp
 \`\`\`
 
-## 📖 Usage in AI Tools
+### Connect to Your AI Tool
 
-### Claude Desktop
-
-Add to \`~/Library/Application Support/Claude/claude_desktop_config.json\`:
-
+**Claude Desktop** - Add to \`claude_desktop_config.json\`:
 \`\`\`json
 {
   "mcpServers": {
     "rystem": {
-      "url": "https://rystem.net/mcp-server.json",
-      "type": "static"
+      "url": "https://rystem.cloud/mcp",
+      "transport": {
+        "type": "streamable-http"
+      }
     }
   }
 }
 \`\`\`
 
-### VS Code Copilot
-
-Reference in your codebase:
-\`\`\`typescript
-// @mcp-server https://rystem.net/mcp-manifest.json
+**Cursor** - Click this deeplink:
+\`\`\`
+cursor://anysphere.cursor-deeplink/mcp/install?name=rystem&config=eyJ1cmwiOiJodHRwczovL3J5c3RlbS5jbG91ZC9tY3AifQ==
 \`\`\`
 
-## 📊 Current Status
+**VS Code** - Run this command:
+\`\`\`bash
+code --add-mcp '{"name":"rystem","type":"http","url":"https://rystem.cloud/mcp"}'
+\`\`\`
 
-- **Version**: ${manifest.version}
-- **Tools**: ${manifest.tools.length}
-- **Resources**: ${manifest.resources.length}
-- **Prompts**: ${manifest.prompts.length}
-- **Total Items**: ${manifest.tools.length + manifest.resources.length + manifest.prompts.length}
+**GitHub Copilot** - The MCP server provides context automatically when configured
+
+**MCP Inspector** - Test the server interactively:
+\`\`\`bash
+npx @modelcontextprotocol/inspector https://rystem.cloud/mcp
+\`\`\`
+
+## 🔧 Technical Details
+
+- **Protocol**: JSON-RPC 2.0
+- **Transport**: Streamable HTTP
+- **Version**: ${manifest.version} (MCP Protocol 2024-11-05)
+- **Runtime**: Node.js 20.x on Vercel Edge Functions
+- **Region**: iad1 (US East - Washington D.C.)
+
+## � Available Content
+
+### Tools (${manifest.tools.length})
+${manifest.tools.map(t => `- **${t.title || t.name}**: ${t.description || 'Description'}`).join('\n')}
+
+### Resources (${manifest.resources.length})
+${manifest.resources.map(r => `- **${r.title || r.name}**: ${r.description || 'Overview'}`).join('\n')}
+
+### Prompts (${manifest.prompts.length})
+${manifest.prompts.map(p => `- **${p.title || p.name}**: ${p.description || 'Context'}`).join('\n')}
+
+## 📁 Static JSON Files (Legacy)
+
+For clients that don't support full MCP protocol, static JSON files are available at \`https://rystem.net/\`:
+
+- **Server Info**: \`mcp-server.json\`
+- **Tools List**: \`mcp-tools-list.json\`
+- **Resources List**: \`mcp-resources-list.json\`
+- **Prompts List**: \`mcp-prompts-list.json\`
+
+### Content Files
+
+Individual content files:
+- Tools: \`https://rystem.net/mcp/tools/{name}.md\`
+- Resources: \`https://rystem.net/mcp/resources/{name}.md\`
+- Prompts: \`https://rystem.net/mcp/prompts/{name}.md\`
+
+## 🧪 Testing
+
+### Test with cURL
+
+\`\`\`bash
+# Initialize connection
+curl -X POST https://rystem.cloud/mcp \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {},
+      "clientInfo": {
+        "name": "test-client",
+        "version": "1.0.0"
+      }
+    }
+  }'
+
+# List available tools
+curl -X POST https://rystem.cloud/mcp \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/list",
+    "params": {}
+  }'
+\`\`\`
+
+### Local Development
+
+Run the MCP server locally:
+
+\`\`\`bash
+cd rystemapp
+npm run dev:api
+\`\`\`
+
+Server will start on \`http://localhost:3000/mcp\`
 
 ## 🔄 Updates
 
-This file is automatically generated during build. To update:
+This documentation is automatically generated during build:
 
 \`\`\`bash
 npm run build-mcp
 \`\`\`
 
-## 📝 Available Tools
-
-${manifest.tools.map(t => `- **${t.title || t.name}**: ${t.description || 'No description'}`).join('\n')}
-
-## 📚 Available Resources
-
-${manifest.resources.map(r => `- **${r.title || r.name}**: ${r.description || 'No description'}`).join('\n')}
-
-## 💬 Available Prompts
-
-${manifest.prompts.map(p => `- **${p.title || p.name}**: ${p.description || 'No description'}`).join('\n')}
+The MCP server content is dynamically loaded from markdown files in \`/mcp/{tools,resources,prompts}/\`.
 
 ---
 
-Generated: ${new Date().toISOString()}
+**Last Updated**: ${new Date().toISOString().split('T')[0]}  
+**MCP Protocol Version**: 2024-11-05  
+**Documentation**: https://rystem.net  
+**MCP Server**: https://rystem.cloud/mcp
 `;
 
   writeFileSync(
