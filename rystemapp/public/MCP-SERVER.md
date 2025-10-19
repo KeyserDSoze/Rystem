@@ -1,60 +1,61 @@
-# Rystem MCP Server (Static)
+# Rystem MCP Server
 
-This directory contains static JSON responses for Model Context Protocol (MCP) integration.
+Model Context Protocol (MCP) integration for Rystem Framework documentation and tools.
 
-## 🌐 Endpoints
+## 🚀 Live MCP Server (Recommended)
 
-All endpoints are available at: `https://rystem.net/`
+**Full MCP protocol server running on Vercel:**
 
-- **Initialize**: `mcp-server.json` - Server capabilities and info
-- **Tools**: `mcp-tools-list.json` - List of available tools
-- **Resources**: `mcp-resources-list.json` - List of available resources
-- **Prompts**: `mcp-prompts-list.json` - List of available prompts
+- **Endpoint**: `https://rystem.vercel.app/mcp`
+- **Protocol**: JSON-RPC 2.0 over HTTP
+- **Transport**: Streamable HTTP
+- **Features**: Dynamic tools, resources, and prompts
 
-## 📚 Content
+### Quick Connect
 
-Tool/Resource/Prompt content is available at:
-- Tools: `/mcp/tools/{name}.md`
-- Resources: `/mcp/resources/{name}.md`
-- Prompts: `/mcp/prompts/{name}.md`
-
-## 🔧 GitHub Copilot Configuration
-
-Add to your `.github/copilot-instructions.md` or VS Code settings:
-
-```json
-{
-  "github.copilot.chat.codeGeneration.instructions": [
-    {
-      "text": "Use Rystem Framework patterns and best practices from https://rystem.net/mcp-manifest.json"
-    }
-  ]
-}
-```
-
-## 📖 Usage in AI Tools
-
-### Claude Desktop
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
+**Claude Desktop** - Add to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
     "rystem": {
-      "url": "https://rystem.net/mcp-server.json",
-      "type": "static"
+      "url": "https://rystem.vercel.app/mcp",
+      "transport": {
+        "type": "streamable-http"
+      }
     }
   }
 }
 ```
 
-### VS Code Copilot
-
-Reference in your codebase:
-```typescript
-// @mcp-server https://rystem.net/mcp-manifest.json
+**Cursor** - Click this deeplink:
 ```
+cursor://anysphere.cursor-deeplink/mcp/install?name=rystem&config=eyJ1cmwiOiJodHRwczovL3J5c3RlbS52ZXJjZWwuYXBwL21jcCJ9
+```
+
+**VS Code** - Run this command:
+```bash
+code --add-mcp '{"name":"rystem","type":"http","url":"https://rystem.vercel.app/mcp"}'
+```
+
+**MCP Inspector** - Test interactively:
+```bash
+npx @modelcontextprotocol/inspector https://rystem.vercel.app/mcp
+```
+
+## � Static JSON Responses (Legacy)
+
+Static files available at `https://rystem.net/` for clients that don't support full MCP:
+
+- **Initialize**: `mcp-server.json` - Server capabilities
+- **Tools**: `mcp-tools-list.json` - List of tools
+- **Resources**: `mcp-resources-list.json` - List of resources
+- **Prompts**: `mcp-prompts-list.json` - List of prompts
+
+### Content Files
+
+- Tools: `https://rystem.net/mcp/tools/{name}.md`
+- Resources: `https://rystem.net/mcp/resources/{name}.md`
+- Prompts: `https://rystem.net/mcp/prompts/{name}.md`
 
 ## 📊 Current Status
 
@@ -92,4 +93,4 @@ npm run build-mcp
 
 ---
 
-Generated: 2025-10-19T09:38:06.009Z
+Generated: 2025-10-19T18:01:53.520Z
