@@ -1,26 +1,298 @@
+# Application Setup with Rystem Framework
+
+**Purpose**: This prompt guides you through creating a complete application using Rystem Framework. It will help you set up a modern, scalable application with .NET API backend and React/React Native frontend, following Domain-Driven Design principles.
+
+**What this prompt does**:
+- Guides you through all architectural decisions
+- Uses Rystem MCP tools to generate the complete project structure
+- Sets up a professional, production-ready codebase
+- Configures multi-language support automatically
+- Follows best practices for DDD, dependency injection, and repository patterns
+
+**How it works**:
+1. You provide your choices below
+2. The AI uses Rystem MCP tools to scaffold the entire application
+3. You get a fully configured project ready for development
+
 ---
-title: "New Project Setup with Domain Architecture"
-description: "Complete guide to setup a new project with modular domain architecture, supporting both single and multiple domain structures using Rystem Framework"
-category: "setup"
-tags: ["project-setup", "architecture", "ddd", "domain-driven-design", "structure"]
+
+## 📋 Configuration Choices
+
+Please provide your choices for each section below:
+
+### 1. Project Information
+
+**Project Name**: `_________________________`  
+*Example: CargoLens, InventoryHub, OrderFlow*  
+*This will be used for all namespaces and project names*
+
+**Application Description**: `_________________________`  
+*Describe what your application does in 1-2 sentences*  
+*Example: "A cargo tracking system that monitors shipments in real-time across multiple carriers"*
+
 ---
 
-# New Project Setup with Domain Architecture
+### 2. Backend API
 
-Complete guide to create a new project following a **modular domain architecture** (Domain-Driven Design light), where each domain can be independent with its own infrastructure, business logic, and API.
+**API Framework**: `.NET 10` *(default - always use latest)*
 
-## ⚠️ IMPORTANT: Project Name Required
+**API Features** *(check all that apply)*:
+- [ ] Authentication & Authorization
+- [ ] Background Jobs
+- [ ] Real-time (SignalR)
+- [ ] File Upload/Download
+- [ ] External API Integration
+- [ ] Email Notifications
+- [ ] Caching (Redis)
 
-**Before starting, you MUST provide your project name!**
+---
 
-Throughout this guide, we use `[ProjectName]` as a placeholder. **Replace ALL occurrences** of `[ProjectName]` with your actual project name.
+### 3. Frontend
 
-**Example:** If your project is called "CargoLens", replace:
-- `[ProjectName].Api` → `CargoLens.Api`
-- `[ProjectName].Core` → `CargoLens.Core`
-- `[projectname].app` → `cargolens.app` (lowercase for frontend)
+**Framework**: `☐ React` | `☐ React Native`
 
-**📝 What is your project name?** ___________________________
+**UI Library**:
+- If React: `MUI` *(default - Material UI)*
+- If React Native: `Tamagui` *(default)*
+- Custom: `_________________________` *(optional override)*
+
+**Multi-Language**: `Yes` *(default - always enabled with i18next)*
+
+**Default Languages**: `en, it` *(default - add more as needed)*
+
+**Frontend Features** *(check all that apply)*:
+- [ ] Authentication UI (Login/Register)
+- [ ] Dashboard/Analytics
+- [ ] Real-time Updates
+- [ ] Offline Support (PWA for React, local storage for React Native)
+- [ ] Push Notifications
+- [ ] Dark Mode
+- [ ] Responsive Design
+
+---
+
+### 4. Architecture
+
+**Domain Architecture**: `☐ Single Domain` | `☐ Multiple Domains`
+
+**If Multiple Domains**, specify domain names:
+1. `_________________________` *(e.g., Orders)*
+2. `_________________________` *(e.g., Shipments)*
+3. `_________________________` *(e.g., Customers)*
+4. `_________________________` *(optional)*
+
+**Database**: `☐ SQL Server` | `☐ PostgreSQL` | `☐ SQLite` *(default: SQL Server)*
+
+**Additional Infrastructure** *(check all that apply)*:
+- [ ] Azure Blob Storage
+- [ ] Azure Service Bus
+- [ ] Redis Cache
+- [ ] Elasticsearch
+- [ ] Docker Support
+- [ ] Kubernetes Manifests
+
+---
+
+## 🚀 Setup Process
+
+After you've filled in your choices above, the AI will:
+
+1. **Use `project-setup` tool** to create the domain-driven architecture
+   - Generate folder structure (single or multiple domain)
+   - Create all .csproj files with correct references
+   - Set up .NET 10 projects with Rystem packages
+
+2. **Use `ddd` tool** to set up domain models
+   - Create entities, value objects, aggregates
+   - Define repository interfaces
+   - Set up domain events (if needed)
+
+3. **Use `repository-setup` tool** to configure data access
+   - Set up Entity Framework Core
+   - Configure DbContext
+   - Implement repository pattern or CQRS with Rystem.RepositoryFramework
+
+4. **Configure Frontend**
+   - Create React/React Native app with TypeScript
+   - Install UI library (MUI/Tamagui)
+   - Set up i18next for multi-language support
+   - Configure routing and state management
+   - Create base layout and navigation
+
+5. **Set up Authentication** *(if selected)*
+   - Use `auth-flow` prompt for complete setup with Rystem.Authentication.Social
+   - Configure OAuth providers (Google, Facebook, Microsoft, etc.)
+   - JWT tokens for API
+   - Login/Register UI components
+   - Protected routes
+
+6. **Configure Content Storage** *(if selected)*
+   - Use `content-repo` resource for Rystem.Content implementation
+   - Set up Azure Blob Storage, SharePoint, or File System
+   - Unified API for file operations across providers
+
+7. **Configure Additional Features**
+   - Background jobs with Rystem.BackgroundJob *(use `background-jobs` resource)*
+   - Concurrency control with Rystem.Concurrency *(use `concurrency` resource)*
+   - Caching with Rystem.Cache *(if selected)*
+   - SignalR hubs *(if selected)*
+   - Email notifications *(if selected)*
+
+8. **Create Development Environment**
+   - Docker Compose for local development
+   - appsettings.json configurations
+   - Environment variables setup
+   - README with setup instructions
+
+---
+
+## 📚 Example Configuration
+
+Here's a complete example to help you understand:
+
+```
+Project Name: CargoLens
+Application Description: A cargo tracking system that monitors shipments in real-time across multiple carriers
+
+API Framework: .NET 10
+API Features: ✓ Authentication, ✓ Background Jobs, ✓ Real-time, ✓ Caching
+
+Frontend Framework: React
+UI Library: MUI
+Multi-Language: Yes
+Default Languages: en, it, es
+Frontend Features: ✓ Authentication UI, ✓ Dashboard, ✓ Real-time Updates, ✓ Dark Mode
+
+Domain Architecture: Multiple Domains
+Domains:
+  1. Orders
+  2. Shipments  
+  3. Customers
+  4. Tracking
+
+Database: SQL Server
+Additional Infrastructure: ✓ Azure Blob Storage, ✓ Redis Cache, ✓ Docker Support
+```
+
+---
+
+## 🎯 What You'll Get
+
+After the setup is complete, you'll have:
+
+### Backend Structure
+```
+src/
+├── Orders/                          # (if multiple domains)
+│   ├── domains/CargoLens.Orders.Core
+│   ├── business/CargoLens.Orders.Business
+│   ├── infrastructures/CargoLens.Orders.Storage
+│   ├── applications/CargoLens.Orders.Api
+│   └── tests/CargoLens.Orders.Test
+├── Shipments/                       # (if multiple domains)
+│   └── ... (same structure)
+└── app/                             # Frontend
+    └── cargolens.app/
+        ├── src/
+        │   ├── domains/             # UI modules per domain
+        │   │   ├── orders/
+        │   │   ├── shipments/
+        │   │   └── customers/
+        │   ├── shared/              # Shared components
+        │   │   ├── components/
+        │   │   ├── hooks/
+        │   │   ├── i18n/           # Multi-language
+        │   │   └── theme/          # MUI/Tamagui theme
+        │   ├── App.tsx
+        │   └── main.tsx
+        └── package.json
+```
+
+### Key Files Configured
+- ✅ All .csproj with Rystem packages
+- ✅ DbContext with Entity Framework
+- ✅ Repository implementations
+- ✅ API controllers with Swagger
+- ✅ React/React Native app with routing
+- ✅ i18next configuration with language files
+- ✅ MUI/Tamagui theme setup
+- ✅ Docker Compose for development
+- ✅ README with setup instructions
+
+---
+
+## 🔧 Technologies Used
+
+### Backend
+- **.NET 10** - Latest .NET framework
+- **Rystem Framework** - DI, Repository, Background Jobs, etc.
+- **Entity Framework Core** - ORM
+- **ASP.NET Core Web API** - REST API
+- **Swagger/OpenAPI** - API documentation
+
+### Frontend (React)
+- **React 18+** with TypeScript
+- **Vite** - Build tool
+- **MUI (Material-UI)** - UI components
+- **React Router** - Navigation
+- **i18next** - Internationalization
+- **React Query** - Data fetching
+- **Zustand/Redux** - State management
+
+### Frontend (React Native)
+- **React Native** with TypeScript
+- **Tamagui** - UI components
+- **React Navigation** - Navigation
+- **i18next** - Internationalization
+- **React Query** - Data fetching
+- **Zustand** - State management
+
+---
+
+## 📖 Next Steps After Setup
+
+1. **Review Generated Code**: Check all generated files
+2. **Configure Database**: Update connection strings in appsettings.json
+3. **Run Migrations**: `dotnet ef migrations add Initial` and `dotnet ef database update`
+4. **Install Frontend Dependencies**: `cd app/[projectname].app && npm install`
+5. **Start Development**: Run API and frontend concurrently
+6. **Customize**: Adjust generated code to your specific needs
+
+---
+
+## 🔗 Related MCP Tools
+
+This prompt uses these Rystem MCP tools automatically:
+
+- **project-setup** - Creates domain architecture
+- **ddd** - Sets up domain models
+- **repository-setup** - Configures data access
+- **auth-flow** - Adds authentication (if selected)
+- **service-setup** - Configures dependency injection
+
+All tools are documented at: https://rystem.cloud/mcp
+
+---
+
+## ⚠️ Before You Start
+
+Make sure you have:
+- [ ] .NET 10 SDK installed
+- [ ] Node.js 20+ installed
+- [ ] VS Code or Visual Studio
+- [ ] Git installed
+- [ ] Docker Desktop (if using Docker)
+
+---
+
+**Ready to start?** Fill in your choices above and let's build your application! 🚀
+
+---
+---
+
+# 📘 Technical Reference Guide
+
+The sections below provide detailed technical information about the architecture, naming conventions, and step-by-step commands. This is reference material that the AI will use during setup.
 
 ---
 
@@ -635,3 +907,8 @@ After project creation:
 - [Repository Pattern Setup](./repository-setup.md)
 - [Domain-Driven Design Pattern](./ddd.md)
 - [Rystem.DependencyInjection Documentation](https://github.com/KeyserDSoze/Rystem)
+
+---
+
+
+NOW WAIT FOR TEMPLATE, DO NOTHING BEFORE THE TEMPLATE THAT EXPLAINS THE PROJECT

@@ -8,6 +8,11 @@
         "arguments": []
       },
       {
+        "name": "project-setup",
+        "description": "📋 Configuration Choices",
+        "arguments": []
+      },
+      {
         "name": "service-setup",
         "description": "Context",
         "arguments": []

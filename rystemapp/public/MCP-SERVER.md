@@ -66,10 +66,8 @@ npx @modelcontextprotocol/inspector https://rystem.cloud/mcp
 
 ## � Available Content
 
-### Tools (4)
-- **Domain-Driven Design (DDD) Pattern**: Setup DDD pattern with entities, aggregates, value objects, and repositories using Rystem Framework
+### Tools (2)
 - **Install Rystem Package**: Description
-- **New Project Setup with Domain Architecture**: Complete guide to setup a new project with modular domain architecture, supporting both single and multiple domain structures using Rystem Framework
 - **Repository Pattern Setup**: Description
 
 ### Resources (3)
@@ -77,8 +75,9 @@ npx @modelcontextprotocol/inspector https://rystem.cloud/mcp
 - **Concurrency Control**: Overview
 - **Content Repository**: Overview
 
-### Prompts (2)
+### Prompts (3)
 - **Authentication Flow Setup**: Context
+- **Application Setup with Rystem Framework**: 📋 Configuration Choices
 - **Service Setup with Dependency Injection**: Context
 
 ## 📁 Static JSON Files (Legacy)
@@ -153,7 +152,7 @@ The MCP server content is dynamically loaded from markdown files in `/mcp/{tools
 
 ---
 
-**Last Updated**: 2025-10-19  
+**Last Updated**: 2025-10-20  
 **MCP Protocol Version**: 2024-11-05  
 **Documentation**: https://rystem.net  
 **MCP Server**: https://rystem.cloud/mcp
