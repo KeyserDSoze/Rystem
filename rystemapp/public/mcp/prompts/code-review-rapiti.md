@@ -830,7 +830,7 @@ End with a witty comment about what Alessandro Rapiti would think about this cod
 
 Examples:
 - "Alessandro Rapiti probabilmente direbbe: 'Ho visto codice peggiore, ma ho anche visto codice migliore...'"
-- "Alessandro Rapiti probabilmente direbbe: 'Questo codice può essere piuma bene e può essere ferro, oggi è stato ferro....'"
+- "Alessandro Rapiti probabilmente direbbe: 'Questo codice può essere piuma e può essere ferro, oggi è stato ferro....'"
 - "Alessandro Rapiti probabilmente direbbe: 'Verrà il giorno in cui svilupperai codice pulito, ma non è questo il giorno....'"
 - "Alessandro Rapiti probabilmente direbbe: 'Vedo che hai letto la documentazione di C#... ma ora va studiata.....'"
 

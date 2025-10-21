@@ -2,182 +2,7 @@
   "name": "rystem-mcp",
   "version": "0.0.1",
   "description": "Rystem Framework Model Context Protocol - Tools, Resources, and Prompts for developers",
-  "tools": [
-    {
-      "name": "auth-social-blazor",
-      "path": "/mcp/tools/auth-social-blazor.md",
-      "title": "Social Authentication - Blazor Client",
-      "description": "Add Google, Microsoft, Facebook, GitHub social login buttons to your Blazor Server/WASM app with automatic token management and routing protection"
-    },
-    {
-      "name": "auth-social-server",
-      "path": "/mcp/tools/auth-social-server.md",
-      "title": "Social Authentication - Server Setup",
-      "description": "Configure Google, Microsoft, Facebook, GitHub, LinkedIn, X, Instagram, Pinterest social login with automatic token management and user provider integration for your REST API"
-    },
-    {
-      "name": "auth-social-typescript",
-      "path": "/mcp/tools/auth-social-typescript.md",
-      "title": "Social Authentication - TypeScript/React Client",
-      "description": "Add Google, Microsoft, Facebook, GitHub social login to your React/Vue/Angular app with automatic JWT token management and user context hooks"
-    },
-    {
-      "name": "content-repository-blob",
-      "path": "/mcp/tools/content-repository-blob.md",
-      "title": "Content Repository - Azure Blob Storage",
-      "description": "Store files in Azure Blob Storage with Content Repository - perfect for large files, CDN integration, and public access with metadata and tags support"
-    },
-    {
-      "name": "content-repository-file",
-      "path": "/mcp/tools/content-repository-file.md",
-      "title": "Content Repository - Azure File Storage",
-      "description": "Store files in Azure File Storage with Content Repository - perfect for SMB shares, legacy applications, and enterprise file sharing with metadata support"
-    },
-    {
-      "name": "content-repository-inmemory",
-      "path": "/mcp/tools/content-repository-inmemory.md",
-      "title": "Content Repository - In-Memory Storage",
-      "description": "Store files in memory with Content Repository - perfect for unit testing, caching, and development without external dependencies"
-    },
-    {
-      "name": "content-repository-sharepoint",
-      "path": "/mcp/tools/content-repository-sharepoint.md",
-      "title": "Content Repository - SharePoint Online",
-      "description": "Store files in SharePoint Online with Content Repository - perfect for document collaboration, Office 365 integration, and enterprise content management with metadata support"
-    },
-    {
-      "name": "content-repository",
-      "path": "/mcp/tools/content-repository.md",
-      "title": "Content Repository Pattern",
-      "description": "Unified interface for file storage across multiple providers - upload, download, delete files with metadata and tags support for Azure Blob Storage, Azure File Storage, SharePoint, and In-Memory storage"
-    },
-    {
-      "name": "ddd-multi-domain",
-      "path": "/mcp/tools/ddd-multi-domain.md",
-      "title": "DDD Multi-Domain",
-      "description": "Domain-Driven Design for enterprise applications with multiple bounded contexts - complete domain isolation, event-driven communication, and microservices support"
-    },
-    {
-      "name": "ddd-single-domain",
-      "path": "/mcp/tools/ddd-single-domain.md",
-      "title": "DDD Single Domain",
-      "description": "Domain-Driven Design for small applications with unified domain - flat structure with domains, business, infrastructures layers"
-    },
-    {
-      "name": "install-rystem",
-      "path": "/mcp/tools/install-rystem.md",
-      "title": "Install Rystem Packages",
-      "description": "Quick guide to install Rystem NuGet packages with correct versions - includes core packages, repository framework, authentication, and infrastructure components"
-    },
-    {
-      "name": "repository-api-client-dotnet",
-      "path": "/mcp/tools/repository-api-client-dotnet.md",
-      "title": "Repository API Client - .NET",
-      "description": "Consume Repository APIs from .NET/C# apps using same IRepository interface as backend - supports Blazor Server, Blazor WASM, MAUI, WPF, and Console apps"
-    },
-    {
-      "name": "repository-api-client-typescript",
-      "path": "/mcp/tools/repository-api-client-typescript.md",
-      "title": "Repository API Client - TypeScript",
-      "description": "Consume Repository APIs from TypeScript/JavaScript apps with type-safe access, automatic authentication, and retry logic for React, Next.js, and Node.js"
-    },
-    {
-      "name": "repository-api-server",
-      "path": "/mcp/tools/repository-api-server.md",
-      "title": "Repository API Server",
-      "description": "Auto-generate REST APIs from repositories without writing controllers - includes authentication, LINQ queries, and Swagger documentation"
-    },
-    {
-      "name": "repository-setup",
-      "path": "/mcp/tools/repository-setup.md",
-      "title": "Repository Pattern Setup",
-      "description": "Configure data access with Rystem.RepositoryFramework - CQRS, multiple storage backends, business logic injection, and Factory pattern support"
-    },
-    {
-      "name": "rystem-async-lock",
-      "path": "/mcp/tools/rystem-async-lock.md",
-      "title": "Async Lock",
-      "description": "Prevent race conditions in async code with key-based locking - execute async methods sequentially by resource ID, user ID, or any custom key with in-memory or Redis distributed locks"
-    },
-    {
-      "name": "rystem-backgroundjob",
-      "path": "/mcp/tools/rystem-backgroundjob.md",
-      "title": "Background Jobs",
-      "description": "Schedule recurring tasks with CRON expressions - run automated jobs, data sync, cleanup tasks, notifications, and periodic processing in your .NET application"
-    },
-    {
-      "name": "rystem-concurrent-list",
-      "path": "/mcp/tools/rystem-concurrent-list.md",
-      "title": "ConcurrentList",
-      "description": "Thread-safe List implementation with automatic locking for concurrent access - provides all List<T> operations with built-in concurrency control"
-    },
-    {
-      "name": "rystem-csv",
-      "path": "/mcp/tools/rystem-csv.md",
-      "title": "CSV and Minimization",
-      "description": "Serialize any IEnumerable to CSV with ToCsv() or use minimization for compact binary-like serialization with ToMinimize() and FromMinimization() - smaller than JSON with type safety"
-    },
-    {
-      "name": "rystem-dependencyinjection-factory",
-      "path": "/mcp/tools/rystem-dependencyinjection-factory.md",
-      "title": "Dependency Injection Factory Pattern",
-      "description": "Advanced factory pattern for Rystem.DependencyInjection - register multiple named services with AddFactory(), use IFactory<T> for runtime service resolution, decorators, fallbacks, and automatic assembly scanning"
-    },
-    {
-      "name": "rystem-discriminated-union",
-      "path": "/mcp/tools/rystem-discriminated-union.md",
-      "title": "Discriminated Union with AnyOf",
-      "description": "Implement type-safe discriminated unions in C# with AnyOf - supports up to 8 types, automatic JSON serialization/deserialization with intelligent type detection, pattern matching, and selector attributes"
-    },
-    {
-      "name": "rystem-json-extensions",
-      "path": "/mcp/tools/rystem-json-extensions.md",
-      "title": "JSON Extensions",
-      "description": "Simple JSON serialization and deserialization with ToJson() and FromJson<T>() - no more JsonSerializer.Serialize boilerplate"
-    },
-    {
-      "name": "rystem-linq-serializer",
-      "path": "/mcp/tools/rystem-linq-serializer.md",
-      "title": "LINQ Expression Serializer",
-      "description": "Serialize and deserialize LINQ expressions as strings - enables dynamic queries, expression storage in database, and runtime expression compilation with Serialize(), Deserialize(), and DeserializeAsDynamic()"
-    },
-    {
-      "name": "rystem-queue",
-      "path": "/mcp/tools/rystem-queue.md",
-      "title": "In-Memory Queue",
-      "description": "Buffer operations in-memory and process in batches - collect items until buffer size or time limit is reached, then execute batch processing with FIFO/LIFO support"
-    },
-    {
-      "name": "rystem-race-condition",
-      "path": "/mcp/tools/rystem-race-condition.md",
-      "title": "Race Condition",
-      "description": "Allow only the first request to execute within a time window - block duplicate operations with key-based race condition prevention for purchases, payments, submissions"
-    },
-    {
-      "name": "rystem-reflection",
-      "path": "/mcp/tools/rystem-reflection.md",
-      "title": "Reflection Utilities",
-      "description": "Advanced reflection helpers for C# - includes NameOfCallingClass(), FetchProperties() caching, IsTheSameTypeOrASon() type checking, CreateInstance() mocking for abstracts/interfaces, and IsNullable() for nullability detection"
-    },
-    {
-      "name": "rystem-stopwatch",
-      "path": "/mcp/tools/rystem-stopwatch.md",
-      "title": "Stopwatch Utilities",
-      "description": "Monitor execution time of methods, tasks, and actions with Rystem's Stopwatch helpers - includes Start/Stop, Monitor, and MonitorAsync with automatic time tracking"
-    },
-    {
-      "name": "rystem-task-extensions",
-      "path": "/mcp/tools/rystem-task-extensions.md",
-      "title": "Task Extensions",
-      "description": "Task utilities including NoContext() for ConfigureAwait(false), ToResult() for synchronous execution, and TaskManager for concurrent task execution with WhenAll() and WhenAtLeast()"
-    },
-    {
-      "name": "rystem-text-extensions",
-      "path": "/mcp/tools/rystem-text-extensions.md",
-      "title": "Text Extensions",
-      "description": "Fast text and stream utilities - includes ToByteArray(), ToStream(), ReadLinesAsync(), ToUpperCaseFirst(), ContainsAtLeast() for efficient string/byte/stream conversions"
-    }
-  ],
+  "tools": [],
   "resources": [
     {
       "name": "background-jobs",
@@ -234,6 +59,315 @@
       "path": "/mcp/prompts/service-setup.md",
       "title": "Service Setup with Dependency Injection",
       "description": "Configure services with Rystem's advanced dependency injection - includes Factory pattern, named services, and service lifetime management"
+    }
+  ],
+  "dynamicTools": [
+    {
+      "name": "get-rystem-docs",
+      "title": "Get Rystem Docs",
+      "description": "Retrieve specific Rystem Framework documentation by category (id) and topic (value).\n\nAvailable categories and their topics:\n\n**auth**: social-blazor, social-server, social-typescript\n  - auth + social-blazor: Social Authentication - Blazor Client - Add Google, Microsoft, Facebook, GitHub social login buttons to your Blazor Server/WASM app with automatic token management and routing protection\n  - auth + social-server: Social Authentication - Server Setup - Configure Google, Microsoft, Facebook, GitHub, LinkedIn, X, Instagram, Pinterest social login with automatic token management and user provider integration for your REST API\n  - auth + social-typescript: Social Authentication - TypeScript/React Client - Add Google, Microsoft, Facebook, GitHub social login to your React/Vue/Angular app with automatic JWT token management and user context hooks\n\n**content**: repository-blob, repository-file, repository-inmemory, repository-sharepoint, repository\n  - content + repository-blob: Content Repository - Azure Blob Storage - Store files in Azure Blob Storage with Content Repository - perfect for large files, CDN integration, and public access with metadata and tags support\n  - content + repository-file: Content Repository - Azure File Storage - Store files in Azure File Storage with Content Repository - perfect for SMB shares, legacy applications, and enterprise file sharing with metadata support\n  - content + repository-inmemory: Content Repository - In-Memory Storage - Store files in memory with Content Repository - perfect for unit testing, caching, and development without external dependencies\n  - content + repository-sharepoint: Content Repository - SharePoint Online - Store files in SharePoint Online with Content Repository - perfect for document collaboration, Office 365 integration, and enterprise content management with metadata support\n  - content + repository: Content Repository Pattern - Unified interface for file storage across multiple providers - upload, download, delete files with metadata and tags support for Azure Blob Storage, Azure File Storage, SharePoint, and In-Memory storage\n\n**ddd**: multi-domain, single-domain, single\n  - ddd + multi-domain: DDD Multi-Domain - Domain-Driven Design for enterprise applications with multiple bounded contexts - complete domain isolation, event-driven communication, and microservices support\n  - ddd + single-domain: DDD Single Domain - Domain-Driven Design for small applications with unified domain - flat structure with domains, business, infrastructures layers\n  - ddd + single: DDD Single Domain - Domain-Driven Design for small applications with unified domain - flat structure with domains, business, infrastructures layers\n\n**install**: rystem\n  - install + rystem: Install Rystem Packages - Quick guide to install Rystem NuGet packages with correct versions - includes core packages, repository framework, authentication, and infrastructure components\n\n**repository**: api-client-dotnet, api-client-typescript, api-server, setup\n  - repository + api-client-dotnet: Repository API Client - .NET - Consume Repository APIs from .NET/C# apps using same IRepository interface as backend - supports Blazor Server, Blazor WASM, MAUI, WPF, and Console apps\n  - repository + api-client-typescript: Repository API Client - TypeScript - Consume Repository APIs from TypeScript/JavaScript apps with type-safe access, automatic authentication, and retry logic for React, Next.js, and Node.js\n  - repository + api-server: Repository API Server - Auto-generate REST APIs from repositories without writing controllers - includes authentication, LINQ queries, and Swagger documentation\n  - repository + setup: Repository Pattern Setup - Configure data access with Rystem.RepositoryFramework - CQRS, multiple storage backends, business logic injection, and Factory pattern support\n\n**rystem**: async-lock, backgroundjob, concurrent-list, csv, dependencyinjection-factory, discriminated-union, json-extensions copy, json-extensions, linq-serializer, queue, race-condition, reflection, stopwatch copy, stopwatch, task-extensions, text-extensions\n  - rystem + async-lock: Async Lock - Prevent race conditions in async code with key-based locking - execute async methods sequentially by resource ID, user ID, or any custom key with in-memory or Redis distributed locks\n  - rystem + backgroundjob: Background Jobs - Schedule recurring tasks with CRON expressions - run automated jobs, data sync, cleanup tasks, notifications, and periodic processing in your .NET application\n  - rystem + concurrent-list: ConcurrentList - Thread-safe List implementation with automatic locking for concurrent access - provides all List<T> operations with built-in concurrency control\n  - rystem + csv: CSV and Minimization - Serialize any IEnumerable to CSV with ToCsv() or use minimization for compact binary-like serialization with ToMinimize() and FromMinimization() - smaller than JSON with type safety\n  - rystem + dependencyinjection-factory: Dependency Injection Factory Pattern - Advanced factory pattern for Rystem.DependencyInjection - register multiple named services with AddFactory(), use IFactory<T> for runtime service resolution, decorators, fallbacks, and automatic assembly scanning\n  - rystem + discriminated-union: Discriminated Union with AnyOf - Implement type-safe discriminated unions in C# with AnyOf - supports up to 8 types, automatic JSON serialization/deserialization with intelligent type detection, pattern matching, and selector attributes\n  - rystem + json-extensions copy: JSON Extensions - Simple JSON serialization and deserialization with ToJson() and FromJson<T>() - no more JsonSerializer.Serialize boilerplate\n  - rystem + json-extensions: JSON Extensions - Simple JSON serialization and deserialization with ToJson() and FromJson<T>() - no more JsonSerializer.Serialize boilerplate\n  - rystem + linq-serializer: LINQ Expression Serializer - Serialize and deserialize LINQ expressions as strings - enables dynamic queries, expression storage in database, and runtime expression compilation with Serialize(), Deserialize(), and DeserializeAsDynamic()\n  - rystem + queue: In-Memory Queue - Buffer operations in-memory and process in batches - collect items until buffer size or time limit is reached, then execute batch processing with FIFO/LIFO support\n  - rystem + race-condition: Race Condition - Allow only the first request to execute within a time window - block duplicate operations with key-based race condition prevention for purchases, payments, submissions\n  - rystem + reflection: Reflection Utilities - Advanced reflection helpers for C# - includes NameOfCallingClass(), FetchProperties() caching, IsTheSameTypeOrASon() type checking, CreateInstance() mocking for abstracts/interfaces, and IsNullable() for nullability detection\n  - rystem + stopwatch copy: Stopwatch Utilities - Monitor execution time of methods, tasks, and actions with Rystem's Stopwatch helpers - includes Start/Stop, Monitor, and MonitorAsync with automatic time tracking\n  - rystem + stopwatch: Stopwatch Utilities - Monitor execution time of methods, tasks, and actions with Rystem's Stopwatch helpers - includes Start/Stop, Monitor, and MonitorAsync with automatic time tracking\n  - rystem + task-extensions: Task Extensions - Task utilities including NoContext() for ConfigureAwait(false), ToResult() for synchronous execution, and TaskManager for concurrent task execution with WhenAll() and WhenAtLeast()\n  - rystem + text-extensions: Text Extensions - Fast text and stream utilities - includes ToByteArray(), ToStream(), ReadLinesAsync(), ToUpperCaseFirst(), ContainsAtLeast() for efficient string/byte/stream conversions\n\nUsage example: get-rystem-docs(id=\"auth\", value=\"blazor\")",
+      "inputSchema": {
+        "id": {
+          "type": "string",
+          "description": "Documentation category. Available: auth, content, ddd, install, repository, rystem",
+          "required": true
+        },
+        "value": {
+          "type": "string",
+          "description": "Specific topic within the category. Use \"get-rystem-docs-list\" to see all available topics per category.",
+          "required": true
+        }
+      },
+      "documents": [
+        {
+          "filename": "auth-social-blazor.md",
+          "id": "auth",
+          "value": "social-blazor",
+          "metadata": {
+            "title": "Social Authentication - Blazor Client",
+            "description": "Add Google, Microsoft, Facebook, GitHub social login buttons to your Blazor Server/WASM app with automatic token management and routing protection"
+          }
+        },
+        {
+          "filename": "auth-social-server.md",
+          "id": "auth",
+          "value": "social-server",
+          "metadata": {
+            "title": "Social Authentication - Server Setup",
+            "description": "Configure Google, Microsoft, Facebook, GitHub, LinkedIn, X, Instagram, Pinterest social login with automatic token management and user provider integration for your REST API"
+          }
+        },
+        {
+          "filename": "auth-social-typescript.md",
+          "id": "auth",
+          "value": "social-typescript",
+          "metadata": {
+            "title": "Social Authentication - TypeScript/React Client",
+            "description": "Add Google, Microsoft, Facebook, GitHub social login to your React/Vue/Angular app with automatic JWT token management and user context hooks"
+          }
+        },
+        {
+          "filename": "content-repository-blob.md",
+          "id": "content",
+          "value": "repository-blob",
+          "metadata": {
+            "title": "Content Repository - Azure Blob Storage",
+            "description": "Store files in Azure Blob Storage with Content Repository - perfect for large files, CDN integration, and public access with metadata and tags support"
+          }
+        },
+        {
+          "filename": "content-repository-file.md",
+          "id": "content",
+          "value": "repository-file",
+          "metadata": {
+            "title": "Content Repository - Azure File Storage",
+            "description": "Store files in Azure File Storage with Content Repository - perfect for SMB shares, legacy applications, and enterprise file sharing with metadata support"
+          }
+        },
+        {
+          "filename": "content-repository-inmemory.md",
+          "id": "content",
+          "value": "repository-inmemory",
+          "metadata": {
+            "title": "Content Repository - In-Memory Storage",
+            "description": "Store files in memory with Content Repository - perfect for unit testing, caching, and development without external dependencies"
+          }
+        },
+        {
+          "filename": "content-repository-sharepoint.md",
+          "id": "content",
+          "value": "repository-sharepoint",
+          "metadata": {
+            "title": "Content Repository - SharePoint Online",
+            "description": "Store files in SharePoint Online with Content Repository - perfect for document collaboration, Office 365 integration, and enterprise content management with metadata support"
+          }
+        },
+        {
+          "filename": "content-repository.md",
+          "id": "content",
+          "value": "repository",
+          "metadata": {
+            "title": "Content Repository Pattern",
+            "description": "Unified interface for file storage across multiple providers - upload, download, delete files with metadata and tags support for Azure Blob Storage, Azure File Storage, SharePoint, and In-Memory storage"
+          }
+        },
+        {
+          "filename": "ddd-multi-domain.md",
+          "id": "ddd",
+          "value": "multi-domain",
+          "metadata": {
+            "title": "DDD Multi-Domain",
+            "description": "Domain-Driven Design for enterprise applications with multiple bounded contexts - complete domain isolation, event-driven communication, and microservices support"
+          }
+        },
+        {
+          "filename": "ddd-single-domain.md",
+          "id": "ddd",
+          "value": "single-domain",
+          "metadata": {
+            "title": "DDD Single Domain",
+            "description": "Domain-Driven Design for small applications with unified domain - flat structure with domains, business, infrastructures layers"
+          }
+        },
+        {
+          "filename": "ddd-single.md",
+          "id": "ddd",
+          "value": "single",
+          "metadata": {
+            "title": "DDD Single Domain",
+            "description": "Domain-Driven Design for small applications with unified domain - flat structure with domains, business, infrastructures layers"
+          }
+        },
+        {
+          "filename": "install-rystem.md",
+          "id": "install",
+          "value": "rystem",
+          "metadata": {
+            "title": "Install Rystem Packages",
+            "description": "Quick guide to install Rystem NuGet packages with correct versions - includes core packages, repository framework, authentication, and infrastructure components"
+          }
+        },
+        {
+          "filename": "repository-api-client-dotnet.md",
+          "id": "repository",
+          "value": "api-client-dotnet",
+          "metadata": {
+            "title": "Repository API Client - .NET",
+            "description": "Consume Repository APIs from .NET/C# apps using same IRepository interface as backend - supports Blazor Server, Blazor WASM, MAUI, WPF, and Console apps"
+          }
+        },
+        {
+          "filename": "repository-api-client-typescript.md",
+          "id": "repository",
+          "value": "api-client-typescript",
+          "metadata": {
+            "title": "Repository API Client - TypeScript",
+            "description": "Consume Repository APIs from TypeScript/JavaScript apps with type-safe access, automatic authentication, and retry logic for React, Next.js, and Node.js"
+          }
+        },
+        {
+          "filename": "repository-api-server.md",
+          "id": "repository",
+          "value": "api-server",
+          "metadata": {
+            "title": "Repository API Server",
+            "description": "Auto-generate REST APIs from repositories without writing controllers - includes authentication, LINQ queries, and Swagger documentation"
+          }
+        },
+        {
+          "filename": "repository-setup.md",
+          "id": "repository",
+          "value": "setup",
+          "metadata": {
+            "title": "Repository Pattern Setup",
+            "description": "Configure data access with Rystem.RepositoryFramework - CQRS, multiple storage backends, business logic injection, and Factory pattern support"
+          }
+        },
+        {
+          "filename": "rystem-async-lock.md",
+          "id": "rystem",
+          "value": "async-lock",
+          "metadata": {
+            "title": "Async Lock",
+            "description": "Prevent race conditions in async code with key-based locking - execute async methods sequentially by resource ID, user ID, or any custom key with in-memory or Redis distributed locks"
+          }
+        },
+        {
+          "filename": "rystem-backgroundjob.md",
+          "id": "rystem",
+          "value": "backgroundjob",
+          "metadata": {
+            "title": "Background Jobs",
+            "description": "Schedule recurring tasks with CRON expressions - run automated jobs, data sync, cleanup tasks, notifications, and periodic processing in your .NET application"
+          }
+        },
+        {
+          "filename": "rystem-concurrent-list.md",
+          "id": "rystem",
+          "value": "concurrent-list",
+          "metadata": {
+            "title": "ConcurrentList",
+            "description": "Thread-safe List implementation with automatic locking for concurrent access - provides all List<T> operations with built-in concurrency control"
+          }
+        },
+        {
+          "filename": "rystem-csv.md",
+          "id": "rystem",
+          "value": "csv",
+          "metadata": {
+            "title": "CSV and Minimization",
+            "description": "Serialize any IEnumerable to CSV with ToCsv() or use minimization for compact binary-like serialization with ToMinimize() and FromMinimization() - smaller than JSON with type safety"
+          }
+        },
+        {
+          "filename": "rystem-dependencyinjection-factory.md",
+          "id": "rystem",
+          "value": "dependencyinjection-factory",
+          "metadata": {
+            "title": "Dependency Injection Factory Pattern",
+            "description": "Advanced factory pattern for Rystem.DependencyInjection - register multiple named services with AddFactory(), use IFactory<T> for runtime service resolution, decorators, fallbacks, and automatic assembly scanning"
+          }
+        },
+        {
+          "filename": "rystem-discriminated-union.md",
+          "id": "rystem",
+          "value": "discriminated-union",
+          "metadata": {
+            "title": "Discriminated Union with AnyOf",
+            "description": "Implement type-safe discriminated unions in C# with AnyOf - supports up to 8 types, automatic JSON serialization/deserialization with intelligent type detection, pattern matching, and selector attributes"
+          }
+        },
+        {
+          "filename": "rystem-json-extensions copy.md",
+          "id": "rystem",
+          "value": "json-extensions copy",
+          "metadata": {
+            "title": "JSON Extensions",
+            "description": "Simple JSON serialization and deserialization with ToJson() and FromJson<T>() - no more JsonSerializer.Serialize boilerplate"
+          }
+        },
+        {
+          "filename": "rystem-json-extensions.md",
+          "id": "rystem",
+          "value": "json-extensions",
+          "metadata": {
+            "title": "JSON Extensions",
+            "description": "Simple JSON serialization and deserialization with ToJson() and FromJson<T>() - no more JsonSerializer.Serialize boilerplate"
+          }
+        },
+        {
+          "filename": "rystem-linq-serializer.md",
+          "id": "rystem",
+          "value": "linq-serializer",
+          "metadata": {
+            "title": "LINQ Expression Serializer",
+            "description": "Serialize and deserialize LINQ expressions as strings - enables dynamic queries, expression storage in database, and runtime expression compilation with Serialize(), Deserialize(), and DeserializeAsDynamic()"
+          }
+        },
+        {
+          "filename": "rystem-queue.md",
+          "id": "rystem",
+          "value": "queue",
+          "metadata": {
+            "title": "In-Memory Queue",
+            "description": "Buffer operations in-memory and process in batches - collect items until buffer size or time limit is reached, then execute batch processing with FIFO/LIFO support"
+          }
+        },
+        {
+          "filename": "rystem-race-condition.md",
+          "id": "rystem",
+          "value": "race-condition",
+          "metadata": {
+            "title": "Race Condition",
+            "description": "Allow only the first request to execute within a time window - block duplicate operations with key-based race condition prevention for purchases, payments, submissions"
+          }
+        },
+        {
+          "filename": "rystem-reflection.md",
+          "id": "rystem",
+          "value": "reflection",
+          "metadata": {
+            "title": "Reflection Utilities",
+            "description": "Advanced reflection helpers for C# - includes NameOfCallingClass(), FetchProperties() caching, IsTheSameTypeOrASon() type checking, CreateInstance() mocking for abstracts/interfaces, and IsNullable() for nullability detection"
+          }
+        },
+        {
+          "filename": "rystem-stopwatch copy.md",
+          "id": "rystem",
+          "value": "stopwatch copy",
+          "metadata": {
+            "title": "Stopwatch Utilities",
+            "description": "Monitor execution time of methods, tasks, and actions with Rystem's Stopwatch helpers - includes Start/Stop, Monitor, and MonitorAsync with automatic time tracking"
+          }
+        },
+        {
+          "filename": "rystem-stopwatch.md",
+          "id": "rystem",
+          "value": "stopwatch",
+          "metadata": {
+            "title": "Stopwatch Utilities",
+            "description": "Monitor execution time of methods, tasks, and actions with Rystem's Stopwatch helpers - includes Start/Stop, Monitor, and MonitorAsync with automatic time tracking"
+          }
+        },
+        {
+          "filename": "rystem-task-extensions.md",
+          "id": "rystem",
+          "value": "task-extensions",
+          "metadata": {
+            "title": "Task Extensions",
+            "description": "Task utilities including NoContext() for ConfigureAwait(false), ToResult() for synchronous execution, and TaskManager for concurrent task execution with WhenAll() and WhenAtLeast()"
+          }
+        },
+        {
+          "filename": "rystem-text-extensions.md",
+          "id": "rystem",
+          "value": "text-extensions",
+          "metadata": {
+            "title": "Text Extensions",
+            "description": "Fast text and stream utilities - includes ToByteArray(), ToStream(), ReadLinesAsync(), ToUpperCaseFirst(), ContainsAtLeast() for efficient string/byte/stream conversions"
+          }
+        }
+      ]
     }
   ]
 }

@@ -1,0 +1,7 @@
+name: get-rystem-docs
+title: Get Rystem Documentation
+description: |
+  Retrieve specific Rystem Framework documentation by category (id) and topic (value).
+  Supports all Rystem packages: Repository Pattern, Authentication, Content Storage, Utilities, DDD, and more.
+  
+  This tool provides comprehensive documentation for integrating Rystem Framework features into your .NET applications.
