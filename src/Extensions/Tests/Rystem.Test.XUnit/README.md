@@ -10,6 +10,52 @@
 dotnet add package Rystem.Test.XUnit
 ```
 
+### ⚠️ Important: XUnit v3 Requirements
+
+**Rystem.Test.XUnit requires XUnit v3**. After recent XUnit updates, ensure you have the correct package versions installed.
+
+**Required packages in your test project:**
+
+```xml
+<ItemGroup>
+  <PackageReference Include="Rystem.Test.XUnit" Version="9.1.3" />
+  <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+  <PackageReference Include="xunit.v3" Version="3.0.1" />
+  <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4">
+    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    <PrivateAssets>all</PrivateAssets>
+  </PackageReference>
+  <PackageReference Include="coverlet.collector" Version="6.0.4">
+    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    <PrivateAssets>all</PrivateAssets>
+  </PackageReference>
+</ItemGroup>
+```
+
+**Key differences from XUnit v2:**
+- ✅ Use `xunit.v3` instead of `xunit` package
+- ✅ Use `xunit.runner.visualstudio` version 3.1.4+
+- ✅ Constructor injection still works the same way
+- ⚠️ Some breaking changes in assertion APIs (see [XUnit v3 migration guide](https://xunit.net/docs/getting-started/v3/migration))
+
+**Quick project setup:**
+
+```bash
+# Create test project
+dotnet new xunit -n MyApp.Tests
+
+# Remove old xunit package (if present)
+dotnet remove package xunit
+
+# Add required packages
+dotnet add package Rystem.Test.XUnit
+dotnet add package xunit.v3 --version 3.0.1
+dotnet add package xunit.runner.visualstudio --version 3.1.4
+dotnet add package Microsoft.NET.Test.Sdk --version 17.14.1
+```
+
+---
+
 ## 🎯 Features
 
 - ✅ **Built-in Dependency Injection** for XUnit tests

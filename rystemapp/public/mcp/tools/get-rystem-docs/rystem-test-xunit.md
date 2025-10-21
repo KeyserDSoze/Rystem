@@ -15,6 +15,79 @@ tags: ["xunit", "testing", "dependency-injection", "integration-testing", "test-
 dotnet add package Rystem.Test.XUnit
 ```
 
+### ⚠️ IMPORTANT: XUnit v3 Requirements
+
+**Rystem.Test.XUnit requires XUnit v3**. Recent XUnit updates introduced breaking changes. Ensure correct package versions.
+
+**Complete test project setup:**
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Rystem Test Framework -->
+    <PackageReference Include="Rystem.Test.XUnit" Version="9.1.3" />
+    
+    <!-- XUnit v3 (NOT xunit v2!) -->
+    <PackageReference Include="xunit.v3" Version="3.0.1" />
+    
+    <!-- Test SDK and Runners -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    
+    <!-- Code Coverage -->
+    <PackageReference Include="coverlet.collector" Version="6.0.4">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>
+```
+
+**Quick CLI Setup:**
+
+```bash
+# 1. Create test project
+dotnet new xunit -n MyApp.Tests
+cd MyApp.Tests
+
+# 2. Remove old xunit package (if present)
+dotnet remove package xunit
+
+# 3. Add XUnit v3 and Rystem
+dotnet add package xunit.v3 --version 3.0.1
+dotnet add package xunit.runner.visualstudio --version 3.1.4
+dotnet add package Rystem.Test.XUnit --version 9.1.3
+dotnet add package Microsoft.NET.Test.Sdk --version 17.14.1
+```
+
+**Common Mistakes to Avoid:**
+
+| ❌ Wrong | ✅ Correct |
+|---------|-----------|
+| `<PackageReference Include="xunit" />` | `<PackageReference Include="xunit.v3" />` |
+| `xunit.runner.visualstudio` v2.x | `xunit.runner.visualstudio` v3.1.4+ |
+| Missing `IsTestProject` property | `<IsTestProject>true</IsTestProject>` |
+
+**XUnit v2 vs v3 Key Differences:**
+
+- ✅ Constructor injection: **Same** (no changes)
+- ✅ `[Fact]`, `[Theory]`, `[InlineData]`: **Same** (no changes)
+- ⚠️ Assertion APIs: **Some changes** (see [migration guide](https://xunit.net/docs/getting-started/v3/migration))
+- ⚠️ Test collection behavior: **Enhanced** (better parallelization)
+
+---
+
 ## 🎯 Key Features
 
 - ✅ **Built-in Dependency Injection** - Constructor injection in XUnit test classes
@@ -673,6 +746,81 @@ protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => typ
    <PropertyGroup>
      <UserSecretsId>your-guid-here</UserSecretsId>
    </PropertyGroup>
+   ```
+
+---
+
+### XUnit v3 Package Errors
+
+**Problem**: Build errors like "The type or namespace name 'Fact' could not be found"
+
+**Solution**: Ensure you're using `xunit.v3` package, **NOT** `xunit`:
+
+```bash
+# Remove old package
+dotnet remove package xunit
+
+# Add XUnit v3
+dotnet add package xunit.v3 --version 3.0.1
+```
+
+**Check your `.csproj`:**
+```xml
+<!-- ❌ WRONG -->
+<PackageReference Include="xunit" Version="2.x.x" />
+
+<!-- ✅ CORRECT -->
+<PackageReference Include="xunit.v3" Version="3.0.1" />
+```
+
+---
+
+### Test Runner Not Discovering Tests
+
+**Problem**: Tests don't appear in Visual Studio Test Explorer or `dotnet test` finds no tests
+
+**Solution**: 
+1. Ensure `xunit.runner.visualstudio` version 3.1.4+:
+   ```xml
+   <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4">
+     <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+     <PrivateAssets>all</PrivateAssets>
+   </PackageReference>
+   ```
+
+2. Ensure `IsTestProject` is set:
+   ```xml
+   <PropertyGroup>
+     <IsTestProject>true</IsTestProject>
+   </PropertyGroup>
+   ```
+
+3. Rebuild solution:
+   ```bash
+   dotnet clean
+   dotnet build
+   ```
+
+---
+
+### Constructor Injection Not Working
+
+**Problem**: Test constructor parameters not being resolved
+
+**Solution**: 
+1. Verify `Startup` class inherits from `StartupHelper`
+2. Ensure services are registered in `ConfigureClientServices`:
+   ```csharp
+   protected override IServiceCollection ConfigureClientServices(IServiceCollection services, IConfiguration configuration)
+   {
+       services.AddMyServices(); // Make sure all dependencies are registered!
+       return services;
+   }
+   ```
+
+3. Check test project references `Rystem.Test.XUnit`:
+   ```bash
+   dotnet list package | Select-String "Rystem.Test.XUnit"
    ```
 
 ---
