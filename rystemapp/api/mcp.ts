@@ -113,12 +113,22 @@ async function initializeMcpServer(): Promise<McpServer> {
             // Sort by score (highest first)
             candidates.sort((a, b) => b.score - a.score);
             
-            // If top result significantly better, return it
-            if (candidates.length === 1 || candidates[0].score > candidates[1].score * 1.5) {
+            // Return best match if:
+            // 1. Only one candidate
+            // 2. Top candidate significantly better (1.2x threshold)
+            // 3. Top candidate matches ALL keywords
+            if (candidates.length === 1) {
                 return candidates[0];
             }
             
-            return null; // Ambiguous
+            const topScore = candidates[0].score;
+            const secondScore = candidates[1].score;
+            
+            if (topScore > secondScore * 1.2) {
+                return candidates[0];
+            }
+            
+            return null; // Ambiguous - show options
         };
 
         // Register main tool
