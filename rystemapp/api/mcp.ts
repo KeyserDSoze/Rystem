@@ -105,14 +105,14 @@ async function initializeMcpServer(): Promise<McpServer> {
                 title: prompt.metadata?.title || prompt.name,
                 description: prompt.metadata?.description || `Rystem Framework prompt: ${prompt.name}`,
                 argsSchema: prompt.arguments?.reduce(
-                    (schema, arg) => {
+                    (schema: Record<string, z.ZodString | z.ZodOptional<z.ZodString>>, arg: any) => {
                         schema[arg.name] = arg.required ? z.string() : z.string().optional();
                         return schema;
                     },
                     {} as Record<string, z.ZodString | z.ZodOptional<z.ZodString>>
                 ) || {}
             },
-            async args => {
+            async (args: Record<string, unknown>) => {
                 try {
                     const content = await readFile(promptPath, 'utf-8');
                     // Replace argument placeholders in the prompt
@@ -127,9 +127,9 @@ async function initializeMcpServer(): Promise<McpServer> {
                     return {
                         messages: [
                             {
-                                role: 'user',
+                                role: 'user' as const,
                                 content: {
-                                    type: 'text',
+                                    type: 'text' as const,
                                     text: processedContent
                                 }
                             }
