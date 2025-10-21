@@ -1,10 +1,13 @@
+---
+title: Install Rystem Packages
+description: Quick guide to install Rystem NuGet packages with correct versions - includes core packages, repository framework, authentication, and infrastructure components
+---
+
 # Install Rystem Package
 
-> Quick guide to install and setup Rystem packages in your .NET project
+**Purpose**: This tool provides step-by-step instructions for installing Rystem packages and their dependencies.
 
-## Description
-
-This tool provides step-by-step instructions for installing Rystem packages and their dependencies.
+---
 
 ## Core Packages
 

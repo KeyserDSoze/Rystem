@@ -6,9 +6,41 @@ Follow Rystem Framework patterns and best practices when working in this reposit
 
 ### Core Architecture
 - **Project Setup**: https://rystem.net/mcp/tools/project-setup.md
-- **Domain-Driven Design**: https://rystem.net/mcp/tools/ddd.md
+- **DDD Single Domain**: https://rystem.net/mcp/tools/ddd-single-domain.md (for small apps)
+- **DDD Multi-Domain**: https://rystem.net/mcp/tools/ddd-multi-domain.md (for enterprise apps)
 - **Repository Pattern**: https://rystem.net/mcp/tools/repository-setup.md
+- **Repository API Server**: https://rystem.net/mcp/tools/repository-api-server.md (auto-generate REST APIs)
+- **Repository API Client (TypeScript)**: https://rystem.net/mcp/tools/repository-api-client-typescript.md
+- **Repository API Client (.NET)**: https://rystem.net/mcp/tools/repository-api-client-dotnet.md
 - **Package Installation**: https://rystem.net/mcp/tools/install-rystem.md
+
+### Rystem Utilities
+- **Discriminated Union**: https://rystem.net/mcp/tools/rystem-discriminated-union.md (AnyOf for type-safe unions)
+- **Stopwatch**: https://rystem.net/mcp/tools/rystem-stopwatch.md (execution time monitoring)
+- **LINQ Serializer**: https://rystem.net/mcp/tools/rystem-linq-serializer.md (serialize/deserialize expressions)
+- **Reflection**: https://rystem.net/mcp/tools/rystem-reflection.md (reflection helpers and mocking)
+- **Text Extensions**: https://rystem.net/mcp/tools/rystem-text-extensions.md (string/byte/stream conversions)
+- **CSV & Minimization**: https://rystem.net/mcp/tools/rystem-csv.md (CSV and compact serialization)
+- **JSON Extensions**: https://rystem.net/mcp/tools/rystem-json-extensions.md (ToJson/FromJson)
+- **Task Extensions**: https://rystem.net/mcp/tools/rystem-task-extensions.md (NoContext, TaskManager)
+- **ConcurrentList**: https://rystem.net/mcp/tools/rystem-concurrent-list.md (thread-safe List)
+- **DI Factory Pattern**: https://rystem.net/mcp/tools/rystem-dependencyinjection-factory.md (named services with AddFactory)
+- **Background Job**: https://rystem.net/mcp/tools/rystem-backgroundjob.md (CRON-based recurring tasks)
+- **Async Lock**: https://rystem.net/mcp/tools/rystem-async-lock.md (key-based async locking)
+- **Race Condition**: https://rystem.net/mcp/tools/rystem-race-condition.md (block duplicate operations)
+- **In-Memory Queue**: https://rystem.net/mcp/tools/rystem-queue.md (batch processing with time/size limits)
+
+### Content Repository (File Storage)
+- **Content Repository Pattern**: https://rystem.net/mcp/tools/content-repository.md (unified interface for file storage)
+- **Azure Blob Storage**: https://rystem.net/mcp/tools/content-repository-blob.md (large files, CDN, scalable storage)
+- **Azure File Storage**: https://rystem.net/mcp/tools/content-repository-file.md (SMB shares, legacy apps, enterprise file sharing)
+- **SharePoint Online**: https://rystem.net/mcp/tools/content-repository-sharepoint.md (Office 365, document collaboration)
+- **In-Memory Storage**: https://rystem.net/mcp/tools/content-repository-inmemory.md (testing, caching, development)
+
+### Social Authentication
+- **Server Setup**: https://rystem.net/mcp/tools/auth-social-server.md (Google, Microsoft, Facebook, GitHub OAuth for APIs)
+- **Blazor Client**: https://rystem.net/mcp/tools/auth-social-blazor.md (social login UI for Blazor Server/WASM)
+- **TypeScript/React Client**: https://rystem.net/mcp/tools/auth-social-typescript.md (React hooks for social login)
 
 ### Best Practices
 - **Background Jobs**: https://rystem.net/mcp/resources/background-jobs.md
@@ -18,6 +50,10 @@ Follow Rystem Framework patterns and best practices when working in this reposit
 ### Templates & Prompts
 - **Authentication Flow**: https://rystem.net/mcp/prompts/auth-flow.md
 - **Service Setup with DI**: https://rystem.net/mcp/prompts/service-setup.md
+- **Project Setup Prompt**: https://rystem.net/mcp/prompts/project-setup.md
+- **Ready-to-Use Template**: https://rystem.net/mcp/prompts/project-setup-template.md
+- **Standard Rystem Template**: https://rystem.net/mcp/prompts/project-setup-template-singledomain-classicrystem.md
+- **Code Review - Alessandro Rapiti Style**: https://rystem.net/mcp/prompts/code-review-rapiti.md
 
 ## 🏗️ Project Structure Guidelines
 
@@ -175,22 +211,50 @@ npx create-vite [projectname].app --template react-ts
 ## 📖 When to Reference What
 
 ### Creating New Projects
-→ Reference: https://rystem.net/mcp/tools/project-setup.md
+→ Reference: https://rystem.net/mcp/prompts/project-setup.md
 
-### Implementing Domain Models
-→ Reference: https://rystem.net/mcp/tools/ddd.md
+### Understanding DDD Architecture
+→ Small Apps: https://rystem.net/mcp/tools/ddd-single-domain.md  
+→ Enterprise Apps: https://rystem.net/mcp/tools/ddd-multi-domain.md
 
 ### Setting Up Data Access
 → Reference: https://rystem.net/mcp/tools/repository-setup.md
 
+### Exposing Repositories as REST APIs
+→ Reference: https://rystem.net/mcp/tools/repository-api-server.md
+
+### Consuming Repositories from Frontend (TypeScript)
+→ Reference: https://rystem.net/mcp/tools/repository-api-client-typescript.md
+
+### Consuming Repositories from .NET Client (Blazor, MAUI, WPF)
+→ Reference: https://rystem.net/mcp/tools/repository-api-client-dotnet.md
+
 ### Adding Authentication
 → Reference: https://rystem.net/mcp/prompts/auth-flow.md
+
+### Scheduling Recurring Tasks
+→ Reference: https://rystem.net/mcp/tools/rystem-backgroundjob.md
 
 ### Background Processing
 → Reference: https://rystem.net/mcp/resources/background-jobs.md
 
 ### Handling Concurrency
 → Reference: https://rystem.net/mcp/resources/concurrency.md
+
+### Code Review & Best Practices
+→ Reference: https://rystem.net/mcp/prompts/code-review-rapiti.md
+
+### Working with File Storage
+→ Main Pattern: https://rystem.net/mcp/tools/content-repository.md  
+→ Large Files & CDN: https://rystem.net/mcp/tools/content-repository-blob.md  
+→ SMB Shares & Legacy Apps: https://rystem.net/mcp/tools/content-repository-file.md  
+→ Office 365 Integration: https://rystem.net/mcp/tools/content-repository-sharepoint.md  
+→ Testing & Development: https://rystem.net/mcp/tools/content-repository-inmemory.md
+
+### Implementing Social Login
+→ API Backend: https://rystem.net/mcp/tools/auth-social-server.md  
+→ Blazor Frontend: https://rystem.net/mcp/tools/auth-social-blazor.md  
+→ React/TypeScript Frontend: https://rystem.net/mcp/tools/auth-social-typescript.md
 
 ## 💡 Tips
 

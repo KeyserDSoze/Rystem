@@ -1,10 +1,14 @@
 ﻿# Service Setup with Dependency Injection
 
-> Configure and organize services using Rystem's advanced dependency injection features
+**Purpose**: This prompt guides you through setting up services with Rystem's advanced dependency injection features.
+
+---
 
 ## Context
 
 You need to set up a .NET application with proper service organization, dependency injection patterns, and service lifetime management using Rystem.
+
+---
 
 ## Prerequisites
 

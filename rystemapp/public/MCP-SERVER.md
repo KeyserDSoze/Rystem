@@ -66,7 +66,9 @@ npx @modelcontextprotocol/inspector https://rystem.cloud/mcp
 
 ## � Available Content
 
-### Tools (2)
+### Tools (4)
+- **DDD Multi-Domain - Enterprise Applications**: 🎯 When to Use Multi-Domain
+- **DDD Single Domain - Small Applications**: 🎯 When to Use Single Domain
 - **Install Rystem Package**: Description
 - **Repository Pattern Setup**: Description
 
@@ -75,9 +77,11 @@ npx @modelcontextprotocol/inspector https://rystem.cloud/mcp
 - **Concurrency Control**: Overview
 - **Content Repository**: Overview
 
-### Prompts (3)
+### Prompts (5)
 - **Authentication Flow Setup**: Context
-- **Application Setup with Rystem Framework**: 📋 Configuration Choices
+- **project-setup-template-singledomain-classicrystem**: Context
+- **project-setup-template**: Context
+- **Application Setup with Rystem Framework**: � FUD.md - Functional User Documentation (CRITICAL)
 - **Service Setup with Dependency Injection**: Context
 
 ## 📁 Static JSON Files (Legacy)

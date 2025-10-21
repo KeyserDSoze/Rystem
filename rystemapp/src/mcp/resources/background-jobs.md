@@ -1,10 +1,19 @@
+---
+title: Background Jobs
+description: Configure background jobs for scheduled and recurring tasks with Rystem.BackgroundJob - supports cron expressions, async operations, and dependency injection
+---
+
 # Background Jobs
 
-> Configure and use Rystem background jobs for scheduled and recurring tasks
+**Purpose**: This resource explains how to configure and use Rystem background jobs for scheduled and recurring tasks.
+
+---
 
 ## Overview
 
 Rystem provides a powerful background job system for executing tasks asynchronously, scheduling recurring jobs, and managing long-running operations.
+
+---
 
 ## Installation
 

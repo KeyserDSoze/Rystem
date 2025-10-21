@@ -1,11 +1,11 @@
+---
+title: Project Setup Template - Generic
+description: Ready-to-use template for new Rystem applications - fill in your choices and get a complete project structure
+---
+
 ═══════════════════════════════════════════════════════════════════
 🚀 NEW APPLICATION SETUP
 ═══════════════════════════════════════════════════════════════════
-
-PROJECT INFORMATION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Project Name: [Your project name here]
-Application Description: [What does your app do?]
 
 BACKEND API (.NET 10)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -176,4 +176,36 @@ TESTING & QUALITY
 ADDITIONAL NOTES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [Any specific requirements, integrations, or custom features you need]
+
+
+
+
+═══════════════════════════════════════════════════════════════════
+⚠️  FILL IN THESE REQUIRED FIELDS AT THE END:
+═══════════════════════════════════════════════════════════════════
+
+PROJECT INFORMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Project Name: [Your project name here]
+
+Application Description: [Detailed description of what your app does, features needed, who will use it]
+
+⚠️  IMPORTANT - FUD.md (Functional User Documentation):
+   
+   Option 1: Provide description above
+   → The AI will create docs/FUD.md from your description
+   → For Multiple Domains: AI will create docs/FUD-{DomainName}.md for each domain
+   
+   Option 2: If docs/FUD.md already exists
+   → The AI will read it and use it as the source of truth
+   → You can leave the description field empty or provide a summary
+   
+   The AI will:
+   1. Check if docs/FUD.md (and docs/FUD-{DomainName}.md) exists
+   2. If YES → Read FUD.md files and use them for all requirements
+   3. If NO → Create FUD.md files from your description above
+   4. Use FUD.md as the single source of truth for development
+   5. Generate entities, services, UI, and tests based on FUD.md
+
+═══════════════════════════════════════════════════════════════════
 

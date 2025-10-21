@@ -1,10 +1,19 @@
+---
+title: Content Repository
+description: Upload, download, and manage files with Rystem.Content - unified interface for Azure Blob Storage, File System, and SharePoint
+---
+
 # Content Repository
 
-> Upload, download, and manage files using Rystem Content Repository
+**Purpose**: This resource explains how to upload, download, and manage files using Rystem Content Repository.
+
+---
 
 ## Overview
 
 Rystem Content Repository provides a unified interface for file storage across different backends including Azure Blob Storage, File System, and SharePoint.
+
+---
 
 ## Installation
 

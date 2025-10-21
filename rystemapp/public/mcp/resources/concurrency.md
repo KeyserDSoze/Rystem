@@ -1,10 +1,14 @@
 ﻿# Concurrency Control
 
-> Implement distributed locks and prevent race conditions with Rystem Concurrency
+**Purpose**: This resource explains how to implement distributed locks and prevent race conditions with Rystem Concurrency.
+
+---
 
 ## Overview
 
 Rystem provides concurrency control mechanisms including locks, semaphores, and race condition prevention for distributed systems.
+
+---
 
 ## Installation
 

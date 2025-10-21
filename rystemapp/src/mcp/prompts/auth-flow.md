@@ -1,10 +1,19 @@
+---
+title: Authentication Flow Setup
+description: Configure social authentication, JWT tokens, and role-based access control with Rystem.Authentication.Social - supports Google, Microsoft, GitHub, Facebook
+---
+
 # Authentication Flow Setup
 
-> Configure authentication and authorization in your Rystem application
+**Purpose**: This prompt guides you through setting up authentication and authorization in a .NET application using Rystem.
+
+---
 
 ## Context
 
 You are implementing authentication and authorization in a .NET application using Rystem. This prompt will guide you through setting up social authentication, JWT tokens, and role-based access control.
+
+---
 
 ## Prerequisites
 

@@ -3,6 +3,24 @@
   "result": {
     "tools": [
       {
+        "name": "ddd-multi-domain",
+        "description": "🎯 When to Use Multi-Domain",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      {
+        "name": "ddd-single-domain",
+        "description": "🎯 When to Use Single Domain",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      {
         "name": "install-rystem",
         "description": "Description",
         "inputSchema": {

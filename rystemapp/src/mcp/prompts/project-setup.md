@@ -1,6 +1,13 @@
+---
+title: Application Setup with Rystem
+description: Interactive prompt to create complete applications with .NET API backend and React/Next.js frontend following Domain-Driven Design and FUD.md approach
+---
+
 # Application Setup with Rystem Framework
 
 **Purpose**: This prompt guides you through creating a complete application using Rystem Framework. It will help you set up a modern, scalable application with .NET API backend and React/React Native frontend, following Domain-Driven Design principles.
+
+---
 
 **What this prompt does**:
 - Guides you through all architectural decisions
@@ -8,15 +15,116 @@
 - Sets up a professional, production-ready codebase
 - Configures multi-language support automatically
 - Follows best practices for DDD, dependency injection, and repository patterns
+- **Creates FUD (Functional User Documentation)** as the foundation for development
 
 **How it works**:
 1. You provide your choices below
-2. The AI uses Rystem MCP tools to scaffold the entire application
-3. You get a fully configured project ready for development
+2. The AI creates/updates FUD.md documentation based on your description
+3. The AI uses FUD.md as the source of truth for what to build
+4. The AI uses Rystem MCP tools to scaffold the entire application
+5. You get a fully configured project ready for development
 
 ---
 
-## 📋 Configuration Choices
+## � FUD.md - Functional User Documentation (CRITICAL)
+
+**⚠️ IMPORTANT: Everything starts from FUD.md**
+
+The **FUD (Functional User Documentation)** is the foundation of the entire project. It describes what the application must do from a functional perspective.
+
+### Location and Structure
+
+**Single Domain Projects:**
+```
+docs/
+└── FUD.md                    # Main functional documentation
+```
+
+**Multiple Domain Projects:**
+```
+docs/
+├── FUD.md                    # Overall application description
+├── FUD-Orders.md             # Orders domain functionality
+├── FUD-Shipments.md          # Shipments domain functionality
+├── FUD-Customers.md          # Customers domain functionality
+└── FUD-[DomainName].md       # One FUD per domain
+```
+
+### What FUD.md Contains
+
+The FUD document includes:
+- **Application Overview**: What the app does, who uses it
+- **User Roles**: Different types of users and their permissions
+- **Core Features**: List of all features grouped by area
+- **User Stories**: Detailed user stories (As a [role], I want to [action], so that [benefit])
+- **Business Rules**: Validation rules, constraints, policies
+- **Workflows**: Step-by-step process flows
+- **Data Requirements**: What data needs to be stored
+- **Integrations**: External systems or APIs needed
+- **Non-Functional Requirements**: Performance, security, scalability needs
+
+### AI Workflow with FUD.md
+
+**STEP 1: Create or Update FUD.md**
+- If `docs/FUD.md` doesn't exist → AI creates it from your description
+- If `docs/FUD.md` exists → AI updates it with new requirements
+- For multiple domains → AI creates FUD.md + FUD-{DomainName}.md for each domain
+
+**STEP 2: Use FUD.md as Source of Truth**
+- AI reads FUD.md to understand what to build
+- All entities, services, endpoints are derived from FUD.md
+- All business logic reflects the rules in FUD.md
+- All tests verify the requirements in FUD.md
+
+**STEP 3: Keep FUD.md Updated**
+- When requirements change → Update FUD.md first
+- Then regenerate/update code based on new FUD.md
+- FUD.md is the single source of truth
+
+### Example FUD.md Structure
+
+```markdown
+# FUD - [Project Name]
+
+## Overview
+[High-level description of what the application does]
+
+## User Roles
+- **Admin**: Full system access, user management
+- **Manager**: View reports, approve actions
+- **User**: Basic features, CRUD operations
+
+## Core Features
+
+### Feature 1: [Feature Name]
+**Description**: [What this feature does]
+
+**User Stories**:
+- As a [role], I want to [action], so that [benefit]
+- As a [role], I want to [action], so that [benefit]
+
+**Business Rules**:
+- [Rule 1]
+- [Rule 2]
+
+### Feature 2: [Feature Name]
+...
+
+## Data Model
+[Description of main entities and their relationships]
+
+## Integrations
+[External systems, APIs, services]
+
+## Non-Functional Requirements
+- Performance: [requirements]
+- Security: [requirements]
+- Scalability: [requirements]
+```
+
+---
+
+## �📋 Configuration Choices
 
 Please provide your choices for each section below:
 
@@ -27,8 +135,11 @@ Please provide your choices for each section below:
 *This will be used for all namespaces and project names*
 
 **Application Description**: `_________________________`  
-*Describe what your application does in 1-2 sentences*  
-*Example: "A cargo tracking system that monitors shipments in real-time across multiple carriers"*
+*Describe what your application does, what features it needs, who will use it*  
+*Be as detailed as possible - this will be used to create/update docs/FUD.md*  
+*Example: "A cargo tracking system that monitors shipments in real-time across multiple carriers. Users can create shipments, track their status, receive notifications, and generate reports. Admins can manage users and configure system settings."*  
+
+**→ The AI will automatically create or update docs/FUD.md (and docs/FUD-{DomainName}.md for multiple domains) based on your description**
 
 ---
 
@@ -97,19 +208,43 @@ Please provide your choices for each section below:
 
 After you've filled in your choices above, the AI will:
 
+0. **🎯 FIRST: Create/Update FUD.md Documentation**
+   - Check if `docs/FUD.md` exists
+   - If NOT exists → Create `docs/FUD.md` from your Application Description
+   - If EXISTS → Read and validate against your requirements
+   - For Multiple Domains → Create `docs/FUD-{DomainName}.md` for each domain
+   - FUD.md becomes the **single source of truth** for what to build
+   - All subsequent steps are based on FUD.md requirements
+
 1. **Use `project-setup` tool** to create the domain-driven architecture
    - Generate folder structure (single or multiple domain)
    - Create all .csproj files with correct references
    - Set up .NET 10 projects with Rystem packages
+   - Create `docs/` folder structure
 
-2. **Use `ddd` tool** to set up domain models
-   - Create entities, value objects, aggregates
-   - Define repository interfaces
-   - Set up domain events (if needed)
+2. **Use DDD tools** to understand and apply Domain-Driven Design principles:
+   - **`ddd-single-domain`**: For small applications with unified domain (1-10 entities, cohesive business)
+     - Explains flat structure: `domains/`, `business/`, `infrastructures/`, `applications/`
+     - Shows how to implement entities, value objects, repositories
+     - Provides examples of pure domain logic, DTOs, services
+     - Perfect for simple use cases: Task Manager, Blog, Invoice System
+   
+   - **`ddd-multi-domain`**: For enterprise applications with multiple bounded contexts
+     - Explains domain isolation: `src/Orders/`, `src/Shipments/`, `src/Customers/`
+     - Shows domain communication patterns (REST APIs, events)
+     - Provides examples of bounded contexts, aggregates, domain events
+     - Perfect for complex systems: E-Commerce, ERP, Logistics, Healthcare
+
+3. **Set up domain models** (based on FUD.md and chosen DDD approach)
+   - Create entities, value objects, aggregates from FUD.md data requirements
+   - Define repository interfaces from FUD.md features
+   - Set up domain events from FUD.md workflows
+   - Implement business rules from FUD.md
+   - Follow patterns from `ddd-single-domain` or `ddd-multi-domain`
 
 3. **Use `repository-setup` tool** to configure data access
-   - Set up Entity Framework Core
-   - Configure DbContext
+   - Set up Entity Framework Core or Blob Storage (based on database choice)
+   - Configure DbContext with entities from FUD.md
    - Implement repository pattern or CQRS with Rystem.RepositoryFramework
 
 4. **Configure Frontend**
@@ -118,13 +253,15 @@ After you've filled in your choices above, the AI will:
    - Set up i18next for multi-language support
    - Configure routing and state management
    - Create base layout and navigation
+   - Build screens/components based on FUD.md user stories
 
 5. **Set up Authentication** *(if selected)*
    - Use `auth-flow` prompt for complete setup with Rystem.Authentication.Social
    - Configure OAuth providers (Google, Facebook, Microsoft, etc.)
+   - Implement user roles from FUD.md
    - JWT tokens for API
    - Login/Register UI components
-   - Protected routes
+   - Protected routes based on FUD.md permissions
 
 6. **Configure Content Storage** *(if selected)*
    - Use `content-repo` resource for Rystem.Content implementation
@@ -143,6 +280,12 @@ After you've filled in your choices above, the AI will:
    - appsettings.json configurations
    - Environment variables setup
    - README with setup instructions
+
+9. **Verify Against FUD.md**
+   - Cross-check all features from FUD.md are implemented
+   - Ensure all user stories have corresponding code
+   - Validate business rules are enforced
+   - Confirm all data requirements are covered
 
 ---
 
@@ -264,11 +407,17 @@ src/
 
 This prompt uses these Rystem MCP tools automatically:
 
-- **project-setup** - Creates domain architecture
-- **ddd** - Sets up domain models
-- **repository-setup** - Configures data access
-- **auth-flow** - Adds authentication (if selected)
-- **service-setup** - Configures dependency injection
+- **ddd-single-domain** - Domain-Driven Design for small applications (unified domain)
+- **ddd-multi-domain** - Domain-Driven Design for enterprise applications (multiple bounded contexts)
+- **install-rystem** - Installs Rystem packages with correct versions
+- **repository-setup** - Configures data access with Rystem.RepositoryFramework
+- **repository-api-server** - Auto-generates REST APIs from repositories (no controllers needed)
+- **repository-api-client-typescript** - Consumes REST APIs from TypeScript/JavaScript apps
+- **repository-api-client-dotnet** - Consumes REST APIs from .NET/C# apps (Blazor, MAUI, WPF)
+- **auth-flow** - Adds authentication with Rystem.Authentication.Social (if selected)
+- **background-jobs** - Configures Rystem.BackgroundJob (if selected)
+- **concurrency** - Sets up Rystem.Concurrency (if selected)
+- **content-repo** - Implements Rystem.Content for file storage (if selected)
 
 All tools are documented at: https://rystem.cloud/mcp
 
@@ -905,8 +1054,24 @@ After project creation:
 ## 🔗 Related Resources
 
 - [Repository Pattern Setup](./repository-setup.md)
-- [Domain-Driven Design Pattern](./ddd.md)
-- [Rystem.DependencyInjection Documentation](https://github.com/KeyserDSoze/Rystem)
+- [Repository API Server](./repository-api-server.md)
+- [Repository API Client (TypeScript)](./repository-api-client-typescript.md)
+- [Repository API Client (.NET)](./repository-api-client-dotnet.md)
+- [DDD Single Domain](./ddd-single-domain.md)
+- [DDD Multi-Domain](./ddd-multi-domain.md)
+- [Discriminated Union (AnyOf)](./rystem-discriminated-union.md)
+- [Stopwatch Utilities](./rystem-stopwatch.md)
+- [LINQ Expression Serializer](./rystem-linq-serializer.md)
+- [Reflection Utilities](./rystem-reflection.md)
+- [Text Extensions](./rystem-text-extensions.md)
+- [CSV & Minimization](./rystem-csv.md)
+- [JSON Extensions](./rystem-json-extensions.md)
+- [Task Extensions](./rystem-task-extensions.md)
+- [ConcurrentList](./rystem-concurrent-list.md)
+- [DI Factory Pattern](./rystem-dependencyinjection-factory.md)
+- [Background Jobs](../resources/background-jobs.md)
+- [Concurrency Control](../resources/concurrency.md)
+- [Content Repository](../resources/content-repo.md)
 
 ---
 

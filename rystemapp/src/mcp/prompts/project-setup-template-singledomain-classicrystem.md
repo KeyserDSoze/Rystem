@@ -1,3 +1,8 @@
+---
+title: Project Setup Template - Standard Rystem
+description: Pre-configured template with Single Domain, NoSQL (Azure Blob), Social Authentication, React + MUI, and Azure deployment
+---
+
 ═══════════════════════════════════════════════════════════════════
 🚀 RYSTEM STANDARD APPLICATION TEMPLATE - SINGLE DOMAIN NoSQL
 ═══════════════════════════════════════════════════════════════════
@@ -10,11 +15,6 @@ This is a pre-configured template for a standard Rystem application with:
 - Azure Cloud Deployment (Web App + Static Web App)
 
 ───────────────────────────────────────────────────────────────────
-PROJECT INFORMATION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✓ Single Domain Architecture
-✓ Cloud-Native (Azure)
-✓ NoSQL Data Store
 
 BACKEND API (.NET 10)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -251,10 +251,32 @@ Performance:
   - Optimize blob storage access patterns
 
 
-═══════════════════════════════════════════════════════════════════
-✅ Project Name: [YOUR_PROJECT_NAME_HERE]
-═══════════════════════════════════════════════════════════════════
+
 
 ═══════════════════════════════════════════════════════════════════
-✅ Description: [YOUR_DESCRIPTION_HERE]
+⚠️  FILL IN THESE REQUIRED FIELDS AT THE END:
+═══════════════════════════════════════════════════════════════════
+
+PROJECT INFORMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Project Name: [YOUR_PROJECT_NAME_HERE]
+
+Description: [YOUR_DESCRIPTION_HERE - Detailed description of what your application does, features needed, who will use it]
+
+⚠️  IMPORTANT - FUD.md (Functional User Documentation):
+   
+   Option 1: Provide description above
+   → The AI will create docs/FUD.md from your description
+   
+   Option 2: If docs/FUD.md already exists
+   → The AI will read it and use it as the source of truth
+   → You can leave the description field empty or provide a summary
+   
+   The AI will:
+   1. Check if docs/FUD.md exists
+   2. If YES → Read FUD.md and use it for all requirements
+   3. If NO → Create docs/FUD.md from your description above
+   4. Use FUD.md as the single source of truth for development
+   5. Generate entities, services, and UI based on FUD.md
+
 ═══════════════════════════════════════════════════════════════════

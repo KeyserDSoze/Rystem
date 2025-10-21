@@ -8,8 +8,18 @@
         "arguments": []
       },
       {
+        "name": "project-setup-template-singledomain-classicrystem",
+        "description": "project-setup-template-singledomain-classicrystem",
+        "arguments": []
+      },
+      {
+        "name": "project-setup-template",
+        "description": "project-setup-template",
+        "arguments": []
+      },
+      {
         "name": "project-setup",
-        "description": "📋 Configuration Choices",
+        "description": "� FUD.md - Functional User Documentation (CRITICAL)",
         "arguments": []
       },
       {
