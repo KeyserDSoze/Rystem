@@ -1,5 +1,12 @@
 ﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
+## 📚 Resources
+
+- **📖 Complete Documentation**: [https://rystem.net](https://rystem.net)
+- **🤖 MCP Server for AI**: [https://rystem.cloud/mcp](https://rystem.cloud/mcp)
+- **💬 Discord Community**: [https://discord.gg/tkWvy4WPjt](https://discord.gg/tkWvy4WPjt)
+- **☕ Support the Project**: [https://www.buymeacoffee.com/keyserdsoze](https://www.buymeacoffee.com/keyserdsoze)
+
 ## Rystem.Authentication.Social.Blazor
 This project would be a super project to help the api creator to have fast api behind business interfaces and services dispatched through dependency injection.
 

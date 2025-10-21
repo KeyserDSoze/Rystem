@@ -1,4 +1,4 @@
-﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
 ## Content Repository Abstractions
 You may use this library to help the integration with your business and your several storage repositories.

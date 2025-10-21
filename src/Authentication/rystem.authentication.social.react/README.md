@@ -1,3 +1,16 @@
+# Rystem.Authentication.Social.React
+
+React hooks and components for social authentication in TypeScript/JavaScript applications.
+
+## 📚 Resources
+
+- **📖 Complete Documentation**: [https://rystem.net](https://rystem.net)
+- **🤖 MCP Server for AI**: [https://rystem.cloud/mcp](https://rystem.cloud/mcp)
+- **💬 Discord Community**: [https://discord.gg/tkWvy4WPjt](https://discord.gg/tkWvy4WPjt)
+- **☕ Support the Project**: [https://www.buymeacoffee.com/keyserdsoze](https://www.buymeacoffee.com/keyserdsoze)
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

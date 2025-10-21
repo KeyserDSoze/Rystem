@@ -1,4 +1,4 @@
-﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
 ## Get Started with Runtime Dependency Injection
 

@@ -1,5 +1,12 @@
 ﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
+## 📚 Resources
+
+- **📖 Complete Documentation**: [https://rystem.net](https://rystem.net)
+- **🤖 MCP Server for AI**: [https://rystem.cloud/mcp](https://rystem.cloud/mcp)
+- **💬 Discord Community**: [https://discord.gg/tkWvy4WPjt](https://discord.gg/tkWvy4WPjt)
+- **☕ Support the Project**: [https://www.buymeacoffee.com/keyserdsoze](https://www.buymeacoffee.com/keyserdsoze)
+
 ## Get Started with Localization and Rystem
 
 # Rystem Localization Library

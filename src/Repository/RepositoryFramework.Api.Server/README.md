@@ -1,4 +1,4 @@
-ï»¿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
 ## Api auto-generated
 In your web application you have only to add one row after service build.
@@ -219,13 +219,13 @@ You can customize it repository for repository, using UseApiFromRepository<T>() 
 All the requests are basic requests, the strangest request is only the query and you must use the Linq query.
 You may find some examples down below:
 
-    Æ’ => (((Æ’.X == "dasda") AndAlso Æ’.X.Contains("dasda")) AndAlso ((Æ’.E == Guid.Parse("bf46510b-b7e6-4ba2-88da-cef208aa81f2")) Or (Æ’.Id == 32)))
-    Æ’ => ((((Æ’.X == "dasda") AndAlso Æ’.Sol) AndAlso Æ’.X.Contains("dasda")) AndAlso ((Æ’.E == Guid.Parse("bf46510b-b7e6-4ba2-88da-cef208aa81f2")) Or (Æ’.Id == 32)))
-    Æ’ => (((((Æ’.X == "dasda") AndAlso Æ’.Sol) AndAlso Æ’.X.Contains("dasda")) AndAlso ((Æ’.E == Guid.Parse("bf46510b-b7e6-4ba2-88da-cef208aa81f2")) Or (Æ’.Id == 32))) AndAlso ((Æ’.Type == 1) OrElse (Æ’.Type == 2)))
-    Æ’ => (Æ’.Type == 2)
-    Æ’ => (((((Æ’.X == "dasda") AndAlso Æ’.Sol) AndAlso (Æ’.X.Contains("dasda") OrElse Æ’.Sol.Equals(True))) AndAlso ((Æ’.E == Guid.Parse("bf46510b-b7e6-4ba2-88da-cef208aa81f2")) Or (Æ’.Id == 32))) AndAlso ((Æ’.Type == 1) OrElse (Æ’.Type == 2)))
-    Æ’ => ((((((Æ’.X == "dasda") AndAlso Æ’.Samules.Any(x => (x == "ccccde"))) AndAlso Æ’.Sol) AndAlso (Æ’.X.Contains("dasda") OrElse Æ’.Sol.Equals(True))) AndAlso ((Æ’.E == Guid.Parse("bf46510b-b7e6-4ba2-88da-cef208aa81f2")) Or (Æ’.Id == 32))) AndAlso ((Æ’.Type == 1) OrElse (Æ’.Type == 2)))
-    Æ’ => (Æ’.ExpirationTime > Convert.ToDateTime("7/6/2022 9:48:56 AM"))
-    Æ’ => (Æ’.TimeSpan > new TimeSpan(1000 as long))
-    Æ’ => Not(Æ’.Inside.Inside.A.Equals("dasdad"))
-    Æ’ => Not(String.IsNullOrWhiteSpace(Æ’.Inside.Inside.A))
+    ƒ => (((ƒ.X == "dasda") AndAlso ƒ.X.Contains("dasda")) AndAlso ((ƒ.E == Guid.Parse("bf46510b-b7e6-4ba2-88da-cef208aa81f2")) Or (ƒ.Id == 32)))
+    ƒ => ((((ƒ.X == "dasda") AndAlso ƒ.Sol) AndAlso ƒ.X.Contains("dasda")) AndAlso ((ƒ.E == Guid.Parse("bf46510b-b7e6-4ba2-88da-cef208aa81f2")) Or (ƒ.Id == 32)))
+    ƒ => (((((ƒ.X == "dasda") AndAlso ƒ.Sol) AndAlso ƒ.X.Contains("dasda")) AndAlso ((ƒ.E == Guid.Parse("bf46510b-b7e6-4ba2-88da-cef208aa81f2")) Or (ƒ.Id == 32))) AndAlso ((ƒ.Type == 1) OrElse (ƒ.Type == 2)))
+    ƒ => (ƒ.Type == 2)
+    ƒ => (((((ƒ.X == "dasda") AndAlso ƒ.Sol) AndAlso (ƒ.X.Contains("dasda") OrElse ƒ.Sol.Equals(True))) AndAlso ((ƒ.E == Guid.Parse("bf46510b-b7e6-4ba2-88da-cef208aa81f2")) Or (ƒ.Id == 32))) AndAlso ((ƒ.Type == 1) OrElse (ƒ.Type == 2)))
+    ƒ => ((((((ƒ.X == "dasda") AndAlso ƒ.Samules.Any(x => (x == "ccccde"))) AndAlso ƒ.Sol) AndAlso (ƒ.X.Contains("dasda") OrElse ƒ.Sol.Equals(True))) AndAlso ((ƒ.E == Guid.Parse("bf46510b-b7e6-4ba2-88da-cef208aa81f2")) Or (ƒ.Id == 32))) AndAlso ((ƒ.Type == 1) OrElse (ƒ.Type == 2)))
+    ƒ => (ƒ.ExpirationTime > Convert.ToDateTime("7/6/2022 9:48:56 AM"))
+    ƒ => (ƒ.TimeSpan > new TimeSpan(1000 as long))
+    ƒ => Not(ƒ.Inside.Inside.A.Equals("dasdad"))
+    ƒ => Not(String.IsNullOrWhiteSpace(ƒ.Inside.Inside.A))
