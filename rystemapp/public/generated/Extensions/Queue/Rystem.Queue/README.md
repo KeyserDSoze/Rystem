@@ -1,4 +1,4 @@
-﻿## Queue
+## Queue
 You have to configure it in DI
 BackgroundJobCronFormat is the CRON for background job that checks if Maximum buffer is exceeded or has a retention expired, usually is lesser than or equal of MaximumRetentionCronFormat.
 MaximumRetentionCronFormat is the CRON for maximum time before to empty the queue and call the IQueueManager<T>.

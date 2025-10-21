@@ -66,23 +66,21 @@ npx @modelcontextprotocol/inspector https://rystem.cloud/mcp
 
 ## � Available Content
 
-### Tools (4)
-- **DDD Multi-Domain - Enterprise Applications**: 🎯 When to Use Multi-Domain
-- **DDD Single Domain - Small Applications**: 🎯 When to Use Single Domain
-- **Install Rystem Package**: Description
-- **Repository Pattern Setup**: Description
+### Tools (0)
+
 
 ### Resources (3)
-- **Background Jobs**: Overview
-- **Concurrency Control**: Overview
-- **Content Repository**: Overview
+- **Background Jobs**: Configure background jobs for scheduled and recurring tasks with Rystem.BackgroundJob - supports cron expressions, async operations, and dependency injection
+- **Concurrency Control**: Implement distributed locks and prevent race conditions with Rystem.Concurrency - supports locks, semaphores, and Redis-based distributed coordination
+- **Content Repository**: Upload, download, and manage files with Rystem.Content - unified interface for Azure Blob Storage, File System, and SharePoint
 
-### Prompts (5)
-- **Authentication Flow Setup**: Context
-- **project-setup-template-singledomain-classicrystem**: Context
-- **project-setup-template**: Context
-- **Application Setup with Rystem Framework**: � FUD.md - Functional User Documentation (CRITICAL)
-- **Service Setup with Dependency Injection**: Context
+### Prompts (6)
+- **Authentication Flow Setup**: Configure social authentication, JWT tokens, and role-based access control with Rystem.Authentication.Social - supports Google, Microsoft, GitHub, Facebook
+- **Code Review - Alessandro Rapiti Style**: Comprehensive C# code review checklist following Alessandro Rapiti's standards for class design, naming conventions, performance optimization, and maintainability
+- **Project Setup Template - Standard Rystem**: Pre-configured template with Single Domain, NoSQL (Azure Blob), Social Authentication, React + MUI, and Azure deployment
+- **Project Setup Template - Generic**: Ready-to-use template for new Rystem applications - fill in your choices and get a complete project structure
+- **Application Setup with Rystem**: Interactive prompt to create complete applications with .NET API backend and React/Next.js frontend following Domain-Driven Design and FUD.md approach
+- **Service Setup with Dependency Injection**: Configure services with Rystem's advanced dependency injection - includes Factory pattern, named services, and service lifetime management
 
 ## 📁 Static JSON Files (Legacy)
 
@@ -156,7 +154,7 @@ The MCP server content is dynamically loaded from markdown files in `/mcp/{tools
 
 ---
 
-**Last Updated**: 2025-10-20  
+**Last Updated**: 2025-10-21  
 **MCP Protocol Version**: 2024-11-05  
 **Documentation**: https://rystem.net  
 **MCP Server**: https://rystem.cloud/mcp

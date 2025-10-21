@@ -1,4 +1,4 @@
-﻿## Background job
+## Background job
 Background job is a library that helps to create a background thread in your application (webapp or similar).
 With the dependency injection pattern, you may set che CRON value (when your job has to run), [link to create CRON](https://crontab.guru/).
 You may set to true the RunImmediately if you want to run one time during your bootstrap.

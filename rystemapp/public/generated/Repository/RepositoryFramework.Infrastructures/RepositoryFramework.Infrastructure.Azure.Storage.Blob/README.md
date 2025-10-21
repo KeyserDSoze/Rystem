@@ -1,4 +1,4 @@
-﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
 ## Integration with Azure BlobStorage and Repository Framework
 Example from unit test with a business integration too.

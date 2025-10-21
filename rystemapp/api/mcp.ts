@@ -79,6 +79,48 @@ async function initializeMcpServer(): Promise<McpServer> {
             });
         }
 
+        // Helper: Progressive keyword disambiguation
+        const findBestMatch = (query: string): { id: string; value: string; title?: string } | null => {
+            const keywords = query.toLowerCase().split(/\s+/).filter(k => k.length > 2);
+            if (keywords.length === 0) return null;
+
+            // Try progressive disambiguation
+            let candidates: Array<{ id: string; value: string; title?: string; score: number }> = [];
+
+            for (const [id, topics] of Object.entries(mapping)) {
+                for (const value of Object.keys(topics)) {
+                    const info = categoryInfo[id].find(i => i.value === value);
+                    const searchText = `${id} ${value} ${info?.title || ''}`.toLowerCase();
+                    
+                    let score = 0;
+                    let matchedKeywords = 0;
+                    
+                    for (const keyword of keywords) {
+                        if (searchText.includes(keyword)) {
+                            matchedKeywords++;
+                            score += keyword.length; // Longer keywords = higher relevance
+                        }
+                    }
+                    
+                    if (matchedKeywords > 0) {
+                        candidates.push({ id, value, title: info?.title, score: matchedKeywords * 1000 + score });
+                    }
+                }
+            }
+
+            if (candidates.length === 0) return null;
+            
+            // Sort by score (highest first)
+            candidates.sort((a, b) => b.score - a.score);
+            
+            // If top result significantly better, return it
+            if (candidates.length === 1 || candidates[0].score > candidates[1].score * 1.5) {
+                return candidates[0];
+            }
+            
+            return null; // Ambiguous
+        };
+
         // Register main tool
         server.registerTool(
             dynamicTool.name,
@@ -94,6 +136,26 @@ async function initializeMcpServer(): Promise<McpServer> {
                 const filename = mapping[id]?.[value];
 
                 if (!filename) {
+                    // Try smart fuzzy search
+                    const bestMatch = findBestMatch(`${id} ${value}`);
+                    
+                    if (bestMatch) {
+                        // Found a good match! Use it
+                        const matchFilename = mapping[bestMatch.id][bestMatch.value];
+                        const docPath = join(process.cwd(), 'public', 'mcp', 'tools', dynamicTool.name, matchFilename);
+                        
+                        try {
+                            const content = await readFile(docPath, 'utf-8');
+                            const suggestion = `\n\n---\n💡 **Auto-corrected**: You searched for id="${id}", value="${value}"\n✅ **Showing**: id="${bestMatch.id}", value="${bestMatch.value}"${bestMatch.title ? ` (${bestMatch.title})` : ''}`;
+                            
+                            return {
+                                content: [{ type: 'text' as const, text: content + suggestion }]
+                            };
+                        } catch (error) {
+                            // Fall through to error handling
+                        }
+                    }
+                    
                     const availableIds = Object.keys(mapping);
                     const availableValues = mapping[id] ? Object.keys(mapping[id]) : [];
                     
@@ -190,37 +252,86 @@ async function initializeMcpServer(): Promise<McpServer> {
             `${dynamicTool.name}-search`,
             {
                 title: `Search ${dynamicTool.title}`,
-                description: `Search documentation by keyword`,
+                description: `Search documentation by keyword (supports multi-word queries with progressive disambiguation)`,
                 inputSchema: {
-                    query: z.string().describe('Search query')
+                    query: z.string().describe('Search query (space-separated keywords)')
                 }
             },
             async (args: { query: string }) => {
-                const query = args.query.toLowerCase();
-                const matches: Array<{ id: string; value: string; title?: string }> = [];
+                const keywords = args.query.toLowerCase().split(/\s+/).filter(k => k.length > 2);
+                
+                if (keywords.length === 0) {
+                    return {
+                        content: [{
+                            type: 'text' as const,
+                            text: `⚠️ Query too short. Please provide meaningful keywords (3+ characters).`
+                        }]
+                    };
+                }
+
+                const matches: Array<{ id: string; value: string; title?: string; score: number; matchedKeywords: string[] }> = [];
 
                 for (const [id, topics] of Object.entries(mapping)) {
                     for (const value of Object.keys(topics)) {
                         const info = categoryInfo[id].find(i => i.value === value);
                         const searchText = `${id} ${value} ${info?.title || ''}`.toLowerCase();
-                        if (searchText.includes(query)) {
-                            matches.push({ id, value, title: info?.title });
+                        
+                        let score = 0;
+                        let matchedKeywords: string[] = [];
+                        
+                        for (const keyword of keywords) {
+                            if (searchText.includes(keyword)) {
+                                matchedKeywords.push(keyword);
+                                score += keyword.length * 100; // Weight by keyword length
+                            }
+                        }
+                        
+                        if (matchedKeywords.length > 0) {
+                            matches.push({ 
+                                id, 
+                                value, 
+                                title: info?.title, 
+                                score: matchedKeywords.length * 1000 + score,
+                                matchedKeywords 
+                            });
                         }
                     }
                 }
 
                 if (matches.length === 0) {
+                    // No matches - show all available options
+                    const allOptions = Object.entries(categoryInfo)
+                        .map(([category, topics]) =>
+                            `**${category}**\n${topics.map(t => `  - ${t.value}${t.title ? ` (${t.title})` : ''}`).join('\n')}`
+                        )
+                        .join('\n\n');
+                    
                     return {
                         content: [{
                             type: 'text' as const,
-                            text: `No matches found for "${args.query}"`
+                            text: `❌ No matches found for "${args.query}"\n\n` +
+                                  `📚 **Available Documentation:**\n\n${allOptions}\n\n` +
+                                  `💡 **How to use:**\n` +
+                                  `- Use ${dynamicTool.name}(id="{category}", value="{topic}")\n` +
+                                  `- Use ${dynamicTool.name}-list() to see all options\n` +
+                                  `- Use ${dynamicTool.name}-search(query="keyword") to search\n\n` +
+                                  `**Categories:** ${Object.keys(categoryInfo).join(', ')}`
                         }]
                     };
                 }
 
-                const text = `Found ${matches.length} matches for "${args.query}":\n\n` +
-                    matches.map(m =>
-                        `  - ${m.id} → ${m.value}${m.title ? ` (${m.title})` : ''}\n    ${dynamicTool.name}(id="${m.id}", value="${m.value}")`
+                // Sort by score (highest first)
+                matches.sort((a, b) => b.score - a.score);
+
+                // Show top matches
+                const topMatches = matches.slice(0, 10);
+                const text = `🔍 Found ${matches.length} matches for "${args.query}"` +
+                    (matches.length > 10 ? ` (showing top 10)` : '') +
+                    `:\n\n` +
+                    topMatches.map((m, i) =>
+                        `${i + 1}. **${m.id}** → \`${m.value}\`${m.title ? ` (${m.title})` : ''}\n` +
+                        `   Matched: ${m.matchedKeywords.join(', ')}\n` +
+                        `   Usage: ${dynamicTool.name}(id="${m.id}", value="${m.value}")`
                     ).join('\n\n');
 
                 return {

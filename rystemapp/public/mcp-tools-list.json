@@ -1,44 +1,7 @@
 {
   "jsonrpc": "2.0",
   "result": {
-    "tools": [
-      {
-        "name": "ddd-multi-domain",
-        "description": "🎯 When to Use Multi-Domain",
-        "inputSchema": {
-          "type": "object",
-          "properties": {},
-          "required": []
-        }
-      },
-      {
-        "name": "ddd-single-domain",
-        "description": "🎯 When to Use Single Domain",
-        "inputSchema": {
-          "type": "object",
-          "properties": {},
-          "required": []
-        }
-      },
-      {
-        "name": "install-rystem",
-        "description": "Description",
-        "inputSchema": {
-          "type": "object",
-          "properties": {},
-          "required": []
-        }
-      },
-      {
-        "name": "repository-setup",
-        "description": "Description",
-        "inputSchema": {
-          "type": "object",
-          "properties": {},
-          "required": []
-        }
-      }
-    ]
+    "tools": []
   },
   "id": 1
 }

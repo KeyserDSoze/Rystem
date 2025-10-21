@@ -1,4 +1,4 @@
-﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
 ### Interfaces
 Based on CQRS we could split our repository pattern in two main interfaces, one for update (write, delete) and one for read.

@@ -4,27 +4,32 @@
     "prompts": [
       {
         "name": "auth-flow",
-        "description": "Context",
+        "description": "Configure social authentication, JWT tokens, and role-based access control with Rystem.Authentication.Social - supports Google, Microsoft, GitHub, Facebook",
+        "arguments": []
+      },
+      {
+        "name": "code-review-rapiti",
+        "description": "Comprehensive C# code review checklist following Alessandro Rapiti's standards for class design, naming conventions, performance optimization, and maintainability",
         "arguments": []
       },
       {
         "name": "project-setup-template-singledomain-classicrystem",
-        "description": "project-setup-template-singledomain-classicrystem",
+        "description": "Pre-configured template with Single Domain, NoSQL (Azure Blob), Social Authentication, React + MUI, and Azure deployment",
         "arguments": []
       },
       {
         "name": "project-setup-template",
-        "description": "project-setup-template",
+        "description": "Ready-to-use template for new Rystem applications - fill in your choices and get a complete project structure",
         "arguments": []
       },
       {
         "name": "project-setup",
-        "description": "� FUD.md - Functional User Documentation (CRITICAL)",
+        "description": "Interactive prompt to create complete applications with .NET API backend and React/Next.js frontend following Domain-Driven Design and FUD.md approach",
         "arguments": []
       },
       {
         "name": "service-setup",
-        "description": "Context",
+        "description": "Configure services with Rystem's advanced dependency injection - includes Factory pattern, named services, and service lifetime management",
         "arguments": []
       }
     ]

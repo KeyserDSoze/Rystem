@@ -5,19 +5,19 @@
       {
         "uri": "https://rystem.net/mcp/resources/background-jobs.md",
         "name": "background-jobs",
-        "description": "Overview",
+        "description": "Configure background jobs for scheduled and recurring tasks with Rystem.BackgroundJob - supports cron expressions, async operations, and dependency injection",
         "mimeType": "text/markdown"
       },
       {
         "uri": "https://rystem.net/mcp/resources/concurrency.md",
         "name": "concurrency",
-        "description": "Overview",
+        "description": "Implement distributed locks and prevent race conditions with Rystem.Concurrency - supports locks, semaphores, and Redis-based distributed coordination",
         "mimeType": "text/markdown"
       },
       {
         "uri": "https://rystem.net/mcp/resources/content-repo.md",
         "name": "content-repo",
-        "description": "Overview",
+        "description": "Upload, download, and manage files with Rystem.Content - unified interface for Azure Blob Storage, File System, and SharePoint",
         "mimeType": "text/markdown"
       }
     ]
