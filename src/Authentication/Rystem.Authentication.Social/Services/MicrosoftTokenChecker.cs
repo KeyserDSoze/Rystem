@@ -20,15 +20,7 @@ namespace Rystem.Authentication.Social
             _loginBuilder = loginBuilder;
         }
         private const string Bearer = nameof(Bearer);
-        private static TokenValidationParameters? s_parameters;
-        private static DateTime? s_nextUpdate;
-        private static Task<TokenValidationParameters> GetTokenValidationParametersAsync(string issuer)
-        {
-            if (s_parameters == null)
-                return RefreshTokenValidationParametersAsync(issuer);
-            return Task.FromResult(s_parameters);
-        }
-        private static async Task<TokenValidationParameters> RefreshTokenValidationParametersAsync(string issuer)
+        private static async Task<TokenValidationParameters> GetTokenValidationParametersAsync(string issuer)
         {
             var configurationManager = new ConfigurationManager<OpenIdConnectConfiguration>($"{issuer}/.well-known/openid-configuration", new OpenIdConnectConfigurationRetriever());
             var openIdConfig = await configurationManager.GetConfigurationAsync();
@@ -41,8 +33,6 @@ namespace Rystem.Authentication.Social
                 ValidateSignatureLast = true,
                 IssuerSigningKeys = openIdConfig.SigningKeys
             };
-            s_parameters = validationParameters;
-            s_nextUpdate = DateTime.UtcNow.AddHours(1);
             return validationParameters;
         }
         private const string Email = "email";
@@ -70,34 +60,21 @@ namespace Rystem.Authentication.Social
                                 var token = new JwtSecurityToken(authResponse.IdToken);
                                 var issuer = token.Payload.Iss;
                                 var validationParameters = await GetTokenValidationParametersAsync(issuer);
-                                var counter = 0;
-                                while (counter <= 1)
+                                try
                                 {
-                                    counter++;
-                                    try
+                                    var tokenHandler = new JwtSecurityTokenHandler();
+                                    tokenHandler.ValidateToken(authResponse.IdToken, validationParameters, out SecurityToken validatedToken);
+                                    var jwt = (JwtSecurityToken)validatedToken;
+                                    var preferredUser = jwt.Claims.FirstOrDefault(x => x.Type == PreferredUser);
+                                    var username = preferredUser != null ? preferredUser.Value : jwt.Claims.First(x => x.Type == Email).Value;
+                                    return new TokenResponse
                                     {
-                                        var tokenHandler = new JwtSecurityTokenHandler();
-                                        tokenHandler.ValidateToken(authResponse.IdToken, validationParameters, out SecurityToken validatedToken);
-                                        var jwt = (JwtSecurityToken)validatedToken;
-                                        var preferredUser = jwt.Claims.FirstOrDefault(x => x.Type == PreferredUser);
-                                        var username = preferredUser != null ? preferredUser.Value : jwt.Claims.First(x => x.Type == Email).Value;
-                                        return new TokenResponse
-                                        {
-                                            Username = username,
-                                            Claims = jwt.Claims.ToList()
-                                        };
-                                    }
-                                    catch (SecurityTokenValidationException)
-                                    {
-                                        if (s_nextUpdate > DateTime.UtcNow)
-                                        {
-                                            validationParameters = await RefreshTokenValidationParametersAsync(issuer);
-                                        }
-                                        else
-                                        {
-                                            counter++;
-                                        }
-                                    }
+                                        Username = username,
+                                        Claims = [.. jwt.Claims]
+                                    };
+                                }
+                                catch (SecurityTokenValidationException)
+                                {
                                 }
                             }
                         }

@@ -106,7 +106,7 @@ namespace Microsoft.AspNetCore.Builder
                     }
                 }
             }
-            types = types.Distinct(x => x).ToList();
+            types = [.. types.Distinct()];
 
             foreach (var language in languages)
             {

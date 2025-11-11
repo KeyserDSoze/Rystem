@@ -69,7 +69,7 @@ namespace Microsoft.Extensions.DependencyInjection
                         continue;
                     var values = serviceByTypeAndByKey.Key.Item2 == null ? oldServiceProvider?.GetServices(serviceByTypeAndByKey.Key.ServiceType) :
                         oldServiceProvider?.GetKeyedServices(serviceByTypeAndByKey.Key.ServiceType, serviceByTypeAndByKey.Key.Item2);
-                    if (values?.IsEmpty() == false)
+                    if (values?.Any() == true)
                     {
                         var allServices = serviceByTypeAndByKey.GetEnumerator();
                         foreach (var value in values)

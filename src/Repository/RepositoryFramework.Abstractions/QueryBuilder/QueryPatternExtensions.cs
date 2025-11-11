@@ -154,7 +154,7 @@ namespace System.Linq
         /// <param name="predicate">Expression query.</param>
         /// <param name="cancellationToken">cancellation token.</param>
         /// <returns>IEnumerable<IGrouping<<typeparamref name="TProperty"/>, <typeparamref name="T"/>>></returns>
-        public static IAsyncEnumerable<IAsyncGrouping<TProperty, Entity<T, TKey>>> GroupByAsync<TProperty, T, TKey>(this IQueryPattern<T, TKey> entity,
+        public static IAsyncEnumerable<IGrouping<TProperty, Entity<T, TKey>>> GroupByAsync<TProperty, T, TKey>(this IQueryPattern<T, TKey> entity,
             Expression<Func<T, TProperty>> predicate,
             CancellationToken cancellationToken = default)
             where TKey : notnull

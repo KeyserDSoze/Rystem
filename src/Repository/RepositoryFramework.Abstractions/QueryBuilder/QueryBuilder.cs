@@ -139,7 +139,7 @@ namespace RepositoryFramework
         /// <param name="predicate">Expression query.</param>
         /// <param name="cancellationToken">cancellation token.</param>
         /// <returns>IEnumerable<IGrouping<<typeparamref name="TProperty"/>, <typeparamref name="T"/>>></returns>
-        public IAsyncEnumerable<IAsyncGrouping<TProperty, Entity<T, TKey>>> GroupByAsync<TProperty>(Expression<Func<T, TProperty>> predicate, CancellationToken cancellationToken = default)
+        public IAsyncEnumerable<IGrouping<TProperty, Entity<T, TKey>>> GroupByAsync<TProperty>(Expression<Func<T, TProperty>> predicate, CancellationToken cancellationToken = default)
         {
             _ = _operations.GroupBy(predicate, FilterRequest.Entity);
             var compiledPredicate = predicate.Compile();
