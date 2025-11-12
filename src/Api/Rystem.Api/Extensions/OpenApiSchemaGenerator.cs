@@ -1,8 +1,8 @@
 ﻿using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http;
-using Microsoft.OpenApi.Any;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Rystem.Api;
 
 public static class OpenApiSchemaGenerator
@@ -35,8 +35,8 @@ public static class OpenApiSchemaGenerator
         {
             return new OpenApiSchema
             {
-                Type = "string",
-                Enum = [.. Enum.GetNames(type).Select(name => new OpenApiString(name, false))],
+                Type = JsonSchemaType.String,
+                Enum = Enum.GetNames(type).Select(name => (JsonNode)name).ToArray(),
                 Example = GetExample(true, example)
             };
         }
@@ -53,7 +53,7 @@ public static class OpenApiSchemaGenerator
         {
             return new OpenApiSchema
             {
-                Type = "string",
+                Type = JsonSchemaType.String,
                 Format = "binary",
             };
         }
@@ -62,7 +62,7 @@ public static class OpenApiSchemaGenerator
             var valueType = type.GetGenericArguments()[1];
             return new OpenApiSchema
             {
-                Type = "object",
+                Type = JsonSchemaType.Object,
                 AdditionalProperties = valueType != null ? valueType.GenerateOpenApiSchema(null) : null,
                 Example = GetExample(false, example)
             };
@@ -71,7 +71,7 @@ public static class OpenApiSchemaGenerator
         {
             return new OpenApiSchema
             {
-                Type = "string",
+                Type = JsonSchemaType.String,
                 Format = "byte",
             };
         }
@@ -80,7 +80,7 @@ public static class OpenApiSchemaGenerator
             var itemType = type.IsArray ? type.GetElementType() : type.GetGenericArguments()[0];
             return new OpenApiSchema
             {
-                Type = "array",
+                Type = JsonSchemaType.Array,
                 Items = itemType != null ? itemType.GenerateOpenApiSchema(null) : null,
                 Example = GetExample(false, example)
             };
@@ -89,7 +89,7 @@ public static class OpenApiSchemaGenerator
         {
             return new OpenApiSchema
             {
-                Type = "string",
+                Type = JsonSchemaType.String,
                 Format = "binary",
             };
         }
@@ -98,7 +98,7 @@ public static class OpenApiSchemaGenerator
             // Handle complex objects
             var schema = new OpenApiSchema
             {
-                Type = "object",
+                Type = JsonSchemaType.Object,
                 Required = new HashSet<string>(),
                 Example = GetExample(false, example)
             };
@@ -127,29 +127,29 @@ public static class OpenApiSchemaGenerator
         else
             return "application/json";
     }
-    private static OpenApiString? GetExample(bool isPrimitive, object? entity)
+    private static JsonNode? GetExample(bool isPrimitive, object? entity)
     {
         if (entity != null)
-            return new OpenApiString(isPrimitive ? entity.ToString() : entity.ToJson(DefaultJsonSettings.ForEnum), false);
+            return isPrimitive ? JsonValue.Create(entity.ToString()) : JsonNode.Parse(entity.ToJson(DefaultJsonSettings.ForEnum));
         return null;
     }
 
     /// <summary>
     /// Maps a C# type to an OpenAPI type.
     /// </summary>
-    private static string MapTypeToOpenApiType(Type type)
+    private static JsonSchemaType MapTypeToOpenApiType(Type type)
     {
         if (type == typeof(string))
-            return "string";
+            return JsonSchemaType.String;
         if (type == typeof(bool) || type == typeof(bool?))
-            return "boolean";
+            return JsonSchemaType.Boolean;
         if (type == typeof(int) || type == typeof(long) || type == typeof(int?) || type == typeof(long?))
-            return "integer";
+            return JsonSchemaType.Integer;
         if (type == typeof(float) || type == typeof(double) || type == typeof(decimal) || type == typeof(float?) || type == typeof(double?) || type == typeof(decimal?))
-            return "number";
+            return JsonSchemaType.Number;
         if (type == typeof(DateTime) || type == typeof(DateTime?))
-            return "string";
-        return "object";
+            return JsonSchemaType.String;
+        return JsonSchemaType.Object;
     }
 
     /// <summary>

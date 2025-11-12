@@ -1,8 +1,8 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.OpenApi;
-using Microsoft.OpenApi.Any;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 
 namespace Rystem.Api
 {
@@ -35,23 +35,17 @@ namespace Rystem.Api
                             }
                             OpenApiSchema? schema = null;
                             OpenApiSchema? schemaInBody = null;
-                            OpenApiReference? reference = null;
+                            
                             if (document.Components.Schemas.ContainsKey(parameter.FullName))
                             {
-                                reference = new OpenApiReference
-                                {
-                                    Id = parameter.FullName,
-                                    Type = ReferenceType.Schema
-                                };
-                                schemaInBody = new OpenApiSchema
-                                {
-                                    Reference = reference,
-                                    Example = document.Components.Schemas[parameter.FullName].Example
-                                };
+                                // Cast from IOpenApiSchema to OpenApiSchema
+                                schema = document.Components.Schemas[parameter.FullName] as OpenApiSchema;
+                                schemaInBody = document.Components.Schemas[parameter.FullName] as OpenApiSchema;
                             }
                             else
                             {
                                 schema = parameter.Type.GenerateOpenApiSchema(parameter.Example);
+                                schemaInBody = schema;
                             }
                             switch (parameter.Location)
                             {
@@ -61,8 +55,7 @@ namespace Rystem.Api
                                         Name = parameter.Name,
                                         In = ParameterLocation.Query,
                                         Required = parameter.IsRequired,
-                                        Schema = schema,
-                                        Reference = reference
+                                        Schema = schema
                                     });
                                     break;
                                 case ApiParameterLocation.Cookie:
@@ -71,8 +64,7 @@ namespace Rystem.Api
                                         Name = parameter.Name,
                                         In = ParameterLocation.Cookie,
                                         Required = parameter.IsRequired,
-                                        Schema = schema,
-                                        Reference = reference
+                                        Schema = schema
                                     });
                                     break;
                                 case ApiParameterLocation.Header:
@@ -82,8 +74,7 @@ namespace Rystem.Api
                                         In = ParameterLocation.Header,
                                         Required = parameter.IsRequired,
                                         AllowEmptyValue = parameter.IsNullable,
-                                        Schema = schema,
-                                        Reference = reference
+                                        Schema = schema
                                     });
                                     break;
                                 case ApiParameterLocation.Path:
@@ -92,8 +83,7 @@ namespace Rystem.Api
                                         Name = parameter.Name,
                                         In = ParameterLocation.Path,
                                         Required = parameter.IsRequired,
-                                        Schema = schema,
-                                        Reference = reference
+                                        Schema = schema
                                     });
                                     break;
                                 case ApiParameterLocation.Body:
@@ -117,7 +107,7 @@ namespace Rystem.Api
                                                    {
                                                        Schema = new OpenApiSchema
                                                        {
-                                                           Type = "object",
+                                                           Type = JsonSchemaType.Object,
                                                        },
                                                    });
                                             var content = operation.RequestBody.Content[MultipartFormData];

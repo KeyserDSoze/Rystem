@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.OpenApi.Any;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace Rystem.Api
@@ -13,10 +13,12 @@ namespace Rystem.Api
         {
             _endpointsManager = endpointsManager;
         }
-        private OpenApiString? GetExample(EndpointMethodParameterValue endpointMethodParameterValue)
+        private JsonNode? GetExample(EndpointMethodParameterValue endpointMethodParameterValue)
         {
             if (endpointMethodParameterValue.Example != null)
-                return new OpenApiString(endpointMethodParameterValue.IsPrimitive ? endpointMethodParameterValue.Example.ToString() : endpointMethodParameterValue.Example.ToJson(DefaultJsonSettings.ForEnum), false);
+                return endpointMethodParameterValue.IsPrimitive 
+                    ? JsonValue.Create(endpointMethodParameterValue.Example.ToString()) 
+                    : JsonNode.Parse(endpointMethodParameterValue.Example.ToJson(DefaultJsonSettings.ForEnum));
             return null;
         }
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
@@ -80,7 +82,7 @@ namespace Rystem.Api
                                         {
                                             Schema = new OpenApiSchema
                                             {
-                                                Type = "object"
+                                                Type = JsonSchemaType.Object
                                             },
                                             Example = GetExample(parameter)
                                         });
@@ -90,7 +92,7 @@ namespace Rystem.Api
                                     content.Schema.Required.Add(parameter.Name);
                                 content.Schema.Properties.Add(parameter.Name, new OpenApiSchema
                                 {
-                                    Type = isStreamable ? "string" : "object",
+                                    Type = isStreamable ? JsonSchemaType.String : JsonSchemaType.Object,
                                     Format = isStreamable ? "binary" : "application/json",
                                     Example = GetExample(parameter)
                                 });
@@ -112,7 +114,7 @@ namespace Rystem.Api
                                             {
                                                 Schema = new OpenApiSchema
                                                 {
-                                                    Type = parameter.IsArrayOfBytes ? "string" : "object",
+                                                    Type = parameter.IsArrayOfBytes ? JsonSchemaType.String : JsonSchemaType.Object,
                                                     Format = parameter.IsArrayOfBytes ? "string" : "application/json",
                                                     Description = parameter.Name,
                                                     Title = parameter.Name,
