@@ -1,210 +1,367 @@
 ### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
-## In memory integration by default
-With this library you can add in memory integration with the chance to create random data with random values, random based on regular expressions and delegated methods
+## In-Memory Repository Integration
+
+This package provides a complete in-memory storage implementation for the Repository Framework, perfect for **testing, development, and prototyping** without requiring external databases.
+
+### 🎯 When to Use In-Memory Storage
+
+✅ **Unit Testing** - Fast, isolated tests without database setup  
+✅ **Integration Testing** - Mock data for testing business logic  
+✅ **Development & Prototyping** - Rapid development without infrastructure  
+✅ **Load Testing** - Simulate delays and failures  
+✅ **Reliability Testing** - Verify error handling with custom exceptions  
+
+### ⚠️ NOT for Production
+In-memory storage is volatile - all data is lost when the application restarts!
+
+---
+
+## Basic Configuration
+
+### Same Model (Simplest Setup)
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+services.AddRepository<User, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithInMemory();
+});
+
+var app = builder.Build();
+await app.Services.WarmUpAsync();  // Initialize repositories
+```
+
+### With Domain Model Translation
+
+```csharp
+services.AddRepository<DomainUser, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithInMemory();
+    
+    // Optional: Map domain model properties if needed
+    repositoryBuilder.Translate<DomainUser>();
+});
+```
+
+### With Business Logic Interceptors
+
+```csharp
+services.AddRepository<User, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithInMemory();
+    
+    builder.AddBusiness()
+        .AddBusinessBeforeInsert<UserBeforeInsertBusiness>()
+        .AddBusinessAfterInsert<UserAfterInsertBusiness>();
+});
+
+var app = builder.Build();
+await app.Services.WarmUpAsync();
+```
+
+See [IRepositoryBusiness](https://rystem.net/mcp/tools/rystem-reflection.md) in `RepositoryFramework.Abstractions` for detailed information.
+
+---
+
+## 🎲 Populating with Test Data
+
+One of the most powerful features of the In-Memory repository is **automatic random data generation**.
+
+### Simple Random Generation
+
+Generate 100 random users without any configuration:
+
+```csharp
+services.AddRepository<User, string>(builder =>
+{
+    builder.WithInMemory(inMemoryBuilder =>
+    {
+        inMemoryBuilder.PopulateWithRandomData(100);
+    });
+});
+
+var app = builder.Build();
+await app.Services.WarmUpAsync();
+```
+
+### Random Data with Regex Pattern
+
+Control how properties are generated using regular expressions:
+
+```csharp
+services.AddRepository<User, string>(builder =>
+{
+    builder.WithInMemory(inMemoryBuilder =>
+    {
+        inMemoryBuilder
+            .PopulateWithRandomData(100)
+            .WithPattern(x => x.Email, @"[a-z]{4,10}@gmail\.com")
+            .WithPattern(x => x.Username, @"[a-zA-Z]{5,15}");
+    });
+});
+```
+
+**Supported Types for Regex Patterns:**
+```
+Primitives: int, uint, byte, sbyte, short, ushort, long, ulong, nint, nuint
+Floats: float, double, decimal
+Others: bool, char, Guid, DateTime, TimeSpan, Range, string
+Nullable versions: int?, string?, Guid?, DateTime?, etc.
+Collections: IEnumerable, Array, IDictionary, etc.
+```
+
+### Collections with Related Data
+
+Generate related entities (IEnumerable, Array):
+
+```csharp
+services.AddRepository<User, string>(builder =>
+{
+    builder.WithInMemory(inMemoryBuilder =>
+    {
+        // Generate 100 users, each with 5 groups
+        inMemoryBuilder
+            .PopulateWithRandomData(100, 5)
+            .WithPattern(x => x.Groups!.First().Name, @"[A-Z][a-z]{3,8}");
+    });
+});
+```
+
+### Dictionaries with Random Values
+
+Populate dictionary properties with patterned data:
+
+```csharp
+services.AddRepository<User, string>(builder =>
+{
+    builder.WithInMemory(inMemoryBuilder =>
+    {
+        // Generate 100 users, each with 6 claims
+        inMemoryBuilder
+            .PopulateWithRandomData(100, 6)
+            .WithPattern(x => x.Claims!.First().Value, @"[a-z]{4,5}");
+    });
+});
+```
+
+### Delegated Population
+
+Use custom logic to populate properties:
+
+```csharp
+services.AddRepository<User, string>(builder =>
+{
+    builder.WithInMemory(inMemoryBuilder =>
+    {
+        inMemoryBuilder
+            .PopulateWithRandomData(100, 6)
+            .WithPattern(x => x.Claims!.First().Value, () => "FixedValue");
+    });
+});
+```
+
+### Interface Implementation Population
+
+Specify concrete types for interface properties:
+
+```csharp
+services.AddRepository<Entity, string>(builder =>
+{
+    builder.WithInMemory(inMemoryBuilder =>
+    {
+        inMemoryBuilder
+            .PopulateWithRandomData(100)
+            .WithImplementation<IMyInterface, ConcreteImplementation>(x => x.MyInterface!);
+    });
+});
+```
+
+### Custom Regex Service
+
+Override the default random generator:
+
+```csharp
+public class CustomRegexService : IRegexService
+{
+    public T? GenerateValue<T>(string pattern) 
+    {
+        // Your custom generation logic
+    }
+}
+
+services.AddRegexService<CustomRegexService>();
+```
+
+---
+
+## 🧪 Simulating Real-World Behavior
+
+### Simulate Random Exceptions
+
+Test your error handling with controlled exception injection:
+
+```csharp
+services.AddRepository<User, string>(builder =>
+{
+    builder.WithInMemory(inMemoryBuilder =>
+    {
+        var exceptions = new List<ExceptionOdds>
+        {
+            new ExceptionOdds
+            {
+                Exception = new InvalidOperationException("Simulated error"),
+                Percentage = 10.5m  // 10.5% chance
+            },
+            new ExceptionOdds
+            {
+                Exception = new TimeoutException("Simulated timeout"),
+                Percentage = 5.0m   // 5% chance
+            }
+        };
         
-### How to populate with random data?
-
-#### Simple random (example)
-Populate your in memory storage with 120 users
-
-    var builder = WebApplication.CreateBuilder(args);
-    builder.Services.AddRepository<IperUser, string>(repositoryBuilder =>
-    {
-        repositoryBuilder
-            .WithInMemory(inMemoryBuilder =>
+        inMemoryBuilder.Settings.AddForRepositoryPattern(
+            new MethodBehaviorSetting
             {
-                inMemoryBuilder
-                    .PopulateWithRandomData(120, 5)
-                    .WithPattern(x => x.Value.Email, @"[a-z]{5,10}@gmail\.com");
-            });
-        repositoryBuilder
-            .AddBusiness()
-                .AddBusinessBeforeInsert<IperRepositoryBeforeInsertBusiness>();
-        repositoryBuilder
-            .Translate<IperUser>();
-    });
-
-and in app after build during startup of your application
-    
-    var app = builder.Build();
-    await app.Services.WarmUpAsync();
-    
-#### Simple random with regex (example)
-Populate your in memory storage with 100 users and property Email with a random regex @"[a-z]{4,10}@gmail\.com"
-
-    .AddRepository<User, string>(builder => {
-        builder
-            .WithInMemory(inMemoryBuilder => {
-                inMemoryBuilder
-                    .PopulateWithRandomData(100)
-                    .WithPattern(x => x.Email, @"[a-z]{4,10}@gmail\.com")
+                ExceptionOdds = exceptions
             });
     });
+});
+```
 
-and in app after build during startup of your application
-    
-    var app = builder.Build();
-    await app.Services.WarmUpAsync();
+**Affects Operations**: Delete, Get, Insert, Update, Query
 
-#### Where can I use the regex pattern?
-You can use regex pattern on all primitives type and most used structs.
-##### Complete list:
-##### int, uint, byte, sbyte, short, ushort, long, ulong, nint, nuint, float, double, decimal, bool, char, Guid, DateTime, TimeSpan, Range, string, int?, uint?, byte?, sbyte?, short?, ushort?, long?, ulong?, nint?, nuint?, float?, double?, decimal?, bool?, char?, Guid?, DateTime?, TimeSpan?, Range?, string?
+### Simulate Network Delays
 
-You can use the pattern in Class, IEnumerable, IDictionary, or Array, and in everything that extends IEnumerable or IDictionary
+Test performance with artificial latency:
 
-**Important!! You can override regex service in your DI**
-    
-    public static IServiceCollection AddRegexService<T>(
-            this IServiceCollection services)
-            where T : class, IRegexService
-
-#### IEnumerable or Array one-dimension (example)
-You have your model x (User) that has a property Groups as IEnumerable or something that extends IEnumerable, Groups is a class with a property Id as string.
-In the code below you are creating a list of class Groups with 8 elements in each 100 User instances, in each element of Groups you randomize based on this regex "[a-z]{4,5}".
-You may take care of use First() linq method to set correctly the Id property.
-    
-    .AddRepository<User, string>(builder => {
-        builder
-            .WithInMemory(inMemoryBuilder => {
-                inMemoryBuilder
-                    .PopulateWithRandomData(100, 8)
-                    .WithPattern(x => x.Groups!.First().Id, "[a-z]{4,5}");
-            });
-    });
-    
-and in app after build during startup of your application
-    
-    var app = builder.Build();
-    await app.Services.WarmUpAsync();
-
-#### IDictionary (example)
-Similar to IEnumerable population you may populate your Claims property (a dictionary) with random key but with values based on regular expression "[a-z]{4,5}". As well as IEnumerable implementation you will have 6 elements (because I choose to create 6 elements in Populate method)
-
-    .AddRepository<User, string>(builder => {
-        builder
-            .WithInMemory(inMemoryBuilder => {
-                inMemoryBuilder
-                    .PopulateWithRandomData(100, 6)
-                    .WithPattern(x => x.Claims!.First().Value, "[a-z]{4,5}");
-            });
-    });
-
-and in app after build during startup of your application
-    
-    var app = builder.Build();
-    await app.Services.WarmUpAsync();
-    
-or if you have in Value an object
-    
-    AddRepository<User, string>(builder => {
-        builder
-            .WithInMemory(inMemoryBuilder => {
-                inMemoryBuilder
-                    .PopulateWithRandomData(100, 6)
-                    .WithPattern(x => x.Claims!.First().Value.SomeProperty, "[a-z]{4,5}");
-            });
-    });
-    
-and in app after build during startup of your application
-    
-    var app = builder.Build();
-    await app.Services.WarmUpAsync();
-
-### Populate with delegation
-Similar to regex pattern, you can use a delegation to populate something.
-
-#### Dictionary (example)
-Here you can see that all 6 elements in each 100 users are populated in Value with string "A"
-
-    .AddRepository<User, string>(builder => {
-        builder
-            .WithInMemory(inMemoryBuilder => {
-                inMemoryBuilder
-                    .PopulateWithRandomData(100, 6)
-                    .WithPattern(x => x.Claims!.First().Value, () => "A");
-            });
-    });
-    
-and in app after build during startup of your application
-    
-    var app = builder.Build();
-    await app.Services.WarmUpAsync();
-
-### Populate with Implementation
-If you have an interface or abstraction in your model, you can specify an implementation type for population.
-You have two different methods, with typeof
-
-    .AddRepository<PopulationTest, string>(builder => {
-        builder
-            .WithInMemory(inMemoryBuilder => {
-                inMemoryBuilder
-                    .PopulateWithRandomData(100, 2)
-                    .WithImplementation(x => x.I, typeof(MyInnerInterfaceImplementation));
-            });
-    });
-
-or generics
-
-    .AddRepository<PopulationTest, string>(builder => {
-        builder
-            .WithInMemory(inMemoryBuilder => {
-                inMemoryBuilder
-                    .PopulateWithRandomData(100)
-                    .WithImplementation<IInnerInterface, MyInnerInterfaceImplementation>(x => x.I!);
-            });
-    });
-
-## In Memory, simulate real implementation
-If you want to test with possible exceptions (for your reliability tests) and waiting time (for your load tests) you may do it with this library and in memory behavior settings.
-
-### Add random exceptions
-You can set different custom exceptions and different percentage for each operation: Delete, Get, Insert, Update, Query.
-In the code below I'm adding three exceptions with a percentage of throwing them, they are the same for each operation.
-I have a 0.45% for normal Exception, 0.1% for "Big Exception" and 0.548% for "Great Exception"
-
-    .AddRepository<Car, string>(settings =>
+```csharp
+services.AddRepository<User, string>(builder =>
+{
+    builder.WithInMemory(inMemoryBuilder =>
     {
-        settings.WithInMemory(builder =>
-        {
-            var customExceptions = new List<ExceptionOdds>
+        inMemoryBuilder.Settings.AddForRepositoryPattern(
+            new MethodBehaviorSetting
             {
-                new ExceptionOdds()
+                MillisecondsOfWait = new Range(100, 500)  // Random 100-500ms delay
+            });
+    });
+});
+```
+
+This is useful for:
+- Load testing
+- UI responsiveness testing
+- Timeout handling verification
+
+---
+
+## Complete Example
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+services.AddRepository<User, string>(repositoryBuilder =>
+{
+    // Step 1: Configure In-Memory storage
+    repositoryBuilder.WithInMemory(inMemoryBuilder =>
+    {
+        // Populate with 50 random users
+        inMemoryBuilder
+            .PopulateWithRandomData(50)
+            .WithPattern(x => x.Email, @"[a-z]{4,8}@gmail\.com")
+            .WithPattern(x => x.Username, @"[A-Z][a-z]{5,10}");
+        
+        // Simulate occasional failures
+        inMemoryBuilder.Settings.AddForRepositoryPattern(
+            new MethodBehaviorSetting
+            {
+                ExceptionOdds = new List<ExceptionOdds>
                 {
-                    Exception = new Exception("Normal Exception"),
-                    Percentage = 10.352
+                    new() 
+                    { 
+                        Exception = new TimeoutException(), 
+                        Percentage = 2.5m 
+                    }
                 },
-                new ExceptionOdds()
-                {
-                    Exception = new Exception("Big Exception"),
-                    Percentage = 49.1
-                },
-                new ExceptionOdds()
-                {
-                    Exception = new Exception("Great Exception"),
-                    Percentage = 40.548
-                }
-            };
-            builder.Settings.AddForRepositoryPattern(new MethodBehaviorSetting
-            {
-                ExceptionOdds = customExceptions
+                MillisecondsOfWait = new Range(50, 200)
             });
-        });
     });
     
-### Add random waiting time
-You can set different range in milliseconds for each operation to simulate the await of an external integration.
-In the code below I'm adding a same custom range for all Repository interfaces between 1000ms and 2000ms.
+    // Step 2: Add business logic
+    repositoryBuilder.AddBusiness()
+        .AddBusinessBeforeInsert<UserBeforeInsertBusiness>();
+});
 
-    .AddRepository<User, string>(builder =>
+var app = builder.Build();
+
+// Step 3: Warm up - initializes all repositories
+await app.Services.WarmUpAsync();
+
+app.Run();
+```
+
+Now available in Dependency Injection:
+```csharp
+public class UserService(IRepository<User, string> repository)
+{
+    public async Task GetAllUsersAsync()
     {
-        builder.WithInMemory(inMemoryBuilder =>
-        {
-            var customRange = new Range(1000, 2000);
-            inMemoryBuilder.Settings.AddForRepositoryPattern(new MethodBehaviorSetting
-            {
-                MillisecondsOfWait = customRange
-            });
-        });
-    });
+        var users = await repository.QueryAsync();
+        return users;
+    }
+}
+```
+
+---
+
+## Automated REST API
+
+Expose your in-memory repository as a REST API:
+
+```csharp
+builder.Services.AddApiFromRepositoryFramework()
+    .WithDescriptiveName("In-Memory API")
+    .WithPath("/api")
+    .WithSwagger()
+    .WithVersion("v1")
+    .WithDocumentation()
+    .WithDefaultCors("http://localhost:3000");
+
+var app = builder.Build();
+
+app.UseApiFromRepositoryFramework()
+    .WithNoAuthorization();
+
+app.Run();
+```
+
+Automatically generates endpoints:
+- `GET /api/user` - List all users
+- `GET /api/user/{id}` - Get user by ID
+- `POST /api/user` - Create user
+- `PUT /api/user/{id}` - Update user
+- `DELETE /api/user/{id}` - Delete user
+
+See [Repository API Server Documentation](https://rystem.net/mcp/tools/repository-api-server.md) for advanced configuration.
+
+---
+
+## 📚 Key Concepts
+
+**WarmUpAsync()**: Must be called after `Build()` to initialize all repositories with random data and prepare them for use.
+
+**Percentages**: When specifying exception odds, use decimal values (10.5 = 10.5%). Total doesn't need to sum to 100%.
+
+**Thread-Safe**: The in-memory implementation is thread-safe by default.
+
+**Business Interceptors**: Run at the same lifecycle points as any other repository implementation.
+
+---
+
+## References
+
+- [Repository Pattern Documentation](https://rystem.net/mcp/tools/repository-setup.md)
+- [Business Logic Interceptors](https://rystem.net/mcp/resources/background-jobs.md)
+- [Dependency Injection Guide](https://rystem.net/mcp/tools/rystem-dependencyinjection-factory.md)
