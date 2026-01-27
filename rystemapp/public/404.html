@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rystem Documentation</title>
+  <script>
+    // Single Page App redirect for GitHub Pages
+    // Stores the full URL path and redirects to index.html
+    // The index.html script will restore the original URL
+    sessionStorage.redirect = location.href;
+    location.replace(location.origin + location.pathname.split('/')[0] + '/');
+  </script>
+</head>
+<body>
+  <noscript>
+    <p>JavaScript is required to view this site. Please enable JavaScript and refresh the page.</p>
+  </noscript>
+</body>
+</html>

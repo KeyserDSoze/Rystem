@@ -11,6 +11,17 @@
     <meta name="description" content="Rystem Framework Documentation - Open-source framework to improve .NET development" />
     <meta name="theme-color" content="#DC2626" />
     <title>Rystem Documentation</title>
+    <!-- Single Page App redirect handler for GitHub Pages -->
+    <script type="text/javascript">
+      // Handle the redirect from 404.html
+      (function() {
+        var redirect = sessionStorage.redirect;
+        delete sessionStorage.redirect;
+        if (redirect && redirect !== location.href) {
+          history.replaceState(null, null, redirect);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
