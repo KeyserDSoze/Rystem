@@ -30,6 +30,12 @@ export type { SocialButtonProps } from './models/SocialButtonProps'
 export type { SocialButtonsProps } from "./models/SocialButtonsProps";
 export { generateCodeVerifier, generateCodeChallenge } from './utils/pkce'
 
+// Modern UI Components (styled social buttons with dark mode support)
+export { ModernSocialButton } from './components/ModernSocialButton';
+export type { ModernSocialButtonProps } from './components/ModernSocialButton';
+export { MicrosoftIcon, GoogleIcon, FacebookIcon, GitHubIcon, XIcon, LinkedInIcon, AmazonIcon, InstagramIcon, TikTokIcon, PinterestIcon } from './components/BrandIcons';
+import './styles/SocialButton.css'; // Import CSS for styled buttons
+
 // Storage services (infrastructure layer)
 export type { IStorageService } from './services/IStorageService';
 export { LocalStorageService } from './services/LocalStorageService';

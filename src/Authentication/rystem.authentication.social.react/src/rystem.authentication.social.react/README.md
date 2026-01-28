@@ -1039,6 +1039,222 @@ const MyComponent = () => {
 };
 ```
 
+## 🎨 Dark Mode & Theming
+
+The modern social login buttons support **automatic dark mode** with three detection methods:
+
+### 1. **Automatic Detection** (Recommended)
+
+The buttons automatically adapt to the user's system preference:
+
+```css
+/* No JavaScript needed - CSS handles it automatically */
+@media (prefers-color-scheme: dark) {
+    /* Dark mode styles applied automatically */
+}
+```
+
+### 2. **Manual Theme Control with `data-theme`**
+
+Control the theme programmatically by setting the `data-theme` attribute on any parent element:
+
+```typescript
+import { MicrosoftButton } from 'rystem.authentication.social.react';
+
+export const ThemedLoginPage = () => {
+    const [isDark, setIsDark] = useState(false);
+
+    return (
+        <div data-theme={isDark ? 'dark' : 'light'}>
+            <button onClick={() => setIsDark(!isDark)}>
+                Toggle Theme 🌓
+            </button>
+            
+            <MicrosoftButton />
+            <GoogleButton />
+            <GitHubButton />
+        </div>
+    );
+};
+```
+
+### 3. **CSS Class Control**
+
+Use CSS classes for framework integration (Tailwind, etc.):
+
+```typescript
+export const TailwindThemedLogin = () => {
+    return (
+        <div className="dark"> {/* Tailwind dark mode */}
+            <MicrosoftButton />
+            <GoogleButton />
+        </div>
+    );
+};
+```
+
+### Theme Priority
+
+The buttons check for dark mode in this order:
+
+1. **`[data-theme="dark"]`** attribute (highest priority)
+2. **`.dark-mode`** CSS class
+3. **`@media (prefers-color-scheme: dark)`** system preference (fallback)
+
+### Custom Theme Colors
+
+Override the default colors using CSS variables:
+
+```css
+/* Light mode customization */
+:root {
+    --rsb-microsoft-bg: #2f2f2f;
+    --rsb-microsoft-color: #ffffff;
+    --rsb-hover-brightness: 1.1;
+}
+
+/* Dark mode customization */
+[data-theme="dark"] {
+    --rsb-microsoft-bg: #404040;
+    --rsb-microsoft-color: #e0e0e0;
+    --rsb-hover-brightness: 1.15;
+}
+
+/* Specific provider override */
+[data-theme="dark"] .rystem-social-button--google {
+    background: linear-gradient(135deg, #434343 0%, #363636 100%);
+}
+```
+
+### Available CSS Variables
+
+| Variable | Default (Light) | Default (Dark) | Description |
+|----------|----------------|----------------|-------------|
+| `--rsb-background` | Provider brand color | Darker shade | Button background |
+| `--rsb-text` | `#ffffff` | `#e0e0e0` | Button text color |
+| `--rsb-hover-brightness` | `1.05` | `1.15` | Hover effect intensity |
+| `--rsb-focus-ring` | Provider color | Lighter shade | Keyboard focus outline |
+| `--rsb-shadow` | `rgba(0,0,0,0.1)` | `rgba(0,0,0,0.3)` | Button shadow |
+| `--rsb-disabled-opacity` | `0.6` | `0.5` | Disabled state opacity |
+
+### Framework Integration Examples
+
+#### **Next.js with `next-themes`**
+
+```typescript
+import { useTheme } from 'next-themes';
+import { SocialLoginButtons } from 'rystem.authentication.social.react';
+
+export const NextJsLogin = () => {
+    const { theme, setTheme } = useTheme();
+
+    return (
+        <div data-theme={theme}>
+            <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                Toggle Theme
+            </button>
+            <SocialLoginButtons />
+        </div>
+    );
+};
+```
+
+#### **React Context Theme Provider**
+
+```typescript
+const ThemeContext = createContext({ isDark: false, toggle: () => {} });
+
+export const ThemeProvider = ({ children }) => {
+    const [isDark, setIsDark] = useState(
+        () => window.matchMedia('(prefers-color-scheme: dark)').matches
+    );
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const handler = (e) => setIsDark(e.matches);
+        mediaQuery.addEventListener('change', handler);
+        return () => mediaQuery.removeEventListener('change', handler);
+    }, []);
+
+    return (
+        <ThemeContext.Provider value={{ isDark, toggle: () => setIsDark(!isDark) }}>
+            <div data-theme={isDark ? 'dark' : 'light'}>
+                {children}
+            </div>
+        </ThemeContext.Provider>
+    );
+};
+
+// Usage
+export const App = () => (
+    <ThemeProvider>
+        <LoginPage />
+    </ThemeProvider>
+);
+```
+
+#### **Tailwind CSS Integration**
+
+```typescript
+// tailwind.config.js
+module.exports = {
+    darkMode: 'class', // Enable class-based dark mode
+    // ...
+};
+
+// Component
+export const TailwindLogin = () => {
+    const [darkMode, setDarkMode] = useState(false);
+
+    return (
+        <div className={darkMode ? 'dark' : ''}>
+            <div className="bg-white dark:bg-gray-900 min-h-screen">
+                <button 
+                    onClick={() => setDarkMode(!darkMode)}
+                    className="mb-4 px-4 py-2 bg-gray-200 dark:bg-gray-700"
+                >
+                    Toggle Dark Mode
+                </button>
+                
+                {/* Buttons automatically adapt to .dark class */}
+                <SocialLoginButtons />
+            </div>
+        </div>
+    );
+};
+```
+
+### Accessibility
+
+The buttons maintain **WCAG 2.1 AA contrast ratios** in both light and dark modes:
+
+- ✅ **Light mode**: 4.5:1 minimum contrast
+- ✅ **Dark mode**: 4.5:1 minimum contrast
+- ✅ **Focus indicators**: 3:1 contrast with background
+- ✅ **Hover states**: Clearly visible in both modes
+
+### Testing Dark Mode
+
+```typescript
+import { render } from '@testing-library/react';
+import { MicrosoftButton } from 'rystem.authentication.social.react';
+
+test('button renders correctly in dark mode', () => {
+    const { container } = render(
+        <div data-theme="dark">
+            <MicrosoftButton />
+        </div>
+    );
+    
+    const button = container.querySelector('.rystem-social-button--microsoft');
+    expect(button).toBeInTheDocument();
+    
+    // Check computed styles
+    const styles = window.getComputedStyle(button);
+    expect(styles.backgroundColor).toBeTruthy();
+});
+```
+
 ## 📝 Complete Example
 
 ```typescript

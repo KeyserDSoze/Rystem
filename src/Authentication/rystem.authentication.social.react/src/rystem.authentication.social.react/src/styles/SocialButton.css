@@ -1,0 +1,365 @@
+/* ==========================================
+   RYSTEM SOCIAL BUTTONS - MODERN DESIGN
+   ========================================== */
+
+/* CSS Variables for theming */
+:root {
+  /* Light mode (default) */
+  --rsb-background: #ffffff;
+  --rsb-text: #1f2937;
+  --rsb-border: #e5e7eb;
+  --rsb-hover-brightness: 0.95;
+  --rsb-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --rsb-shadow-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --rsb-focus-ring: rgba(59, 130, 246, 0.5);
+}
+
+/* Dark mode */
+[data-theme="dark"],
+.dark-mode,
+@media (prefers-color-scheme: dark) {
+  :root {
+    --rsb-background: #1f2937;
+    --rsb-text: #f9fafb;
+    --rsb-border: #374151;
+    --rsb-hover-brightness: 1.1;
+    --rsb-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+    --rsb-shadow-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+    --rsb-focus-ring: rgba(96, 165, 250, 0.5);
+  }
+}
+
+/* ==========================================
+   BASE BUTTON STYLES
+   ========================================== */
+
+.rystem-social-button {
+  /* Layout */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 380px;
+  min-height: 48px;
+  
+  /* Spacing */
+  padding: 12px 20px;
+  margin: 8px 0;
+  
+  /* Typography */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  
+  /* Visual */
+  border-radius: 8px;
+  border: 1px solid var(--rsb-border);
+  background-color: var(--rsb-background);
+  color: var(--rsb-text);
+  box-shadow: var(--rsb-shadow);
+  
+  /* Interaction */
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  
+  /* Animation */
+  transition: all 200ms ease-in-out;
+  transform: translateY(0);
+}
+
+/* Hover state */
+.rystem-social-button:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: var(--rsb-shadow-hover);
+  filter: brightness(var(--rsb-hover-brightness));
+}
+
+/* Active state */
+.rystem-social-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+  box-shadow: var(--rsb-shadow);
+}
+
+/* Focus state (accessibility) */
+.rystem-social-button:focus-visible {
+  outline: 2px solid var(--rsb-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Disabled state */
+.rystem-social-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==========================================
+   ICON CONTAINER
+   ========================================== */
+
+.rystem-social-button__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.rystem-social-button__icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ==========================================
+   TEXT CONTAINER
+   ========================================== */
+
+.rystem-social-button__text {
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================
+   PROVIDER-SPECIFIC STYLES
+   ========================================== */
+
+/* Microsoft */
+.rystem-social-button--microsoft {
+  background-color: #2F2F2F;
+  color: #ffffff;
+  border-color: #2F2F2F;
+}
+
+.rystem-social-button--microsoft:hover:not(:disabled) {
+  background-color: #1a1a1a;
+  border-color: #1a1a1a;
+}
+
+[data-theme="dark"] .rystem-social-button--microsoft,
+.dark-mode .rystem-social-button--microsoft {
+  background-color: #ffffff;
+  color: #2F2F2F;
+  border-color: #ffffff;
+}
+
+[data-theme="dark"] .rystem-social-button--microsoft:hover:not(:disabled),
+.dark-mode .rystem-social-button--microsoft:hover:not(:disabled) {
+  background-color: #f3f3f3;
+  border-color: #f3f3f3;
+}
+
+/* Google */
+.rystem-social-button--google {
+  background-color: #ffffff;
+  color: #3c4043;
+  border-color: #dadce0;
+}
+
+.rystem-social-button--google:hover:not(:disabled) {
+  background-color: #f8f9fa;
+  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+}
+
+[data-theme="dark"] .rystem-social-button--google,
+.dark-mode .rystem-social-button--google {
+  background-color: #ffffff;
+  color: #3c4043;
+  border-color: #dadce0;
+}
+
+/* Facebook */
+.rystem-social-button--facebook {
+  background-color: #1877f2;
+  color: #ffffff;
+  border-color: #1877f2;
+}
+
+.rystem-social-button--facebook:hover:not(:disabled) {
+  background-color: #166fe5;
+  border-color: #166fe5;
+}
+
+/* GitHub */
+.rystem-social-button--github {
+  background-color: #24292e;
+  color: #ffffff;
+  border-color: #24292e;
+}
+
+.rystem-social-button--github:hover:not(:disabled) {
+  background-color: #1b1f23;
+  border-color: #1b1f23;
+}
+
+[data-theme="dark"] .rystem-social-button--github,
+.dark-mode .rystem-social-button--github {
+  background-color: #ffffff;
+  color: #24292e;
+  border-color: #e1e4e8;
+}
+
+/* X (Twitter) */
+.rystem-social-button--x {
+  background-color: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+
+.rystem-social-button--x:hover:not(:disabled) {
+  background-color: #1a1a1a;
+  border-color: #1a1a1a;
+}
+
+[data-theme="dark"] .rystem-social-button--x,
+.dark-mode .rystem-social-button--x {
+  background-color: #ffffff;
+  color: #000000;
+  border-color: #e1e4e8;
+}
+
+/* LinkedIn */
+.rystem-social-button--linkedin {
+  background-color: #0a66c2;
+  color: #ffffff;
+  border-color: #0a66c2;
+}
+
+.rystem-social-button--linkedin:hover:not(:disabled) {
+  background-color: #004182;
+  border-color: #004182;
+}
+
+/* Amazon */
+.rystem-social-button--amazon {
+  background-color: #ff9900;
+  color: #000000;
+  border-color: #ff9900;
+}
+
+.rystem-social-button--amazon:hover:not(:disabled) {
+  background-color: #e88b00;
+  border-color: #e88b00;
+}
+
+/* Instagram */
+.rystem-social-button--instagram {
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  color: #ffffff;
+  border: none;
+}
+
+.rystem-social-button--instagram:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+/* TikTok */
+.rystem-social-button--tiktok {
+  background-color: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+
+.rystem-social-button--tiktok:hover:not(:disabled) {
+  background-color: #1a1a1a;
+  border-color: #1a1a1a;
+}
+
+/* Pinterest */
+.rystem-social-button--pinterest {
+  background-color: #e60023;
+  color: #ffffff;
+  border-color: #e60023;
+}
+
+.rystem-social-button--pinterest:hover:not(:disabled) {
+  background-color: #ad081b;
+  border-color: #ad081b;
+}
+
+/* ==========================================
+   RESPONSIVE DESIGN
+   ========================================== */
+
+@media (max-width: 640px) {
+  .rystem-social-button {
+    max-width: 100%;
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+  
+  .rystem-social-button__icon {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* ==========================================
+   BUTTON GROUP LAYOUT
+   ========================================== */
+
+.rystem-social-buttons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .rystem-social-buttons-container--grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 800px;
+  }
+}
+
+/* ==========================================
+   LOADING STATE
+   ========================================== */
+
+.rystem-social-button--loading {
+  position: relative;
+  color: transparent;
+  pointer-events: none;
+}
+
+.rystem-social-button--loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin-left: -8px;
+  margin-top: -8px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  border-right-color: transparent;
+  animation: rystem-button-spin 0.6s linear infinite;
+}
+
+@keyframes rystem-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==========================================
+   PRINT STYLES
+   ========================================== */
+
+@media print {
+  .rystem-social-button {
+    display: none;
+  }
+}

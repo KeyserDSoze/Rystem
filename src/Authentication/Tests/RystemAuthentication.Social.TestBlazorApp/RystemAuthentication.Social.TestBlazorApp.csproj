@@ -7,7 +7,7 @@
         <UserSecretsId>6f144ada-4cbd-4ec9-8984-96b6a8c47ef9</UserSecretsId>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Microsoft.Identity.Abstractions" Version="9.5.0" />
+        <PackageReference Include="Microsoft.Identity.Abstractions" Version="10.0.0" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\..\Localization\Rystem.Localization\Rystem.Localization.csproj" />

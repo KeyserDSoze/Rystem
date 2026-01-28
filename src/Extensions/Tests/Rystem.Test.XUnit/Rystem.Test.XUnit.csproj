@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
@@ -26,9 +26,9 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
-        <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.0" />
-        <PackageReference Include="xunit.v3" Version="3.2.0" />
-        <PackageReference Include="Xunit.DependencyInjection" Version="11.1.0" />
+        <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.2" />
+        <PackageReference Include="xunit.v3" Version="3.2.2" />
+        <PackageReference Include="Xunit.DependencyInjection" Version="11.1.1" />
     </ItemGroup>
     <Choose>
         <When Condition=" '$(Configuration)'=='Debug' ">
