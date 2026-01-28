@@ -50,18 +50,52 @@ export const SocialLoginWrapper = (c: { children: any; }) => {
                 // Mark as processed BEFORE making API call
                 callbackProcessedRef.current = true;
                 
-                // Check if we're in a popup window
-                if (window.opener && loginMode === LoginMode.Popup) {
-                    // POPUP MODE: Write to localStorage and close popup
-                    console.log('✅ [Popup] Callback in popup window, saving to localStorage and closing');
+                // Check if we're in a popup window (simpler condition)
+                // If window.opener exists, we're definitely in a popup, regardless of loginMode config
+                if (window.opener) {
+                    // POPUP MODE: Process token exchange IN THE POPUP, then save result and close
+                    console.log('✅ [Popup] Detected popup window, processing token exchange in popup');
                     const social_code = `social_code_${providerType}`;
-                    localStorage.setItem(social_code, code);
-                    window.close();
+                    const social_result = `social_result_${providerType}`;
+                    
+                    SocialLoginManager.Instance(null).updateToken(providerType, code)
+                        .then(() => {
+                            console.log('✅ [Popup] Token exchange successful, saving success result');
+                            
+                            // Save success result for main window
+                            localStorage.setItem(social_result, JSON.stringify({
+                                success: true,
+                                provider: providerName
+                            }));
+                            
+                            // Close popup after ensuring localStorage is written
+                            setTimeout(() => {
+                                console.log('🔒 [Popup] Closing popup after successful login');
+                                window.close();
+                            }, 100);
+                        })
+                        .catch((error) => {
+                            console.error('❌ [Popup] Token exchange failed:', error);
+                            
+                            // Save error result for main window
+                            localStorage.setItem(social_result, JSON.stringify({
+                                success: false,
+                                provider: providerName,
+                                error: error.message || 'Token exchange failed'
+                            }));
+                            
+                            // Close popup after ensuring localStorage is written
+                            setTimeout(() => {
+                                console.log('🔒 [Popup] Closing popup after error');
+                                window.close();
+                            }, 100);
+                        });
+                    
                     // Note: The main window's CreateSocialButton will receive the storage event
-                    // and call handlePostMessage to process the token
+                    // and read the result (success or error) from localStorage
                 } else {
-                    // REDIRECT MODE: Process token exchange directly
-                    console.log('✅ [Redirect] Callback in main window, processing token exchange');
+                    // REDIRECT MODE: Process token exchange directly in main window
+                    console.log('✅ [Redirect] Main window detected, processing token exchange');
                     
                     SocialLoginManager.Instance(null).updateToken(providerType, code)
                         .then(() => {

@@ -31,12 +31,12 @@ export const SuperSocialUserTransformer: IIdentityTransformer<SuperSocialUser> =
 };
 
 setupSocialLogin(x => {
-x.apiUri = "https://localhost:7017";  // ✅ Corretto: apiUri (come definito in SocialLoginSettings.ts)
-x.identityTransformer = SuperSocialUserTransformer,
+    x.apiUri = "https://localhost:7017";  // ✅ Corretto: apiUri (come definito in SocialLoginSettings.ts)
+    x.identityTransformer = SuperSocialUserTransformer,
         x.platform = {
             type: PlatformType.Web,
             redirectPath: "/account/login",
-            loginMode: LoginMode.Redirect
+            loginMode: LoginMode.Popup
         };
     x.google.clientId = "23769141170-lfs24avv5qrj00m4cbmrm202c0fc6gcg.apps.googleusercontent.com";
     x.microsoft.clientId = "0b90db07-be9f-4b29-b673-9e8ee9265927";

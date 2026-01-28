@@ -34,11 +34,12 @@ export const CreateSocialButton = ({
     const loginMode = settings.platform?.loginMode || LoginMode.Popup;
     
     useEffect(() => {
-        // Clean up any leftover popup code from previous attempts
+        // Clean up any leftover popup result from previous attempts
         // Note: Popup mode uses native localStorage for cross-window communication (storage event)
-        // This is required by the Web API and cannot be replaced with custom storage
-        localStorage.removeItem(social_code);
-    }, []);
+        // The popup processes token exchange and saves the result (success or error)
+        const social_result = `social_result_${provider}`;
+        localStorage.removeItem(social_result);
+    }, [provider]);
     
     useEffect(() => {
         // Note: Popup window callback (detect code + write to localStorage) 
@@ -122,15 +123,40 @@ export const CreateSocialButton = ({
 
     const onChangeLocalStorage = useCallback(() => {
         window.removeEventListener('storage', onChangeLocalStorage, false);
-        // Note: Popup mode uses native localStorage for cross-window communication (storage event)
-        // The popup writes to localStorage, triggering the 'storage' event in the main window
-        // This is a Web API feature that only works with native localStorage
-        const code = localStorage.getItem(social_code);
-        if (code) {
-            handlePostMessage(code);
-            localStorage.removeItem(social_code);
+        // Popup mode: The popup processes the token exchange and saves the result
+        // We just need to read the result and update the UI (or show error)
+        const social_result = `social_result_${provider}`;
+        const resultJson = localStorage.getItem(social_result);
+        
+        if (resultJson) {
+            try {
+                const result = JSON.parse(resultJson);
+                localStorage.removeItem(social_result);
+                
+                if (result.success) {
+                    console.log('✅ [Main Window] Popup login successful, refreshing UI');
+                    // Token and user are already saved by the popup's updateToken call
+                    // Just trigger a refresh to update the UI
+                    SocialLoginManager.Instance(null).refresher();
+                } else {
+                    console.error('❌ [Main Window] Popup login failed:', result.error);
+                    // Call error handler
+                    settings.onLoginFailure({
+                        code: 4,
+                        message: result.error || 'Login failed in popup',
+                        provider: result.provider
+                    });
+                }
+            } catch (error) {
+                console.error('❌ [Main Window] Failed to parse popup result:', error);
+                settings.onLoginFailure({
+                    code: 5,
+                    message: 'Failed to parse login result from popup',
+                    provider: provider
+                });
+            }
         }
-    }, [handlePostMessage]);
+    }, [provider]);
 
     const onLogin = useCallback(() => {
         if (onClick) {
