@@ -31,8 +31,8 @@ export const SuperSocialUserTransformer: IIdentityTransformer<SuperSocialUser> =
 };
 
 setupSocialLogin(x => {
-    x.apiUri = "https://localhost:7017";
-    x.identityTransformer = SuperSocialUserTransformer,
+x.apiUri = "https://localhost:7017";  // ✅ Corretto: apiUri (come definito in SocialLoginSettings.ts)
+x.identityTransformer = SuperSocialUserTransformer,
         x.platform = {
             type: PlatformType.Web,
             redirectPath: "/account/login",

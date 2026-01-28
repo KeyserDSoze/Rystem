@@ -34,36 +34,18 @@ export const CreateSocialButton = ({
     const loginMode = settings.platform?.loginMode || LoginMode.Popup;
     
     useEffect(() => {
-        localStorage
-            .removeItem(social_code);
+        // Clean up any leftover popup code from previous attempts
+        // Note: Popup mode uses native localStorage for cross-window communication (storage event)
+        // This is required by the Web API and cannot be replaced with custom storage
+        localStorage.removeItem(social_code);
     }, []);
     
     useEffect(() => {
-        // For popup mode: handle popup window callback
-        if (loginMode === LoginMode.Popup) {
-            const popupWindowURL = new URL(window.location.href);
-            const code = popupWindowURL.searchParams.get(queryCode);
-            const state = popupWindowURL.searchParams.get(queryState);
-            if (code && state && parseInt(state) == provider) {
-                localStorage.setItem(social_code, code);
-                window.close();
-            }
-        }
-        
-        // For redirect mode: handle redirect callback
-        if (loginMode === LoginMode.Redirect) {
-            const currentUrl = new URL(window.location.href);
-            const code = currentUrl.searchParams.get(queryCode);
-            const state = currentUrl.searchParams.get(queryState);
-            if (code && state && parseInt(state) == provider) {
-                handlePostMessage(code);
-                // Clean URL after processing
-                const cleanUrl = new URL(window.location.href);
-                cleanUrl.searchParams.delete(queryCode);
-                cleanUrl.searchParams.delete(queryState);
-                window.history.replaceState({}, document.title, cleanUrl.toString());
-            }
-        }
+        // Note: Popup window callback (detect code + write to localStorage) 
+        // is now handled by SocialLoginWrapper to ensure it works consistently
+        // 
+        // Note: Redirect mode callback is also handled by SocialLoginWrapper
+        // to ensure it works regardless of which components are mounted
     }, [loginMode]);
     
     const [isSdkLoaded, setIsSdkLoaded] = useState(false);
@@ -140,6 +122,9 @@ export const CreateSocialButton = ({
 
     const onChangeLocalStorage = useCallback(() => {
         window.removeEventListener('storage', onChangeLocalStorage, false);
+        // Note: Popup mode uses native localStorage for cross-window communication (storage event)
+        // The popup writes to localStorage, triggering the 'storage' event in the main window
+        // This is a Web API feature that only works with native localStorage
         const code = localStorage.getItem(social_code);
         if (code) {
             handlePostMessage(code);
@@ -157,7 +142,12 @@ export const CreateSocialButton = ({
         } else {
             // Check login mode
             if (loginMode === LoginMode.Redirect) {
-                // Redirect mode: navigate to OAuth URL directly
+                // Redirect mode: save current URL to return after OAuth callback
+                const returnUrl = window.location.pathname + window.location.search;
+                settings.storageService.set('social_login_return_url', returnUrl);
+                console.log('💾 Saved return URL before OAuth redirect:', returnUrl);
+                
+                // Navigate to OAuth URL directly
                 window.location.href = redirect_uri;
             } else {
                 // Popup mode: open in popup window
