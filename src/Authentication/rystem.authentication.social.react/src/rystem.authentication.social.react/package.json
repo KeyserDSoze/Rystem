@@ -1,11 +1,16 @@
 {
   "name": "rystem.authentication.social.react",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "author": "Alessandro Rapiti <alessandro.rapiti44@gmail.com>",
   "license": "MIT",
   "description": "It can simplify the integration with social identities and .Net.",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
+  "scripts": {
+    "build": "tsc && npm run copy-css",
+    "copy-css": "node -e \"require('fs').cpSync('src/styles', 'lib/styles', {recursive: true})\"",
+    "prepublishOnly": "npm run build"
+  },
   "devDependencies": {
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
@@ -13,6 +18,7 @@
     "typescript": "^5.0.2"
   },
   "files": [
-    "lib/"
+    "lib/",
+    "lib/styles/"
   ]
 }
