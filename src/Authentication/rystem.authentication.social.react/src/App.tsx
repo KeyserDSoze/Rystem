@@ -35,8 +35,8 @@ setupSocialLogin(x => {
     x.identityTransformer = SuperSocialUserTransformer,
         x.platform = {
             type: PlatformType.Web,
-            redirectPath: "/account/login",
-            loginMode: LoginMode.Popup
+        redirectPath: "/account/login",
+        loginMode: LoginMode.Redirect
         };
     x.google.clientId = "23769141170-lfs24avv5qrj00m4cbmrm202c0fc6gcg.apps.googleusercontent.com";
     x.microsoft.clientId = "0b90db07-be9f-4b29-b673-9e8ee9265927";
