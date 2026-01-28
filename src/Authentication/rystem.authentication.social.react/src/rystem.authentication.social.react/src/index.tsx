@@ -28,4 +28,11 @@ export { CreateSocialButton } from "./buttons/CreateSocialButton";
 export { SocialLoginButtons } from './buttons/SocialLoginButtons'
 export type { SocialButtonProps } from './models/SocialButtonProps'
 export type { SocialButtonsProps } from "./models/SocialButtonsProps";
-export { generateCodeVerifier, generateCodeChallenge, storeCodeVerifier, getAndRemoveCodeVerifier } from './utils/pkce'
+export { generateCodeVerifier, generateCodeChallenge, storeCodeVerifier, getAndRemoveCodeVerifier, clearCodeVerifier } from './utils/pkce'
+
+// Platform and login mode support
+export { PlatformType } from './models/setup/PlatformType';
+export { LoginMode } from './models/setup/LoginMode';
+export type { PlatformConfig, PlatformSelector } from './models/setup/PlatformConfig';
+export { detectPlatform, getDefaultRedirectUri, isMobilePlatform, isReactNative, buildRedirectUri } from './utils/platform';
+export { selectByPlatform } from './models/setup/PlatformConfig';

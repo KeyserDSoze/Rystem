@@ -16,8 +16,7 @@ export class SocialLoginManager {
             if (settings == null)
                 settings = {} as SocialLoginSettings;
             SocialLoginManager.instance = new SocialLoginManager(settings);
-            if (settings.redirectPath == null || settings.redirectPath == undefined)
-                settings.redirectPath = "/account/login";
+            // No default redirectPath - only use if explicitly configured
         }
         return SocialLoginManager.instance;
     }
@@ -26,9 +25,11 @@ export class SocialLoginManager {
         // Check if we have a code_verifier stored (for PKCE)
         const codeVerifier = getAndRemoveCodeVerifier(ProviderType[provider].toLowerCase());
         
-        // Build query string with redirectPath if available
-        const redirectPath = this.settings.redirectPath ? `&redirectPath=${encodeURIComponent(this.settings.redirectPath)}` : '';
-        const queryString = `${this.settings.apiUri}/api/Authentication/Social/Token?provider=${provider}&code=${code}${redirectPath}`;
+        // Build query string with redirectPath only if explicitly configured in platform
+        const redirectPathParam = (this.settings.platform?.redirectPath && this.settings.platform.redirectPath.trim()) 
+            ? `&redirectPath=${encodeURIComponent(this.settings.platform.redirectPath)}` 
+            : '';
+        const queryString = `${this.settings.apiUri}/api/Authentication/Social/Token?provider=${provider}&code=${code}${redirectPathParam}`;
         
         let fetchPromise: Promise<Response>;
         

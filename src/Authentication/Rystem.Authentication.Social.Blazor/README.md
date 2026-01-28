@@ -18,6 +18,85 @@ Blazor UI components for social authentication (Blazor Server and WebAssembly) w
 - **⚡ Blazor Server & WASM**: Works with both hosting models
 - **🔄 Automatic Token Refresh**: Handles token expiration seamlessly
 - **🎯 Type-Safe**: Strongly-typed user models with C# generics
+- **📱 MAUI Hybrid Support**: Full .NET MAUI Blazor Hybrid support with deep link OAuth flows
+
+## 🆕 What's New - Mobile Platform Support
+
+**All social providers now support MAUI Blazor Hybrid!** Configure platform-specific OAuth redirect URIs for seamless authentication across Web (Blazor Server/WASM), iOS (MAUI), and Android (MAUI).
+
+### Supported Platforms & Providers
+
+| Provider | Blazor Server | Blazor WASM | MAUI iOS | MAUI Android | PKCE Support |
+|----------|---------------|-------------|----------|--------------|--------------|
+| Microsoft | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Google | ✅ | ✅ | ✅ | ✅ | - |
+
+*More providers coming soon for Blazor*
+
+### How It Works
+
+1. **Auto-Detection**: Library automatically detects platform (Web/iOS/Android) via JSInterop and compile-time symbols
+2. **Platform-Specific URIs**: Configure custom redirect URIs per platform (e.g., `msauth://` for iOS, `myapp://` for Android)
+3. **Deep Links**: All buttons support mobile deep link OAuth callbacks through MAUI's `AppActions`
+4. **No Breaking Changes**: Existing Blazor Server/WASM apps work without modification
+
+### Quick Example
+
+```csharp
+// Program.cs or MauiProgram.cs
+builder.Services.AddSocialLoginUI(x =>
+{
+    x.ApiUrl = "https://api.yourdomain.com";
+    
+    // Platform configuration (auto-detects if not specified)
+    x.Platform = new PlatformConfig
+    {
+        Type = PlatformType.Auto,  // Auto-detect Web/iOS/Android
+        
+        // Smart redirect path detection:
+        // - Contains "://" -> Complete URI (mobile deep links: msauth://, myapp://)
+        // - Starts with "/" -> Relative path (web, auto-detects domain)
+        // - Empty/null -> Default "/account/login"
+#if IOS
+        RedirectPath = "msauth://com.yourapp.bundle/auth",  // Complete URI for iOS
+#elif ANDROID
+        RedirectPath = "myapp://oauth/callback",  // Complete URI for Android
+#else
+        RedirectPath = "/account/login",  // Relative path for web
+#endif
+        
+        LoginMode = LoginMode.Redirect
+    };
+    
+    x.Microsoft.ClientId = builder.Configuration["Microsoft:ClientId"];
+    x.Google.ClientId = builder.Configuration["Google:ClientId"];
+});
+```
+
+**iOS Deep Link Configuration** (`Platforms/iOS/Info.plist`):
+```xml
+<key>CFBundleURLTypes</key>
+<array>
+    <dict>
+        <key>CFBundleURLSchemes</key>
+        <array><string>msauth</string></array>
+        <key>CFBundleURLName</key>
+        <string>com.yourapp.bundle</string>
+    </dict>
+</array>
+```
+
+**Android Deep Link Configuration** (`Platforms/Android/AndroidManifest.xml`):
+```xml
+<intent-filter>
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="myapp" android:host="oauth" />
+</intent-filter>
+```
+
+📖 **Full Migration Guide**: See [`PLATFORM_SUPPORT.md`](https://github.com/KeyserDSoze/Rystem/blob/master/src/Authentication/PLATFORM_SUPPORT.md) for detailed setup instructions, OAuth provider configuration, and troubleshooting.
 
 ## 📦 Installation
 
@@ -255,7 +334,380 @@ Renders all configured provider buttons:
 
 ## 🔧 Advanced Configuration
 
-### Custom Social User Model
+### Platform Support (Web & Mobile - MAUI Hybrid)
+
+The library now supports **platform-specific configuration** for Web, iOS (MAUI), and Android (MAUI):
+
+```csharp
+builder.Services.AddSocialLoginUI(x =>
+{
+    x.ApiUrl = "https://yourdomain.com";
+    
+    // Platform configuration
+    x.Platform = new PlatformConfig
+    {
+        Type = PlatformType.Auto,  // Auto-detect (Web/iOS/Android)
+        
+        // Platform-specific redirect URIs
+        RedirectUri = null,  // null = use NavigationManager.BaseUri for web
+        
+        // For mobile apps (MAUI), set explicit redirect URI:
+        // RedirectUri = "msauth://com.yourapp.bundle/auth",  // iOS
+        // RedirectUri = "myapp://oauth/callback",  // Android
+        
+        RedirectPath = "/account/login",  // Path appended to RedirectUri
+        
+        LoginMode = LoginMode.Redirect  // Only Redirect supported currently
+    };
+    
+    // OAuth providers
+    x.Microsoft.ClientId = "your-client-id";
+    x.Google.ClientId = "your-client-id";
+});
+```
+
+#### MAUI Hybrid Example (iOS & Android)
+
+For **Blazor Hybrid** in **.NET MAUI**, configure deep links:
+
+```csharp
+// Program.cs or MauiProgram.cs
+builder.Services.AddSocialLoginUI(x =>
+{
+    x.ApiUrl = "https://api.yourdomain.com";
+    
+    // Detect platform and configure accordingly
+    x.Platform = new PlatformConfig
+    {
+        Type = PlatformType.Auto,  // Auto-detects iOS or Android
+        
+#if IOS
+        RedirectUri = "msauth://com.keyserdsoze.fantasoccer/auth",
+#elif ANDROID
+        RedirectUri = "fantasoccer://oauth/callback",
+#else
+        RedirectUri = null,  // Web: use NavigationManager.BaseUri
+#endif
+        
+        RedirectPath = "/account/login",
+        LoginMode = LoginMode.Redirect
+    };
+    
+    x.Microsoft.ClientId = builder.Configuration["Microsoft:ClientId"];
+});
+```
+
+**iOS Configuration** (`Platforms/iOS/Info.plist`):
+
+```xml
+<key>CFBundleURLTypes</key>
+<array>
+    <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>msauth</string>
+        </array>
+        <key>CFBundleURLName</key>
+        <string>com.keyserdsoze.fantasoccer</string>
+    </dict>
+</array>
+```
+
+**Android Configuration** (`Platforms/Android/AndroidManifest.xml`):
+
+```xml
+<activity android:name="com.microsoft.identity.client.BrowserTabActivity">
+    <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data
+            android:scheme="fantasoccer"
+            android:host="oauth"
+            android:path="/callback" />
+    </intent-filter>
+</activity>
+```
+
+**MAUI App Deep Link Handler** (`MauiProgram.cs`):
+
+```csharp
+builder.Services.AddSingleton<IDeepLinkHandler, DeepLinkHandler>();
+
+// DeepLinkHandler.cs
+public class DeepLinkHandler : IDeepLinkHandler
+{
+    private readonly NavigationManager _navigationManager;
+    
+    public DeepLinkHandler(NavigationManager navigationManager)
+    {
+        _navigationManager = navigationManager;
+    }
+    
+    public void HandleDeepLink(string uri)
+    {
+        // OAuth callback from mobile OAuth flow
+        if (uri.Contains("code=") && uri.Contains("state="))
+        {
+            // Extract query parameters and navigate to callback page
+            var parsedUri = new Uri(uri);
+            var code = HttpUtility.ParseQueryString(parsedUri.Query).Get("code");
+            var state = HttpUtility.ParseQueryString(parsedUri.Query).Get("state");
+            
+            _navigationManager.NavigateTo($"/account/login?code={code}&state={state}");
+        }
+    }
+}
+```
+
+### Platform Detection Utilities
+
+Use built-in utilities for platform detection:
+
+```csharp
+@inject IJSRuntime JSRuntime
+
+@code {
+    private PlatformType _currentPlatform;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // Async platform detection
+        _currentPlatform = await PlatformDetector.DetectPlatformAsync(JSRuntime);
+        
+        // Or synchronous (compile-time detection)
+        _currentPlatform = PlatformDetector.DetectPlatformSync();
+        
+        // Check if mobile
+        if (PlatformDetector.IsMobilePlatform(_currentPlatform))
+        {
+            // Configure mobile-specific behavior
+        }
+        
+        // Check if Blazor Hybrid (MAUI)
+        if (PlatformDetector.IsBlazorHybrid())
+        {
+            // MAUI-specific initialization
+        }
+    }
+}
+```
+
+### Login Mode (Redirect)
+
+Currently, only **Redirect mode** is supported in Blazor:
+
+```csharp
+x.LoginMode = LoginMode.Redirect;  // Default
+```
+
+**Note**: Popup mode will be added in a future release. For now, all OAuth flows use redirect navigation.
+
+### Complete MAUI Setup Example
+
+```csharp
+// MauiProgram.cs
+public static class MauiProgram
+{
+    public static MauiApp CreateMauiApp()
+    {
+        var builder = MauiApp.CreateBuilder();
+        builder
+            .UseMauiApp<App>()
+            .ConfigureFonts(fonts =>
+            {
+                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
+            });
+        
+        // Blazor components
+        builder.Services.AddMauiBlazorWebView();
+        
+        // Detect platform at startup
+        var currentPlatform = PlatformDetector.DetectPlatformSync();
+        
+        // Social authentication with platform detection
+        builder.Services.AddSocialLoginUI(x =>
+        {
+            x.ApiUrl = "https://api.fantasoccer.com";
+            
+            x.Platform = new PlatformConfig
+            {
+                Type = currentPlatform,
+                
+                RedirectUri = currentPlatform switch
+                {
+                    PlatformType.iOS => "msauth://com.keyserdsoze.fantasoccer/auth",
+                    PlatformType.Android => "fantasoccer://oauth/callback",
+                    _ => null  // Web: use NavigationManager.BaseUri
+                },
+                
+                RedirectPath = "/account/login",
+                LoginMode = LoginMode.Redirect
+            };
+            
+            // Read from configuration
+            x.Microsoft.ClientId = builder.Configuration["Microsoft:ClientId"];
+            x.Google.ClientId = builder.Configuration["Google:ClientId"];
+        });
+        
+        // Repository with automatic authorization
+        builder.Services.AddRepository<User, Guid>(repositoryBuilder =>
+        {
+            repositoryBuilder.WithApiClient(apiBuilder =>
+            {
+                apiBuilder.WithHttpClient("https://api.fantasoccer.com")
+                          .WithDefaultRetryPolicy();
+            });
+        });
+        
+        builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient();
+        
+        return builder.Build();
+    }
+}
+```
+
+## 📱 Mobile OAuth Configuration (MAUI)
+
+### Microsoft Entra ID (Azure AD) for MAUI
+
+1. Go to Azure Portal → App registrations → Your app
+2. Under **Authentication**, add **Mobile and desktop applications** platform
+3. Add redirect URI:
+   - iOS: `msauth://com.yourapp.bundle/auth`
+   - Android: `yourapp://oauth/callback`
+4. Enable **ID tokens** and **Access tokens**
+5. Configure PKCE (library handles automatically)
+
+### Google for MAUI
+
+1. Go to Google Cloud Console → Credentials
+2. Create **iOS OAuth client ID**:
+   - Bundle ID: `com.yourapp.bundle`
+   - Redirect URI: Reverse client ID format
+3. Create **Android OAuth client ID**:
+   - Package name: `com.yourapp`
+   - SHA-1 fingerprint: From your keystore
+
+### Deep Link Best Practices
+
+**iOS Bundle ID Format:**
+```
+msauth://com.yourcompany.yourapp/auth
+```
+
+**Android Package Name Format:**
+```
+yourapp://oauth/callback
+```
+
+**Important**: Deep links must match exactly between:
+- OAuth provider configuration
+- Platform manifest files (Info.plist, AndroidManifest.xml)
+- `PlatformConfig.RedirectUri` in your code
+
+## 🔍 How Platform Configuration Works
+
+### Understanding Redirect URI Resolution
+
+When a user clicks a social login button, the library determines the OAuth redirect URI using this **priority order**:
+
+```csharp
+// SocialLoginManager.cs - GetFullRedirectUri() method
+
+// Priority 1: Explicit platform.RedirectUri (highest priority)
+if (!string.IsNullOrEmpty(_settings.Platform?.RedirectUri))
+{
+    redirectUri = _settings.Platform.RedirectUri;
+}
+// Priority 2: NavigationManager.BaseUri (Blazor default)
+else
+{
+    redirectUri = _navigationManager.BaseUri.TrimEnd('/');
+}
+
+// Append path
+var path = _settings.Platform?.RedirectPath ?? "/account/login";
+return $"{redirectUri}{path}";
+```
+
+### Example Flow (Microsoft Login on MAUI iOS)
+
+1. **Setup Configuration** (`MauiProgram.cs`):
+```csharp
+builder.Services.AddSocialLoginUI(x =>
+{
+    x.ApiUrl = "https://api.yourdomain.com";
+    
+    x.Platform = new PlatformConfig
+    {
+        Type = PlatformType.iOS,
+        RedirectUri = "msauth://com.yourapp.bundle/auth",  // Mobile deep link
+        RedirectPath = "/account/login"
+    };
+    
+    x.Microsoft.ClientId = "your-client-id";
+});
+```
+
+2. **User Clicks MicrosoftButton.razor**:
+   - Calls `Manager.GetFullRedirectUri()` → Returns: `msauth://com.yourapp.bundle/auth/account/login`
+   - Generates PKCE code_verifier and code_challenge
+   - Constructs OAuth URL with `Uri.EscapeDataString(redirectUri)`
+   - Navigates: `NavigationManager.NavigateTo(oauthUrl)`
+
+3. **OAuth Provider Redirects**:
+   - Microsoft redirects: `msauth://com.yourapp.bundle/auth?code=ABC123&state=XYZ`
+   - MAUI deep link handler catches URL
+   - Navigates: `/account/login?code=ABC123&state=XYZ`
+
+4. **Token Exchange**:
+   - `SocialAuthenticationRouter` detects callback
+   - Calls API: `POST /api/Authentication/Social/Token?provider=Microsoft&code=ABC123&redirectPath=/account/login`
+   - Returns JWT token
+
+### Platform Auto-Detection Logic
+
+```csharp
+// Compile-time detection (recommended for MAUI)
+public static PlatformType DetectPlatformSync()
+{
+#if IOS
+    return PlatformType.iOS;
+#elif ANDROID
+    return PlatformType.Android;
+#else
+    return PlatformType.Web;
+#endif
+}
+```
+
+### Configuration Best Practices
+
+✅ **DO**:
+- Use `PlatformType.Auto` for automatic detection
+- Set `Platform.RedirectUri` explicitly for MAUI
+- Use `#if IOS / #elif ANDROID` compiler directives
+- Register redirect URIs in OAuth provider consoles
+- Configure Info.plist and AndroidManifest.xml
+
+❌ **DON'T**:
+- Use web URIs (`https://`) for mobile apps
+- Skip deep link manifest configuration
+- Use different `RedirectPath` across platforms
+
+## 🆚 Web vs Mobile Comparison
+
+| Feature | Blazor Server/WASM | Blazor Hybrid (MAUI) |
+|---------|-------------------|----------------------|
+| **Platform** | Web browsers | iOS + Android |
+| **Redirect URI** | `https://yourdomain.com` | Deep link (msauth://, myapp://) |
+| **Login Flow** | OAuth redirect | OAuth with deep link callback |
+| **Token Storage** | localStorage (JSInterop) | Secure Storage (MAUI) |
+| **PKCE** | ✅ Required | ✅ Required |
+| **Popup Mode** | ⏳ Coming soon | ❌ Not applicable |
+
+## Custom Social User Model
 
 ```csharp
 public class CustomSocialUser : DefaultSocialUser

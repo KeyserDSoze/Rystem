@@ -13,7 +13,7 @@
         /// <summary>
         /// Redirect path after OAuth callback (default: /)
         /// </summary>
-        public string RedirectPath { get; set; } = "/";
+        public string? RedirectPath { get; set; }
 
         /// <summary>
         /// Additional parameters for token exchange (e.g., code_verifier for PKCE)
@@ -26,7 +26,7 @@
         public string GetRedirectUri()
         {
             if (string.IsNullOrWhiteSpace(Domain))
-                return RedirectPath;
+                return RedirectPath ?? string.Empty;
 
             return $"{Domain.TrimEnd('/')}{RedirectPath}";
         }

@@ -1,14 +1,14 @@
-﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
+﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings, buildRedirectUri } from "../..";
 import { GoogleLoginButton } from "../graphics/GoogleLoginButton";
 
 const SDK_URL: string = "https://accounts.google.com/gsi/client";
 const _window = window as any;
 
 export const GoogleButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
-    const settings = getSocialLoginSettings();
-    if (settings.google.clientId) {
-        const redirectUri = `${settings.redirectDomain}`;
-        const onClick = (handleResponse: (code: string) => void, handleError: (message: string) => void) => {
+const settings = getSocialLoginSettings();
+if (settings.google.clientId) {
+    const redirectUri = buildRedirectUri(settings);
+    const onClick = (handleResponse: (code: string) => void, handleError: (message: string) => void) => {
             const params = {
                 client_id: settings.google.clientId,
                 ux_mode: "",

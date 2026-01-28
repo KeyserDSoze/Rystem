@@ -65,9 +65,12 @@
         var includeGrantedScopes = "true";
         var responseType = "code";
         var state = await LocalStorage.SetStateAsync(SocialLoginProvider.Google);
-        var redirectUri = Manager.GetRedirectUri();
+        
+        // Use platform-specific redirect URI (supports mobile deep links)
+        var redirectUri = Manager.GetFullRedirectUri();
         var clientId = Settings.Google.ClientId;
-        var url = string.Format(SDK_URL, scope, accessType, includeGrantedScopes, responseType, state, redirectUri, clientId);
+        
+        var url = string.Format(SDK_URL, scope, accessType, includeGrantedScopes, responseType, state, Uri.EscapeDataString(redirectUri), clientId);
         NavigationManager.NavigateTo(url);
     }
 }

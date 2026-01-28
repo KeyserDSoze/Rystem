@@ -53,7 +53,7 @@ namespace Microsoft.Extensions.DependencyInjection
                             var settings = new TokenCheckerSettings
                             {
                                 Domain = domain,
-                                RedirectPath = redirectPath ?? "/",
+                                RedirectPath = redirectPath,
                                 AdditionalParameters = additionalParameters
                             };
 
@@ -91,7 +91,7 @@ namespace Microsoft.Extensions.DependencyInjection
                             claims.Add(new Claim(ClaimTypes.Name, response.Username));
                         }
 
-                        claims.Add(new Claim(SocialClaimTypes.Domain, possibleDomain));
+                        claims.Add(new Claim(SocialClaimTypes.Domain, domain));
 
                         var claimsPrincipal = new ClaimsPrincipal(
                             new ClaimsIdentity(claims, BearerTokenDefaults.AuthenticationScheme)

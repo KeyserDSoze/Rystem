@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ProviderType, SocialLoginManager, getSocialLoginSettings } from '..';
+import { LoginMode } from '../models/setup/LoginMode';
 
 interface Props {
     provider: ProviderType;
@@ -28,19 +29,43 @@ export const CreateSocialButton = ({
 }: Props) => {
     const settings = getSocialLoginSettings();
     const social_code = `${social_code_base}_${provider}`;
+    
+    // Determine login mode from platform config (default: Popup)
+    const loginMode = settings.platform?.loginMode || LoginMode.Popup;
+    
     useEffect(() => {
         localStorage
             .removeItem(social_code);
     }, []);
+    
     useEffect(() => {
-        const popupWindowURL = new URL(window.location.href);
-        const code = popupWindowURL.searchParams.get(queryCode);
-        const state = popupWindowURL.searchParams.get(queryState);
-        if (code && state && parseInt(state) == provider) {
-            localStorage.setItem(social_code, code);
-            window.close();
+        // For popup mode: handle popup window callback
+        if (loginMode === LoginMode.Popup) {
+            const popupWindowURL = new URL(window.location.href);
+            const code = popupWindowURL.searchParams.get(queryCode);
+            const state = popupWindowURL.searchParams.get(queryState);
+            if (code && state && parseInt(state) == provider) {
+                localStorage.setItem(social_code, code);
+                window.close();
+            }
         }
-    }, []);
+        
+        // For redirect mode: handle redirect callback
+        if (loginMode === LoginMode.Redirect) {
+            const currentUrl = new URL(window.location.href);
+            const code = currentUrl.searchParams.get(queryCode);
+            const state = currentUrl.searchParams.get(queryState);
+            if (code && state && parseInt(state) == provider) {
+                handlePostMessage(code);
+                // Clean URL after processing
+                const cleanUrl = new URL(window.location.href);
+                cleanUrl.searchParams.delete(queryCode);
+                cleanUrl.searchParams.delete(queryState);
+                window.history.replaceState({}, document.title, cleanUrl.toString());
+            }
+        }
+    }, [loginMode]);
+    
     const [isSdkLoaded, setIsSdkLoaded] = useState(false);
     const scriptId = `script_${provider}`;
     const scriptNodeRef = useRef<HTMLScriptElement>(null!);
@@ -130,28 +155,36 @@ export const CreateSocialButton = ({
                 onClick(handlePostMessage, handleError);
             }
         } else {
-            window.addEventListener('storage', onChangeLocalStorage, false);
-            const width = 450;
-            const height = 730;
-            const left = window.screen.width / 2 - width / 2;
-            const top = window.screen.height / 2 - height / 2;
-            window.open(
-                redirect_uri,
-                provider.toString(),
-                'menubar=no,location=no,resizable=no,scrollbars=no,status=no, width=' +
-                width +
-                ', height=' +
-                height +
-                ', top=' +
-                top +
-                ', left=' +
-                left,
-            );
+            // Check login mode
+            if (loginMode === LoginMode.Redirect) {
+                // Redirect mode: navigate to OAuth URL directly
+                window.location.href = redirect_uri;
+            } else {
+                // Popup mode: open in popup window
+                window.addEventListener('storage', onChangeLocalStorage, false);
+                const width = 450;
+                const height = 730;
+                const left = window.screen.width / 2 - width / 2;
+                const top = window.screen.height / 2 - height / 2;
+                window.open(
+                    redirect_uri,
+                    provider.toString(),
+                    'menubar=no,location=no,resizable=no,scrollbars=no,status=no, width=' +
+                    width +
+                    ', height=' +
+                    height +
+                    ', top=' +
+                    top +
+                    ', left=' +
+                    left,
+                );
+            }
         }
     }, [
         redirect_uri,
         isSdkLoaded,
         onChangeLocalStorage,
+        loginMode,
     ]);
 
     return (

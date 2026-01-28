@@ -25,8 +25,52 @@ namespace Rystem.Authentication.Social.Blazor
             _navigationManager = navigationManager;
             _authorizationHeaderProvider = authorizationHeaderProvider;
         }
+        
+        /// <summary>
+        /// Get full redirect URI with smart detection
+        /// 
+        /// Logic:
+        /// 1. If RedirectPath contains "://" → complete URI (mobile or custom)
+        /// 2. If RedirectPath starts with "/" → relative path, prepend NavigationManager.BaseUri
+        /// 3. If RedirectPath is empty → default to NavigationManager.BaseUri + "/account/login"
+        /// </summary>
+        public string GetFullRedirectUri()
+        {
+            var redirectPath = _settings.Platform?.RedirectPath;
+            
+            // If redirectPath is specified
+            if (!string.IsNullOrWhiteSpace(redirectPath))
+            {
+                // If contains "://", it's a complete URI (mobile deep link or custom domain)
+                if (redirectPath.Contains("://"))
+                {
+                    return redirectPath;
+                }
+                
+                // If starts with "/", it's a relative path for web
+                if (redirectPath.StartsWith('/'))
+                {
+                    return $"{_navigationManager.BaseUri.TrimEnd('/')}{redirectPath}";
+                }
+                
+                // Fallback: assume it's a relative path without leading slash
+                return $"{_navigationManager.BaseUri.TrimEnd('/')}/{redirectPath}";
+            }
+            
+            // Default: current base URI + /account/login
+            return $"{_navigationManager.BaseUri.TrimEnd('/')}/account/login";
+        }
+        
+        /// <summary>
+        /// [Deprecated] Use GetFullRedirectUri() instead
+        /// Get redirect URI based on platform configuration
+        /// </summary>
+        [Obsolete("Use GetFullRedirectUri() instead")]
         public string GetRedirectUri()
-            => _navigationManager.BaseUri.Trim('/');
+        {
+            return _navigationManager.BaseUri.TrimEnd('/');
+        }
+        
         public async Task<SocialUserWrapper<TUser>?> MeAsync<TUser>()
             where TUser : ISocialUser, new()
         {

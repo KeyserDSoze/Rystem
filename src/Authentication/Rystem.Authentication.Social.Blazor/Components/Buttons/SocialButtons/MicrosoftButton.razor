@@ -6,7 +6,7 @@
 </SocialButton>
 
 @code {
-    private const string SDK_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?client_id={0}&response_type=code&redirect_uri={1}/&response_mode=query&scope=profile%20openid%20email&state={2}&prompt=select_account&code_challenge={3}&code_challenge_method=S256";
+    private const string SDK_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?client_id={0}&response_type=code&redirect_uri={1}&response_mode=query&scope=profile%20openid%20email&state={2}&prompt=select_account&code_challenge={3}&code_challenge_method=S256";
     private const string CodeVerifierKey = "microsoft_code_verifier";
     private const string CodeChallengeKey = "microsoft_code_challenge";
 
@@ -22,11 +22,13 @@
         
         // Generate state and redirect
         var state = await LocalStorage.SetStateAsync(SocialLoginProvider.Microsoft);
-        var redirectUri = Manager.GetRedirectUri();
+        
+        // Use platform-specific redirect URI (supports mobile deep links)
+        var redirectUri = Manager.GetFullRedirectUri();
         var clientId = Settings.Microsoft.ClientId;
         
         // Use code_challenge with S256 method (SHA256)
-        var url = string.Format(SDK_URL, clientId, redirectUri, state, codeChallenge);
+        var url = string.Format(SDK_URL, clientId, Uri.EscapeDataString(redirectUri), state, codeChallenge);
         NavigationManager.NavigateTo(url);
     }
 }

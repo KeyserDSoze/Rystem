@@ -49,6 +49,14 @@ export function storeCodeVerifier(provider: string, verifier: string): void {
 }
 
 /**
+ * Clear code_verifier from sessionStorage (useful for retry after error)
+ * @param provider Provider name (e.g., "microsoft")
+ */
+export function clearCodeVerifier(provider: string): void {
+    sessionStorage.removeItem(`${provider}_code_verifier`);
+}
+
+/**
  * Retrieve and remove code_verifier from sessionStorage
  * @param provider Provider name (e.g., "microsoft")
  * @returns The stored code_verifier, or null if not found

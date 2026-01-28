@@ -1,4 +1,4 @@
-﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
+﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings, buildRedirectUri } from "../..";
 import { AmazonLoginButton } from '../graphics/AmazonLoginButton';
 
 const SDK_URL = 'https://assets.loginwithamazon.com/sdk/na/login1.js';
@@ -11,10 +11,10 @@ const scopeData = {
 };
 
 export const AmazonButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
-    const settings = getSocialLoginSettings();
+const settings = getSocialLoginSettings();
     if (settings.amazon.clientId) {
-        const redirectUri = `${settings.redirectDomain}${settings.redirectPath}`;
-        const onClick = (handleResponse: (code: string) => void, handleError: (message: string) => void) => {
+        const redirectUri = buildRedirectUri(settings);
+    const onClick = (handleResponse: (code: string) => void, handleError: (message: string) => void) => {
             _window.amazon.Login.authorize(
                 { scope, scopeData, token, redirectUri, state },
                 (res: any) => {

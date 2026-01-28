@@ -1,11 +1,11 @@
-﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
+﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings, buildRedirectUri } from "../..";
 import { TikTokLoginButton } from "../graphics/TikTokLoginButton";
 
 export const TikTokButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
-    const settings = getSocialLoginSettings();
+const settings = getSocialLoginSettings();
     if (settings.tiktok.clientId) {
-        const redirectUri = `${settings.redirectDomain}${settings.redirectPath}`;
-        const oauthUrl = `https://www.tiktok.com/v2/auth/authorize/?client_key=${settings.tiktok.clientId}&scope=user.info.basic&state=${ProviderType.TikTok}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code`;
+        const redirectUri = buildRedirectUri(settings);
+    const oauthUrl = `https://www.tiktok.com/v2/auth/authorize/?client_key=${settings.tiktok.clientId}&scope=user.info.basic&state=${ProviderType.TikTok}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code`;
         return (
             <CreateSocialButton
                 key="tk"

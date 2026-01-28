@@ -1,14 +1,14 @@
-﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings } from "../..";
+﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings, buildRedirectUri } from "../..";
 import { FacebookLoginButton } from "../graphics/FacebookLoginButton";
 
 const SDK_URL: string = 'https://connect.facebook.net/en_EN/sdk.js';
 const _window: any = window;
 
 export const FacebookButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
-    const settings = getSocialLoginSettings();
+const settings = getSocialLoginSettings();
     if (settings.facebook.clientId) {
-        const redirectUri = `${settings.redirectDomain}${settings.redirectPath}`;
-        const scope = "email,public_profile";
+        const redirectUri = buildRedirectUri(settings);
+    const scope = "email,public_profile";
         const return_scopes = true;
         const auth_type = "";
         const onClick = (handleResponse: (code: string) => void, handleError: (message: string) => void) => {

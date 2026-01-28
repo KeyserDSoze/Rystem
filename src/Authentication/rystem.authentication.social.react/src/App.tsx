@@ -1,6 +1,6 @@
 import './App.css'
 import { Wrapper } from './Wrapper'
-import { SocialLoginWrapper, setupSocialLogin, IIdentityTransformer } from './rystem.authentication.social.react/src';
+import { SocialLoginWrapper, setupSocialLogin, IIdentityTransformer, PlatformType, LoginMode } from './rystem.authentication.social.react/src';
 
 export interface SuperSocialUser {
     email: string;
@@ -33,6 +33,11 @@ export const SuperSocialUserTransformer: IIdentityTransformer<SuperSocialUser> =
 setupSocialLogin(x => {
     x.apiUri = "https://localhost:7017";
     x.identityTransformer = SuperSocialUserTransformer,
+        x.platform = {
+            type: PlatformType.Web,
+            redirectPath: "/account/login",
+            loginMode: LoginMode.Redirect
+        };
     x.google.clientId = "23769141170-lfs24avv5qrj00m4cbmrm202c0fc6gcg.apps.googleusercontent.com";
     x.microsoft.clientId = "0b90db07-be9f-4b29-b673-9e8ee9265927";
     x.facebook.clientId = "345885718092912";
