@@ -1,11 +1,14 @@
 /**
  * PKCE (Proof Key for Code Exchange) Generator for OAuth 2.0
  * RFC 7636: https://tools.ietf.org/html/rfc7636
+ * 
+ * NOTE: Storage is now handled by PkceStorageService (decorator pattern)
+ * These functions only handle cryptographic operations (generation, hashing)
  */
 
 /**
  * Generate a cryptographically secure random code_verifier
- * @returns Base64URL-encoded random string
+ * @returns Base64URL-encoded random string (64 bytes = ~86 characters)
  */
 export function generateCodeVerifier(): string {
     const array = new Uint8Array(64);
@@ -37,33 +40,4 @@ function base64UrlEncode(input: Uint8Array): string {
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
         .replace(/=/g, '');
-}
-
-/**
- * Store code_verifier in sessionStorage
- * @param provider Provider name (e.g., "microsoft")
- * @param verifier The code_verifier to store
- */
-export function storeCodeVerifier(provider: string, verifier: string): void {
-    sessionStorage.setItem(`${provider}_code_verifier`, verifier);
-}
-
-/**
- * Clear code_verifier from sessionStorage (useful for retry after error)
- * @param provider Provider name (e.g., "microsoft")
- */
-export function clearCodeVerifier(provider: string): void {
-    sessionStorage.removeItem(`${provider}_code_verifier`);
-}
-
-/**
- * Retrieve and remove code_verifier from sessionStorage
- * @param provider Provider name (e.g., "microsoft")
- * @returns The stored code_verifier, or null if not found
- */
-export function getAndRemoveCodeVerifier(provider: string): string | null {
-    const key = `${provider}_code_verifier`;
-    const verifier = sessionStorage.getItem(key);
-    sessionStorage.removeItem(key);
-    return verifier;
 }

@@ -28,7 +28,14 @@ export { CreateSocialButton } from "./buttons/CreateSocialButton";
 export { SocialLoginButtons } from './buttons/SocialLoginButtons'
 export type { SocialButtonProps } from './models/SocialButtonProps'
 export type { SocialButtonsProps } from "./models/SocialButtonsProps";
-export { generateCodeVerifier, generateCodeChallenge, storeCodeVerifier, getAndRemoveCodeVerifier, clearCodeVerifier } from './utils/pkce'
+export { generateCodeVerifier, generateCodeChallenge } from './utils/pkce'
+
+// Storage services (infrastructure layer)
+export type { IStorageService } from './services/IStorageService';
+export { LocalStorageService } from './services/LocalStorageService';
+export { PkceStorageService } from './services/PkceStorageService';
+export { TokenStorageService } from './services/TokenStorageService';
+export { UserStorageService } from './services/UserStorageService';
 
 // Platform and login mode support
 export { PlatformType } from './models/setup/PlatformType';

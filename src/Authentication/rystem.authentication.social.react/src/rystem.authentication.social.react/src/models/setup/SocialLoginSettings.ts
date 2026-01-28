@@ -1,5 +1,6 @@
 ﻿import { SocialLoginErrorResponse, SocialParameter } from "../..";
 import { PlatformConfig } from "./PlatformConfig";
+import { IStorageService } from "../../services/IStorageService";
 
 export interface SocialLoginSettings {
     apiUri: string;
@@ -8,6 +9,15 @@ export interface SocialLoginSettings {
     identityTransformer?: IIdentityTransformer<any>;
     onLoginFailure: (data: SocialLoginErrorResponse) => void;
     title: string | null;
+    
+    /**
+     * Storage service for persisting tokens, PKCE verifiers, etc.
+     * Default: LocalStorageService (browser localStorage)
+     * 
+     * @example Custom secure storage for mobile
+     * storageService: new SecureStorageService()
+     */
+    storageService: IStorageService;
     
     /**
      * Platform configuration (Web, iOS, Android)

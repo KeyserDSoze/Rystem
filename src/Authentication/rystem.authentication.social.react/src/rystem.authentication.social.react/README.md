@@ -731,6 +731,250 @@ setupSocialLogin(x => {
 });
 ```
 
+## 💾 Custom Storage Service
+
+By default, the library uses **localStorage** for persisting tokens, PKCE verifiers, and user data. You can customize this for **secure storage** (mobile), **testing**, or **server-side storage**.
+
+### Architecture
+
+The library uses the **Decorator Pattern** with separation between infrastructure and domain logic:
+
+```
+IStorageService (interface) ← Generic key-value storage
+    ↓
+LocalStorageService (default) ← Browser localStorage
+    ↓
+├── PkceStorageService ← PKCE OAuth logic
+├── TokenStorageService ← Token + expiry logic
+└── UserStorageService ← User data logic
+```
+
+### Using Default Storage (localStorage)
+
+No configuration needed - the library automatically uses `LocalStorageService`:
+
+```typescript
+import { setupSocialLogin } from 'rystem.authentication.social.react';
+
+setupSocialLogin(x => {
+    x.apiUri = "https://api.yourdomain.com";
+    // storageService is automatically initialized with LocalStorageService
+    x.microsoft.clientId = "your-client-id";
+});
+```
+
+### Creating Custom Storage
+
+Implement `IStorageService` for custom storage (secure storage, Redis, etc.):
+
+```typescript
+import { setupSocialLogin, IStorageService } from 'rystem.authentication.social.react';
+
+// Example: Secure Storage for React Native
+class SecureStorageService implements IStorageService {
+    async get(key: string): Promise<string | null> {
+        try {
+            // Use expo-secure-store or react-native-keychain
+            return await SecureStore.getItemAsync(key);
+        } catch (error) {
+            console.error('SecureStorage get error:', error);
+            return null;
+        }
+    }
+    
+    async set(key: string, value: string): Promise<void> {
+        try {
+            await SecureStore.setItemAsync(key, value);
+        } catch (error) {
+            console.error('SecureStorage set error:', error);
+        }
+    }
+    
+    async remove(key: string): Promise<void> {
+        try {
+            await SecureStore.deleteItemAsync(key);
+        } catch (error) {
+            console.error('SecureStorage remove error:', error);
+        }
+    }
+    
+    async has(key: string): Promise<boolean> {
+        const value = await this.get(key);
+        return value !== null;
+    }
+    
+    async clear(): Promise<void> {
+        // Optional: implement if needed
+    }
+}
+
+// Configure custom storage
+setupSocialLogin(x => {
+    x.apiUri = "https://api.yourdomain.com";
+    x.storageService = new SecureStorageService();  // Use secure storage
+    x.microsoft.clientId = "your-client-id";
+});
+```
+
+### Example: In-Memory Storage (Testing)
+
+Perfect for unit tests without persisting data:
+
+```typescript
+import { IStorageService } from 'rystem.authentication.social.react';
+
+class MockStorageService implements IStorageService {
+    private storage = new Map<string, string>();
+    
+    get(key: string): string | null {
+        return this.storage.get(key) ?? null;
+    }
+    
+    set(key: string, value: string): void {
+        this.storage.set(key, value);
+    }
+    
+    remove(key: string): void {
+        this.storage.delete(key);
+    }
+    
+    has(key: string): boolean {
+        return this.storage.has(key);
+    }
+    
+    clear(): void {
+        this.storage.clear();
+    }
+}
+
+// Use in tests
+setupSocialLogin(x => {
+    x.storageService = new MockStorageService();
+    // ... rest of config
+});
+```
+
+### Example: Redis Storage (Server-Side)
+
+For server-side rendering or distributed systems:
+
+```typescript
+import { createClient } from 'redis';
+import { IStorageService } from 'rystem.authentication.social.react';
+
+class RedisStorageService implements IStorageService {
+    private client = createClient({ url: 'redis://localhost:6379' });
+    
+    constructor() {
+        this.client.connect();
+    }
+    
+    async get(key: string): Promise<string | null> {
+        return await this.client.get(key);
+    }
+    
+    async set(key: string, value: string): Promise<void> {
+        await this.client.set(key, value, { EX: 3600 }); // 1 hour expiry
+    }
+    
+    async remove(key: string): Promise<void> {
+        await this.client.del(key);
+    }
+    
+    async has(key: string): Promise<boolean> {
+        const exists = await this.client.exists(key);
+        return exists === 1;
+    }
+    
+    async clear(): Promise<void> {
+        await this.client.flushAll();
+    }
+}
+
+setupSocialLogin(x => {
+    x.storageService = new RedisStorageService();
+    // ... rest of config
+});
+```
+
+### Storage Keys Used
+
+The library stores data with these keys (backward-compatible):
+
+| Key | Description | Service |
+|-----|-------------|---------|
+| `socialUserToken` | JWT access token + expiry | `TokenStorageService` |
+| `socialUserToken_expiry` | Token expiration timestamp | `TokenStorageService` |
+| `socialUser` | User profile data | `UserStorageService` |
+| `rystem_pkce_{provider}_verifier` | PKCE code verifier | `PkceStorageService` |
+| `rystem_pkce_{provider}_challenge` | PKCE code challenge (optional) | `PkceStorageService` |
+
+### When to Use Custom Storage
+
+| Scenario | Recommended Storage |
+|----------|-------------------|
+| **Web SPA** | `LocalStorageService` (default) |
+| **React Native Mobile** | `SecureStorageService` (expo-secure-store) |
+| **Unit Testing** | `MockStorageService` (in-memory) |
+| **Server-Side Rendering** | `RedisStorageService` or `DatabaseStorageService` |
+| **Electron Apps** | Custom storage with encryption |
+
+### Advanced: Encrypted Storage
+
+Add encryption layer on top of any storage:
+
+```typescript
+class EncryptedStorageService implements IStorageService {
+    constructor(
+        private baseStorage: IStorageService,
+        private encryptionKey: string
+    ) {}
+    
+    async get(key: string): Promise<string | null> {
+        const encrypted = await this.baseStorage.get(key);
+        if (!encrypted) return null;
+        return this.decrypt(encrypted, this.encryptionKey);
+    }
+    
+    async set(key: string, value: string): Promise<void> {
+        const encrypted = this.encrypt(value, this.encryptionKey);
+        await this.baseStorage.set(key, encrypted);
+    }
+    
+    async remove(key: string): Promise<void> {
+        await this.baseStorage.remove(key);
+    }
+    
+    async has(key: string): Promise<boolean> {
+        return await this.baseStorage.has(key);
+    }
+    
+    private encrypt(text: string, key: string): string {
+        // Use crypto library (e.g., crypto-js)
+        return CryptoJS.AES.encrypt(text, key).toString();
+    }
+    
+    private decrypt(ciphertext: string, key: string): string {
+        const bytes = CryptoJS.AES.decrypt(ciphertext, key);
+        return bytes.toString(CryptoJS.enc.Utf8);
+    }
+}
+
+// Usage
+const secureStorage = new LocalStorageService();
+const encryptedStorage = new EncryptedStorageService(
+    secureStorage, 
+    'your-encryption-key'
+);
+
+setupSocialLogin(x => {
+    x.storageService = encryptedStorage;
+    // ... rest of config
+});
+```
+
+📖 **Full Storage Architecture Guide**: See [`STORAGE_ARCHITECTURE.md`](./STORAGE_ARCHITECTURE.md) for detailed technical documentation.
+
 ### Custom API Integration
 
 ```typescript
