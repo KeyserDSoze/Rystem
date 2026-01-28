@@ -1,6 +1,7 @@
 ﻿using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
@@ -61,7 +62,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
             if (where != null)
                 predicate = where.AsExpression<T, bool>().Compile();
             var entities = new Dictionary<T, Entity<T, TKey>>();
-            await foreach (var blob in Options!.Client.GetBlobsAsync(prefix: Options?.Prefix, cancellationToken: cancellationToken))
+            await foreach (var blob in Options!.Client.GetBlobsAsync(new GetBlobsOptions { Prefix = Options?.Prefix }, cancellationToken: cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var blobClient = Options!.Client.GetBlobClient(blob.Name);

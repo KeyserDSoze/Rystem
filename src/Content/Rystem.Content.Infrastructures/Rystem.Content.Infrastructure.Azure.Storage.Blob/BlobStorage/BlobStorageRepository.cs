@@ -75,7 +75,7 @@ namespace Rystem.Content.Infrastructure.Storage
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             prefix = $"{Options?.Prefix}{prefix}";
-            await foreach (var blob in Client.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken))
+            await foreach (var blob in Client.GetBlobsAsync(new GetBlobsOptions { Prefix = prefix }, cancellationToken: cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var blobClient = Client.GetBlobClient(blob.Name);
