@@ -169,30 +169,31 @@ export const CreateSocialButton = ({
             // Check login mode
             if (loginMode === LoginMode.Redirect) {
                 // Redirect mode: save current URL to return after OAuth callback
-                const returnUrl = window.location.pathname + window.location.search;
-                settings.storageService.set('social_login_return_url', returnUrl);
-                console.log('💾 Saved return URL before OAuth redirect:', returnUrl);
-                
-                // Navigate to OAuth URL directly
-                window.location.href = redirect_uri;
+                const currentPath = settings.navigationService.getCurrentPath();
+                settings.storageService.set('social_login_return_url', currentPath);
+                console.log('💾 Saved return URL before OAuth redirect:', currentPath);
+
+                // Navigate to OAuth URL using navigation service
+                settings.navigationService.navigateTo(redirect_uri);
             } else {
-                // Popup mode: open in popup window
+                // Popup mode: open in popup window using navigation service
                 window.addEventListener('storage', onChangeLocalStorage, false);
                 const width = 450;
                 const height = 730;
                 const left = window.screen.width / 2 - width / 2;
                 const top = window.screen.height / 2 - height / 2;
-                window.open(
-                    redirect_uri,
-                    provider.toString(),
-                    'menubar=no,location=no,resizable=no,scrollbars=no,status=no, width=' +
+                const features = 'menubar=no,location=no,resizable=no,scrollbars=no,status=no, width=' +
                     width +
                     ', height=' +
                     height +
                     ', top=' +
                     top +
                     ', left=' +
-                    left,
+                    left;
+                settings.navigationService.openPopup(
+                    redirect_uri,
+                    provider.toString(),
+                    features
                 );
             }
         }

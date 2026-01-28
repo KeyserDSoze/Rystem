@@ -22,17 +22,19 @@ export const SocialLoginWrapper = (c: { children: any; }) => {
     useEffect(() => {
         const settings = getSocialLoginSettings();
         const loginMode = settings.platform?.loginMode || LoginMode.Popup;
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get(queryCode);
-        const stateParam = urlParams.get(queryState);
-        
+
+        // Use urlService to read URL parameters (supports React Router, Next.js, etc.)
+        const urlService = settings.urlService;
+        const code = urlService.getSearchParam(queryCode);
+        const stateParam = urlService.getSearchParam(queryState);
+
         console.log('🔍 SocialLoginWrapper: OAuth callback detection:', { 
             code: code ? 'present' : 'missing', 
             state: stateParam, 
             loginMode,
             isPopup: window.opener !== null,
-            alreadyProcessed: callbackProcessedRef.current
+            alreadyProcessed: callbackProcessedRef.current,
+            urlService: urlService.constructor.name
         });
         
         // ⚠️ Prevent double processing (React.StrictMode causes double mount in dev)
@@ -96,47 +98,47 @@ export const SocialLoginWrapper = (c: { children: any; }) => {
                 } else {
                     // REDIRECT MODE: Process token exchange directly in main window
                     console.log('✅ [Redirect] Main window detected, processing token exchange');
-                    
+
                     SocialLoginManager.Instance(null).updateToken(providerType, code)
                         .then(() => {
                             console.log('✅ Token exchange successful');
-                            
+
                             // Get return URL saved before OAuth redirect using storage service
                             const storageService = settings.storageService;
                             const returnUrl = storageService.get('social_login_return_url');
                             storageService.remove('social_login_return_url');
-                            
+
                             if (returnUrl) {
-                                console.log('🔙 Redirecting to saved return URL:', returnUrl);
-                                // Navigate to saved URL
-                                window.history.replaceState({}, '', returnUrl);
+                                console.log('🔙 Navigating to saved return URL:', returnUrl);
+                                // Navigate to saved URL using navigation service
+                                settings.navigationService.navigateReplace(returnUrl);
                             } else {
-                                console.log('🏠 No return URL found, staying on callback page');
-                                // Clean URL (remove query params)
-                                const newUrl = window.location.pathname;
-                                window.history.replaceState({}, '', newUrl);
+                                console.log('🏠 No return URL found, cleaning callback URL');
+                                // Clean URL (remove query params) using navigation service
+                                const cleanPath = settings.navigationService.getCurrentPath().split('?')[0];
+                                settings.navigationService.navigateReplace(cleanPath);
                             }
-                            
+
                             forceUpdate();
                         })
                         .catch((error) => {
                             console.error('❌ Token exchange failed:', error);
                             // Reset flag on error to allow retry
                             callbackProcessedRef.current = false;
-                            
+
                             if (settings.onLoginFailure) {
                                 settings.onLoginFailure({
                                     message: error.message || 'Token exchange failed',
                                     provider: providerName
                                 } as any);
                             }
-                            
+
                             // Clean return URL on error using storage service
                             settings.storageService.remove('social_login_return_url');
-                            
-                            // Clean URL even on error
-                            const newUrl = window.location.pathname;
-                            window.history.replaceState({}, '', newUrl);
+
+                            // Clean URL even on error using navigation service
+                            const cleanPath = settings.navigationService.getCurrentPath().split('?')[0];
+                            settings.navigationService.navigateReplace(cleanPath);
                         });
                 }
             } else {
