@@ -111,12 +111,14 @@ namespace Rystem.Authentication.Social.Blazor
             var code = string.Empty;
             var state = string.Empty;
             var localState = await _localStorage.GetStateAsync();
+            
             if (localState != null)
             {
                 if (queryStrings.AllKeys.Any(x => x == "state"))
                 {
                     state = queryStrings["state"];
                 }
+                
                 if (!string.IsNullOrWhiteSpace(state))
                 {
                     if (state != localState?.Value)
@@ -124,15 +126,51 @@ namespace Rystem.Authentication.Social.Blazor
                         return default;
                     }
                 }
+                
                 if (queryStrings.AllKeys.Any(x => x == "code"))
                 {
                     code = queryStrings["code"];
                 }
+                
                 if (string.IsNullOrWhiteSpace(code))
                     return default;
+                
                 var client = _httpClientFactory.CreateClient(nameof(SocialLoginManager));
                 client.DefaultRequestHeaders.Add(Origin, _navigationManager.BaseUri.Trim('/'));
-                var response = await client.GetAsync($"/api/Authentication/Social/Token?provider={localState.Provider}&code={code}");
+                
+                // Retrieve code_verifier from localStorage (if exists - for PKCE)
+                var codeVerifier = await _localStorage.GetItemAsync<string>("microsoft_code_verifier");
+                
+                // Extract redirectPath from current URI
+                var currentUri = new Uri(_navigationManager.Uri);
+                var redirectPath = currentUri.AbsolutePath;
+                
+                // Build query string with redirectPath
+                var queryParams = $"/api/Authentication/Social/Token?provider={localState.Provider}&code={code}&redirectPath={Uri.EscapeDataString(redirectPath)}";
+                
+                HttpResponseMessage response;
+                
+                // If code_verifier exists, send it in the request body
+                if (!string.IsNullOrWhiteSpace(codeVerifier))
+                {
+                    var additionalParams = new Dictionary<string, string>
+                    {
+                        { "code_verifier", codeVerifier }
+                    };
+                    
+                    var content = JsonContent.Create(additionalParams);
+                    response = await client.PostAsync(queryParams, content);
+                    
+                    // Cleanup: remove code_verifier from storage
+                    await _localStorage.DeleteItemAsync("microsoft_code_verifier");
+                    await _localStorage.DeleteItemAsync("microsoft_code_challenge");
+                }
+                else
+                {
+                    // Fallback: GET request without PKCE (backward compatibility)
+                    response = await client.GetAsync(queryParams);
+                }
+                
                 if (response.IsSuccessStatusCode)
                 {
                     var token = await response.Content.ReadFromJsonAsync<Token>();
@@ -151,6 +189,7 @@ namespace Rystem.Authentication.Social.Blazor
                     }
                 }
             }
+            
             return default;
         }
         public async ValueTask LogoutAsync()

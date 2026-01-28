@@ -21,15 +21,15 @@ namespace Rystem.Authentication.Social
         }
         private const string Bearer = nameof(Bearer);
         private const string Basic = nameof(Basic);
-        public async Task<AnyOf<TokenResponse?, string>> CheckTokenAndGetUsernameAsync(string code, string? domain = null, CancellationToken cancellationToken = default)
+        public async Task<AnyOf<TokenResponse?, string>> CheckTokenAndGetUsernameAsync(string code, TokenCheckerSettings settings, CancellationToken cancellationToken = default)
         {
-            var settings = _loginBuilder.X;
-            domain = settings.CheckDomain(domain);
+            var xSettings = _loginBuilder.X;
+            var domain = xSettings.CheckDomain(settings.Domain);
             if (domain != null)
             {
                 var client = _clientFactory.CreateClient(Constants.XAuthenticationClient);
-                var content = new StringContent(string.Format(PostMessage, settings.ClientId, domain, code), s_mediaTypeHeaderValue);
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(Basic, $"{settings.ClientId}:{settings.ClientSecret}".ToBase64());
+                var content = new StringContent(string.Format(PostMessage, xSettings.ClientId, domain, code), s_mediaTypeHeaderValue);
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(Basic, $"{xSettings.ClientId}:{xSettings.ClientSecret}".ToBase64());
                 var response = await client.PostAsync(TokenUri, content, cancellationToken);
 
                 if (response.IsSuccessStatusCode)

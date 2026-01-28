@@ -27,17 +27,17 @@ namespace Rystem.Authentication.Social
             var toReturn = Convert.ToBase64String(bytes);
             return toReturn;
         }
-        public async Task<AnyOf<TokenResponse?, string>> CheckTokenAndGetUsernameAsync(string code, string? domain = null, CancellationToken cancellationToken = default)
+        public async Task<AnyOf<TokenResponse?, string>> CheckTokenAndGetUsernameAsync(string code, TokenCheckerSettings settings, CancellationToken cancellationToken = default)
         {
             if (!string.IsNullOrWhiteSpace(code))
             {
-                var settings = _loginBuilder.Pinterest;
-                domain = settings.CheckDomain(domain);
+                var pinterestSettings = _loginBuilder.Pinterest;
+                var domain = pinterestSettings.CheckDomain(settings.Domain);
                 if (domain != null)
                 {
                     var client = _clientFactory.CreateClient(Constants.PinterestAuthenticationClient);
                     var content = new StringContent(string.Format(PostMessage, code, domain), s_mediaTypeHeaderValue);
-                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(Basic, Btoa($"{settings.ClientId}:{settings.ClientSecret}"));
+                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(Basic, Btoa($"{pinterestSettings.ClientId}:{pinterestSettings.ClientSecret}"));
                     var response = await client.PostAsync(TokenUri, content, cancellationToken);
                     if (response.IsSuccessStatusCode)
                     {

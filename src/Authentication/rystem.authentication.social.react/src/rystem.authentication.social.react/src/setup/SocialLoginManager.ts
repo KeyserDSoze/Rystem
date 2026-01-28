@@ -1,13 +1,16 @@
 ﻿import { ProviderType, SocialLoginSettings, SocialToken, Token } from "..";
+import { getAndRemoveCodeVerifier } from "../utils/pkce";
 
 export class SocialLoginManager {
     private static instance: SocialLoginManager | null;
     public settings: SocialLoginSettings;
     public refresher: () => void;
+    
     private constructor(settings: SocialLoginSettings | null) {
         this.settings = settings ?? {} as SocialLoginSettings;
         this.refresher = () => { };
     }
+    
     public static Instance(settings: SocialLoginSettings | null): SocialLoginManager {
         if (SocialLoginManager.instance == null) {
             if (settings == null)
@@ -18,8 +21,37 @@ export class SocialLoginManager {
         }
         return SocialLoginManager.instance;
     }
+    
     public updateToken(provider: ProviderType, code: string): Promise<SocialToken> {
-        return fetch(`${this.settings.apiUri}/api/Authentication/Social/Token?provider=${provider}&code=${code}`)
+        // Check if we have a code_verifier stored (for PKCE)
+        const codeVerifier = getAndRemoveCodeVerifier(ProviderType[provider].toLowerCase());
+        
+        // Build query string with redirectPath if available
+        const redirectPath = this.settings.redirectPath ? `&redirectPath=${encodeURIComponent(this.settings.redirectPath)}` : '';
+        const queryString = `${this.settings.apiUri}/api/Authentication/Social/Token?provider=${provider}&code=${code}${redirectPath}`;
+        
+        let fetchPromise: Promise<Response>;
+        
+        if (codeVerifier) {
+            // If code_verifier exists, send it in POST body
+            fetchPromise = fetch(
+                queryString,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        code_verifier: codeVerifier
+                    })
+                }
+            );
+        } else {
+            // Fallback: GET request without PKCE (backward compatibility)
+            fetchPromise = fetch(queryString);
+        }
+        
+        return fetchPromise
             .then(t => {
                 return t.json();
             })
@@ -32,6 +64,7 @@ export class SocialLoginManager {
                     expiresIn: new Date(new Date().getTime() + tok.expiresIn * 1000)
                 } as Token;
                 localStorage.setItem("socialUserToken", JSON.stringify(newToken));
+                
                 fetch(`${this.settings.apiUri}/api/Authentication/Social/User`, {
                     headers: { Authorization: `Bearer ${tok.accessToken}` }
                 })

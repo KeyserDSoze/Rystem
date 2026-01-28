@@ -14,10 +14,12 @@ namespace Microsoft.Extensions.DependencyInjection
     {
         private const string Origin = nameof(Origin);
         private const string Referer = nameof(Referer);
+
         public static IApplicationBuilder UseSocialLoginEndpoints(this IApplicationBuilder app)
         {
             app.UseAuthentication();
             app.UseAuthorization();
+
             if (app is IEndpointRouteBuilder endpointBuilder)
             {
                 endpointBuilder.Map("api/Authentication/Social/Token", async (
@@ -27,22 +29,36 @@ namespace Microsoft.Extensions.DependencyInjection
                     [FromServices] ILogger<ITokenChecker>? logger,
                     [FromQuery] ProviderType provider,
                     [FromQuery] string code,
+                    [FromQuery] string? redirectPath = null,
+                    [FromBody] Dictionary<string, string>? additionalParameters = null,
                     CancellationToken cancellationToken = default) =>
                 {
                     TokenResponse? response = null;
                     var tokenChecker = tokenCheckerFactory.Create(provider.ToString());
                     var request = httpContextAccessor?.HttpContext?.Request;
+
+                    // Get domain from headers
                     Primitives.StringValues possibleDomain = default;
                     if (request?.Headers?.TryGetValue(Origin, out possibleDomain) == false)
                     {
                         _ = request?.Headers?.TryGetValue(Referer, out possibleDomain);
                     }
                     var domain = possibleDomain.ToString().Trim('/');
+
                     if (tokenChecker != null && !string.IsNullOrWhiteSpace(domain))
                     {
                         try
                         {
-                            var entity = await tokenChecker.CheckTokenAndGetUsernameAsync(code, domain, cancellationToken);
+                            // Build settings with domain, redirectPath and additional parameters
+                            var settings = new TokenCheckerSettings
+                            {
+                                Domain = domain,
+                                RedirectPath = redirectPath ?? "/",
+                                AdditionalParameters = additionalParameters
+                            };
+
+                            var entity = await tokenChecker.CheckTokenAndGetUsernameAsync(code, settings, cancellationToken);
+
                             if (entity.IsT0)
                             {
                                 response = entity.AsT0;
@@ -58,9 +74,11 @@ namespace Microsoft.Extensions.DependencyInjection
                             return Results.Problem(ex.Message);
                         }
                     }
+
                     if (response != null && !string.IsNullOrWhiteSpace(response.Username))
                     {
                         var claims = new List<Claim>();
+
                         if (claimProvider != null)
                         {
                             await foreach (var claim in claimProvider.GetClaimsAsync(response, cancellationToken))
@@ -69,21 +87,26 @@ namespace Microsoft.Extensions.DependencyInjection
                             }
                         }
                         else
+                        {
                             claims.Add(new Claim(ClaimTypes.Name, response.Username));
+                        }
+
                         claims.Add(new Claim(SocialClaimTypes.Domain, possibleDomain));
+
                         var claimsPrincipal = new ClaimsPrincipal(
-                         new ClaimsIdentity(claims,
-                           BearerTokenDefaults.AuthenticationScheme
-                         )
-                       );
+                            new ClaimsIdentity(claims, BearerTokenDefaults.AuthenticationScheme)
+                        );
+
                         return Results.SignIn(claimsPrincipal);
                     }
+
                     return Results.Unauthorized();
                 })
                 .WithName("/Social/Token")
                 .WithDisplayName("/Social/Token")
                 .WithGroupName("Social")
-                .WithDescription("Get token from social login.");
+                .WithDescription("Get token from social login with optional PKCE support.");
+
                 endpointBuilder
                     .Map("api/Authentication/Social/User", async (
                             HttpContext context,
@@ -113,6 +136,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     .WithDescription("Get user from social login.")
                     .RequireAuthorization();
             }
+
             return app;
         }
     }

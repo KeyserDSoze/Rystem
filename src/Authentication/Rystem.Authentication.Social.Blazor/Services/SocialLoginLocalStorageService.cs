@@ -72,6 +72,27 @@ namespace Rystem.Authentication.Social.Blazor
 
         public ValueTask DeleteTokenAsync()
             => _jSRuntime.InvokeVoidAsync(LocalStorageSetterName, TokenKey, null);
+        
+        public async ValueTask<T?> GetItemAsync<T>(string key)
+        {
+            var value = await _jSRuntime.InvokeAsync<string?>(LocalStorageGetterName, key);
+            if (value != null && value != NullString)
+            {
+                try
+                {
+                    return value.FromJson<T>();
+                }
+                catch { }
+            }
+            return default;
+        }
+        
+        public ValueTask SetItemAsync<T>(string key, T value)
+            => _jSRuntime.InvokeVoidAsync(LocalStorageSetterName, key, value?.ToJson());
+        
+        public ValueTask DeleteItemAsync(string key)
+            => _jSRuntime.InvokeVoidAsync(LocalStorageSetterName, key, null);
+        
         public async ValueTask SetLanguageAsync<TUser>(TUser user)
             where TUser : ILocalizedSocialUser
         {

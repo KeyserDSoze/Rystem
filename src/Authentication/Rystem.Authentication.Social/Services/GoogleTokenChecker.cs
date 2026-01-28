@@ -17,14 +17,14 @@ namespace Rystem.Authentication.Social
             _clientFactory = clientFactory;
             _loginBuilder = loginBuilder;
         }
-        public async Task<AnyOf<TokenResponse?, string>> CheckTokenAndGetUsernameAsync(string code, string? domain = null, CancellationToken cancellationToken = default)
+        public async Task<AnyOf<TokenResponse?, string>> CheckTokenAndGetUsernameAsync(string code, TokenCheckerSettings settings, CancellationToken cancellationToken = default)
         {
-            var settings = _loginBuilder.Google;
-            domain = settings.CheckDomain(domain);
+            var googleSettings = _loginBuilder.Google;
+            var domain = googleSettings.CheckDomain(settings.Domain);
             if (domain != null)
             {
                 var client = _clientFactory.CreateClient(Constants.GoogleAuthenticationClient);
-                var content = new StringContent(string.Format(PostMessage, settings.ClientId, settings.ClientSecret, code, domain), s_mediaTypeHeaderValue);
+                var content = new StringContent(string.Format(PostMessage, googleSettings.ClientId, googleSettings.ClientSecret, code, domain), s_mediaTypeHeaderValue);
                 var response = await client.PostAsync(string.Empty, content);
                 if (response.IsSuccessStatusCode)
                 {

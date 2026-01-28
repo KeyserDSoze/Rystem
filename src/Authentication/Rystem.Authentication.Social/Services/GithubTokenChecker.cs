@@ -18,11 +18,11 @@ namespace Rystem.Authentication.Social
             _loginBuilder = loginBuilder;
         }
         private const string Bearer = nameof(Bearer);
-        public async Task<AnyOf<TokenResponse?, string>> CheckTokenAndGetUsernameAsync(string code, string? domain = null, CancellationToken cancellationToken = default)
+        public async Task<AnyOf<TokenResponse?, string>> CheckTokenAndGetUsernameAsync(string code, TokenCheckerSettings settings, CancellationToken cancellationToken = default)
         {
-            var settings = _loginBuilder.GitHub;
+            var githubSettings = _loginBuilder.GitHub;
             var client = _clientFactory.CreateClient(Constants.GitHubAuthenticationClient);
-            var content = new StringContent(string.Format(GithubGetMessage, settings.ClientId, settings.ClientSecret, code), s_mediaTypeHeaderValue);
+            var content = new StringContent(string.Format(GithubGetMessage, githubSettings.ClientId, githubSettings.ClientSecret, code), s_mediaTypeHeaderValue);
             var response = await client.PostAsync(TokenUri, content, cancellationToken);
 
             if (response.IsSuccessStatusCode)
