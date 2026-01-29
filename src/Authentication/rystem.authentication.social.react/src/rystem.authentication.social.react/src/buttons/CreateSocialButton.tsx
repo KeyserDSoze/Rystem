@@ -169,14 +169,14 @@ export const CreateSocialButton = ({
             // Check login mode
             if (loginMode === LoginMode.Redirect) {
                 // Redirect mode: save current URL to return after OAuth callback
-                const currentPath = settings.navigationService.getCurrentPath();
+                const currentPath = settings.routingService.getCurrentPath();
                 settings.storageService.set('social_login_return_url', currentPath);
                 console.log('💾 Saved return URL before OAuth redirect:', currentPath);
 
-                // Navigate to OAuth URL using navigation service
-                settings.navigationService.navigateTo(redirect_uri);
+                // Navigate to OAuth URL using routing service
+                settings.routingService.navigateTo(redirect_uri);
             } else {
-                // Popup mode: open in popup window using navigation service
+                // Popup mode: open in popup window using routing service
                 window.addEventListener('storage', onChangeLocalStorage, false);
                 const width = 450;
                 const height = 730;
@@ -190,7 +190,7 @@ export const CreateSocialButton = ({
                     top +
                     ', left=' +
                     left;
-                settings.navigationService.openPopup(
+                settings.routingService.openPopup(
                     redirect_uri,
                     provider.toString(),
                     features

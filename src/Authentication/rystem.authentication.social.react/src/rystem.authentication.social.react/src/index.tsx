@@ -43,13 +43,9 @@ export { PkceStorageService } from './services/PkceStorageService';
 export { TokenStorageService } from './services/TokenStorageService';
 export { UserStorageService } from './services/UserStorageService';
 
-// URL services (infrastructure layer for routing)
-export type { IUrlService } from './services/IUrlService';
-export { WindowUrlService } from './services/WindowUrlService';
-
-// Navigation services (infrastructure layer for routing and URL manipulation)
-export type { INavigationService } from './services/INavigationService';
-export { WindowNavigationService } from './services/WindowNavigationService';
+// Routing services (infrastructure layer - unified URL reading and navigation)
+export type { IRoutingService } from './services/IRoutingService';
+export { WindowRoutingService } from './services/WindowRoutingService';
 
 // Platform and login mode support
 export { PlatformType } from './models/setup/PlatformType';

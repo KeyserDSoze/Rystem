@@ -3,8 +3,7 @@ import { LoginMode } from "../models/setup/LoginMode";
 import { PlatformType } from "../models/setup/PlatformType";
 import { detectPlatform, isMobilePlatform } from "../utils/platform";
 import { LocalStorageService } from "../services/LocalStorageService";
-import { WindowUrlService } from "../services/WindowUrlService";
-import { WindowNavigationService } from "../services/WindowNavigationService";
+import { WindowRoutingService } from "../services/WindowRoutingService";
 
 export const setupSocialLogin = function (settings: (settings: SocialLoginSettings) => void): SocialLoginManager {
 const parameters = {
@@ -13,8 +12,7 @@ const parameters = {
     onLoginFailure: (data: SocialLoginErrorResponse) => { console.log(data.code); },
     automaticRefresh: false,
     storageService: new LocalStorageService(),  // Default: localStorage
-    urlService: new WindowUrlService(),  // Default: window.location
-    navigationService: new WindowNavigationService(),  // Default: window.location/history
+    routingService: new WindowRoutingService(), // Default: window.location + window.history
     platform: {
         type: PlatformType.Auto,
         redirectPath: undefined,  // Smart default: will use window.location.origin + "/account/login"

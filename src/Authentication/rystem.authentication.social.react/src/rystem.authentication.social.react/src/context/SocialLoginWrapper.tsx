@@ -23,10 +23,10 @@ export const SocialLoginWrapper = (c: { children: any; }) => {
         const settings = getSocialLoginSettings();
         const loginMode = settings.platform?.loginMode || LoginMode.Popup;
 
-        // Use urlService to read URL parameters (supports React Router, Next.js, etc.)
-        const urlService = settings.urlService;
-        const code = urlService.getSearchParam(queryCode);
-        const stateParam = urlService.getSearchParam(queryState);
+        // Use routingService to read URL parameters (supports React Router, Next.js, etc.)
+        const routingService = settings.routingService;
+        const code = routingService.getSearchParam(queryCode);
+        const stateParam = routingService.getSearchParam(queryState);
 
         console.log('🔍 SocialLoginWrapper: OAuth callback detection:', { 
             code: code ? 'present' : 'missing', 
@@ -34,7 +34,7 @@ export const SocialLoginWrapper = (c: { children: any; }) => {
             loginMode,
             isPopup: window.opener !== null,
             alreadyProcessed: callbackProcessedRef.current,
-            urlService: urlService.constructor.name
+            routingService: routingService.constructor.name
         });
         
         // ⚠️ Prevent double processing (React.StrictMode causes double mount in dev)
@@ -110,13 +110,13 @@ export const SocialLoginWrapper = (c: { children: any; }) => {
 
                             if (returnUrl) {
                                 console.log('🔙 Navigating to saved return URL:', returnUrl);
-                                // Navigate to saved URL using navigation service
-                                settings.navigationService.navigateReplace(returnUrl);
+                                // Navigate to saved URL using routing service
+                                routingService.navigateReplace(returnUrl);
                             } else {
                                 console.log('🏠 No return URL found, cleaning callback URL');
-                                // Clean URL (remove query params) using navigation service
-                                const cleanPath = settings.navigationService.getCurrentPath().split('?')[0];
-                                settings.navigationService.navigateReplace(cleanPath);
+                                // Clean URL (remove query params) using routing service
+                                const cleanPath = routingService.getCurrentPath().split('?')[0];
+                                routingService.navigateReplace(cleanPath);
                             }
 
                             forceUpdate();
@@ -136,9 +136,9 @@ export const SocialLoginWrapper = (c: { children: any; }) => {
                             // Clean return URL on error using storage service
                             settings.storageService.remove('social_login_return_url');
 
-                            // Clean URL even on error using navigation service
-                            const cleanPath = settings.navigationService.getCurrentPath().split('?')[0];
-                            settings.navigationService.navigateReplace(cleanPath);
+                            // Clean URL even on error using routing service
+                            const cleanPath = routingService.getCurrentPath().split('?')[0];
+                            routingService.navigateReplace(cleanPath);
                         });
                 }
             } else {

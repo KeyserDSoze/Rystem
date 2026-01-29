@@ -83,21 +83,13 @@ npm install rystem.authentication.social.react
 
 ### ⚠️ Important for React Router / Next.js Users
 
-If you're using **React Router** or **Next.js App Router**, OAuth callbacks and navigation may not work correctly due to client-side routing.
+If you're using **React Router** or **Next.js App Router**, OAuth callbacks and navigation may not work correctly due to client-side routing intercepting native browser APIs.
 
-**👉 You need TWO custom services**:
+**👉 Solution**: Implement a custom `IRoutingService` for your framework.
 
-1. **`IUrlService`** - For reading URL parameters (OAuth callback detection)
-2. **`INavigationService`** - For routing and URL manipulation (return URLs, cleanup)
-
-📖 **See full guides below**:
-- [🌐 Custom URL Service](#-custom-url-service) - OAuth callback parameter reading
-- [🧭 Custom Navigation Service](#-custom-navigation-service) - Routing and navigation
-
-Ready-to-use implementations provided for:
+📖 **See full guide**: [🧭 Custom Routing Service](#-custom-routing-service) section below with ready-to-use implementations for:
 - React Router v6+
 - Next.js App Router (v13+)
-- Remix
 - Unit Testing
 
 ## 🚀 Quick Start
@@ -996,391 +988,52 @@ setupSocialLogin(x => {
 
 ---
 
-## 🌐 Custom URL Service
+## 🧭 Custom Routing Service
 
-### Why URL Service?
+## 🧭 Custom Routing Service
 
-**Problem**: Frameworks like **React Router**, **Next.js**, and **Remix** intercept client-side navigation. This causes `window.location.search` to be **empty** even when URL parameters exist, breaking OAuth callbacks.
+### Why Routing Service?
 
-**Solution**: The `IUrlService` abstraction allows you to provide a framework-specific implementation for reading URL parameters.
+**Problem**: Client-side routing frameworks (**React Router**, **Next.js App Router**, **Remix**) intercept native browser APIs, causing two critical issues:
+
+1. **OAuth Callback Detection**: `window.location.search` is empty even when URL contains parameters
+2. **Navigation Bypass**: `window.location.href` and `window.history.replaceState()` bypass the router, losing routing state
+
+**Solution**: The `IRoutingService` abstraction provides a unified interface for:
+- **URL Parameter Reading** (OAuth callback detection)
+- **Navigation Operations** (redirects, return URLs, cleanup)
 
 ### Default Behavior
 
-By default, the library uses `WindowUrlService` which reads from `window.location.search`:
+By default, the library uses `WindowRoutingService` which uses native browser APIs:
 
 ```typescript
 // ✅ Works automatically with:
-// - Vanilla React (no routing)
+// - Vanilla React (no routing library)
 // - Standard browser navigation
-// - Next.js Page Router (with redirects)
-// - Remix (with redirects)
+// - Server-side rendered apps
+// - Next.js Pages Router (with server redirects)
 setupSocialLogin(x => {
-    // No urlService config needed - uses WindowUrlService by default
+    // No routingService config needed - uses WindowRoutingService by default
     x.apiUri = 'https://api.example.com';
 });
 ```
 
-### When to Use Custom URL Service
-
-| Framework | Needs Custom? | Implementation |
-|-----------|---------------|----------------|
-| **React Router** | ✅ Yes | `ReactRouterUrlService` (see below) |
-| **Next.js App Router** | ✅ Yes | `NextAppRouterUrlService` (see below) |
-| **Next.js Pages Router** | ❌ No | Default works (uses redirects) |
-| **Remix** | ⚠️ Maybe | Depends on routing setup |
-| **Vanilla React** | ❌ No | Default works |
-| **Browser navigation** | ❌ No | Default works |
-
-📁 **Ready-to-use example files** are available in [`src/services/`](./src/services/):
-- [`ReactRouterUrlService.example.ts`](./src/services/ReactRouterUrlService.example.ts) - React Router v6+
-- [`NextAppRouterUrlService.example.ts`](./src/services/NextAppRouterUrlService.example.ts) - Next.js App Router v13+
-- [`RemixUrlService.example.ts`](./src/services/RemixUrlService.example.ts) - Remix framework
-- [`MockUrlService.example.ts`](./src/services/MockUrlService.example.ts) - Unit testing
-
-**Copy these files to your project and remove the `.example` extension.**
-
----
-
-### 🔧 React Router Implementation
-
-If you're using **React Router v6+**, implement this service:
-
-```typescript
-import { useSearchParams } from 'react-router-dom';
-import { IUrlService } from 'rystem.authentication.social.react';
-
-/**
- * URL Service for React Router v6+
- * Uses useSearchParams hook to read URL parameters
- */
-export class ReactRouterUrlService implements IUrlService {
-    private searchParamsGetter: (() => URLSearchParams) | null = null;
-
-    /**
-     * Initialize with useSearchParams hook
-     * MUST be called inside a React component
-     */
-    initialize(searchParamsGetter: () => URLSearchParams): void {
-        this.searchParamsGetter = searchParamsGetter;
-    }
-
-    getSearchParam(key: string): string | null {
-        if (!this.searchParamsGetter) {
-            console.warn('ReactRouterUrlService not initialized. Call initialize() with useSearchParams.');
-            return null;
-        }
-        return this.searchParamsGetter().get(key);
-    }
-
-    getAllSearchParams(): URLSearchParams {
-        if (!this.searchParamsGetter) {
-            console.warn('ReactRouterUrlService not initialized. Call initialize() with useSearchParams.');
-            return new URLSearchParams();
-        }
-        return this.searchParamsGetter();
-    }
-}
-```
-
-#### Usage with React Router
-
-```typescript
-import { BrowserRouter, useSearchParams } from 'react-router-dom';
-import { setupSocialLogin, SocialLoginWrapper } from 'rystem.authentication.social.react';
-import { ReactRouterUrlService } from './ReactRouterUrlService'; // Your implementation
-
-// Create singleton instance
-const reactRouterUrlService = new ReactRouterUrlService();
-
-// Setup configuration ONCE at app startup
-setupSocialLogin(x => {
-    x.apiUri = 'https://api.example.com';
-    x.urlService = reactRouterUrlService; // ✅ Use React Router service
-    x.providers = [
-        { provider: ProviderType.Microsoft, clientId: 'your-client-id' },
-        { provider: ProviderType.Google, clientId: 'your-client-id' }
-    ];
-});
-
-// Main App Component
-function App() {
-    const [searchParams] = useSearchParams();
-
-    // ✅ Initialize URL service with React Router hook
-    useEffect(() => {
-        reactRouterUrlService.initialize(() => searchParams);
-    }, [searchParams]);
-
-    return (
-        <div>
-            <h1>My App</h1>
-            <MicrosoftButton />
-            <GoogleButton />
-        </div>
-    );
-}
-
-// Wrap with Router
-const Root = () => (
-    <BrowserRouter>
-        <SocialLoginWrapper>
-            <App />
-        </SocialLoginWrapper>
-    </BrowserRouter>
-);
-
-export default Root;
-```
-
----
-
-### 🔧 Next.js App Router Implementation
-
-If you're using **Next.js 13+ App Router** with client components:
-
-```typescript
-'use client';
-
-import { useSearchParams } from 'next/navigation';
-import { IUrlService } from 'rystem.authentication.social.react';
-
-/**
- * URL Service for Next.js App Router (v13+)
- * Uses next/navigation useSearchParams hook
- */
-export class NextAppRouterUrlService implements IUrlService {
-    private searchParamsGetter: (() => URLSearchParams) | null = null;
-
-    /**
-     * Initialize with Next.js useSearchParams hook
-     * MUST be called inside a Client Component
-     */
-    initialize(searchParamsGetter: () => URLSearchParams): void {
-        this.searchParamsGetter = searchParamsGetter;
-    }
-
-    getSearchParam(key: string): string | null {
-        if (!this.searchParamsGetter) {
-            console.warn('NextAppRouterUrlService not initialized. Call initialize() with useSearchParams.');
-            return null;
-        }
-        const params = this.searchParamsGetter();
-        return params ? params.get(key) : null;
-    }
-
-    getAllSearchParams(): URLSearchParams {
-        if (!this.searchParamsGetter) {
-            console.warn('NextAppRouterUrlService not initialized. Call initialize() with useSearchParams.');
-            return new URLSearchParams();
-        }
-        return this.searchParamsGetter() || new URLSearchParams();
-    }
-}
-```
-
-#### Usage with Next.js App Router
-
-```typescript
-'use client'; // ✅ Must be a Client Component
-
-import { useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
-import { setupSocialLogin, SocialLoginWrapper, MicrosoftButton } from 'rystem.authentication.social.react';
-import { NextAppRouterUrlService } from './NextAppRouterUrlService'; // Your implementation
-
-// Create singleton instance
-const nextUrlService = new NextAppRouterUrlService();
-
-// Setup configuration ONCE
-setupSocialLogin(x => {
-    x.apiUri = 'https://api.example.com';
-    x.urlService = nextUrlService; // ✅ Use Next.js service
-    x.providers = [
-        { provider: ProviderType.Microsoft, clientId: 'your-client-id' }
-    ];
-});
-
-export default function LoginPage() {
-    const searchParams = useSearchParams();
-
-    // ✅ Initialize URL service with Next.js hook
-    useEffect(() => {
-        nextUrlService.initialize(() => searchParams);
-    }, [searchParams]);
-
-    return (
-        <SocialLoginWrapper>
-            <div>
-                <h1>Login</h1>
-                <MicrosoftButton />
-            </div>
-        </SocialLoginWrapper>
-    );
-}
-```
-
----
-
-### 🔧 Remix Implementation
-
-For **Remix**, use a similar pattern with `useSearchParams` from `@remix-run/react`:
-
-```typescript
-import { useSearchParams } from '@remix-run/react';
-import { IUrlService } from 'rystem.authentication.social.react';
-
-export class RemixUrlService implements IUrlService {
-    private searchParamsGetter: (() => URLSearchParams) | null = null;
-
-    initialize(searchParamsGetter: () => URLSearchParams): void {
-        this.searchParamsGetter = searchParamsGetter;
-    }
-
-    getSearchParam(key: string): string | null {
-        if (!this.searchParamsGetter) return null;
-        return this.searchParamsGetter().get(key);
-    }
-
-    getAllSearchParams(): URLSearchParams {
-        if (!this.searchParamsGetter) return new URLSearchParams();
-        return this.searchParamsGetter();
-    }
-}
-
-// Usage in Remix route component
-export default function Login() {
-    const [searchParams] = useSearchParams();
-
-    useEffect(() => {
-        remixUrlService.initialize(() => searchParams);
-    }, [searchParams]);
-
-    return <MicrosoftButton />;
-}
-```
-
----
-
-### 🧪 Testing with Mock URL Service
-
-For unit tests, create a mock service:
-
-```typescript
-export class MockUrlService implements IUrlService {
-    private params: Map<string, string> = new Map();
-
-    // Set test data
-    setParam(key: string, value: string): void {
-        this.params.set(key, value);
-    }
-
-    getSearchParam(key: string): string | null {
-        return this.params.get(key) || null;
-    }
-
-    getAllSearchParams(): URLSearchParams {
-        const urlParams = new URLSearchParams();
-        this.params.forEach((value, key) => urlParams.set(key, value));
-        return urlParams;
-    }
-}
-
-// In your test
-const mockUrlService = new MockUrlService();
-mockUrlService.setParam('code', 'test-auth-code');
-mockUrlService.setParam('state', 'microsoft');
-
-setupSocialLogin(x => {
-    x.urlService = mockUrlService;
-    // ... rest of test config
-});
-```
-
----
-
-### 📋 Architecture Decision Table
-
-| Scenario | Recommended URL Service |
-|----------|------------------------|
-| **React Router** | `ReactRouterUrlService` (custom) |
-| **Next.js App Router** | `NextAppRouterUrlService` (custom) |
-| **Next.js Pages Router** | `WindowUrlService` (default) ✅ |
-| **Remix** | `RemixUrlService` (custom) |
-| **Vanilla React** | `WindowUrlService` (default) ✅ |
-| **Unit Testing** | `MockUrlService` (in-memory) |
-| **Server-Side Rendering** | Framework-specific implementation |
-
----
-
-### ⚠️ Important Notes
-
-1. **Initialize in React Component**: URL services for routing frameworks MUST be initialized inside a React component using the framework's hook (e.g., `useSearchParams`).
-
-2. **Singleton Pattern**: Create ONE instance of your URL service and reuse it. Don't create new instances on every render.
-
-3. **Effect Dependencies**: Always include `searchParams` in the `useEffect` dependency array to reinitialize when URL changes.
-
-4. **Fallback Behavior**: If the service isn't initialized, it should return `null` or empty params gracefully (don't throw errors).
-
-5. **OAuth Callback**: The URL service is critical for OAuth callbacks. If it's not working, check browser console for initialization warnings.
-
----
-
-### 🔍 Debugging URL Service
-
-Add logging to verify your URL service is working:
-
-```typescript
-console.log('URL Service:', settings.urlService.constructor.name);
-console.log('Code param:', settings.urlService.getSearchParam('code'));
-console.log('State param:', settings.urlService.getSearchParam('state'));
-```
-
-You'll see these logs in `SocialLoginWrapper` when processing OAuth callbacks.
-
----
-
-## 🧭 Custom Navigation Service
-
-### Why Navigation Service?
-
-**Problem**: Client-side routing frameworks (React Router, Next.js, Remix) use their own navigation systems. Using native browser APIs like `window.location.href` and `window.history.replaceState` **bypasses the router**, causing:
-- Lost routing state
-- Broken back/forward navigation
-- Components not re-rendering correctly
-- OAuth callback failures
-
-**Solution**: The `INavigationService` abstraction allows you to provide framework-specific navigation implementations.
-
-### Default Behavior
-
-By default, the library uses `WindowNavigationService` which uses native browser APIs:
-
-```typescript
-// ✅ Works automatically with:
-// - Vanilla React (no routing)
-// - Standard browser navigation
-// - Server-side rendered apps with full page reloads
-setupSocialLogin(x => {
-    // No navigationService config needed - uses WindowNavigationService by default
-    x.apiUri = 'https://api.example.com';
-});
-```
-
-### When to Use Custom Navigation Service
+### When to Use Custom Routing Service
 
 | Framework | Needs Custom? | Why? | Implementation |
 |-----------|---------------|------|----------------|
-| **React Router** | ✅ **YES** | Uses history API internally | `ReactRouterNavigationService` (see below) |
-| **Next.js App Router** | ✅ **YES** | Client-side navigation with router.push/replace | `NextAppRouterNavigationService` (see below) |
-| **Next.js Pages Router** | ⚠️ **MAYBE** | Depends on navigation style | Check if return URLs work |
-| **Remix** | ✅ **YES** | Uses remix-run router | Similar to React Router |
-| **Vanilla React** | ❌ No | No routing framework | Default works |
-| **Browser navigation** | ❌ No | Native navigation | Default works |
+| **React Router** | ✅ **YES** | Client-side routing intercepts window APIs | `ReactRouterRoutingService` (see below) |
+| **Next.js App Router** | ✅ **YES** | Uses router.push/replace for navigation | `NextAppRouterRoutingService` (see below) |
+| **Next.js Pages Router** | ⚠️ **MAYBE** | Depends on navigation style | Test if return URLs work |
+| **Remix** | ✅ **YES** | Uses @remix-run/react router | Similar to React Router |
+| **Vanilla React** | ❌ No | No routing framework | Default works ✅ |
+| **Server-Side Rendering** | ❌ No | Full page reloads | Default works ✅ |
 
 📁 **Ready-to-use example files** are available in [`src/services/`](./src/services/):
-- [`ReactRouterNavigationService.example.ts`](./src/services/ReactRouterNavigationService.example.ts) - React Router v6+
-- [`NextAppRouterNavigationService.example.ts`](./src/services/NextAppRouterNavigationService.example.ts) - Next.js App Router v13+
+- [`ReactRouterRoutingService.example.ts`](./src/services/ReactRouterRoutingService.example.ts) - React Router v6+ (unified)
+- [`NextAppRouterRoutingService.example.ts`](./src/services/NextAppRouterRoutingService.example.ts) - Next.js App Router v13+ (unified)
+- [`MockRoutingService.example.ts`](./src/services/MockRoutingService.example.ts) - Unit testing with verification methods
 
 **Copy these files to your project and remove the `.example` extension.**
 
@@ -1388,43 +1041,61 @@ setupSocialLogin(x => {
 
 ### 🔧 React Router Implementation
 
-If you're using **React Router v6+**, implement this navigation service:
+If you're using **React Router v6+**, use this unified routing service:
 
 ```typescript
-import { useNavigate, useLocation } from 'react-router-dom';
-import { INavigationService } from 'rystem.authentication.social.react';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { IRoutingService } from 'rystem.authentication.social.react';
 
-export class ReactRouterNavigationService implements INavigationService {
+/**
+ * Unified Routing Service for React Router v6+
+ * Handles both URL reading and navigation
+ */
+export class ReactRouterRoutingService implements IRoutingService {
+    private searchParamsGetter: (() => URLSearchParams) | null = null;
     private navigateFunc: ((to: string, options?: any) => void) | null = null;
     private location: any = null;
 
-    initialize(navigateFunc: (to: string, options?: any) => void, location: any): void {
+    /**
+     * Single initialization with all React Router hooks
+     */
+    initialize(
+        searchParamsGetter: () => URLSearchParams,
+        navigateFunc: (to: string, options?: any) => void,
+        location: any
+    ): void {
+        this.searchParamsGetter = searchParamsGetter;
         this.navigateFunc = navigateFunc;
         this.location = location;
     }
 
+    // URL Parameter Reading (OAuth callbacks)
+    getSearchParam(key: string): string | null {
+        return this.searchParamsGetter?.().get(key) || null;
+    }
+
+    getAllSearchParams(): URLSearchParams {
+        return this.searchParamsGetter?.() || new URLSearchParams();
+    }
+
+    // Navigation Operations
     getCurrentPath(): string {
-        if (!this.location) return window.location.pathname + window.location.search;
-        return this.location.pathname + this.location.search;
+        return this.location 
+            ? this.location.pathname + this.location.search
+            : window.location.pathname + window.location.search;
     }
 
     navigateTo(url: string): void {
         // External OAuth redirects must use window.location
-        if (url.startsWith('http://') || url.startsWith('https://')) {
+        if (url.startsWith('http')) {
             window.location.href = url;
-        } else if (this.navigateFunc) {
-            this.navigateFunc(url);
         } else {
-            window.location.href = url;
+            this.navigateFunc?.(url);
         }
     }
 
     navigateReplace(path: string): void {
-        if (this.navigateFunc) {
-            this.navigateFunc(path, { replace: true });
-        } else {
-            window.history.replaceState({}, '', path);
-        }
+        this.navigateFunc?.(path, { replace: true });
     }
 
     openPopup(url: string, name: string, features: string): Window | null {
@@ -1436,17 +1107,17 @@ export class ReactRouterNavigationService implements INavigationService {
 #### Usage with React Router
 
 ```typescript
-import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom';
-import { setupSocialLogin, SocialLoginWrapper } from 'rystem.authentication.social.react';
-import { ReactRouterNavigationService } from './ReactRouterNavigationService';
+import { BrowserRouter, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { setupSocialLogin, SocialLoginWrapper, MicrosoftButton } from 'rystem.authentication.social.react';
+import { ReactRouterRoutingService } from './ReactRouterRoutingService';
 
 // Create singleton instance
-const reactRouterNavService = new ReactRouterNavigationService();
+const routingService = new ReactRouterRoutingService();
 
 // Setup configuration ONCE at app startup
 setupSocialLogin(x => {
     x.apiUri = 'https://api.example.com';
-    x.navigationService = reactRouterNavService; // ✅ Use React Router service
+    x.routingService = routingService; // ✅ One service for everything
     x.providers = [
         { provider: ProviderType.Microsoft, clientId: 'your-client-id' }
     ];
@@ -1454,13 +1125,14 @@ setupSocialLogin(x => {
 
 // Main App Component
 function App() {
+    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const location = useLocation();
 
-    // ✅ Initialize navigation service with React Router hooks
+    // ✅ Single initialization with all hooks
     useEffect(() => {
-        reactRouterNavService.initialize(navigate, location);
-    }, [navigate, location]);
+        routingService.initialize(() => searchParams, navigate, location);
+    }, [searchParams, navigate, location]);
 
     return (
         <div>
@@ -1492,19 +1164,36 @@ For **Next.js 13+ App Router** with client components:
 'use client';
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { INavigationService } from 'rystem.authentication.social.react';
+import { IRoutingService } from 'rystem.authentication.social.react';
 
-export class NextAppRouterNavigationService implements INavigationService {
+/**
+ * Unified Routing Service for Next.js App Router
+ * Handles both URL reading and navigation
+ */
+export class NextAppRouterRoutingService implements IRoutingService {
     private router: any = null;
     private pathname: string | null = null;
     private searchParams: URLSearchParams | null = null;
 
-    initialize(router: any, pathname: string, searchParams: URLSearchParams): void {
+    /**
+     * Single initialization with all Next.js hooks
+     */
+    initialize(router: any, pathname: string, searchParams: URLSearchParams | null): void {
         this.router = router;
         this.pathname = pathname;
         this.searchParams = searchParams;
     }
 
+    // URL Parameter Reading (OAuth callbacks)
+    getSearchParam(key: string): string | null {
+        return this.searchParams?.get(key) || null;
+    }
+
+    getAllSearchParams(): URLSearchParams {
+        return this.searchParams || new URLSearchParams();
+    }
+
+    // Navigation Operations
     getCurrentPath(): string {
         if (!this.pathname) return window.location.pathname + window.location.search;
         const search = this.searchParams?.toString();
@@ -1513,21 +1202,15 @@ export class NextAppRouterNavigationService implements INavigationService {
 
     navigateTo(url: string): void {
         // External OAuth redirects must use window.location
-        if (url.startsWith('http://') || url.startsWith('https://')) {
+        if (url.startsWith('http')) {
             window.location.href = url;
-        } else if (this.router) {
-            this.router.push(url);
         } else {
-            window.location.href = url;
+            this.router?.push(url);
         }
     }
 
     navigateReplace(path: string): void {
-        if (this.router) {
-            this.router.replace(path);
-        } else {
-            window.history.replaceState({}, '', path);
-        }
+        this.router?.replace(path);
     }
 
     openPopup(url: string, name: string, features: string): Window | null {
@@ -1544,15 +1227,15 @@ export class NextAppRouterNavigationService implements INavigationService {
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
 import { setupSocialLogin, SocialLoginWrapper, MicrosoftButton } from 'rystem.authentication.social.react';
-import { NextAppRouterNavigationService } from './NextAppRouterNavigationService';
+import { NextAppRouterRoutingService } from './NextAppRouterRoutingService';
 
 // Create singleton instance
-const nextNavService = new NextAppRouterNavigationService();
+const routingService = new NextAppRouterRoutingService();
 
 // Setup configuration ONCE
 setupSocialLogin(x => {
     x.apiUri = 'https://api.example.com';
-    x.navigationService = nextNavService; // ✅ Use Next.js service
+    x.routingService = routingService; // ✅ One service for everything
     x.providers = [
         { provider: ProviderType.Microsoft, clientId: 'your-client-id' }
     ];
@@ -1563,9 +1246,9 @@ export default function LoginPage() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    // ✅ Initialize navigation service with Next.js hooks
+    // ✅ Single initialization with all hooks
     useEffect(() => {
-        nextNavService.initialize(router, pathname, searchParams);
+        routingService.initialize(router, pathname, searchParams);
     }, [router, pathname, searchParams]);
 
     return (
@@ -1581,67 +1264,114 @@ export default function LoginPage() {
 
 ---
 
-### 📋 Architecture Decision Table
+### 🧪 Testing with Mock Routing Service
 
-| Scenario | Recommended Navigation Service | Reason |
-|----------|-------------------------------|--------|
-| **React Router** | `ReactRouterNavigationService` (custom) | Uses history API for routing state |
-| **Next.js App Router** | `NextAppRouterNavigationService` (custom) | Uses router.push/replace for client navigation |
-| **Next.js Pages Router** | `WindowNavigationService` (default) ✅ or custom | Check if return URLs work correctly |
-| **Remix** | Custom (similar to React Router) | Uses @remix-run/react router |
-| **Vanilla React** | `WindowNavigationService` (default) ✅ | No routing framework needed |
-| **Server-Side Rendering** | `WindowNavigationService` (default) ✅ | Full page reloads |
+For unit tests, use the mock service with verification methods:
+
+```typescript
+import { MockRoutingService } from './MockRoutingService';
+
+const mockRouting = new MockRoutingService();
+
+// Setup test data
+mockRouting.setSearchParam('code', 'test-auth-code');
+mockRouting.setSearchParam('state', 'microsoft');
+mockRouting.setCurrentPath('/account/login?tab=oauth');
+
+setupSocialLogin(x => {
+    x.routingService = mockRouting;
+    // ... rest of test config
+});
+
+// Run OAuth flow in test
+// ...
+
+// Verify navigation behavior
+expect(mockRouting.wasNavigateToCalledWith('https://oauth.provider.com')).toBe(true);
+expect(mockRouting.wasReplaceCalledWith('/dashboard')).toBe(true);
+expect(mockRouting.getNavigationHistory()).toEqual([
+    'https://oauth.provider.com',
+    '/dashboard'
+]);
+```
 
 ---
 
 ### ⚠️ Important Notes
 
-1. **Initialize in React Component**: Navigation services MUST be initialized inside a React component using the framework's hooks (e.g., `useNavigate`, `useRouter`).
+1. **Single Initialization**: Initialize routing service with ALL framework hooks in one call (not separate calls like before).
 
-2. **Singleton Pattern**: Create ONE instance of your navigation service and reuse it. Don't create new instances on every render.
+2. **Singleton Pattern**: Create ONE instance and reuse it. Don't create new instances on every render.
 
-3. **Effect Dependencies**: Always include navigation hooks in the `useEffect` dependency array to reinitialize when they change.
+3. **Effect Dependencies**: Always include routing hooks in `useEffect` dependency array:
+   ```typescript
+   useEffect(() => {
+       routingService.initialize(/* hooks */);
+   }, [searchParams, navigate, location]); // ✅ All deps
+   ```
 
-4. **External OAuth URLs**: OAuth redirects to external providers (e.g., `https://login.microsoftonline.com`) MUST use `window.location.href` regardless of framework (framework routers cannot handle external navigation).
+4. **External OAuth URLs**: OAuth redirects to external providers (e.g., `https://login.microsoftonline.com`) MUST use `window.location.href` regardless of framework.
 
-5. **Return URL Feature**: The navigation service is critical for the "return to origin page" feature after OAuth login. If users aren't returning to the correct page, check console for initialization warnings.
+5. **Return URL Feature**: The routing service handles saving the current page before OAuth and returning after login. If this doesn't work, check console for initialization warnings.
 
 ---
 
-### 🔍 Debugging Navigation Service
+### 🔍 Debugging Routing Service
 
-Add logging to verify your navigation service is working:
+Check your routing service is properly initialized:
 
 ```typescript
-console.log('Navigation Service:', settings.navigationService.constructor.name);
-console.log('Current Path:', settings.navigationService.getCurrentPath());
+console.log('Routing Service:', settings.routingService.constructor.name);
+console.log('Current Path:', settings.routingService.getCurrentPath());
+console.log('OAuth Code:', settings.routingService.getSearchParam('code'));
 ```
 
-You'll see these logs when OAuth redirects occur and when users return after authentication.
+You'll see these logs in `SocialLoginWrapper` during OAuth callbacks.
 
 ---
 
-### What Problems Does This Solve?
+### 📊 What Does This Solve?
 
-**Without Custom Navigation Service (React Router):**
+**Before (without custom routing service):**
 ```typescript
-// ❌ PROBLEM: User clicks login button
-window.location.href = 'https://oauth.provider.com/...'; // Works
-// ... OAuth happens ...
-// User returns to: /account/login?code=ABC&state=microsoft
+// ❌ PROBLEM 1: OAuth callback params not found
+const code = new URLSearchParams(window.location.search).get('code');
+// Returns null even though URL is: /login?code=ABC&state=microsoft
+// (React Router intercepts client-side navigation)
+
+// ❌ PROBLEM 2: Navigation bypasses router
+window.location.href = 'https://oauth.provider.com'; // Works but...
+// ... later:
 window.history.replaceState({}, '', '/dashboard'); // ❌ React Router doesn't know!
-// Result: URL changes but component doesn't update, routing state lost
+// Result: URL changes but component doesn't update, state lost
 ```
 
-**With Custom Navigation Service (React Router):**
+**After (with custom routing service):**
 ```typescript
-// ✅ SOLUTION: User clicks login button
-navigationService.navigateTo('https://oauth.provider.com/...'); // External, uses window.location
-// ... OAuth happens ...
-// User returns to: /account/login?code=ABC&state=microsoft
-navigationService.navigateReplace('/dashboard'); // ✅ Calls navigate(path, {replace: true})
-// Result: React Router knows about the change, component updates correctly!
+// ✅ SOLUTION 1: Framework-aware URL reading
+const code = routingService.getSearchParam('code');
+// Uses React Router's useSearchParams internally
+// Returns 'ABC' correctly!
+
+// ✅ SOLUTION 2: Framework-aware navigation
+routingService.navigateTo('https://oauth.provider.com'); // External, uses window.location
+// ... later:
+routingService.navigateReplace('/dashboard'); // ✅ Calls navigate(path, {replace: true})
+// Result: React Router updates correctly, components re-render!
 ```
+
+---
+
+### 📋 Architecture Comparison
+
+| Feature | Before (v0.3.x) | After (v0.4.0) |
+|---------|-----------------|----------------|
+| **Services** | `IUrlService` + `INavigationService` | `IRoutingService` (unified) ✅ |
+| **Settings** | 2 fields (`urlService`, `navigationService`) | 1 field (`routingService`) ✅ |
+| **Initialization** | 2 separate calls | 1 unified call ✅ |
+| **Hooks** | Split across 2 services | All in one place ✅ |
+| **Example Files** | 8 files (4 URL + 4 Nav) | 3 files (unified) ✅ |
+| **Complexity** | Higher (duplicate patterns) | Lower (single pattern) ✅ |
 
 ---
 
@@ -1652,13 +1382,13 @@ import { useSocialToken } from 'rystem.authentication.social.react';
 
 const MyComponent = () => {
     const token = useSocialToken();
-    
+
     const fetchProtectedData = async () => {
         if (token.isExpired) {
             alert('Please login first');
             return;
         }
-        
+
         try {
             const response = await fetch('https://api.example.com/protected', {
                 headers: {
@@ -1666,21 +1396,21 @@ const MyComponent = () => {
                     'Content-Type': 'application/json'
                 }
             });
-            
+
             if (response.status === 401) {
                 // Token might be expired, force refresh
                 const forceRefresh = useContext(SocialLoginContextRefresh);
                 await forceRefresh();
                 // Retry request
             }
-            
+
             const data = await response.json();
             return data;
         } catch (error) {
             console.error('API error:', error);
         }
     };
-    
+
     return <button onClick={fetchProtectedData}>Load Data</button>;
 };
 ```
@@ -1698,7 +1428,7 @@ interface CustomSocialUser {
 
 const MyComponent = () => {
     const user = useSocialUser<CustomSocialUser>();
-    
+
     return (
         <div>
             <img src={user.avatar} alt={user.displayName} />
