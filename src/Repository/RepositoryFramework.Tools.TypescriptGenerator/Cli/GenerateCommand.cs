@@ -24,7 +24,7 @@ public static class GenerateCommand
 
         var modelsOption = new Option<string>(
             aliases: ["--models", "-m"],
-            description: "Repository definitions in format: \"{Model,Key,Type,Factory},{...}\"")
+            description: "Repository definitions in format: \"{Model,Key,Type,Factory,BackendFactory},{...}\"")
         {
             IsRequired = true
         };
@@ -39,15 +39,28 @@ public static class GenerateCommand
             description: "Overwrite existing files (default: true)",
             getDefaultValue: () => true);
 
+        var includeDepsOption = new Option<bool>(
+            aliases: ["--include-deps"],
+            description: "Include project dependencies (referenced projects and NuGet packages). " +
+                         "When true, all DLLs in the output directory will be scanned for types. (default: false)",
+            getDefaultValue: () => false);
+
+        var depsPrefixOption = new Option<string?>(
+            aliases: ["--deps-prefix"],
+            description: "When --include-deps is true, only load dependencies whose name starts with this prefix. " +
+                         "Example: 'MyCompany.' will only load 'MyCompany.Core.dll', 'MyCompany.Models.dll', etc.");
+
         var command = new Command("generate", "Generate TypeScript types and services from C# models")
         {
             destOption,
             modelsOption,
             projectOption,
-            overwriteOption
+            overwriteOption,
+            includeDepsOption,
+            depsPrefixOption
         };
 
-        command.SetHandler(HandleGenerateAsync, destOption, modelsOption, projectOption, overwriteOption);
+        command.SetHandler(HandleGenerateAsync, destOption, modelsOption, projectOption, overwriteOption, includeDepsOption, depsPrefixOption);
 
         return command;
     }
@@ -56,7 +69,9 @@ public static class GenerateCommand
         string dest,
         string models,
         string? project,
-        bool overwrite)
+        bool overwrite,
+        bool includeDeps,
+        string? depsPrefix)
     {
         try
         {
@@ -85,7 +100,9 @@ public static class GenerateCommand
                 DestinationPath = Path.GetFullPath(dest),
                 Repositories = repositories,
                 ProjectPath = projectPath,
-                Overwrite = overwrite
+                Overwrite = overwrite,
+                IncludeDependencies = includeDeps,
+                DependencyPrefix = depsPrefix
             };
 
             // Print configuration
@@ -141,6 +158,11 @@ public static class GenerateCommand
         Console.WriteLine($"📁 Destination: {context.DestinationPath}");
         Console.WriteLine($"📦 Project: {context.ProjectPath ?? "(auto-discover)"}");
         Console.WriteLine($"🔄 Overwrite: {context.Overwrite}");
+        Console.WriteLine($"📚 Include Dependencies: {context.IncludeDependencies}");
+        if (context.IncludeDependencies && !string.IsNullOrWhiteSpace(context.DependencyPrefix))
+        {
+            Console.WriteLine($"🔍 Dependency Prefix: {context.DependencyPrefix}");
+        }
         Console.WriteLine();
 
         Console.WriteLine("📋 Repositories to generate:");

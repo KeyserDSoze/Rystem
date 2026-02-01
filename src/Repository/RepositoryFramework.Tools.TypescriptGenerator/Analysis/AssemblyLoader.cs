@@ -37,7 +37,11 @@ public class AssemblyLoader
     /// <summary>
     /// Builds a project and loads the output assembly.
     /// </summary>
-    public async Task<Assembly?> BuildAndLoadProjectAsync(string projectPath, CancellationToken cancellationToken = default)
+    public async Task<Assembly?> BuildAndLoadProjectAsync(
+        string projectPath, 
+        bool includeDependencies = false,
+        string? dependencyPrefix = null,
+        CancellationToken cancellationToken = default)
     {
         var fullPath = Path.GetFullPath(projectPath);
 
@@ -65,7 +69,90 @@ public class AssemblyLoader
             return null;
         }
 
-        return LoadFromPath(assemblyPath);
+        var mainAssembly = LoadFromPath(assemblyPath);
+
+        // Load dependencies if requested
+        if (includeDependencies)
+        {
+            LoadDependencies(assemblyPath, dependencyPrefix);
+        }
+
+        return mainAssembly;
+    }
+
+    /// <summary>
+    /// Loads all dependency assemblies from the same directory as the main assembly.
+    /// </summary>
+    /// <param name="mainAssemblyPath">Path to the main assembly</param>
+    /// <param name="prefix">Optional prefix filter - only load DLLs starting with this</param>
+    private void LoadDependencies(string mainAssemblyPath, string? prefix)
+    {
+        var directory = Path.GetDirectoryName(mainAssemblyPath)!;
+        var mainAssemblyName = Path.GetFileName(mainAssemblyPath);
+        var loadedCount = 0;
+
+        Logger.Step($"Loading dependencies from: {directory}");
+
+        foreach (var dllPath in Directory.GetFiles(directory, "*.dll"))
+        {
+            var dllName = Path.GetFileNameWithoutExtension(dllPath);
+
+            // Skip the main assembly (already loaded)
+            if (dllPath.Equals(mainAssemblyPath, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            // Skip system assemblies
+            if (IsSystemAssembly(dllName))
+                continue;
+
+            // Apply prefix filter if specified
+            if (!string.IsNullOrWhiteSpace(prefix) && 
+                !dllName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            // Check if already loaded
+            if (_loadedAssemblies.Any(a => a.GetName().Name?.Equals(dllName, StringComparison.OrdinalIgnoreCase) == true))
+                continue;
+
+            try
+            {
+                LoadFromPath(dllPath);
+                loadedCount++;
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Could not load dependency '{dllName}': {ex.Message}");
+            }
+        }
+
+        Logger.Info($"  Loaded {loadedCount} dependency assemblies");
+    }
+
+    /// <summary>
+    /// Checks if an assembly name is a system/framework assembly that should be skipped.
+    /// </summary>
+    private static bool IsSystemAssembly(string assemblyName)
+    {
+        var systemPrefixes = new[]
+        {
+            "System.",
+            "Microsoft.",
+            "mscorlib",
+            "netstandard",
+            "WindowsBase",
+            "PresentationCore",
+            "PresentationFramework",
+            "Newtonsoft.Json",
+            "NuGet.",
+            "Humanizer",
+            "Azure.",
+            "Google.",
+            "Amazon."
+        };
+
+        return systemPrefixes.Any(prefix => 
+            assemblyName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ||
+            assemblyName.Equals(prefix.TrimEnd('.'), StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>

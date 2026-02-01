@@ -53,6 +53,8 @@ rystem-ts generate --dest <destination> --models <model-definitions> [options]
 | `--models` | `-m` | ✅ | Repository definitions (see format below) |
 | `--project` | `-p` | ❌ | Path to C# project (.csproj) or assembly (.dll) |
 | `--overwrite` | | ❌ | Overwrite existing files (default: `true`) |
+| `--include-deps` | | ❌ | Include project dependencies in type scanning (default: `false`) |
+| `--deps-prefix` | | ❌ | Only load dependencies starting with this prefix (e.g., `MyCompany.`) |
 
 ### Model Definition Format
 
@@ -137,6 +139,39 @@ rystem-ts generate \
   --models "{Order,Guid,Repository,orders}" \
   --overwrite false
 ```
+
+#### With Project Dependencies
+
+When your models reference types from other projects or NuGet packages:
+
+```bash
+rystem-ts generate \
+  --dest ./src/api \
+  --models "{Order,OrderKey,Repository,orders,orders}" \
+  --project ./src/MyApp.Api/MyApp.Api.csproj \
+  --include-deps
+```
+
+This will scan all DLLs in the output directory (except system assemblies).
+
+#### With Dependency Prefix Filter
+
+To only load dependencies from your company/organization:
+
+```bash
+rystem-ts generate \
+  --dest ./src/api \
+  --models "{Order,OrderKey,Repository,orders,orders}" \
+  --project ./src/MyApp.Api/MyApp.Api.csproj \
+  --include-deps \
+  --deps-prefix "MyCompany."
+```
+
+This will only load:
+- ✅ `MyCompany.Core.dll`
+- ✅ `MyCompany.Domain.dll`
+- ❌ `Newtonsoft.Json.dll` (skipped)
+- ❌ `Microsoft.Extensions.dll` (skipped)
 
 ## Generated Output
 

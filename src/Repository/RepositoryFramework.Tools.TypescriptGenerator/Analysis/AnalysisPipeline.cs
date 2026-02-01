@@ -37,7 +37,10 @@ public class AnalysisPipeline
             if (context.ProjectPath != null)
             {
                 var assembly = await _assemblyLoader.BuildAndLoadProjectAsync(
-                    context.ProjectPath, cancellationToken);
+                    context.ProjectPath,
+                    context.IncludeDependencies,
+                    context.DependencyPrefix,
+                    cancellationToken);
 
                 if (assembly == null)
                 {
