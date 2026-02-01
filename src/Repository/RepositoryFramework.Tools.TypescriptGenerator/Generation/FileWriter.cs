@@ -41,6 +41,18 @@ public class FileWriter
     }
 
     /// <summary>
+    /// Writes a TypeScript file to the bootstrap folder.
+    /// </summary>
+    public void WriteBootstrapFile(string fileName, string content)
+    {
+        var bootstrapDir = Path.Combine(_basePath, "bootstrap");
+        Directory.CreateDirectory(bootstrapDir);
+
+        var filePath = Path.Combine(bootstrapDir, fileName);
+        WriteFile(filePath, content);
+    }
+
+    /// <summary>
     /// Writes an index.ts file to a folder.
     /// </summary>
     public void WriteIndexFile(string folder, IEnumerable<string> exports)
@@ -99,6 +111,7 @@ public class FileWriter
     {
         var typesDir = Path.Combine(_basePath, "types");
         var servicesDir = Path.Combine(_basePath, "services");
+        var bootstrapDir = Path.Combine(_basePath, "bootstrap");
 
         if (!Directory.Exists(typesDir))
         {
@@ -110,6 +123,12 @@ public class FileWriter
         {
             Directory.CreateDirectory(servicesDir);
             Logger.DirectoryCreated(servicesDir);
+        }
+
+        if (!Directory.Exists(bootstrapDir))
+        {
+            Directory.CreateDirectory(bootstrapDir);
+            Logger.DirectoryCreated(bootstrapDir);
         }
     }
 }

@@ -83,6 +83,7 @@ public class TypeScriptGenerator
         Dictionary<string, ModelDescriptor> models,
         Dictionary<string, ModelDescriptor> keys)
     {
+        var repositoryList = repositories.ToList();
         var generatedServiceFiles = new List<string>();
         var serviceFileGenerator = new ServiceFileGenerator(_context);
 
@@ -91,15 +92,20 @@ public class TypeScriptGenerator
         _fileWriter.WriteServiceFile(CommonTypesEmitter.GetFileName(), commonContent);
 
         // Generate individual service files
-        foreach (var repo in repositories)
+        foreach (var repo in repositoryList)
         {
-            if (!models.TryGetValue(repo.ModelName, out var model))
+            // Get simple name for lookup (handle fully qualified names)
+            var modelSimpleName = GetSimpleName(repo.ModelName);
+
+            if (!models.TryGetValue(modelSimpleName, out var model))
             {
                 Logger.Warning($"Model '{repo.ModelName}' not found for repository '{repo.FactoryName}'");
                 continue;
             }
 
-            keys.TryGetValue(repo.KeyName, out var key);
+            // Get simple name for key lookup
+            var keySimpleName = GetSimpleName(repo.KeyName);
+            keys.TryGetValue(keySimpleName, out var key);
 
             var serviceContent = serviceFileGenerator.Generate(repo, model, key);
             var fileName = ServiceFileGenerator.GetFileName(repo);
@@ -108,9 +114,20 @@ public class TypeScriptGenerator
         }
 
         // Generate service registry (index.ts)
-        var registryContent = ServiceRegistryEmitter.Emit(repositories);
+        var registryContent = ServiceRegistryEmitter.Emit(repositoryList);
         _fileWriter.WriteServiceFile(ServiceRegistryEmitter.GetFileName(), registryContent);
         Logger.Info("Generated services/index.ts");
+
+        // Generate bootstrap file
+        var bootstrapContent = BootstrapEmitter.Emit(repositoryList, models, keys);
+        _fileWriter.WriteBootstrapFile("repositorySetup.ts", bootstrapContent);
+        Logger.Info("Generated bootstrap/repositorySetup.ts");
+    }
+
+    private static string GetSimpleName(string fullName)
+    {
+        var lastDot = fullName.LastIndexOf('.');
+        return lastDot >= 0 ? fullName[(lastDot + 1)..] : fullName;
     }
 
     /// <summary>

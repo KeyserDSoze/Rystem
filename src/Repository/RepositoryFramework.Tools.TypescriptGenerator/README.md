@@ -122,7 +122,7 @@ The tool generates the following structure:
 
 ```
 📁 <destination>/
-├── 📁 models/
+├── 📁 types/
 │   ├── Calendar.ts           # Raw + Clean interfaces + Mapper
 │   ├── LeagueKey.ts
 │   ├── Team.ts
@@ -130,12 +130,14 @@ The tool generates the following structure:
 ├── 📁 services/
 │   ├── common.ts             # Entity, State, BatchOperation, Page, QueryOptions
 │   └── serieA.service.ts     # Service class with API methods
+├── 📁 bootstrap/
+│   └── repositorySetup.ts    # RepositoryServices configuration with auth handlers
 └── index.ts                  # Services registry with lazy singleton pattern
 ```
 
 ### Generated Types
 
-#### Models (`models/*.ts`)
+#### Types (`types/*.ts`)
 
 For each C# model, the tool generates:
 
@@ -245,6 +247,81 @@ export class Services {
 // Usage:
 Services.configure({ baseUrl: 'https://api.example.com' });
 const calendar = await Services.serieA.get({ leagueId: 'serie-a' });
+```
+
+#### Bootstrap Setup (`bootstrap/repositorySetup.ts`)
+
+The bootstrap file integrates with the `rystem.repository.client` npm package for centralized repository configuration with authentication:
+
+```typescript
+import { RepositoryServices, RepositorySettings, RepositoryEndpoint } from 'rystem.repository.client';
+import { CalendarRaw } from '../types/Calendar';
+import { LeagueKeyRaw } from '../types/LeagueKey';
+
+export interface RepositoryConfig {
+  baseUrl: string;
+  headersEnricher?: (
+    endpoint: RepositoryEndpoint,
+    uri: string,
+    method: string,
+    headers: HeadersInit,
+    body: any
+  ) => Promise<HeadersInit>;
+  errorHandler?: (
+    endpoint: RepositoryEndpoint,
+    uri: string,
+    method: string,
+    headers: HeadersInit,
+    body: any,
+    err: any
+  ) => Promise<boolean>;
+}
+
+export const setupRepositoryServices = (config: RepositoryConfig): void => {
+  const services = RepositoryServices.Create(config.baseUrl);
+
+  // Calendar repository
+  services.addRepository<CalendarRaw, LeagueKeyRaw>(x => {
+    x.name = 'calendar';
+    x.path = 'calendar';
+    x.complexKey = true;
+    if (config.headersEnricher) {
+      x.addHeadersEnricher(config.headersEnricher);
+    }
+    if (config.errorHandler) {
+      x.addErrorHandler(config.errorHandler);
+    }
+  });
+};
+```
+
+**Usage with Authentication:**
+
+```typescript
+import { setupRepositoryServices } from './bootstrap/repositorySetup';
+import { tokenService } from './services/tokenService';
+
+// Setup with auth headers and error handling
+setupRepositoryServices({
+  baseUrl: 'https://api.example.com/api/',
+
+  // Add Bearer token to all requests
+  headersEnricher: async (endpoint, uri, method, headers, body) => {
+    const token = await tokenService.getAccessToken();
+    return token 
+      ? { ...headers, Authorization: `Bearer ${token}` }
+      : headers;
+  },
+
+  // Handle 401 errors with token refresh
+  errorHandler: async (endpoint, uri, method, headers, body, err) => {
+    if (err?.status === 401) {
+      const refreshed = await tokenService.refreshToken();
+      return refreshed; // Return true to retry request
+    }
+    return false; // Don't retry
+  }
+});
 ```
 
 ## Repository Types
