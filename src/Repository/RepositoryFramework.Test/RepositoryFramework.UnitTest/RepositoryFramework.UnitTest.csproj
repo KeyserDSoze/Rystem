@@ -41,6 +41,7 @@
 		<ProjectReference Include="..\..\RepositoryFramework.Infrastructures\RepositoryFramework.Infrastructure.Dynamics.Dataverse\RepositoryFramework.Infrastructure.Dynamics.Dataverse.csproj" />
 		<ProjectReference Include="..\..\RepositoryFramework.Infrastructures\RepositoryFramework.Infrastructure.MsSql\RepositoryFramework.Infrastructure.MsSql.csproj" />
 		<ProjectReference Include="..\..\RepositoryFramework.MigrationTools\RepositoryFramework.MigrationTools.csproj" />
+		<ProjectReference Include="..\..\RepositoryFramework.Tools.TypescriptGenerator\RepositoryFramework.Tools.TypescriptGenerator.csproj" />
 		<ProjectReference Include="..\RepositoryFramework.Test.Infrastructure.EntityFramework\RepositoryFramework.Test.Infrastructure.EntityFramework.csproj" />
 	</ItemGroup>
 

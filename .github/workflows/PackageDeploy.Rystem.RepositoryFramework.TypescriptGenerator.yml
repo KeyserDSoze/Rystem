@@ -1,0 +1,21 @@
+name: TypescriptGenerator.Nuget
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - src/Repository/RepositoryFramework.Tools.TypescriptGenerator/RepositoryFramework.Tools.TypescriptGenerator.csproj
+      - reload.txt
+jobs:
+  publish:
+    name: build, pack & publish
+    runs-on: ubuntu-latest
+    environment: Rystem.Nuget
+    
+    steps:
+      - name: Publish package
+        uses: KeyserDSoze/DefaultAction/pushing_nuget_with_symbols@v1.0.1
+        with:
+          dotnet-version: ${{ secrets.NET_VERSION }}
+          path: src/Repository/RepositoryFramework.Tools.TypescriptGenerator/RepositoryFramework.Tools.TypescriptGenerator.csproj
+          api-key: ${{ secrets.NUGET_API_KEY }}

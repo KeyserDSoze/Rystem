@@ -1,0 +1,49 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>preview</LangVersion>
+
+        <!-- CLI Tool Configuration -->
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>rystem-ts</ToolCommandName>
+
+        <!-- NuGet Package Configuration -->
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <DebugSymbols>true</DebugSymbols>
+        <EmbedAllSources>true</EmbedAllSources>
+        <DebugType>portable</DebugType>
+        <Authors>Alessandro Rapiti</Authors>
+        <Company>Alessandro Rapiti</Company>
+        <Product>Rystem.RepositoryFramework</Product>
+        <Description>CLI tool to generate TypeScript types and services from C# Rystem Repository/CQRS models. Automatically creates Raw/Clean interfaces, mappers, service classes, and a Services registry for seamless integration with Rystem.RepositoryFramework.Api.Server.</Description>
+        <Copyright>2024</Copyright>
+        <PackageIcon>rystem.repositoryframework.typescriptgenerator.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Tools.TypescriptGenerator</RepositoryUrl>
+        <PackageId>Rystem.RepositoryFramework.TypescriptGenerator</PackageId>
+        <Version>10.0.3-preview.1</Version>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+        <PackageTags>rystem;typescript;generator;repository;cqrs;codegen;cli;dotnet-tool</PackageTags>
+        <PackageProjectUrl>https://github.com/KeyserDSoze/Rystem</PackageProjectUrl>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="rystem.repositoryframework.typescriptgenerator.png">
+            <Pack>True</Pack>
+            <PackagePath></PackagePath>
+        </None>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+</Project>

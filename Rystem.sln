@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.4.33103.184
+# Visual Studio Version 18
+VisualStudioVersion = 18.3.11426.168 d18.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B385DA45-F3CA-455B-91F1-1663EAC993E9}"
 EndProject
@@ -328,6 +328,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{F3691C56
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rystem.Localization.Test.App", "src\Localization\Tests\Rystem.Localization.Test.App\Rystem.Localization.Test.App.csproj", "{15E47F55-12E8-4580-892E-74477AAD331C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RepositoryFramework.Tools.TypescriptGenerator", "src\Repository\RepositoryFramework.Tools.TypescriptGenerator\RepositoryFramework.Tools.TypescriptGenerator.csproj", "{E10DF79B-867B-4F83-94A6-728DE69E0524}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -614,6 +616,10 @@ Global
 		{15E47F55-12E8-4580-892E-74477AAD331C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{15E47F55-12E8-4580-892E-74477AAD331C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{15E47F55-12E8-4580-892E-74477AAD331C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E10DF79B-867B-4F83-94A6-728DE69E0524}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E10DF79B-867B-4F83-94A6-728DE69E0524}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E10DF79B-867B-4F83-94A6-728DE69E0524}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E10DF79B-867B-4F83-94A6-728DE69E0524}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -721,6 +727,7 @@ Global
 		{940526E4-270E-436F-B79A-466FBCF78085} = {21EA88B3-A513-4C01-8EB2-0E537C31EA07}
 		{F3691C56-B5AA-483D-9EC9-0D5E8F2A6E24} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{15E47F55-12E8-4580-892E-74477AAD331C} = {F3691C56-B5AA-483D-9EC9-0D5E8F2A6E24}
+		{E10DF79B-867B-4F83-94A6-728DE69E0524} = {2B79D3F0-8FBE-4F69-996D-51933E5756FD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {35C6ADE0-7E70-48ED-A810-A71B2BC94F57}
