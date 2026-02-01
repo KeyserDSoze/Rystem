@@ -56,17 +56,17 @@ rystem-ts generate --dest <destination> --models <model-definitions> [options]
 
 ### Model Definition Format
 
-The `--models` option accepts a JSON-like array of repository definitions:
+The `--models` option accepts repository definitions in the following format:
 
 ```
-[{ModelName,KeyName,RepositoryType,FactoryName},{...}]
+"{Model,Key,Type,Factory},{Model2,Key2,Type2,Factory2}"
 ```
 
 **Fields:**
 - **ModelName**: Name of the C# entity class. Can be simple (`Calendar`) or fully qualified (`Fantacalcio.Domain.Calendar`)
 - **KeyName**: Name of the key type. Can be simple (`LeagueKey`) or fully qualified (`Fantacalcio.Domain.LeagueKey`)
 - **RepositoryType**: One of `Repository`, `Query`, or `Command`
-- **FactoryName**: Name for the generated service factory
+- **FactoryName**: Name for the generated service factory (optional, defaults to ModelName)
 
 > **Note:** If multiple types with the same name exist in different namespaces, you must use the fully qualified name (with namespace) to avoid ambiguity.
 
@@ -77,7 +77,7 @@ The `--models` option accepts a JSON-like array of repository definitions:
 ```bash
 rystem-ts generate \
   --dest ./src/api \
-  --models "[{User,Guid,Repository,users}]"
+  --models "{User,Guid,Repository,users}"
 ```
 
 #### Multiple Repositories
@@ -85,7 +85,7 @@ rystem-ts generate \
 ```bash
 rystem-ts generate \
   --dest ./src/api \
-  --models "[{Calendar,LeagueKey,Repository,serieA},{Team,Guid,Query,teams},{Match,int,Command,matches}]"
+  --models "{Calendar,LeagueKey,Repository,serieA},{Team,Guid,Query,teams},{Match,int,Command,matches}"
 ```
 
 #### With Fully Qualified Names (Namespaces)
@@ -95,7 +95,7 @@ Use fully qualified names when you have types with the same name in different na
 ```bash
 rystem-ts generate \
   --dest ./src/api \
-  --models "[{Fantacalcio.Domain.Calendar,Fantacalcio.Domain.LeagueKey,Repository,serieA}]"
+  --models "{Fantacalcio.Domain.Calendar,Fantacalcio.Domain.LeagueKey,Repository,serieA}"
 ```
 
 #### With Specific Project
@@ -103,7 +103,7 @@ rystem-ts generate \
 ```bash
 rystem-ts generate \
   --dest ./src/api \
-  --models "[{Product,int,Repository,products}]" \
+  --models "{Product,int,Repository,products}" \
   --project ./src/MyApp.Core/MyApp.Core.csproj
 ```
 
@@ -112,7 +112,7 @@ rystem-ts generate \
 ```bash
 rystem-ts generate \
   --dest ./src/api \
-  --models "[{Order,Guid,Repository,orders}]" \
+  --models "{Order,Guid,Repository,orders}" \
   --overwrite false
 ```
 
@@ -349,7 +349,7 @@ Make sure the `--project` path is correct, or run the command from a directory c
 Specify which project to use with `--project`:
 
 ```bash
-rystem-ts generate --dest ./src/api --models "[{User,Guid,Repository,users}]" --project ./src/MyApp.Core.csproj
+rystem-ts generate --dest ./src/api --models "{User,Guid,Repository,users}" --project ./src/MyApp.Core.csproj
 ```
 
 ### "Model not found in assembly"
@@ -373,10 +373,10 @@ Multiple types found with name 'Calendar'. Please use the fully qualified name:
 
 ```bash
 # Instead of:
---models "[{Calendar,LeagueKey,Repository,serieA}]"
+--models "{Calendar,LeagueKey,Repository,serieA}"
 
 # Use:
---models "[{Fantacalcio.Domain.Calendar,Fantacalcio.Domain.LeagueKey,Repository,serieA}]"
+--models "{Fantacalcio.Domain.Calendar,Fantacalcio.Domain.LeagueKey,Repository,serieA}"
 ```
 
 ## Contributing

@@ -129,10 +129,60 @@ public class ModelDescriptorParserTest
     }
 
     [Fact]
-    public void Parse_MissingBrackets_ThrowsArgumentException()
+    public void Parse_NewFormatSingleRepository_ReturnsCorrectDescriptor()
     {
-        Assert.Throws<ArgumentException>(() => ModelDescriptorParser.Parse("{Model,Key,Repository}"));
-        Assert.Throws<ArgumentException>(() => ModelDescriptorParser.Parse("[Model,Key,Repository]"));
+        // Arrange - New format without square brackets
+        var input = "{Calendar,LeagueKey,Repository,Calendar}";
+
+        // Act
+        var result = ModelDescriptorParser.Parse(input);
+
+        // Assert
+        Assert.Single(result);
+        var descriptor = result[0];
+        Assert.Equal("Calendar", descriptor.ModelName);
+        Assert.Equal("LeagueKey", descriptor.KeyName);
+        Assert.Equal(RepositoryKind.Repository, descriptor.Kind);
+        Assert.Equal("Calendar", descriptor.FactoryName);
+    }
+
+    [Fact]
+    public void Parse_NewFormatMultipleRepositories_ReturnsAllDescriptors()
+    {
+        // Arrange - New format: "{...},{...}"
+        var input = "{Rank,RankKey,Repository,rank},{Team,Guid,Query,teams}";
+
+        // Act
+        var result = ModelDescriptorParser.Parse(input);
+
+        // Assert
+        Assert.Equal(2, result.Count);
+        Assert.Equal("Rank", result[0].ModelName);
+        Assert.Equal("rank", result[0].FactoryName);
+        Assert.Equal("Team", result[1].ModelName);
+        Assert.Equal("teams", result[1].FactoryName);
+    }
+
+    [Fact]
+    public void Parse_LegacyFormatStillWorks()
+    {
+        // Arrange - Legacy format with square brackets
+        var input = "[{Calendar,LeagueKey,Repository,Calendar}]";
+
+        // Act
+        var result = ModelDescriptorParser.Parse(input);
+
+        // Assert
+        Assert.Single(result);
+        Assert.Equal("Calendar", result[0].ModelName);
+    }
+
+    [Fact]
+    public void Parse_InvalidFormat_ThrowsArgumentException()
+    {
+        // These should fail - not starting with { or [
+        Assert.Throws<ArgumentException>(() => ModelDescriptorParser.Parse("Model,Key,Repository"));
+        Assert.Throws<ArgumentException>(() => ModelDescriptorParser.Parse("(Model,Key,Repository)"));
     }
 
     [Fact]

@@ -4,12 +4,16 @@ namespace RepositoryFramework.Tools.TypescriptGenerator.Cli;
 
 /// <summary>
 /// Parses the CLI models argument in the format:
-/// [{Model,Key,Type,Factory},{Model2,Key2,Type2,Factory2}]
+/// "{Model,Key,Type,Factory},{Model2,Key2,Type2,Factory2}"
+/// Also supports legacy format: [{Model,Key,Type,Factory}]
 /// </summary>
 public static class ModelDescriptorParser
 {
     /// <summary>
     /// Parses the models argument string into a list of RepositoryDescriptor.
+    /// Supports two formats:
+    /// - New format: "{Model,Key,Type,Factory},{Model2,Key2,Type2,Factory2}"
+    /// - Legacy format: [{Model,Key,Type,Factory},{Model2,Key2,Type2,Factory2}]
     /// </summary>
     /// <param name="input">The raw input string from CLI</param>
     /// <returns>List of parsed RepositoryDescriptor</returns>
@@ -21,14 +25,24 @@ public static class ModelDescriptorParser
 
         var trimmed = input.Trim();
 
-        // Validate wrapper brackets
-        if (!trimmed.StartsWith('[') || !trimmed.EndsWith(']'))
+        // Determine format and get content
+        string content;
+        if (trimmed.StartsWith('[') && trimmed.EndsWith(']'))
+        {
+            // Legacy format: [{...},{...}]
+            content = trimmed[1..^1].Trim();
+        }
+        else if (trimmed.StartsWith('{'))
+        {
+            // New format: {...},{...} (already without brackets)
+            content = trimmed;
+        }
+        else
+        {
             throw new ArgumentException(
-                "Models must be wrapped in square brackets: [{Model,Key,Type,Factory}]",
+                "Models must start with '{' - Format: \"{Model,Key,Type,Factory},{...}\"",
                 nameof(input));
-
-        // Remove outer brackets
-        var content = trimmed[1..^1].Trim();
+        }
 
         if (string.IsNullOrWhiteSpace(content))
             throw new ArgumentException("Models list cannot be empty.", nameof(input));

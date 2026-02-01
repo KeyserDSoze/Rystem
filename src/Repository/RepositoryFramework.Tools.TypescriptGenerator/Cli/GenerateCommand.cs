@@ -24,7 +24,7 @@ public static class GenerateCommand
 
         var modelsOption = new Option<string>(
             aliases: ["--models", "-m"],
-            description: "Repository definitions in format: [{Model,Key,Type,Factory},{...}]")
+            description: "Repository definitions in format: \"{Model,Key,Type,Factory},{...}\"")
         {
             IsRequired = true
         };
@@ -270,12 +270,12 @@ public static class GenerateCommand
         Console.ForegroundColor = ConsoleColor.Yellow;
         Console.WriteLine("  rystem-ts generate \\");
         Console.WriteLine("    --dest ./src/api \\");
-        Console.WriteLine("    --models [{Calendar,LeagueKey,Repository,Calendar},{Team,string,Query,Team}]");
+        Console.WriteLine("    --models \"{Calendar,LeagueKey,Repository,Calendar},{Team,string,Query,Team}\"");
         Console.ResetColor();
         Console.WriteLine();
-        Console.WriteLine("Format: [{Model,Key,Type,Factory},{...}]");
+        Console.WriteLine("Format: \"{Model,Key,Type,Factory},{...}\"");
         Console.WriteLine();
-        Console.WriteLine("  Model   - C# model class name");
+        Console.WriteLine("  Model   - C# model class name (or fully qualified: Namespace.Model)");
         Console.WriteLine("  Key     - C# key class name or primitive (string, Guid, int, etc.)");
         Console.WriteLine("  Type    - Repository, Query, or Command");
         Console.WriteLine("  Factory - (optional) TypeScript factory name, defaults to Model");
