@@ -59,34 +59,56 @@ rystem-ts generate --dest <destination> --models <model-definitions> [options]
 The `--models` option accepts repository definitions in the following format:
 
 ```
-"{Model,Key,Type,Factory},{Model2,Key2,Type2,Factory2}"
+"{Model,Key,Type,Factory,BackendFactory},{Model2,Key2,Type2,Factory2,}"
 ```
 
 **Fields:**
 - **ModelName**: Name of the C# entity class. Can be simple (`Calendar`) or fully qualified (`Fantacalcio.Domain.Calendar`)
 - **KeyName**: Name of the key type. Can be simple (`LeagueKey`) or fully qualified (`Fantacalcio.Domain.LeagueKey`)
 - **RepositoryType**: One of `Repository`, `Query`, or `Command`
-- **FactoryName**: Name for the generated service factory (optional, defaults to ModelName)
+- **FactoryName**: Client-side name used in `RepositoryLocator.{factoryName}` (optional, defaults to ModelName)
+- **BackendFactoryName**: Backend factory name used in API path (optional)
+
+**API Path Generation:**
+- If **BackendFactoryName is empty** (e.g., `{Rank,RankKey,Repository,rank,}`) → path = `Rank` (just ModelName)
+- If **BackendFactoryName is set** (e.g., `{Rank,RankKey,Repository,rank,rank}`) → path = `Rank/rank` (ModelName/BackendFactory)
 
 > **Note:** If multiple types with the same name exist in different namespaces, you must use the fully qualified name (with namespace) to avoid ambiguity.
 
 ### Examples
 
-#### Single Repository
+#### Single Repository (no backend factory - path will be just ModelName)
 
 ```bash
 rystem-ts generate \
   --dest ./src/api \
-  --models "{User,Guid,Repository,users}"
+  --models "{User,Guid,Repository,users,}"
 ```
 
-#### Multiple Repositories
+This generates `x.path = 'User'` and `x.name = 'users'`.
+
+#### With Backend Factory Name (path will be ModelName/BackendFactory)
 
 ```bash
 rystem-ts generate \
   --dest ./src/api \
-  --models "{Calendar,LeagueKey,Repository,serieA},{Team,Guid,Query,teams},{Match,int,Command,matches}"
+  --models "{User,Guid,Repository,users,users}"
 ```
+
+This generates `x.path = 'User/users'` and `x.name = 'users'`.
+
+#### Multiple Repositories with Mixed Backend Factories
+
+```bash
+rystem-ts generate \
+  --dest ./src/api \
+  --models "{Calendar,LeagueKey,Repository,serieA,serieA},{Team,Guid,Query,teams,},{Match,int,Command,matches,matches}"
+```
+
+This generates:
+- Calendar: `x.path = 'Calendar/serieA'`, `x.name = 'serieA'`
+- Team: `x.path = 'Team'`, `x.name = 'teams'`
+- Match: `x.path = 'Match/matches'`, `x.name = 'matches'`
 
 #### With Fully Qualified Names (Namespaces)
 
@@ -123,16 +145,18 @@ The tool generates the following structure:
 ```
 📁 <destination>/
 ├── 📁 types/
-│   ├── Calendar.ts           # Raw + Clean interfaces + Mapper
-│   ├── LeagueKey.ts
-│   ├── Team.ts
-│   └── DayOfWeek.ts          # Enums
-├── 📁 services/
-│   ├── common.ts             # Entity, State, BatchOperation, Page, QueryOptions
-│   └── serieA.service.ts     # Service class with API methods
+│   ├── calendar.ts           # Raw + Clean interfaces + Mappers
+│   ├── leaguekey.ts
+│   ├── team.ts
+│   └── dayofweek.ts          # Enums
+├── 📁 transformers/
+│   ├── CalendarTransformer.ts    # ITransformer<Calendar>
+│   ├── LeagueKeyTransformer.ts   # ITransformer<LeagueKey>
+│   └── index.ts
 ├── 📁 bootstrap/
-│   └── repositorySetup.ts    # RepositoryServices configuration with auth handlers
-└── index.ts                  # Services registry with lazy singleton pattern
+│   └── repositorySetup.ts    # RepositoryServices configuration with transformers
+└── 📁 services/
+    └── repositoryLocator.ts  # RepositoryLocator.{factoryName} -> IRepository
 ```
 
 ### Generated Types
@@ -220,108 +244,100 @@ export class SerieAService {
 }
 ```
 
-#### Services Registry (`index.ts`)
+#### Transformers (`transformers/*.ts`)
+
+Transformers implement `ITransformer<T>` from `rystem.repository.client` to convert between Raw and Clean types:
 
 ```typescript
-export interface ServiceConfig {
-  baseUrl: string;
-}
+import type { ITransformer } from 'rystem.repository.client';
+import type { Calendar, CalendarRaw } from '../types/calendar';
+import { mapRawCalendarToCalendar, mapCalendarToRawCalendar } from '../types/calendar';
 
-export class Services {
-  private static config: ServiceConfig | null = null;
-  private static _serieA: SerieAService | null = null;
-
-  static configure(config: ServiceConfig): void {
-    this.config = config;
-  }
-
-  static get serieA(): SerieAService {
-    this.ensureConfigured();
-    if (!this._serieA) {
-      this._serieA = new SerieAService(this.config!.baseUrl);
-    }
-    return this._serieA;
-  }
-}
-
-// Usage:
-Services.configure({ baseUrl: 'https://api.example.com' });
-const calendar = await Services.serieA.get({ leagueId: 'serie-a' });
+export const CalendarTransformer: ITransformer<Calendar> = {
+  fromPlain: (plain: CalendarRaw): Calendar => mapRawCalendarToCalendar(plain),
+  toPlain: (instance: Calendar): CalendarRaw => mapCalendarToRawCalendar(instance),
+};
 ```
 
 #### Bootstrap Setup (`bootstrap/repositorySetup.ts`)
 
-The bootstrap file integrates with the `rystem.repository.client` npm package for centralized repository configuration with authentication:
+The bootstrap file configures `RepositoryServices` with transformers for automatic JSON conversion:
 
 ```typescript
-import { RepositoryServices, RepositorySettings, RepositoryEndpoint } from 'rystem.repository.client';
-import { CalendarRaw } from '../types/Calendar';
-import { LeagueKeyRaw } from '../types/LeagueKey';
+import { RepositoryServices } from 'rystem.repository.client';
+import type { RepositoryEndpoint } from 'rystem.repository.client';
+import { CalendarTransformer } from '../transformers/CalendarTransformer';
+import { LeagueKeyTransformer } from '../transformers/LeagueKeyTransformer';
 
 export interface RepositoryConfig {
   baseUrl: string;
-  headersEnricher?: (
-    endpoint: RepositoryEndpoint,
-    uri: string,
-    method: string,
-    headers: HeadersInit,
-    body: any
-  ) => Promise<HeadersInit>;
-  errorHandler?: (
-    endpoint: RepositoryEndpoint,
-    uri: string,
-    method: string,
-    headers: HeadersInit,
-    body: any,
-    err: any
-  ) => Promise<boolean>;
+  headersEnricher?: (...) => Promise<HeadersInit>;
+  errorHandler?: (...) => Promise<boolean>;
 }
 
 export const setupRepositoryServices = (config: RepositoryConfig): void => {
   const services = RepositoryServices.Create(config.baseUrl);
 
-  // Calendar repository
-  services.addRepository<CalendarRaw, LeagueKeyRaw>(x => {
+  services.addRepository<Calendar, LeagueKey>(x => {
     x.name = 'calendar';
     x.path = 'calendar';
+    x.transformer = CalendarTransformer;       // Auto-converts model
+    x.keyTransformer = LeagueKeyTransformer;   // Auto-converts key
     x.complexKey = true;
-    if (config.headersEnricher) {
-      x.addHeadersEnricher(config.headersEnricher);
-    }
-    if (config.errorHandler) {
-      x.addErrorHandler(config.errorHandler);
-    }
+    if (config.headersEnricher) x.addHeadersEnricher(config.headersEnricher);
+    if (config.errorHandler) x.addErrorHandler(config.errorHandler);
   });
 };
 ```
 
-**Usage with Authentication:**
+#### Repository Locator (`repositoryLocator.ts`)
+
+Provides strongly-typed access to all configured repositories:
+
+```typescript
+import { RepositoryServices } from 'rystem.repository.client';
+import type { IRepository, IQuery, ICommand } from 'rystem.repository.client';
+import type { Calendar } from './types/calendar';
+import type { LeagueKey } from './types/leaguekey';
+
+export const RepositoryLocator = {
+  get calendar(): IRepository<Calendar, LeagueKey> {
+    return RepositoryServices.Repository<Calendar, LeagueKey>('calendar');
+  },
+  get teams(): IQuery<Team, string> {
+    return RepositoryServices.Query<Team, string>('teams');
+  },
+  get orders(): ICommand<Order, number> {
+    return RepositoryServices.Command<Order, number>('orders');
+  },
+} as const;
+```
+
+**Usage:**
 
 ```typescript
 import { setupRepositoryServices } from './bootstrap/repositorySetup';
-import { tokenService } from './services/tokenService';
+import { RepositoryLocator } from './repositoryLocator';
 
-// Setup with auth headers and error handling
+// 1. Setup once at app startup
 setupRepositoryServices({
   baseUrl: 'https://api.example.com/api/',
-
-  // Add Bearer token to all requests
-  headersEnricher: async (endpoint, uri, method, headers, body) => {
-    const token = await tokenService.getAccessToken();
-    return token 
-      ? { ...headers, Authorization: `Bearer ${token}` }
-      : headers;
-  },
-
-  // Handle 401 errors with token refresh
+  headersEnricher: async () => ({
+    Authorization: `Bearer ${getToken()}`
+  }),
   errorHandler: async (endpoint, uri, method, headers, body, err) => {
     if (err?.status === 401) {
-      const refreshed = await tokenService.refreshToken();
-      return refreshed; // Return true to retry request
+      await refreshToken();
+      return true; // Retry
     }
-    return false; // Don't retry
+    return false;
   }
 });
+
+// 2. Use anywhere in your app with full type safety
+const calendar = await RepositoryLocator.calendar.get({ leagueId: 'serie-a', season: 2024 });
+const allTeams = await RepositoryLocator.teams.query().toListAsync();
+await RepositoryLocator.orders.insert({ orderId: 123 }, { /* order data */ });
 ```
 
 ## Repository Types

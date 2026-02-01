@@ -4,16 +4,18 @@ namespace RepositoryFramework.Tools.TypescriptGenerator.Cli;
 
 /// <summary>
 /// Parses the CLI models argument in the format:
-/// "{Model,Key,Type,Factory},{Model2,Key2,Type2,Factory2}"
-/// Also supports legacy format: [{Model,Key,Type,Factory}]
+/// "{Model,Key,Type,Factory,BackendFactory},{Model2,Key2,Type2,Factory2,BackendFactory2}"
+/// Also supports legacy format: [{Model,Key,Type,Factory,BackendFactory}]
+/// BackendFactory is optional - if empty (e.g., ",}"), path will be just ModelName.
 /// </summary>
 public static class ModelDescriptorParser
 {
     /// <summary>
     /// Parses the models argument string into a list of RepositoryDescriptor.
     /// Supports two formats:
-    /// - New format: "{Model,Key,Type,Factory},{Model2,Key2,Type2,Factory2}"
-    /// - Legacy format: [{Model,Key,Type,Factory},{Model2,Key2,Type2,Factory2}]
+    /// - New format: "{Model,Key,Type,Factory,BackendFactory},{Model2,Key2,Type2,Factory2,}"
+    /// - Legacy format: [{Model,Key,Type,Factory,BackendFactory},{Model2,Key2,Type2,Factory2}]
+    /// BackendFactory can be empty to indicate no backend factory name.
     /// </summary>
     /// <param name="input">The raw input string from CLI</param>
     /// <returns>List of parsed RepositoryDescriptor</returns>
@@ -109,7 +111,7 @@ public static class ModelDescriptorParser
     }
 
     /// <summary>
-    /// Parses a single block like {Calendar,LeagueKey,Repository,serieA}
+    /// Parses a single block like {Calendar,LeagueKey,Repository,serieA,serieA} or {Calendar,LeagueKey,Repository,serieA,}
     /// </summary>
     private static RepositoryDescriptor ParseBlock(string block)
     {
@@ -119,20 +121,22 @@ public static class ModelDescriptorParser
         if (string.IsNullOrWhiteSpace(content))
             throw new ArgumentException($"Empty model descriptor: {block}");
 
+        // Split but keep empty entries to handle trailing comma like "rank,"
         var parts = content.Split(',', StringSplitOptions.TrimEntries);
 
         if (parts.Length < 3)
             throw new ArgumentException(
                 $"Model descriptor must have at least 3 parts (Model,Key,Type): {block}");
 
-        if (parts.Length > 4)
+        if (parts.Length > 5)
             throw new ArgumentException(
-                $"Model descriptor must have at most 4 parts (Model,Key,Type,Factory): {block}");
+                $"Model descriptor must have at most 5 parts (Model,Key,Type,Factory,BackendFactory): {block}");
 
         var modelName = parts[0];
         var keyName = parts[1];
         var kindString = parts[2];
-        var factoryName = parts.Length == 4 ? parts[3] : modelName;
+        var factoryName = parts.Length >= 4 && !string.IsNullOrWhiteSpace(parts[3]) ? parts[3] : modelName;
+        var backendFactoryName = parts.Length >= 5 ? parts[4] : null;
 
         // Validate model name
         if (string.IsNullOrWhiteSpace(modelName))
@@ -153,7 +157,8 @@ public static class ModelDescriptorParser
             ModelName = modelName,
             KeyName = keyName,
             Kind = kind,
-            FactoryName = factoryName
+            FactoryName = factoryName,
+            BackendFactoryName = string.IsNullOrWhiteSpace(backendFactoryName) ? null : backendFactoryName
         };
     }
 

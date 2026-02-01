@@ -2,6 +2,7 @@
 using RepositoryFramework.Tools.TypescriptGenerator.Analysis;
 using RepositoryFramework.Tools.TypescriptGenerator.Domain;
 using RepositoryFramework.Tools.TypescriptGenerator.Generation.Services;
+using RepositoryFramework.Tools.TypescriptGenerator.Generation.Transformers;
 using RepositoryFramework.Tools.TypescriptGenerator.Generation.TypeScript;
 using RepositoryFramework.Tools.TypescriptGenerator.Utils;
 
@@ -61,7 +62,7 @@ public class TypeScriptGenerator
     }
 
     /// <summary>
-    /// Generates all TypeScript files including services for the given repositories.
+    /// Generates all TypeScript files including transformers and bootstrap for the given repositories.
     /// </summary>
     public void GenerateWithServices(
         IEnumerable<ModelDescriptor> models,
@@ -71,57 +72,93 @@ public class TypeScriptGenerator
         // First generate types
         Generate(models, keys);
 
-        // Then generate services
-        GenerateServices(repositories, models.ToDictionary(m => m.Name), keys.ToDictionary(k => k.Name));
+        var modelsDict = models.ToDictionary(m => m.Name);
+        var keysDict = keys.ToDictionary(k => k.Name);
+        var repositoryList = repositories.ToList();
+
+        // Generate transformers
+        GenerateTransformers(repositoryList, modelsDict, keysDict);
+
+        // Generate bootstrap and locator
+        GenerateBootstrapAndLocator(repositoryList, modelsDict, keysDict);
     }
 
     /// <summary>
-    /// Generates service files for the given repositories.
+    /// Generates transformer files for all models and complex keys used by repositories.
     /// </summary>
-    private void GenerateServices(
+    private void GenerateTransformers(
         IEnumerable<RepositoryDescriptor> repositories,
         Dictionary<string, ModelDescriptor> models,
         Dictionary<string, ModelDescriptor> keys)
     {
-        var repositoryList = repositories.ToList();
-        var generatedServiceFiles = new List<string>();
-        var serviceFileGenerator = new ServiceFileGenerator(_context);
+        var generatedTransformers = new HashSet<string>();
+        var transformerFiles = new List<string>();
 
-        // Generate common types file
-        var commonContent = CommonTypesEmitter.Emit();
-        _fileWriter.WriteServiceFile(CommonTypesEmitter.GetFileName(), commonContent);
-
-        // Generate individual service files
-        foreach (var repo in repositoryList)
+        foreach (var repo in repositories)
         {
-            // Get simple name for lookup (handle fully qualified names)
             var modelSimpleName = GetSimpleName(repo.ModelName);
+            var keySimpleName = GetSimpleName(repo.KeyName);
 
-            if (!models.TryGetValue(modelSimpleName, out var model))
+            // Generate model transformer
+            if (models.TryGetValue(modelSimpleName, out var model) && !model.IsEnum)
             {
-                Logger.Warning($"Model '{repo.ModelName}' not found for repository '{repo.FactoryName}'");
-                continue;
+                if (!generatedTransformers.Contains(modelSimpleName))
+                {
+                    var content = TransformerEmitter.Emit(model);
+                    if (!string.IsNullOrEmpty(content))
+                    {
+                        var fileName = TransformerEmitter.GetFileName(model);
+                        _fileWriter.WriteTransformerFile(fileName, content);
+                        transformerFiles.Add(fileName);
+                        generatedTransformers.Add(modelSimpleName);
+                        Logger.Info($"Generated transformers/{fileName}");
+                    }
+                }
             }
 
-            // Get simple name for key lookup
-            var keySimpleName = GetSimpleName(repo.KeyName);
-            keys.TryGetValue(keySimpleName, out var key);
-
-            var serviceContent = serviceFileGenerator.Generate(repo, model, key);
-            var fileName = ServiceFileGenerator.GetFileName(repo);
-            _fileWriter.WriteServiceFile(fileName, serviceContent);
-            generatedServiceFiles.Add(fileName);
+            // Generate key transformer (if not primitive)
+            if (!repo.IsPrimitiveKey && keys.TryGetValue(keySimpleName, out var key) && !key.IsEnum)
+            {
+                if (!generatedTransformers.Contains(keySimpleName))
+                {
+                    var content = TransformerEmitter.Emit(key, isKey: true);
+                    if (!string.IsNullOrEmpty(content))
+                    {
+                        var fileName = TransformerEmitter.GetFileName(key);
+                        _fileWriter.WriteTransformerFile(fileName, content);
+                        transformerFiles.Add(fileName);
+                        generatedTransformers.Add(keySimpleName);
+                        Logger.Info($"Generated transformers/{fileName}");
+                    }
+                }
+            }
         }
 
-        // Generate service registry (index.ts)
-        var registryContent = ServiceRegistryEmitter.Emit(repositoryList);
-        _fileWriter.WriteServiceFile(ServiceRegistryEmitter.GetFileName(), registryContent);
-        Logger.Info("Generated services/index.ts");
+        // Generate index.ts for transformers folder
+        if (transformerFiles.Count > 0)
+        {
+            _fileWriter.WriteIndexFile("transformers", transformerFiles);
+            Logger.Info("Generated transformers/index.ts");
+        }
+    }
 
+    /// <summary>
+    /// Generates bootstrap setup and repository locator files.
+    /// </summary>
+    private void GenerateBootstrapAndLocator(
+        List<RepositoryDescriptor> repositories,
+        Dictionary<string, ModelDescriptor> models,
+        Dictionary<string, ModelDescriptor> keys)
+    {
         // Generate bootstrap file
-        var bootstrapContent = BootstrapEmitter.Emit(repositoryList, models, keys);
+        var bootstrapContent = BootstrapEmitter.Emit(repositories, models, keys);
         _fileWriter.WriteBootstrapFile("repositorySetup.ts", bootstrapContent);
         Logger.Info("Generated bootstrap/repositorySetup.ts");
+
+        // Generate repository locator file in services folder
+        var locatorContent = RepositoryLocatorEmitter.Emit(repositories, models, keys);
+        _fileWriter.WriteServiceFile(RepositoryLocatorEmitter.GetFileName(), locatorContent);
+        Logger.Info($"Generated {RepositoryLocatorEmitter.GetFolder()}/{RepositoryLocatorEmitter.GetFileName()}");
     }
 
     private static string GetSimpleName(string fullName)

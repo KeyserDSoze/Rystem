@@ -6,7 +6,7 @@ using Xunit;
 namespace RepositoryFramework.UnitTest.TypescriptGenerator;
 
 /// <summary>
-/// Tests for BootstrapEmitter - generates the repositorySetup.ts file.
+/// Tests for BootstrapEmitter - generates the repositorySetup.ts file with transformers.
 /// </summary>
 public class BootstrapEmitterTest
 {
@@ -25,11 +25,12 @@ public class BootstrapEmitterTest
         var result = BootstrapEmitter.Emit(repos, models, keys);
 
         // Assert
-        Assert.Contains("import { RepositoryServices, RepositorySettings, RepositoryEndpoint } from 'rystem.repository.client';", result);
+        Assert.Contains("import { RepositoryServices } from 'rystem.repository.client';", result);
+        Assert.Contains("import type { RepositoryEndpoint } from 'rystem.repository.client';", result);
     }
 
     [Fact]
-    public void Emit_ImportsRawTypes()
+    public void Emit_ImportsTransformers()
     {
         // Arrange
         var repos = new List<RepositoryDescriptor>
@@ -43,10 +44,29 @@ public class BootstrapEmitterTest
         var result = BootstrapEmitter.Emit(repos, models, keys);
 
         // Assert
-        Assert.Contains("CalendarRaw", result);
-        Assert.Contains("LeagueKeyRaw", result);
-        Assert.Contains("from '../types/Calendar'", result);
-        Assert.Contains("from '../types/LeagueKey'", result);
+        Assert.Contains("CalendarTransformer", result);
+        Assert.Contains("LeagueKeyTransformer", result);
+        Assert.Contains("from '../transformers/CalendarTransformer'", result);
+        Assert.Contains("from '../transformers/LeagueKeyTransformer'", result);
+    }
+
+    [Fact]
+    public void Emit_ImportsCleanTypesWithImportType()
+    {
+        // Arrange
+        var repos = new List<RepositoryDescriptor>
+        {
+            new() { ModelName = "Calendar", KeyName = "LeagueKey", Kind = RepositoryKind.Repository, FactoryName = "calendar" }
+        };
+        var models = new Dictionary<string, ModelDescriptor> { { "Calendar", TestDescriptorFactory.CreateModel("Calendar") } };
+        var keys = new Dictionary<string, ModelDescriptor> { { "LeagueKey", TestDescriptorFactory.CreateModel("LeagueKey") } };
+
+        // Act
+        var result = BootstrapEmitter.Emit(repos, models, keys);
+
+        // Assert
+        Assert.Contains("import type { Calendar } from '../types/calendar';", result);
+        Assert.Contains("import type { LeagueKey } from '../types/leaguekey';", result);
     }
 
     [Fact]
@@ -90,7 +110,7 @@ public class BootstrapEmitterTest
     }
 
     [Fact]
-    public void Emit_RegistersRepository()
+    public void Emit_RegistersRepositoryWithCleanTypesAndTransformers()
     {
         // Arrange
         var repos = new List<RepositoryDescriptor>
@@ -104,9 +124,69 @@ public class BootstrapEmitterTest
         var result = BootstrapEmitter.Emit(repos, models, keys);
 
         // Assert
-        Assert.Contains("services.addRepository<CalendarRaw, LeagueKeyRaw>", result);
+        Assert.Contains("services.addRepository<Calendar, LeagueKey>", result);
         Assert.Contains("x.name = 'calendar'", result);
-        Assert.Contains("x.path = 'calendar'", result);
+        // Without BackendFactoryName, path is just the ModelName
+        Assert.Contains("x.path = 'Calendar'", result);
+        Assert.Contains("x.transformer = CalendarTransformer;", result);
+        Assert.Contains("x.keyTransformer = LeagueKeyTransformer;", result);
+    }
+
+    [Fact]
+    public void Emit_WithBackendFactoryName_PathIsModelSlashBackendFactory()
+    {
+        // Arrange - BackendFactoryName is the same as FactoryName
+        var repos = new List<RepositoryDescriptor>
+        {
+            new() { ModelName = "Rank", KeyName = "RankKey", Kind = RepositoryKind.Repository, FactoryName = "rank", BackendFactoryName = "rank" }
+        };
+        var models = new Dictionary<string, ModelDescriptor> { { "Rank", TestDescriptorFactory.CreateModel("Rank") } };
+        var keys = new Dictionary<string, ModelDescriptor> { { "RankKey", TestDescriptorFactory.CreateModel("RankKey") } };
+
+        // Act
+        var result = BootstrapEmitter.Emit(repos, models, keys);
+
+        // Assert
+        Assert.Contains("x.name = 'rank'", result);
+        Assert.Contains("x.path = 'Rank/rank'", result);
+    }
+
+    [Fact]
+    public void Emit_WithDifferentBackendFactoryName_PathUsesDifferentName()
+    {
+        // Arrange - BackendFactoryName is different from FactoryName
+        var repos = new List<RepositoryDescriptor>
+        {
+            new() { ModelName = "Rank", KeyName = "RankKey", Kind = RepositoryKind.Repository, FactoryName = "rank", BackendFactoryName = "rankApi" }
+        };
+        var models = new Dictionary<string, ModelDescriptor> { { "Rank", TestDescriptorFactory.CreateModel("Rank") } };
+        var keys = new Dictionary<string, ModelDescriptor> { { "RankKey", TestDescriptorFactory.CreateModel("RankKey") } };
+
+        // Act
+        var result = BootstrapEmitter.Emit(repos, models, keys);
+
+        // Assert
+        Assert.Contains("x.name = 'rank'", result);
+        Assert.Contains("x.path = 'Rank/rankApi'", result);
+    }
+
+    [Fact]
+    public void Emit_WithoutBackendFactoryName_PathIsJustModelName()
+    {
+        // Arrange - No BackendFactoryName (null)
+        var repos = new List<RepositoryDescriptor>
+        {
+            new() { ModelName = "Rank", KeyName = "RankKey", Kind = RepositoryKind.Repository, FactoryName = "rank", BackendFactoryName = null }
+        };
+        var models = new Dictionary<string, ModelDescriptor> { { "Rank", TestDescriptorFactory.CreateModel("Rank") } };
+        var keys = new Dictionary<string, ModelDescriptor> { { "RankKey", TestDescriptorFactory.CreateModel("RankKey") } };
+
+        // Act
+        var result = BootstrapEmitter.Emit(repos, models, keys);
+
+        // Assert
+        Assert.Contains("x.name = 'rank'", result);
+        Assert.Contains("x.path = 'Rank'", result);
     }
 
     [Fact]
@@ -124,8 +204,9 @@ public class BootstrapEmitterTest
         var result = BootstrapEmitter.Emit(repos, models, keys);
 
         // Assert
-        Assert.Contains("services.addQuery<TeamRaw, string>", result);
+        Assert.Contains("services.addQuery<Team, string>", result);
         Assert.Contains("x.name = 'teams'", result);
+        Assert.Contains("x.transformer = TeamTransformer;", result);
     }
 
     [Fact]
@@ -143,7 +224,8 @@ public class BootstrapEmitterTest
         var result = BootstrapEmitter.Emit(repos, models, keys);
 
         // Assert
-        Assert.Contains("services.addCommand<OrderRaw, number>", result);
+        Assert.Contains("services.addCommand<Order, number>", result);
+        Assert.Contains("x.transformer = OrderTransformer;", result);
     }
 
     [Fact]
@@ -180,6 +262,7 @@ public class BootstrapEmitterTest
 
         // Assert
         Assert.DoesNotContain("x.complexKey = true;", result);
+        Assert.DoesNotContain("x.keyTransformer", result);
     }
 
     [Fact]
@@ -240,9 +323,12 @@ public class BootstrapEmitterTest
         var result = BootstrapEmitter.Emit(repos, models, keys);
 
         // Assert
-        Assert.Contains("addRepository<CalendarRaw, LeagueKeyRaw>", result);
-        Assert.Contains("addQuery<TeamRaw, string>", result);
-        Assert.Contains("addCommand<MatchRaw, number>", result);
+        Assert.Contains("addRepository<Calendar, LeagueKey>", result);
+        Assert.Contains("addQuery<Team, string>", result);
+        Assert.Contains("addCommand<Match, number>", result);
+        Assert.Contains("CalendarTransformer", result);
+        Assert.Contains("TeamTransformer", result);
+        Assert.Contains("MatchTransformer", result);
     }
 
     [Fact]
@@ -260,9 +346,9 @@ public class BootstrapEmitterTest
         var result = BootstrapEmitter.Emit(repos, models, keys);
 
         // Assert
-        Assert.Contains("CalendarRaw", result);
-        Assert.Contains("LeagueKeyRaw", result);
-        Assert.Contains("from '../types/Calendar'", result);
+        Assert.Contains("CalendarTransformer", result);
+        Assert.Contains("LeagueKeyTransformer", result);
+        Assert.Contains("from '../transformers/CalendarTransformer'", result);
     }
 
     [Fact]

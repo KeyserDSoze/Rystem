@@ -123,7 +123,8 @@ public static class ImportResolver
     }
 
     /// <summary>
-    /// Generates the import statements string.
+    /// Generates the import statements string with proper verbatimModuleSyntax support.
+    /// Types use "import type", functions use "import".
     /// </summary>
     private static string GenerateImportStatements(
         Dictionary<string, HashSet<string>> imports,
@@ -139,11 +140,23 @@ public static class ImportResolver
             if (types.Count == 0)
                 continue;
 
-            var sortedTypes = types.OrderBy(t => t).ToList();
-            var typesString = string.Join(", ", sortedTypes);
+            // Separate types from functions (mappers)
+            var typeImports = types.Where(t => !t.StartsWith("map")).OrderBy(t => t).ToList();
+            var functionImports = types.Where(t => t.StartsWith("map")).OrderBy(t => t).ToList();
 
-            // Use relative import path
-            sb.AppendLine($"import {{ {typesString} }} from './{file}';");
+            // Emit type imports with "import type"
+            if (typeImports.Count > 0)
+            {
+                var typesString = string.Join(", ", typeImports);
+                sb.AppendLine($"import type {{ {typesString} }} from './{file}';");
+            }
+
+            // Emit function imports with "import"
+            if (functionImports.Count > 0)
+            {
+                var functionsString = string.Join(", ", functionImports);
+                sb.AppendLine($"import {{ {functionsString} }} from './{file}';");
+            }
         }
 
         if (sb.Length > 0)

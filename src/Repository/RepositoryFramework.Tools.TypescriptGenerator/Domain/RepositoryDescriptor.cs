@@ -28,6 +28,13 @@ public sealed record RepositoryDescriptor
     public required string FactoryName { get; init; }
 
     /// <summary>
+    /// The backend factory name used in the API path.
+    /// If null or empty, the path will be just the ModelName (e.g., "Rank").
+    /// If specified, the path will be "ModelName/BackendFactoryName" (e.g., "Rank/rank").
+    /// </summary>
+    public string? BackendFactoryName { get; init; }
+
+    /// <summary>
     /// Returns true if the key is a primitive type (string, int, Guid, etc.)
     /// rather than a custom class.
     /// </summary>
@@ -51,6 +58,25 @@ public sealed record RepositoryDescriptor
         "timespan"
     ];
 
+    /// <summary>
+    /// Gets the path used for API calls.
+    /// If BackendFactoryName is empty, returns just ModelName (e.g., "Rank").
+    /// If BackendFactoryName is set, returns "ModelName/BackendFactoryName" (e.g., "Rank/rank").
+    /// </summary>
+    public string ApiPath
+    {
+        get
+        {
+            var modelSimpleName = ModelName.Contains('.') 
+                ? ModelName[(ModelName.LastIndexOf('.') + 1)..] 
+                : ModelName;
+
+            return string.IsNullOrWhiteSpace(BackendFactoryName) 
+                ? modelSimpleName 
+                : $"{modelSimpleName}/{BackendFactoryName}";
+        }
+    }
+
     public override string ToString()
-        => $"{{{ModelName},{KeyName},{Kind},{FactoryName}}}";
+        => $"{{{ModelName},{KeyName},{Kind},{FactoryName},{BackendFactoryName ?? string.Empty}}}";
 }

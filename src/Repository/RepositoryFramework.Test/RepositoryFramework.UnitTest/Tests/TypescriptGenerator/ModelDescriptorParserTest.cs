@@ -206,7 +206,94 @@ public class ModelDescriptorParserTest
     public void Parse_TooManyParts_ThrowsArgumentException()
     {
         Assert.Throws<ArgumentException>(() =>
-            ModelDescriptorParser.Parse("[{Model,Key,Repository,Factory,Extra}]"));
+            ModelDescriptorParser.Parse("[{Model,Key,Repository,Factory,Backend,Extra}]"));
+    }
+
+    [Fact]
+    public void Parse_WithBackendFactoryName_ParsesCorrectly()
+    {
+        // Arrange - Full 5-part format
+        var input = "{Rank,RankKey,Repository,rank,rank}";
+
+        // Act
+        var result = ModelDescriptorParser.Parse(input);
+
+        // Assert
+        Assert.Single(result);
+        Assert.Equal("Rank", result[0].ModelName);
+        Assert.Equal("rank", result[0].FactoryName);
+        Assert.Equal("rank", result[0].BackendFactoryName);
+        Assert.Equal("Rank/rank", result[0].ApiPath);
+    }
+
+    [Fact]
+    public void Parse_WithEmptyBackendFactoryName_ApiPathIsModelNameOnly()
+    {
+        // Arrange - Empty backend factory name (trailing comma)
+        var input = "{Rank,RankKey,Repository,rank,}";
+
+        // Act
+        var result = ModelDescriptorParser.Parse(input);
+
+        // Assert
+        Assert.Single(result);
+        Assert.Equal("rank", result[0].FactoryName);
+        Assert.Null(result[0].BackendFactoryName);
+        Assert.Equal("Rank", result[0].ApiPath);
+    }
+
+    [Fact]
+    public void Parse_WithDifferentBackendFactoryName_ApiPathUsesIt()
+    {
+        // Arrange - Different backend factory name
+        var input = "{Rank,RankKey,Repository,rank,rank2}";
+
+        // Act
+        var result = ModelDescriptorParser.Parse(input);
+
+        // Assert
+        Assert.Single(result);
+        Assert.Equal("rank", result[0].FactoryName);
+        Assert.Equal("rank2", result[0].BackendFactoryName);
+        Assert.Equal("Rank/rank2", result[0].ApiPath);
+    }
+
+    [Fact]
+    public void Parse_WithoutBackendFactoryName_FourParts_BackendFactoryNameIsNull()
+    {
+        // Arrange - Original 4-part format
+        var input = "{Rank,RankKey,Repository,rank}";
+
+        // Act
+        var result = ModelDescriptorParser.Parse(input);
+
+        // Assert
+        Assert.Single(result);
+        Assert.Equal("rank", result[0].FactoryName);
+        Assert.Null(result[0].BackendFactoryName);
+        // With no backend factory, ApiPath is just the model name
+        Assert.Equal("Rank", result[0].ApiPath);
+    }
+
+    [Fact]
+    public void Parse_MultipleWithMixedBackendFactoryNames()
+    {
+        // Arrange - Mix of with and without backend factory names
+        var input = "{Rank,RankKey,Repository,rank,rank},{Team,Guid,Query,teams,}";
+
+        // Act
+        var result = ModelDescriptorParser.Parse(input);
+
+        // Assert
+        Assert.Equal(2, result.Count);
+
+        // First has backend factory
+        Assert.Equal("rank", result[0].BackendFactoryName);
+        Assert.Equal("Rank/rank", result[0].ApiPath);
+
+        // Second has no backend factory
+        Assert.Null(result[1].BackendFactoryName);
+        Assert.Equal("Team", result[1].ApiPath);
     }
 
     [Fact]

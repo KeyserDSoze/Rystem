@@ -29,14 +29,14 @@ public class FileWriter
     }
 
     /// <summary>
-    /// Writes a TypeScript file to the services folder.
+    /// Writes a TypeScript file to the transformers folder.
     /// </summary>
-    public void WriteServiceFile(string fileName, string content)
+    public void WriteTransformerFile(string fileName, string content)
     {
-        var servicesDir = Path.Combine(_basePath, "services");
-        Directory.CreateDirectory(servicesDir);
+        var transformersDir = Path.Combine(_basePath, "transformers");
+        Directory.CreateDirectory(transformersDir);
 
-        var filePath = Path.Combine(servicesDir, fileName);
+        var filePath = Path.Combine(transformersDir, fileName);
         WriteFile(filePath, content);
     }
 
@@ -49,6 +49,28 @@ public class FileWriter
         Directory.CreateDirectory(bootstrapDir);
 
         var filePath = Path.Combine(bootstrapDir, fileName);
+        WriteFile(filePath, content);
+    }
+
+    /// <summary>
+    /// Writes a TypeScript file to the services folder.
+    /// </summary>
+    public void WriteServiceFile(string fileName, string content)
+    {
+        var servicesDir = Path.Combine(_basePath, "services");
+        Directory.CreateDirectory(servicesDir);
+
+        var filePath = Path.Combine(servicesDir, fileName);
+        WriteFile(filePath, content);
+    }
+
+    /// <summary>
+    /// Writes a TypeScript file to the root destination folder.
+    /// </summary>
+    public void WriteRootFile(string fileName, string content)
+    {
+        Directory.CreateDirectory(_basePath);
+        var filePath = Path.Combine(_basePath, fileName);
         WriteFile(filePath, content);
     }
 
@@ -110,8 +132,9 @@ public class FileWriter
     public void EnsureDirectories()
     {
         var typesDir = Path.Combine(_basePath, "types");
-        var servicesDir = Path.Combine(_basePath, "services");
+        var transformersDir = Path.Combine(_basePath, "transformers");
         var bootstrapDir = Path.Combine(_basePath, "bootstrap");
+        var servicesDir = Path.Combine(_basePath, "services");
 
         if (!Directory.Exists(typesDir))
         {
@@ -119,16 +142,22 @@ public class FileWriter
             Logger.DirectoryCreated(typesDir);
         }
 
-        if (!Directory.Exists(servicesDir))
+        if (!Directory.Exists(transformersDir))
         {
-            Directory.CreateDirectory(servicesDir);
-            Logger.DirectoryCreated(servicesDir);
+            Directory.CreateDirectory(transformersDir);
+            Logger.DirectoryCreated(transformersDir);
         }
 
         if (!Directory.Exists(bootstrapDir))
         {
             Directory.CreateDirectory(bootstrapDir);
             Logger.DirectoryCreated(bootstrapDir);
+        }
+
+        if (!Directory.Exists(servicesDir))
+        {
+            Directory.CreateDirectory(servicesDir);
+            Logger.DirectoryCreated(servicesDir);
         }
     }
 }
