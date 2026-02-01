@@ -63,10 +63,12 @@ The `--models` option accepts a JSON-like array of repository definitions:
 ```
 
 **Fields:**
-- **ModelName**: Name of the C# entity class (e.g., `Calendar`, `User`)
-- **KeyName**: Name of the key type (e.g., `Guid`, `int`, `LeagueKey`)
+- **ModelName**: Name of the C# entity class. Can be simple (`Calendar`) or fully qualified (`Fantacalcio.Domain.Calendar`)
+- **KeyName**: Name of the key type. Can be simple (`LeagueKey`) or fully qualified (`Fantacalcio.Domain.LeagueKey`)
 - **RepositoryType**: One of `Repository`, `Query`, or `Command`
 - **FactoryName**: Name for the generated service factory
+
+> **Note:** If multiple types with the same name exist in different namespaces, you must use the fully qualified name (with namespace) to avoid ambiguity.
 
 ### Examples
 
@@ -84,6 +86,16 @@ rystem-ts generate \
 rystem-ts generate \
   --dest ./src/api \
   --models "[{Calendar,LeagueKey,Repository,serieA},{Team,Guid,Query,teams},{Match,int,Command,matches}]"
+```
+
+#### With Fully Qualified Names (Namespaces)
+
+Use fully qualified names when you have types with the same name in different namespaces:
+
+```bash
+rystem-ts generate \
+  --dest ./src/api \
+  --models "[{Fantacalcio.Domain.Calendar,Fantacalcio.Domain.LeagueKey,Repository,serieA}]"
 ```
 
 #### With Specific Project
@@ -346,6 +358,26 @@ Ensure:
 1. The model class is `public`
 2. The project has been built (`dotnet build`)
 3. The model name matches exactly (case-sensitive)
+
+### "Multiple types found with name 'X'"
+
+This error occurs when you have multiple classes with the same name in different namespaces:
+
+```
+Multiple types found with name 'Calendar'. Please use the fully qualified name:
+  - Fantacalcio.Domain.Calendar
+  - OtherProject.Models.Calendar
+```
+
+**Solution:** Use the fully qualified name (with namespace) in your `--models` argument:
+
+```bash
+# Instead of:
+--models "[{Calendar,LeagueKey,Repository,serieA}]"
+
+# Use:
+--models "[{Fantacalcio.Domain.Calendar,Fantacalcio.Domain.LeagueKey,Repository,serieA}]"
+```
 
 ## Contributing
 

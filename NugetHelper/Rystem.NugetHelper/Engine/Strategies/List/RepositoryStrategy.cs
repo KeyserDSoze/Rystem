@@ -7,7 +7,7 @@
         public Package GetStrategy()
         {
             var onlyRepositoryTree = new Package()
-            .AddProject("Rystem.RepositoryFramework.Abstractions");
+            .AddProject("Rystem.RepositoryFramework.Abstractions", "RepositoryFramework.Tools.TypescriptGenerator");
             onlyRepositoryTree
             .CreateSon()
             .AddProject(

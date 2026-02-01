@@ -70,22 +70,53 @@ public class AssemblyLoader
 
     /// <summary>
     /// Finds a type by name in the loaded assemblies.
+    /// Supports both simple names (e.g., "Calendar") and fully qualified names (e.g., "Fantacalcio.Domain.Calendar").
+    /// If using a simple name and multiple types with the same name exist, throws an exception.
     /// </summary>
     public Type? FindType(string typeName)
     {
+        // Check if it's a fully qualified name (contains a dot that's not at the start)
+        var isFullyQualified = typeName.Contains('.') && !typeName.StartsWith('.');
+
         foreach (var assembly in _loadedAssemblies)
         {
-            // Try exact match first
+            // Try exact match first (fully qualified name)
             var type = assembly.GetType(typeName);
             if (type != null)
                 return type;
+        }
 
-            // Try to find by simple name
-            type = assembly.GetTypes()
-                .FirstOrDefault(t => t.Name.Equals(typeName, StringComparison.OrdinalIgnoreCase));
+        // If not found by exact match and it's a simple name, search by simple name
+        if (!isFullyQualified)
+        {
+            var matchingTypes = new List<Type>();
 
-            if (type != null)
-                return type;
+            foreach (var assembly in _loadedAssemblies)
+            {
+                Type[] types;
+                try
+                {
+                    types = assembly.GetTypes();
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    types = ex.Types.Where(t => t != null).Cast<Type>().ToArray();
+                }
+
+                matchingTypes.AddRange(types.Where(t =>
+                    t.Name.Equals(typeName, StringComparison.OrdinalIgnoreCase)));
+            }
+
+            if (matchingTypes.Count == 0)
+                return null;
+
+            if (matchingTypes.Count == 1)
+                return matchingTypes[0];
+
+            // Multiple types found - throw exception with helpful message
+            var typeNames = string.Join("\n  - ", matchingTypes.Select(t => t.FullName));
+            throw new AmbiguousMatchException(
+                $"Multiple types found with name '{typeName}'. Please use the fully qualified name:\n  - {typeNames}");
         }
 
         return null;
