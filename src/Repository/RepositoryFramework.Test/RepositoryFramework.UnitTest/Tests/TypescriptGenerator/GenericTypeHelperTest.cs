@@ -234,4 +234,76 @@ public class GenericTypeHelperTest
         Assert.Equal("System.String", result.TypeArguments[0]);
         Assert.Equal("System.Int32", result.TypeArguments[1]);
     }
+
+    [Fact]
+    public void Parse_NestedGenericWithAssemblyQualifiedName_ParsesCorrectly()
+    {
+        // Arrange - This is the problematic case that caused stack overflow with regex
+        var typeName = "EntityVersions`1[[GhostWriter.Core.EntityVersion`1[[GhostWriter.Core.Book, GhostWriter.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]], GhostWriter.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]";
+
+        // Act
+        var result = GenericTypeHelper.Parse(typeName);
+
+        // Assert
+        Assert.True(result.IsGeneric);
+        Assert.Equal("EntityVersions", result.BaseTypeName);
+        Assert.Single(result.TypeArguments);
+
+        // Should extract only the type name, not the assembly info
+        var typeArg = result.TypeArguments[0];
+        Assert.StartsWith("GhostWriter.Core.EntityVersion`1", typeArg);
+        Assert.DoesNotContain("Version=", typeArg);
+        Assert.DoesNotContain("Culture=", typeArg);
+        Assert.DoesNotContain("PublicKeyToken=", typeArg);
+    }
+
+    [Fact]
+    public void Parse_DeeplyNestedGenerics_HandlesBracketDepthCorrectly()
+    {
+        // Arrange - Multiple levels of nesting
+        var typeName = "Outer`1[[Middle`1[[Inner`1[[System.String, mscorlib]], MyAssembly]], MyAssembly]]";
+
+        // Act
+        var result = GenericTypeHelper.Parse(typeName);
+
+        // Assert
+        Assert.True(result.IsGeneric);
+        Assert.Equal("Outer", result.BaseTypeName);
+        Assert.Single(result.TypeArguments);
+        Assert.StartsWith("Middle`1", result.TypeArguments[0]);
+    }
+
+    [Fact]
+    public void Parse_GenericWithCommasInAssemblyName_ExtractsTypeNameOnly()
+    {
+        // Arrange
+        var typeName = "List`1[[GhostWriter.Core.Book, GhostWriter.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]";
+
+        // Act
+        var result = GenericTypeHelper.Parse(typeName);
+
+        // Assert
+        Assert.True(result.IsGeneric);
+        Assert.Equal("List", result.BaseTypeName);
+        Assert.Single(result.TypeArguments);
+        Assert.Equal("GhostWriter.Core.Book", result.TypeArguments[0]);
+    }
+
+    [Fact]
+    public void Parse_MultipleNestedGenericsWithAssemblyInfo_ParsesAll()
+    {
+        // Arrange
+        var typeName = "Dictionary`2[[System.String, mscorlib, Version=4.0.0.0]][[List`1[[System.Int32, mscorlib]], mscorlib]]";
+
+        // Act
+        var result = GenericTypeHelper.Parse(typeName);
+
+        // Assert
+        Assert.True(result.IsGeneric);
+        Assert.Equal("Dictionary", result.BaseTypeName);
+        Assert.Equal(2, result.TypeArguments.Count);
+        Assert.Equal("System.String", result.TypeArguments[0]);
+        Assert.StartsWith("List`1", result.TypeArguments[1]);
+    }
 }
+

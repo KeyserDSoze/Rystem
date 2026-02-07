@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using System.Text.RegularExpressions;
 
 namespace RepositoryFramework.Tools.TypescriptGenerator.Utils;
 
@@ -74,6 +73,8 @@ public static partial class GenericTypeHelper
 
     /// <summary>
     /// Parses .NET reflection syntax: EntityVersions`1[[GhostWriter.Business.Timeline]]
+    /// Uses iterative bracket-counting parser to avoid regex catastrophic backtracking
+    /// with deeply nested generics and assembly-qualified names.
     /// </summary>
     private static GenericTypeInfo ParseReflection(string typeName)
     {
@@ -85,22 +86,8 @@ public static partial class GenericTypeHelper
 
         var baseType = typeName[..backtickIndex].Trim();
 
-        // Extract type arguments from [[...]]
-        var pattern = @"\[\[([^\]]+)\]\]";
-        var matches = Regex.Matches(typeName, pattern);
-
-        var typeArgs = new List<string>();
-        foreach (Match match in matches)
-        {
-            var fullName = match.Groups[1].Value.Trim();
-
-            // Extract just the type name without assembly info
-            // "GhostWriter.Business.Timeline, Assembly" -> "GhostWriter.Business.Timeline"
-            var commaIndex = fullName.IndexOf(',');
-            var typeName2 = commaIndex > 0 ? fullName[..commaIndex].Trim() : fullName;
-
-            typeArgs.Add(typeName2);
-        }
+        // Extract type arguments using iterative bracket counting (O(n) instead of exponential regex)
+        var typeArgs = ExtractTypeArgumentsIterative(typeName);
 
         return new GenericTypeInfo
         {
@@ -108,6 +95,84 @@ public static partial class GenericTypeHelper
             TypeArguments = typeArgs,
             IsGeneric = true
         };
+    }
+
+    /// <summary>
+    /// Extracts type arguments from reflection syntax using bracket counting.
+    /// Handles nested generics like: EntityVersions`1[[EntityVersion`1[[Book, Assembly]], Assembly]]
+    /// without catastrophic backtracking. Time complexity: O(n).
+    /// </summary>
+    private static List<string> ExtractTypeArgumentsIterative(string typeName)
+    {
+        var typeArgs = new List<string>();
+        var length = typeName.Length;
+        var i = 0;
+
+        // Find the start of type arguments (after `N part)
+        while (i < length && typeName[i] != '[')
+        {
+            i++;
+        }
+
+        // Process each type argument enclosed in [[...]]
+        while (i < length)
+        {
+            // Skip whitespace
+            while (i < length && char.IsWhiteSpace(typeName[i]))
+            {
+                i++;
+            }
+
+            // Look for opening [[
+            if (i >= length - 1 || typeName[i] != '[' || typeName[i + 1] != '[')
+            {
+                break;
+            }
+
+            i += 2; // Skip [[
+
+            // Find matching ]] using bracket counter
+            var depth = 1; // We're inside one level
+            var start = i;
+
+            while (i < length && depth > 0)
+            {
+                if (i < length - 1 && typeName[i] == '[' && typeName[i + 1] == '[')
+                {
+                    depth++;
+                    i += 2;
+                }
+                else if (i < length - 1 && typeName[i] == ']' && typeName[i + 1] == ']')
+                {
+                    depth--;
+                    if (depth == 0)
+                    {
+                        // Found matching ]]
+                        var fullName = typeName[start..i].Trim();
+
+                        // Extract just the type name without assembly info
+                        // "GhostWriter.Business.Timeline, Assembly, Version=..." -> "GhostWriter.Business.Timeline"
+                        var commaIndex = fullName.IndexOf(',');
+                        var cleanTypeName = commaIndex > 0 ? fullName[..commaIndex].Trim() : fullName;
+
+                        typeArgs.Add(cleanTypeName);
+                    }
+                    i += 2;
+                }
+                else
+                {
+                    i++;
+                }
+            }
+
+            // Skip comma separator between type arguments
+            while (i < length && (typeName[i] == ',' || char.IsWhiteSpace(typeName[i])))
+            {
+                i++;
+            }
+        }
+
+        return typeArgs;
     }
 
     /// <summary>
