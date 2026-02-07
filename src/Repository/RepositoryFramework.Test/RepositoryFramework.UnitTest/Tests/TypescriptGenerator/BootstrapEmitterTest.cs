@@ -370,4 +370,60 @@ public class BootstrapEmitterTest
         Assert.Contains("setupRepositoryServices({", result);
         Assert.Contains("baseUrl:", result);
     }
+
+    [Fact]
+    public void Emit_GenericModelWithNamespacedArgs_ExtractsSimpleNames()
+    {
+        // Arrange - simulates the bug where GetSimpleName returned "Paragraph>" instead of "EntityVersions<Paragraph>"
+        var repos = new List<RepositoryDescriptor>
+        {
+            new() { ModelName = "Namespace.EntityVersions<Namespace.Paragraph>", KeyName = "string", Kind = RepositoryKind.Repository, FactoryName = "versionedparagraphs" }
+        };
+        var openGenericModel = new ModelDescriptor
+        {
+            Name = "EntityVersions",
+            FullName = "Test.EntityVersions",
+            Namespace = "Test",
+            Properties = [],
+            IsEnum = false,
+            GenericTypeParameters = ["T"]
+        };
+        var models = new Dictionary<string, ModelDescriptor> { { "EntityVersions", openGenericModel } };
+        var keys = new Dictionary<string, ModelDescriptor>();
+
+        // Act
+        var result = BootstrapEmitter.Emit(repos, models, keys);
+
+        // Assert - should use full generic name, not just "Paragraph>"
+        Assert.Contains("// EntityVersions<Paragraph> (Repository)", result);
+        Assert.Contains("services.addRepository<EntityVersions<Paragraph>, string>", result);
+        Assert.DoesNotContain("Paragraph>", result.Replace("EntityVersions<Paragraph>", ""));
+    }
+
+    [Fact]
+    public void Emit_GenericModel_PathUsesClrStyleFormat()
+    {
+        // Arrange - verifies the path matches the server CLR-style format
+        var repos = new List<RepositoryDescriptor>
+        {
+            new() { ModelName = "EntityVersions<Paragraph>", KeyName = "string", Kind = RepositoryKind.Repository, FactoryName = "versionedparagraphs" }
+        };
+        var openGenericModel = new ModelDescriptor
+        {
+            Name = "EntityVersions",
+            FullName = "Test.EntityVersions",
+            Namespace = "Test",
+            Properties = [],
+            IsEnum = false,
+            GenericTypeParameters = ["T"]
+        };
+        var models = new Dictionary<string, ModelDescriptor> { { "EntityVersions", openGenericModel } };
+        var keys = new Dictionary<string, ModelDescriptor>();
+
+        // Act
+        var result = BootstrapEmitter.Emit(repos, models, keys);
+
+        // Assert - path should use CLR backtick format matching the server
+        Assert.Contains("x.path = 'EntityVersions`1Paragraph'", result);
+    }
 }

@@ -1,4 +1,6 @@
-﻿namespace RepositoryFramework.Tools.TypescriptGenerator.Domain;
+﻿using RepositoryFramework.Tools.TypescriptGenerator.Utils;
+
+namespace RepositoryFramework.Tools.TypescriptGenerator.Domain;
 
 /// <summary>
 /// Describes a repository configuration to generate TypeScript code for.
@@ -60,20 +62,19 @@ public sealed record RepositoryDescriptor
 
     /// <summary>
     /// Gets the path used for API calls.
-    /// If BackendFactoryName is empty, returns just ModelName (e.g., "Rank").
-    /// If BackendFactoryName is set, returns "ModelName/BackendFactoryName" (e.g., "Rank/rank").
+    /// Matches the server path format: non-generic types use the simple name (e.g., "Rank"),
+    /// generic types use CLR-style naming (e.g., "EntityVersions`1Paragraph").
+    /// If BackendFactoryName is set, it's appended after a slash (e.g., "Rank/rank").
     /// </summary>
     public string ApiPath
     {
         get
         {
-            var modelSimpleName = ModelName.Contains('.') 
-                ? ModelName[(ModelName.LastIndexOf('.') + 1)..] 
-                : ModelName;
+            var modelPath = ModelName.ToClrStyleApiPath();
 
             return string.IsNullOrWhiteSpace(BackendFactoryName) 
-                ? modelSimpleName 
-                : $"{modelSimpleName}/{BackendFactoryName}";
+                ? modelPath 
+                : $"{modelPath}/{BackendFactoryName}";
         }
     }
 

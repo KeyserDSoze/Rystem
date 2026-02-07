@@ -13,8 +13,14 @@ public sealed record ModelDescriptor
     /// <summary>
     /// The TypeScript-friendly display name (e.g., "EntityVersions<Book>").
     /// For closed generics, includes the concrete type arguments.
+    /// Falls back to Name if not explicitly set.
     /// </summary>
-    public string TypeScriptName { get; init; } = string.Empty;
+    public string TypeScriptName
+    {
+        get => string.IsNullOrEmpty(_typeScriptName) ? Name : _typeScriptName;
+        init => _typeScriptName = value;
+    }
+    private readonly string _typeScriptName = string.Empty;
 
     /// <summary>
     /// The full C# type name including namespace.

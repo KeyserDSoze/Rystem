@@ -116,7 +116,11 @@ public class TypeScriptGenerator
             ModelDescriptor? model = null;
             if (models.TryGetValue(modelSimpleName, out model))
             {
-                // Found direct match (non-generic or open generic)
+                // If it's a closed generic, find the open generic instead
+                if (model.GenericBaseTypeName != null)
+                {
+                    model = FindOpenGenericForClosedGeneric(modelSimpleName, models.Values) ?? model;
+                }
             }
             else
             {
@@ -148,7 +152,11 @@ public class TypeScriptGenerator
                 ModelDescriptor? key = null;
                 if (keys.TryGetValue(keySimpleName, out key))
                 {
-                    // Found direct match
+                    // If it's a closed generic, find the open generic instead
+                    if (key.GenericBaseTypeName != null)
+                    {
+                        key = FindOpenGenericForClosedGeneric(keySimpleName, keys.Values) ?? key;
+                    }
                 }
                 else
                 {

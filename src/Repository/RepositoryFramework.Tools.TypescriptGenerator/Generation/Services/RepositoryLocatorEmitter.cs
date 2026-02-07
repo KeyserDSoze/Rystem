@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using RepositoryFramework.Tools.TypescriptGenerator.Domain;
+using RepositoryFramework.Tools.TypescriptGenerator.Utils;
 
 namespace RepositoryFramework.Tools.TypescriptGenerator.Generation.Services;
 
@@ -110,7 +111,10 @@ public static class RepositoryLocatorEmitter
             ModelDescriptor? model = null;
             if (models.TryGetValue(modelSimpleName, out model))
             {
-                // Found direct match
+                if (model.GenericBaseTypeName != null)
+                {
+                    model = TypeScriptGenerator.FindOpenGenericForClosedGeneric(modelSimpleName, models.Values) ?? model;
+                }
             }
             else
             {
@@ -138,7 +142,10 @@ public static class RepositoryLocatorEmitter
                 ModelDescriptor? key = null;
                 if (keys.TryGetValue(keySimpleName, out key))
                 {
-                    // Found direct match
+                    if (key.GenericBaseTypeName != null)
+                    {
+                        key = TypeScriptGenerator.FindOpenGenericForClosedGeneric(keySimpleName, keys.Values) ?? key;
+                    }
                 }
                 else
                 {
@@ -183,6 +190,10 @@ public static class RepositoryLocatorEmitter
         var modelSimpleName = GetSimpleName(repo.ModelName);
         var keySimpleName = GetSimpleName(repo.KeyName);
 
+        // Resolve model type: for closed generics (EntityVersions<Book>), keep as-is
+        // The TypeScript interface EntityVersions<T> covers all instantiations
+        var modelType = modelSimpleName;
+
         // Determine key type
         var keyType = repo.IsPrimitiveKey
             ? GetPrimitiveKeyType(repo.KeyName)
@@ -208,10 +219,10 @@ public static class RepositoryLocatorEmitter
 
         sb.AppendLine($"  /**");
         sb.AppendLine($"   * Gets the {repo.FactoryName} repository ({repo.Kind}).");
-        sb.AppendLine($"   * @returns {interfaceType}<{modelSimpleName}, {keyType}>");
+        sb.AppendLine($"   * @returns {interfaceType}<{modelType}, {keyType}>");
         sb.AppendLine($"   */");
-        sb.AppendLine($"  get {repo.FactoryName}(): {interfaceType}<{modelSimpleName}, {keyType}> {{");
-        sb.AppendLine($"    return RepositoryServices.{methodName}<{modelSimpleName}, {keyType}>('{repo.FactoryName}');");
+        sb.AppendLine($"  get {repo.FactoryName}(): {interfaceType}<{modelType}, {keyType}> {{");
+        sb.AppendLine($"    return RepositoryServices.{methodName}<{modelType}, {keyType}>('{repo.FactoryName}');");
         sb.AppendLine($"  }}{comma}");
         sb.AppendLine();
     }
@@ -230,10 +241,7 @@ public static class RepositoryLocatorEmitter
     }
 
     private static string GetSimpleName(string fullName)
-    {
-        var lastDot = fullName.LastIndexOf('.');
-        return lastDot >= 0 ? fullName[(lastDot + 1)..] : fullName;
-    }
+        => fullName.GetSimpleTypeName();
 
     /// <summary>
     /// Gets the file name for the repository locator.

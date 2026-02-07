@@ -30,7 +30,7 @@ public static class HelperEmitter
             ? $"<{string.Join(", ", model.GenericTypeParameters)}>" 
             : "";
         var typeName = $"{baseName}{genericParams}";
-        var helperName = $"{baseName}Helper{genericParams}";
+        var helperName = $"{baseName}Helper";
 
         sb.AppendLine($"export class {helperName} {{");
 
@@ -38,10 +38,10 @@ public static class HelperEmitter
         foreach (var property in model.Properties.Where(p => p.Type.IsArray))
         {
             var methodName = $"get{property.CSharpName.ToPascalCase()}";
-            var elementType = property.Type.ElementType?.CSharpName ?? "unknown";
+            var elementType = CleanTypeEmitter.GetTypeString(property.Type.ElementType!, context);
             var paramName = baseName.ToCamelCase();
 
-            sb.AppendLine($"  static {methodName}({paramName}: {typeName}): {elementType}[] {{");
+            sb.AppendLine($"  static {methodName}{genericParams}({paramName}: {typeName}): {elementType}[] {{");
             sb.AppendLine($"    return {paramName}.{property.TypeScriptName} ?? [];");
             sb.AppendLine("  }");
             sb.AppendLine();
@@ -55,13 +55,13 @@ public static class HelperEmitter
             var methodName = $"get{property.CSharpName.ToPascalCase()}Keys";
             var paramName = baseName.ToCamelCase();
 
-            sb.AppendLine($"  static {methodName}({paramName}: {typeName}): {keyType}[] {{");
+            sb.AppendLine($"  static {methodName}{genericParams}({paramName}: {typeName}): {keyType}[] {{");
             sb.AppendLine($"    return Object.keys({paramName}.{property.TypeScriptName} ?? {{}});");
             sb.AppendLine("  }");
             sb.AppendLine();
 
             var getValueMethod = $"get{property.CSharpName.ToPascalCase()}Value";
-            sb.AppendLine($"  static {getValueMethod}({paramName}: {typeName}, key: {keyType}): {valueType} | undefined {{");
+            sb.AppendLine($"  static {getValueMethod}{genericParams}({paramName}: {typeName}, key: {keyType}): {valueType} | undefined {{");
             sb.AppendLine($"    return {paramName}.{property.TypeScriptName}?.[key];");
             sb.AppendLine("  }");
             sb.AppendLine();

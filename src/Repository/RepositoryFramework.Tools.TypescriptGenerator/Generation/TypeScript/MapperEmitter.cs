@@ -44,11 +44,14 @@ public static class MapperEmitter
 
         var rawName = $"{baseName}Raw{genericParams}";
         var cleanName = $"{baseName}{genericParams}";
-        var funcName = $"mapRaw{baseName}{genericParams}To{baseName}{genericParams}";
+        // Function name must NOT contain <T>; generic params go after = as type params
+        var funcName = $"mapRaw{baseName}To{baseName}";
 
         var sb = new StringBuilder();
 
-        sb.AppendLine($"export const {funcName} = (raw: {rawName}): {cleanName} => ({{");
+        // For generics: export const fn = <T>(raw: Raw<T>): Clean<T> => ({
+        // For non-generics: export const fn = (raw: Raw): Clean => ({
+        sb.AppendLine($"export const {funcName} = {genericParams}(raw: {rawName}): {cleanName} => ({{");
 
         foreach (var property in model.Properties)
         {
@@ -76,11 +79,14 @@ public static class MapperEmitter
 
         var rawName = $"{baseName}Raw{genericParams}";
         var cleanName = $"{baseName}{genericParams}";
-        var funcName = $"map{baseName}{genericParams}ToRaw{baseName}{genericParams}";
+        // Function name must NOT contain <T>; generic params go after = as type params
+        var funcName = $"map{baseName}ToRaw{baseName}";
 
         var sb = new StringBuilder();
 
-        sb.AppendLine($"export const {funcName} = (clean: {cleanName}): {rawName} => ({{");
+        // For generics: export const fn = <T>(clean: Clean<T>): Raw<T> => ({
+        // For non-generics: export const fn = (clean: Clean): Raw => ({
+        sb.AppendLine($"export const {funcName} = {genericParams}(clean: {cleanName}): {rawName} => ({{");
 
         foreach (var property in model.Properties)
         {
@@ -119,7 +125,7 @@ public static class MapperEmitter
         // Array of complex types
         if (type.IsArray && type.ElementType != null && !type.ElementType.IsPrimitive && !type.ElementType.IsEnum)
         {
-            var elementName = type.ElementType.CSharpName;
+            var elementName = GetBaseName(type.ElementType.CSharpName);
             if (context.TypesRequiringRaw.Contains(elementName))
             {
                 var mapperName = $"mapRaw{elementName}To{elementName}";
@@ -139,10 +145,10 @@ public static class MapperEmitter
         // Dictionary with complex value type
         if (type.IsDictionary && type.ValueType != null && !type.ValueType.IsPrimitive && !type.ValueType.IsEnum)
         {
-            var valueName = type.ValueType.CSharpName;
+            var valueName = GetBaseName(type.ValueType.CSharpName);
             if (type.ValueType.IsArray && type.ValueType.ElementType != null)
             {
-                var elementName = type.ValueType.ElementType.CSharpName;
+                var elementName = GetBaseName(type.ValueType.ElementType.CSharpName);
                 if (context.TypesRequiringRaw.Contains(elementName))
                 {
                     var mapperName = $"mapRaw{elementName}To{elementName}";
@@ -167,12 +173,15 @@ public static class MapperEmitter
         }
 
         // Complex type
-        if (context.TypesRequiringRaw.Contains(type.CSharpName))
         {
-            var mapperName = $"mapRaw{type.CSharpName}To{type.CSharpName}";
-            return property.IsOptional
-                ? $"{rawAccess} ? {mapperName}({rawAccess}) : null"
-                : $"{mapperName}({rawAccess}!)";
+            var typeName = GetBaseName(type.CSharpName);
+            if (context.TypesRequiringRaw.Contains(typeName))
+            {
+                var mapperName = $"mapRaw{typeName}To{typeName}";
+                return property.IsOptional
+                    ? $"{rawAccess} ? {mapperName}({rawAccess}) : null"
+                    : $"{mapperName}({rawAccess}!)";
+            }
         }
 
         return rawAccess;
@@ -195,7 +204,7 @@ public static class MapperEmitter
         // Array of complex types
         if (type.IsArray && type.ElementType != null && !type.ElementType.IsPrimitive && !type.ElementType.IsEnum)
         {
-            var elementName = type.ElementType.CSharpName;
+            var elementName = GetBaseName(type.ElementType.CSharpName);
             if (context.TypesRequiringRaw.Contains(elementName))
             {
                 var mapperName = $"map{elementName}ToRaw{elementName}";
@@ -213,10 +222,10 @@ public static class MapperEmitter
         // Dictionary with complex value type
         if (type.IsDictionary && type.ValueType != null && !type.ValueType.IsPrimitive && !type.ValueType.IsEnum)
         {
-            var valueName = type.ValueType.CSharpName;
+            var valueName = GetBaseName(type.ValueType.CSharpName);
             if (type.ValueType.IsArray && type.ValueType.ElementType != null)
             {
-                var elementName = type.ValueType.ElementType.CSharpName;
+                var elementName = GetBaseName(type.ValueType.ElementType.CSharpName);
                 if (context.TypesRequiringRaw.Contains(elementName))
                 {
                     var mapperName = $"map{elementName}ToRaw{elementName}";
@@ -237,12 +246,15 @@ public static class MapperEmitter
         }
 
         // Complex type
-        if (context.TypesRequiringRaw.Contains(type.CSharpName))
         {
-            var mapperName = $"map{type.CSharpName}ToRaw{type.CSharpName}";
-            return property.IsOptional
-                ? $"{cleanAccess} ? {mapperName}({cleanAccess}) : null"
-                : $"{mapperName}({cleanAccess}!)";
+            var typeName = GetBaseName(type.CSharpName);
+            if (context.TypesRequiringRaw.Contains(typeName))
+            {
+                var mapperName = $"map{typeName}ToRaw{typeName}";
+                return property.IsOptional
+                    ? $"{cleanAccess} ? {mapperName}({cleanAccess}) : null"
+                    : $"{mapperName}({cleanAccess}!)";
+            }
         }
 
         return cleanAccess;
@@ -263,6 +275,16 @@ public static class MapperEmitter
             "boolean" => $"{access} ?? false",
             _ => access
         };
+    }
+
+    /// <summary>
+    /// Gets the base name of a C# type, stripping the generic backtick suffix.
+    /// E.g., "EntityVersion`1" -> "EntityVersion", "Book" -> "Book".
+    /// </summary>
+    private static string GetBaseName(string csharpName)
+    {
+        var backtickIndex = csharpName.IndexOf('`');
+        return backtickIndex > 0 ? csharpName[..backtickIndex] : csharpName;
     }
 
     /// <summary>

@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using RepositoryFramework.Tools.TypescriptGenerator.Domain;
+using RepositoryFramework.Tools.TypescriptGenerator.Utils;
 
 namespace RepositoryFramework.Tools.TypescriptGenerator.Generation.Services;
 
@@ -50,7 +51,8 @@ public static class BootstrapEmitter
         IReadOnlyDictionary<string, ModelDescriptor> models,
         IReadOnlyDictionary<string, ModelDescriptor> keys)
     {
-        var transformers = new HashSet<string>();
+        // Track transformer imports: baseName -> isGeneric
+        var transformerInfos = new Dictionary<string, bool>();
         var typeImports = new Dictionary<string, HashSet<string>>(); // file -> types
 
         foreach (var repo in repositories)
@@ -62,7 +64,11 @@ public static class BootstrapEmitter
             ModelDescriptor? model = null;
             if (models.TryGetValue(modelSimpleName, out model))
             {
-                // Found direct match
+                // If it's a closed generic, find the open generic instead
+                if (model.GenericBaseTypeName != null)
+                {
+                    model = TypeScriptGenerator.FindOpenGenericForClosedGeneric(modelSimpleName, models.Values) ?? model;
+                }
             }
             else
             {
@@ -72,8 +78,8 @@ public static class BootstrapEmitter
 
             if (model != null)
             {
-                var transformerName = $"{model.GetBaseTypeName()}Transformer";
-                transformers.Add(transformerName);
+                var modelBaseName = model.GetBaseTypeName();
+                transformerInfos.TryAdd(modelBaseName, model.GenericTypeParameters.Count > 0);
 
                 // Also need to import the clean type for generics
                 var fileName = model.GetFileName().Replace(".ts", "");
@@ -82,7 +88,7 @@ public static class BootstrapEmitter
                     list = [];
                     typeImports[fileName] = list;
                 }
-                list.Add(model.GetBaseTypeName());
+                list.Add(modelBaseName);
             }
 
             // Add key transformer and type (if not primitive)
@@ -91,7 +97,11 @@ public static class BootstrapEmitter
                 ModelDescriptor? key = null;
                 if (keys.TryGetValue(keySimpleName, out key))
                 {
-                    // Found direct match
+                    // If it's a closed generic, find the open generic instead
+                    if (key.GenericBaseTypeName != null)
+                    {
+                        key = TypeScriptGenerator.FindOpenGenericForClosedGeneric(keySimpleName, keys.Values) ?? key;
+                    }
                 }
                 else
                 {
@@ -101,8 +111,8 @@ public static class BootstrapEmitter
 
                 if (key != null)
                 {
-                    var transformerName = $"{key.GetBaseTypeName()}Transformer";
-                    transformers.Add(transformerName);
+                    var keyBaseName = key.GetBaseTypeName();
+                    transformerInfos.TryAdd(keyBaseName, key.GenericTypeParameters.Count > 0);
 
                     // Also need to import the clean key type for generics
                     var fileName = key.GetFileName().Replace(".ts", "");
@@ -111,7 +121,7 @@ public static class BootstrapEmitter
                         list = [];
                         typeImports[fileName] = list;
                     }
-                    list.Add(key.GetBaseTypeName());
+                    list.Add(keyBaseName);
                 }
             }
         }
@@ -126,13 +136,15 @@ public static class BootstrapEmitter
             sb.AppendLine();
 
         // Emit transformer imports
-        foreach (var transformer in transformers.OrderBy(x => x))
+        // Non-generic: import { BookTransformer } from '../transformers/BookTransformer';
+        // Generic: import { createEntityVersionsTransformer } from '../transformers/EntityVersionsTransformer';
+        foreach (var (baseName, isGeneric) in transformerInfos.OrderBy(x => x.Key))
         {
-            var typeName = transformer.Replace("Transformer", "");
-            sb.AppendLine($"import {{ {transformer} }} from '../transformers/{typeName}Transformer';");
+            var importName = isGeneric ? $"create{baseName}Transformer" : $"{baseName}Transformer";
+            sb.AppendLine($"import {{ {importName} }} from '../transformers/{baseName}Transformer';");
         }
 
-        if (transformers.Count > 0)
+        if (transformerInfos.Count > 0)
             sb.AppendLine();
     }
 
@@ -249,16 +261,66 @@ public static class BootstrapEmitter
         sb.AppendLine($"    x.path = '{apiPath}';");
 
         // Add transformer for model
-        if (models.ContainsKey(modelSimpleName))
+        ModelDescriptor? model = null;
+        if (models.TryGetValue(modelSimpleName, out model))
         {
-            sb.AppendLine($"    x.transformer = {modelSimpleName}Transformer;");
+            // If it's a closed generic, find the open generic instead
+            if (model.GenericBaseTypeName != null)
+            {
+                model = TypeScriptGenerator.FindOpenGenericForClosedGeneric(modelSimpleName, models.Values) ?? model;
+            }
+        }
+        else
+        {
+            model = TypeScriptGenerator.FindOpenGenericForClosedGeneric(modelSimpleName, models.Values);
+        }
+
+        if (model != null)
+        {
+            var modelBaseName = model.GetBaseTypeName();
+            if (model.GenericTypeParameters.Count > 0)
+            {
+                // Generic: use factory function with concrete type args
+                // Extract type args from the closed generic name (e.g., EntityVersions<Book> -> Book)
+                var typeArgs = ExtractTypeArgs(modelSimpleName);
+                sb.AppendLine($"    x.transformer = create{modelBaseName}Transformer<{typeArgs}>();");
+            }
+            else
+            {
+                sb.AppendLine($"    x.transformer = {modelBaseName}Transformer;");
+            }
         }
 
         // Add key transformer if not primitive
-        if (!repo.IsPrimitiveKey && keys.ContainsKey(keySimpleName))
+        ModelDescriptor? key = null;
+        if (!repo.IsPrimitiveKey)
         {
-            sb.AppendLine($"    x.keyTransformer = {keySimpleName}Transformer;");
-            sb.AppendLine("    x.complexKey = true;");
+            if (keys.TryGetValue(keySimpleName, out key))
+            {
+                if (key.GenericBaseTypeName != null)
+                {
+                    key = TypeScriptGenerator.FindOpenGenericForClosedGeneric(keySimpleName, keys.Values) ?? key;
+                }
+            }
+            else
+            {
+                key = TypeScriptGenerator.FindOpenGenericForClosedGeneric(keySimpleName, keys.Values);
+            }
+
+            if (key != null)
+            {
+                var keyBaseName = key.GetBaseTypeName();
+                if (key.GenericTypeParameters.Count > 0)
+                {
+                    var typeArgs = ExtractTypeArgs(keySimpleName);
+                    sb.AppendLine($"    x.keyTransformer = create{keyBaseName}Transformer<{typeArgs}>();");
+                }
+                else
+                {
+                    sb.AppendLine($"    x.keyTransformer = {keyBaseName}Transformer;");
+                }
+                sb.AppendLine("    x.complexKey = true;");
+            }
         }
 
         sb.AppendLine("    if (config.headersEnricher) x.addHeadersEnricher(config.headersEnricher);");
@@ -267,6 +329,22 @@ public static class BootstrapEmitter
 
         if (!isLast)
             sb.AppendLine();
+    }
+
+    /// <summary>
+    /// Extracts type arguments from a closed generic name.
+    /// E.g., "EntityVersions&lt;Book&gt;" -> "Book"
+    /// E.g., "Entity&lt;Book, Chapter&gt;" -> "Book, Chapter"
+    /// </summary>
+    private static string ExtractTypeArgs(string genericName)
+    {
+        var ltIndex = genericName.IndexOf('<');
+        var gtIndex = genericName.LastIndexOf('>');
+        if (ltIndex >= 0 && gtIndex > ltIndex)
+        {
+            return genericName[(ltIndex + 1)..gtIndex];
+        }
+        return "any";
     }
 
     private static string GetKeyType(RepositoryDescriptor repo)
@@ -291,8 +369,5 @@ public static class BootstrapEmitter
     }
 
     private static string GetSimpleName(string fullName)
-    {
-        var lastDot = fullName.LastIndexOf('.');
-        return lastDot >= 0 ? fullName[(lastDot + 1)..] : fullName;
-    }
+        => fullName.GetSimpleTypeName();
 }

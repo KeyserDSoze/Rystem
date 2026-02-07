@@ -78,4 +78,52 @@ public class StringExtensionsTest
         // Assert
         Assert.Equal(expected, result);
     }
+
+    [Theory]
+    [InlineData("Calendar", "Calendar")]
+    [InlineData("Namespace.Calendar", "Calendar")]
+    [InlineData("EntityVersions<Paragraph>", "EntityVersions<Paragraph>")]
+    [InlineData("Namespace.EntityVersions<Namespace.Paragraph>", "EntityVersions<Paragraph>")]
+    [InlineData("A.B.EntityVersions<C.D.Paragraph>", "EntityVersions<Paragraph>")]
+    [InlineData("Entity<Paragraph, Location>", "Entity<Paragraph, Location>")]
+    [InlineData("Ns.Entity<Ns.Paragraph, Ns.Location>", "Entity<Paragraph, Location>")]
+    [InlineData("EntityVersions<ExtendedParagraph>", "EntityVersions<ExtendedParagraph>")]
+    public void GetSimpleTypeName_StripsNamespacesRespectingGenerics(string input, string expected)
+    {
+        // Act
+        var result = input.GetSimpleTypeName();
+
+        // Assert
+        Assert.Equal(expected, result);
+    }
+
+    [Theory]
+    [InlineData("Calendar", "Calendar")]
+    [InlineData("Namespace.Calendar", "Calendar")]
+    [InlineData("EntityVersions<Paragraph>", "EntityVersions`1Paragraph")]
+    [InlineData("Namespace.EntityVersions<Namespace.Paragraph>", "EntityVersions`1Paragraph")]
+    [InlineData("Entity<Paragraph, Location>", "Entity`2Paragraph_Location")]
+    [InlineData("Ns.Entity<Ns.Paragraph, Ns.Location>", "Entity`2Paragraph_Location")]
+    [InlineData("EntityVersions<ExtendedParagraph>", "EntityVersions`1ExtendedParagraph")]
+    public void ToClrStyleApiPath_GeneratesServerCompatiblePath(string input, string expected)
+    {
+        // Act
+        var result = input.ToClrStyleApiPath();
+
+        // Assert
+        Assert.Equal(expected, result);
+    }
+
+    [Theory]
+    [InlineData("A, B", new[] { "A", " B" })]
+    [InlineData("A", new[] { "A" })]
+    [InlineData("EntityVersions<Book>, string", new[] { "EntityVersions<Book>", " string" })]
+    public void SplitGenericArgs_SplitsRespectingNesting(string input, string[] expected)
+    {
+        // Act
+        var result = StringExtensions.SplitGenericArgs(input);
+
+        // Assert
+        Assert.Equal(expected, result);
+    }
 }
