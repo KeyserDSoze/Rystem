@@ -87,102 +87,111 @@ yarn add rystem.authentication.social.client
 pnpm add rystem.authentication.social.client
 ```
 
-### 🚀 React Native Setup
+---
 
-The library works with **React Native** without any polyfills! You just need to provide custom implementations for:
+## 📱 React Native Complete Guide
 
-1. **Storage Service** (use AsyncStorage or Secure Storage instead of localStorage)
-2. **Routing Service** (use Linking API for deep links)
+This library is **100% framework-agnostic** and works perfectly in **React Native**, **Expo**, and any mobile framework! However, setup differs from web because:
 
-⚠️ **Important**: The React **UI components** (`MicrosoftButton`, `GoogleButton`, etc.) are **web-only** and won't work in React Native. You must create your own native UI components and use the **core services** directly.
+1. ❌ **No `window`, `document`, or `localStorage`** in React Native
+2. ❌ **Web SDK scripts** (Google Sign-In SDK, `@azure/msal-browser`) don't work in React Native
+3. ✅ **Native SDKs** must be used instead (`@react-native-google-signin/google-signin`, `@react-native-community/msal`)
 
-#### ✅ What Works in React Native
+### 🎯 Architecture Overview
 
-- ✅ `setupSocialLogin()` - Configuration
-- ✅ `SocialLoginManager` - Core authentication logic
-- ✅ `IStorageService` / `IRoutingService` - Platform abstractions
-- ✅ `useSocialToken()` / `useSocialUser()` - React hooks (if using React Native)
+| Component | Web | React Native |
+|-----------|-----|--------------|
+| **Core Services** (`SocialLoginManager`, `setupSocialLogin`) | ✅ Works | ✅ Works |
+| **React Hooks** (`useSocialToken`, `useSocialUser`) | ✅ Works | ✅ Works |
+| **UI Components** (`MicrosoftButton`, `GoogleButton`) | ✅ Works | ❌ **Web-only** |
+| **Storage** | `LocalStorageService` | Custom `IStorageService` (AsyncStorage) |
+| **Routing** | `WindowRoutingService` | Custom `IRoutingService` (Linking) |
+| **Platform** | `BrowserPlatformService` | Custom `IPlatformService` (Dimensions) |
 
-#### ❌ What Doesn't Work in React Native
+### 📋 Setup Checklist
 
-- ❌ `MicrosoftButton`, `GoogleButton`, etc. - Web-only components (use `window`, `document`)
-- ❌ `SocialLoginButtons` - Web-only component wrapper
-- ❌ `CreateSocialButton` - Web-only internal component
+- [ ] 1. Install `@react-native-async-storage/async-storage`
+- [ ] 2. Create `ReactNativeStorageService` implementing `IStorageService`
+- [ ] 3. Create `ReactNativeRoutingService` implementing `IRoutingService`
+- [ ] 4. Create `ReactNativePlatformService` implementing `IPlatformService`
+- [ ] 5. Install native OAuth SDKs (`@react-native-community/msal`, `@react-native-google-signin/google-signin`)
+- [ ] 6. Create custom login button components
+- [ ] 7. Use `SocialLoginManager.Instance(null).updateToken()` after successful native login
 
-#### Example React Native Setup
+---
+
+### 🔧 Step 1-4: Implementing Platform Services
+
+#### 💾 Storage Service (AsyncStorage)
+
+```bash
+npm install @react-native-async-storage/async-storage
+```
 
 ```typescript
 // services/ReactNativeStorageService.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { IStorageService } from 'rystem.authentication.social.react';
+import { IStorageService } from 'rystem.authentication.social.client';
 
 export class ReactNativeStorageService implements IStorageService {
-    async get(key: string): Promise<string | null> {
-        try {
-            return await AsyncStorage.getItem(key);
-        } catch (error) {
-            console.error('AsyncStorage get error:', error);
-            return null;
-        }
+    get(key: string): string | null {
+        // Note: AsyncStorage is async, but IStorageService expects sync
+        // Use synchronous approach or modify your usage to handle promises
+        let result: string | null = null;
+        AsyncStorage.getItem(key).then(value => result = value);
+        return result;
     }
 
-    async set(key: string, value: string): Promise<void> {
-        try {
-            await AsyncStorage.setItem(key, value);
-        } catch (error) {
-            console.error('AsyncStorage set error:', error);
-        }
+    set(key: string, value: string): void {
+        AsyncStorage.setItem(key, value).catch(error =>
+            console.error('AsyncStorage set error:', error)
+        );
     }
 
-    async remove(key: string): Promise<void> {
-        try {
-            await AsyncStorage.removeItem(key);
-        } catch (error) {
-            console.error('AsyncStorage remove error:', error);
-        }
+    remove(key: string): void {
+        AsyncStorage.removeItem(key).catch(error =>
+            console.error('AsyncStorage remove error:', error)
+        );
     }
 
-    async has(key: string): Promise<boolean> {
-        const value = await this.get(key);
-        return value !== null;
+    has(key: string): boolean {
+        return this.get(key) !== null;
     }
 
-    async clear(): Promise<void> {
-        try {
-            await AsyncStorage.clear();
-        } catch (error) {
-            console.error('AsyncStorage clear error:', error);
-        }
+    clear(): void {
+        AsyncStorage.clear().catch(error =>
+            console.error('AsyncStorage clear error:', error)
+        );
     }
 }
+```
 
+#### 🧭 Routing Service (Linking API)
+
+```typescript
 // services/ReactNativeRoutingService.ts
 import { Linking } from 'react-native';
-import { IRoutingService } from 'rystem.authentication.social.react';
+import { IRoutingService } from 'rystem.authentication.social.client';
 
 export class ReactNativeRoutingService implements IRoutingService {
     private currentUrl: URL | null = null;
 
     constructor() {
-        // Parse initial URL
         Linking.getInitialURL().then(url => {
             if (url) this.currentUrl = new URL(url);
         });
 
-        // Listen for deep link events
         Linking.addEventListener('url', ({ url }) => {
             this.currentUrl = new URL(url);
         });
     }
 
     getSearchParam(key: string): string | null {
-        if (!this.currentUrl) return null;
-        return this.currentUrl.searchParams.get(key);
+        return this.currentUrl?.searchParams.get(key) ?? null;
     }
 
     getAllSearchParams(): URLSearchParams {
-        if (!this.currentUrl) return new URLSearchParams();
-        return this.currentUrl.searchParams;
+        return this.currentUrl?.searchParams ?? new URLSearchParams();
     }
 
     getCurrentPath(): string {
@@ -191,43 +200,97 @@ export class ReactNativeRoutingService implements IRoutingService {
     }
 
     navigateTo(url: string): void {
-        // For OAuth URLs, open in browser
         Linking.openURL(url);
     }
 
     navigateReplace(path: string): void {
-        // React Native navigation - implement with your router (React Navigation, Expo Router)
+        // Implement with React Navigation or Expo Router
         console.log('Navigate to:', path);
     }
 
     openPopup(url: string, name: string, features: string): Window | null {
-        // React Native doesn't support popups - use in-app browser
         Linking.openURL(url);
         return null;
     }
 }
+```
 
-// App setup
-import { setupSocialLogin, PlatformType, LoginMode } from 'rystem.authentication.social.react';
+#### 📐 Platform Service (Dimensions & Events)
+
+```typescript
+// services/ReactNativePlatformService.ts
+import { Dimensions, EventEmitter } from 'react-native';
+import { IPlatformService } from 'rystem.authentication.social.client';
+
+export class ReactNativePlatformService implements IPlatformService {
+    private eventEmitter = new EventEmitter();
+
+    addStorageListener(callback: () => void): void {
+        this.eventEmitter.addListener('storage', callback);
+    }
+
+    removeStorageListener(callback: () => void): void {
+        this.eventEmitter.removeListener('storage', callback);
+    }
+
+    getScreenWidth(): number {
+        return Dimensions.get('window').width;
+    }
+
+    getScreenHeight(): number {
+        return Dimensions.get('window').height;
+    }
+
+    loadScript(id: string, src: string, onLoad: () => void): HTMLScriptElement | null {
+        console.warn('Script loading not supported in React Native');
+        onLoad();
+        return null;
+    }
+
+    scriptExists(id: string): boolean {
+        return false;
+    }
+
+    removeScript(scriptElement: HTMLScriptElement): void {
+        // No-op
+    }
+
+    isPopup(): boolean {
+        return false;
+    }
+
+    closeWindow(): void {
+        // No-op
+    }
+}
+```
+
+#### ⚙️ Complete Setup
+
+```typescript
+// App.tsx
+import { setupSocialLogin, PlatformType, LoginMode } from 'rystem.authentication.social.client';
 import { ReactNativeStorageService } from './services/ReactNativeStorageService';
 import { ReactNativeRoutingService } from './services/ReactNativeRoutingService';
+import { ReactNativePlatformService } from './services/ReactNativePlatformService';
+import { Platform, Alert } from 'react-native';
 
 setupSocialLogin(x => {
     x.apiUri = "https://api.yourdomain.com";
 
-    // ✅ Provide React Native implementations
+    // ✅ Inject React Native implementations
     x.storageService = new ReactNativeStorageService();
     x.routingService = new ReactNativeRoutingService();
+    x.platformService = new ReactNativePlatformService();
 
-    // Platform configuration
     x.platform = {
-        type: PlatformType.Auto,  // Auto-detects iOS/Android
+        type: PlatformType.Auto,
         redirectPath: Platform.select({
             ios: 'myapp://oauth/callback',
             android: 'myapp://oauth/callback',
             default: '/account/login'
         }),
-        loginMode: LoginMode.Redirect  // Always redirect for mobile
+        loginMode: LoginMode.Redirect
     };
 
     x.microsoft.clientId = "your-client-id";
@@ -239,89 +302,11 @@ setupSocialLogin(x => {
 });
 ```
 
-#### Creating Custom Login Buttons for React Native
+---
 
-Since the web components don't work in React Native, create your own UI:
+### 🎨 Step 5-6: Native Login Buttons
 
-```typescript
-// components/SocialLoginButton.tsx
-import React from 'react';
-import { Pressable, Text, StyleSheet } from 'react-native';
-import { SocialLoginManager, ProviderType } from 'rystem.authentication.social.client';
-
-interface Props {
-    provider: ProviderType;
-    clientId: string;
-    title: string;
-    backgroundColor: string;
-}
-
-export const SocialLoginButton = ({ provider, clientId, title, backgroundColor }: Props) => {
-    const handleLogin = async () => {
-        try {
-            // Build OAuth URL manually (library's buttons do this internally for web)
-            const redirectUri = 'myapp://oauth/callback';
-            const state = provider.toString().toLowerCase();
-
-            let authUrl = '';
-            switch (provider) {
-                case ProviderType.Microsoft:
-                    authUrl = `https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=openid%20profile%20email`;
-                    break;
-                case ProviderType.Google:
-                    authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=openid%20profile%20email`;
-                    break;
-                // Add other providers...
-            }
-
-            // Use Linking to open OAuth URL
-            const { Linking } = await import('react-native');
-            await Linking.openURL(authUrl);
-
-            // Note: The deep link callback will be handled by your routing service
-        } catch (error) {
-            console.error('Login error:', error);
-        }
-    };
-
-    return (
-        <Pressable 
-            style={[styles.button, { backgroundColor }]}
-            onPress={handleLogin}
-        >
-            <Text style={styles.text}>{title}</Text>
-        </Pressable>
-    );
-};
-
-const styles = StyleSheet.create({
-    button: {
-        padding: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginVertical: 8,
-    },
-    text: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-});
-
-// Usage in your app:
-// <SocialLoginButton 
-//     provider={ProviderType.Microsoft}
-//     clientId="your-client-id"
-//     title="Sign in with Microsoft"
-//     backgroundColor="#2f2f2f"
-// />
-```
-
-#### 🔥 Production-Ready Examples: Microsoft & Google Login
-
-**Important**: Web SDK scripts (`@azure/msal-browser`, Google Sign-In SDK) **don't work in React Native**. Use native libraries instead:
-
-##### 📘 Microsoft Login with Native MSAL
+#### 📘 Microsoft Login (Native MSAL)
 
 ```bash
 npm install @react-native-community/msal
@@ -331,37 +316,33 @@ npm install @react-native-community/msal
 // components/MicrosoftLoginButton.tsx
 import React from 'react';
 import { Pressable, Text, StyleSheet, Alert } from 'react-native';
-import { MSALWebviewParams, MSALConfiguration, MSALResult } from '@react-native-community/msal';
+import { MSALConfiguration, MSALResult, PublicClientApplication } from '@react-native-community/msal';
 import { SocialLoginManager, ProviderType } from 'rystem.authentication.social.client';
 
 const MSAL_CONFIG: MSALConfiguration = {
     auth: {
         clientId: 'your-microsoft-client-id',
-        authority: 'https://login.microsoftonline.com/consumers', // or /organizations for work accounts
+        authority: 'https://login.microsoftonline.com/consumers',
     },
 };
 
 export const MicrosoftLoginButton = () => {
     const handleLogin = async () => {
         try {
-            const { PublicClientApplication } = await import('@react-native-community/msal');
             const pca = new PublicClientApplication(MSAL_CONFIG);
             await pca.init();
 
-            const params = {
+            const result: MSALResult = await pca.acquireToken({
                 scopes: ['openid', 'profile', 'email', 'User.Read'],
-            };
+            });
 
-            // Acquire token interactively
-            const result: MSALResult = await pca.acquireToken(params);
-
-            // Send token to your backend via SocialLoginManager
-            SocialLoginManager.Instance(null).updateToken(
+            // ✅ Send token to backend
+            await SocialLoginManager.Instance(null).updateToken(
                 ProviderType.Microsoft,
-                result.idToken // or result.accessToken depending on your backend
+                result.idToken
             );
 
-            console.log('✅ Microsoft login successful:', result.account.username);
+            console.log('✅ Microsoft login successful');
         } catch (error: any) {
             console.error('❌ Microsoft login failed:', error);
             Alert.alert('Login Failed', error.message || 'Unknown error');
@@ -376,21 +357,12 @@ export const MicrosoftLoginButton = () => {
 };
 
 const styles = StyleSheet.create({
-    button: {
-        padding: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginVertical: 8,
-    },
-    text: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
+    button: { padding: 12, borderRadius: 8, alignItems: 'center', marginVertical: 8 },
+    text: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
 ```
 
-##### 🔴 Google Login with Native SDK
+#### 🔴 Google Login (Native SDK)
 
 ```bash
 npm install @react-native-google-signin/google-signin
@@ -403,13 +375,12 @@ import { Pressable, Text, StyleSheet, Alert } from 'react-native';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { SocialLoginManager, ProviderType } from 'rystem.authentication.social.client';
 
-// Configure Google Sign-In (call this once at app startup, e.g., in App.tsx)
+// Configure once at app startup
 GoogleSignin.configure({
-    webClientId: 'your-google-web-client-id.apps.googleusercontent.com', // From Google Cloud Console
-    offlineAccess: true, // To get refresh token
-    hostedDomain: '', // Optional: restrict to specific domain
+    webClientId: 'your-google-web-client-id.apps.googleusercontent.com',
+    offlineAccess: true,
     forceCodeForRefreshToken: true,
-    iosClientId: 'your-ios-client-id.apps.googleusercontent.com', // Optional iOS-specific
+    iosClientId: 'your-ios-client-id.apps.googleusercontent.com',
 });
 
 export const GoogleLoginButton = () => {
@@ -418,28 +389,23 @@ export const GoogleLoginButton = () => {
             await GoogleSignin.hasPlayServices();
             const userInfo = await GoogleSignin.signIn();
 
-            // Send ID token to your backend
-            const idToken = userInfo.idToken;
-            if (!idToken) {
-                throw new Error('No ID token received from Google');
-            }
+            if (!userInfo.idToken) throw new Error('No ID token received');
 
-            SocialLoginManager.Instance(null).updateToken(
+            // ✅ Send token to backend
+            await SocialLoginManager.Instance(null).updateToken(
                 ProviderType.Google,
-                idToken
+                userInfo.idToken
             );
 
-            console.log('✅ Google login successful:', userInfo.user.email);
+            console.log('✅ Google login successful');
         } catch (error: any) {
             if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-                console.log('User cancelled Google login');
-            } else if (error.code === statusCodes.IN_PROGRESS) {
-                console.log('Google login already in progress');
+                console.log('User cancelled login');
             } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-                Alert.alert('Error', 'Play Services not available or outdated');
+                Alert.alert('Error', 'Play Services not available');
             } else {
                 console.error('❌ Google login failed:', error);
-                Alert.alert('Login Failed', error.message || 'Unknown error');
+                Alert.alert('Login Failed', error.message);
             }
         }
     };
@@ -452,21 +418,14 @@ export const GoogleLoginButton = () => {
 };
 
 const styles = StyleSheet.create({
-    button: {
-        padding: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginVertical: 8,
-    },
-    text: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
+    button: { padding: 12, borderRadius: 8, alignItems: 'center', marginVertical: 8 },
+    text: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
 ```
 
-##### 📱 Usage in Your React Native App
+---
+
+### 📱 Step 7: Usage in Your App
 
 ```typescript
 // screens/LoginScreen.tsx
@@ -500,37 +459,33 @@ export const LoginScreen = () => {
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 20,
-    },
-    welcome: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 10,
-    },
+    container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+    title: { fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
+    welcome: { fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
 });
 ```
 
-**📋 Summary - React Native Setup Checklist**:
-1. ✅ Install `@react-native-async-storage/async-storage` for storage
-2. ✅ Create `ReactNativeStorageService` and `ReactNativeRoutingService`
-3. ✅ Install native SDKs: `@react-native-community/msal` and/or `@react-native-google-signin/google-signin`
-4. ✅ Create custom button components using native SDKs
-5. ✅ Call `SocialLoginManager.Instance(null).updateToken(provider, token)` after successful native login
-6. ✅ Use `useSocialToken()` and `useSocialUser()` hooks to access authentication state
+---
 
-**Why No Polyfills?**
-- ✅ The library now checks `typeof window !== 'undefined'` before accessing browser APIs
-- ✅ You inject platform-specific implementations via `IStorageService` and `IRoutingService`
-- ✅ No need for hacky polyfills or modifying `global` object
+### ✅ React Native Summary
+
+**What You Need:**
+1. Implement 3 services: `IStorageService`, `IRoutingService`, `IPlatformService`
+2. Install native OAuth SDKs (not web SDKs!)
+3. Create custom UI components
+4. Call `SocialLoginManager.Instance(null).updateToken()` after native login success
+
+**What Works Automatically:**
+- ✅ `useSocialToken()` / `useSocialUser()` hooks
+- ✅ Token storage and refresh logic
+- ✅ Backend communication
+
+**Why No `window` Access Issues:**
+- ✅ Library uses service abstractions (`IStorageService`, `IRoutingService`, `IPlatformService`)
+- ✅ You inject platform-specific implementations
+- ✅ No polyfills needed!
+
+---
 
 ### ⚠️ Important for React Router / Next.js Users
 
@@ -543,36 +498,34 @@ If you're using **React Router** or **Next.js App Router**, OAuth callbacks and 
 - Next.js App Router (v13+)
 - Unit Testing
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Web Applications)
 
 ### 1. Setup Configuration (main.tsx)
 
 ```typescript
-import { SocialLoginWrapper, setupSocialLogin } from 'rystem.authentication.social.react';
+import { SocialLoginWrapper, setupSocialLogin } from 'rystem.authentication.social.client';
 import App from './App';
 
 setupSocialLogin(x => {
+    // 🚀 ONE-LINE SETUP for web applications
+    // This configures localStorage, window routing, and browser platform APIs
+    x.useBrowserDefaults();
+
     // API server URL
     x.apiUri = "https://localhost:7017";
-    
-    // Optional: Custom redirect path (default: "/account/login")
-    x.platform = {
-        redirectPath: "/account/login"  // Auto-detects domain
-    };
-    
+
     // Configure OAuth providers (only clientId needed for client-side)
     x.microsoft.clientId = "0b90db07-be9f-4b29-b673-9e8ee9265927";
     x.google.clientId = "23769141170-lfs24avv5qrj00m4cbmrm202c0fc6gcg.apps.googleusercontent.com";
     x.facebook.clientId = "345885718092912";
     x.github.clientId = "97154d062f2bb5d28620";
-    x.amazon.clientId = "amzn1.application-oa2-client.dffbc466d62c44e49d71ad32f4aecb62";
-    
+
     // Error handling callback
     x.onLoginFailure = (error) => {
         console.error(`Login failed: ${error.message} (Code: ${error.code})`);
         alert(`Authentication error: ${error.message}`);
     };
-    
+
     // Automatic token refresh when expired
     x.automaticRefresh = true;
 });
@@ -588,10 +541,49 @@ function Root() {
 export default Root;
 ```
 
+#### 🤔 What does `useBrowserDefaults()` do?
+
+This helper method **automatically configures three essential services** for web browsers:
+
+1. **`storageService`**: `LocalStorageService` → Uses browser `localStorage` to persist tokens, PKCE verifiers, and user data
+2. **`routingService`**: `WindowRoutingService` → Uses `window.location` to read OAuth callback parameters and `window.history` for navigation
+3. **`platformService`**: `BrowserPlatformService` → Uses `window`, `document`, and DOM APIs for popup windows, screen dimensions, and external SDK loading
+
+**Why is this needed?**  
+The library is **framework-agnostic** and works in **React**, **React Native**, **Next.js**, and **Expo**. Each environment has different APIs:
+- **Web**: Uses `window`, `localStorage`, `document`
+- **React Native**: Uses `AsyncStorage`, `Linking`, `Dimensions`
+- **Next.js SSR**: May not have `window` available
+
+By requiring explicit service configuration, the library:
+- ✅ Forces you to think about your environment
+- ✅ Avoids unexpected crashes in non-browser environments
+- ✅ Makes it clear which dependencies are being used
+- ✅ Allows easy customization (e.g., using React Router instead of `window.history`)
+
+**Alternative: Manual configuration**
+
+If you want more control, you can configure services manually:
+
+```typescript
+import { LocalStorageService, WindowRoutingService, BrowserPlatformService } from 'rystem.authentication.social.client';
+
+setupSocialLogin(x => {
+    x.storageService = new LocalStorageService();
+    x.routingService = new WindowRoutingService();
+    x.platformService = new BrowserPlatformService();
+    // ... rest of config
+});
+```
+
+**For React Native setup**, see the [📱 React Native Complete Guide](#-react-native-complete-guide) section below.
+
+---
+
 ### 2. Use in Components
 
 ```typescript
-import { useSocialToken, useSocialUser, SocialLoginButtons, SocialLogoutButton } from 'rystem.authentication.social.react';
+import { useSocialToken, useSocialUser, SocialLoginButtons, SocialLogoutButton } from 'rystem.authentication.social.client';
 
 export const App = () => {
     const token = useSocialToken();

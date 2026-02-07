@@ -3,6 +3,9 @@ import { PlatformConfig } from "./PlatformConfig";
 import { IStorageService } from "../../services/IStorageService";
 import { IRoutingService } from "../../services/IRoutingService";
 import { IPlatformService } from "../../services/IPlatformService";
+import { LocalStorageService } from "../../services/LocalStorageService";
+import { WindowRoutingService } from "../../services/WindowRoutingService";
+import { BrowserPlatformService } from "../../services/BrowserPlatformService";
 
 export interface SocialLoginSettings {
     apiUri: string;
@@ -14,41 +17,73 @@ export interface SocialLoginSettings {
 
     /**
      * Storage service for persisting tokens, PKCE verifiers, etc.
-     * Default: LocalStorageService (browser localStorage)
      * 
-     * @example Custom secure storage for mobile
-     * storageService: new SecureStorageService()
+     * ⚠️ **Required**: Must be configured explicitly or via `useBrowserDefaults()`.
+     * 
+     * Web: Use `x.useBrowserDefaults()` or manually set `new LocalStorageService()`
+     * React Native: Implement `IStorageService` with AsyncStorage
+     * 
+     * @example Web (automatic)
+     * x.useBrowserDefaults();
+     * 
+     * @example Web (manual)
+     * x.storageService = new LocalStorageService();
+     * 
+     * @example React Native
+     * x.storageService = new ReactNativeStorageService();
      */
     storageService: IStorageService;
 
     /**
      * Routing service for URL parameter reading and navigation
-     * Default: WindowRoutingService (uses window.location and window.history)
+     * 
+     * ⚠️ **Required**: Must be configured explicitly or via `useBrowserDefaults()`.
+     * 
+     * Web: Use `x.useBrowserDefaults()` or manually set `new WindowRoutingService()`
+     * React Native: Implement `IRoutingService` with Linking API
      * 
      * IMPORTANT: Required for React Router, Next.js App Router, and other client-side routing frameworks
      * to properly handle OAuth callbacks, redirects, and return URLs.
      * 
-     * @example React Router with useSearchParams, useNavigate, and useLocation hooks
-     * routingService: new ReactRouterRoutingService()
+     * @example Web (automatic)
+     * x.useBrowserDefaults();
      * 
-     * @example Next.js App Router with useRouter, usePathname, and useSearchParams
-     * routingService: new NextAppRouterRoutingService()
+     * @example Web (manual)
+     * x.routingService = new WindowRoutingService();
+     * 
+     * @example React Router
+     * x.routingService = new ReactRouterRoutingService();
+     * 
+     * @example Next.js App Router
+     * x.routingService = new NextAppRouterRoutingService();
+     * 
+     * @example React Native
+     * x.routingService = new ReactNativeRoutingService();
      */
     routingService: IRoutingService;
 
     /**
      * Platform service for environment-specific operations (events, dimensions, scripts)
-     * Default: BrowserPlatformService (uses window, document, DOM APIs)
+     * 
+     * ⚠️ **Required**: Must be configured explicitly or via `useBrowserDefaults()`.
+     * 
+     * Web: Use `x.useBrowserDefaults()` or manually set `new BrowserPlatformService()`
+     * React Native: Implement `IPlatformService` with Dimensions, EventEmitter
      * 
      * Used by UI components for:
      * - Storage event listeners (popup ↔ main window communication)
      * - Screen dimensions (popup positioning)
      * - External script loading (Google SDK, Facebook SDK)
+     * - Window operations (popup detection, closing)
      * 
-     * @example React Native custom implementation
-     * platformService: new ReactNativePlatformService()
+     * @example Web (automatic)
+     * x.useBrowserDefaults();
      * 
-     * @default BrowserPlatformService
+     * @example Web (manual)
+     * x.platformService = new BrowserPlatformService();
+     * 
+     * @example React Native
+     * x.platformService = new ReactNativePlatformService();
      */
     platformService: IPlatformService;
 
@@ -70,7 +105,7 @@ export interface SocialLoginSettings {
      * @default { type: 'auto', redirectPath: '/account/login', loginMode: 'popup' }
      */
     platform?: PlatformConfig;
-    
+
     google: SocialParameter;
     microsoft: SocialParameter;
     facebook: SocialParameter;
@@ -81,6 +116,32 @@ export interface SocialLoginSettings {
     instagram: SocialParameter;
     pinterest: SocialParameter;
     tiktok: SocialParameter;
+
+    /**
+     * 🚀 Helper method for WEB applications
+     * 
+     * Automatically configures browser-based services:
+     * - `storageService`: LocalStorageService (uses browser localStorage)
+     * - `routingService`: WindowRoutingService (uses window.location and window.history)
+     * - `platformService`: BrowserPlatformService (uses window, document, DOM APIs)
+     * 
+     * ⚠️ **Web only**: Do NOT call this in React Native applications!
+     * 
+     * @example Basic web setup
+     * setupSocialLogin(x => {
+     *     x.useBrowserDefaults(); // ✅ One line to configure all browser services
+     *     x.apiUri = "https://api.example.com";
+     *     x.microsoft.clientId = "your-client-id";
+     * });
+     * 
+     * @example With custom routing (React Router, Next.js)
+     * setupSocialLogin(x => {
+     *     x.useBrowserDefaults();
+     *     x.routingService = new ReactRouterRoutingService(); // Override routing only
+     *     // ... rest of config
+     * });
+     */
+    useBrowserDefaults(): void;
 }
 
 export interface IIdentityTransformer<TIdentity> {

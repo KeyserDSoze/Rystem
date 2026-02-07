@@ -38,6 +38,7 @@ setupSocialLogin(x => {
         redirectPath: "/account/login",
         loginMode: LoginMode.Redirect
         };
+    x.useBrowserDefaults();
     x.google.clientId = "23769141170-lfs24avv5qrj00m4cbmrm202c0fc6gcg.apps.googleusercontent.com";
     x.microsoft.clientId = "0b90db07-be9f-4b29-b673-9e8ee9265927";
     x.facebook.clientId = "345885718092912";

@@ -1,6 +1,6 @@
 {
   "name": "rystem.authentication.social.client",
-  "version": "0.5.1",
+  "version": "0.5.3",
   "author": "Alessandro Rapiti <alessandro.rapiti44@gmail.com>",
   "license": "MIT",
   "description": "Framework-agnostic social authentication library for web and mobile (React, React Native, Next.js, Expo, etc.)",
