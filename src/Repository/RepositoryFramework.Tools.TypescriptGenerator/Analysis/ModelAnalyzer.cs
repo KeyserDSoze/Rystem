@@ -34,6 +34,11 @@ public class ModelAnalyzer
         if (_analyzedModels.TryGetValue(type, out var existing))
             return existing;
 
+        // Create a placeholder to prevent infinite recursion
+        // This allows recursive references (e.g., EntityVersions<Book> where Book has EntityVersions<Book>)
+        var placeholder = CreatePlaceholder(type);
+        _analyzedModels[type] = placeholder;
+
         ModelDescriptor descriptor;
 
         if (type.IsEnum)
@@ -45,10 +50,30 @@ public class ModelAnalyzer
             descriptor = AnalyzeClass(type, depth, discoveredBy);
         }
 
+        // Update the cache with the complete descriptor
         _analyzedModels[type] = descriptor;
         TrackDiscovery(descriptor, depth, discoveredBy ?? descriptor.Name);
 
         return descriptor;
+    }
+
+    /// <summary>
+    /// Creates a placeholder descriptor to prevent infinite recursion.
+    /// </summary>
+    private ModelDescriptor CreatePlaceholder(Type type)
+    {
+        return new ModelDescriptor
+        {
+            Name = type.Name,
+            FullName = type.FullName ?? type.Name,
+            Namespace = type.Namespace ?? string.Empty,
+            Properties = [],
+            IsEnum = type.IsEnum,
+            NestedTypes = [],
+            DiscoveryDepth = 0,
+            ClrType = type,
+            GenericTypeParameters = []
+        };
     }
 
     /// <summary>
