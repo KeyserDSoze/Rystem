@@ -37,9 +37,14 @@ public static class MapperEmitter
     /// </summary>
     public static string EmitRawToClean(ModelDescriptor model, EmitterContext context)
     {
-        var rawName = $"{model.Name}Raw";
-        var cleanName = model.Name;
-        var funcName = $"mapRaw{model.Name}To{model.Name}";
+        var baseName = model.GetBaseTypeName();
+        var genericParams = model.GenericTypeParameters.Count > 0 
+            ? $"<{string.Join(", ", model.GenericTypeParameters)}>" 
+            : "";
+
+        var rawName = $"{baseName}Raw{genericParams}";
+        var cleanName = $"{baseName}{genericParams}";
+        var funcName = $"mapRaw{baseName}{genericParams}To{baseName}{genericParams}";
 
         var sb = new StringBuilder();
 
@@ -64,9 +69,14 @@ public static class MapperEmitter
     /// </summary>
     public static string EmitCleanToRaw(ModelDescriptor model, EmitterContext context)
     {
-        var rawName = $"{model.Name}Raw";
-        var cleanName = model.Name;
-        var funcName = $"map{model.Name}ToRaw{model.Name}";
+        var baseName = model.GetBaseTypeName();
+        var genericParams = model.GenericTypeParameters.Count > 0 
+            ? $"<{string.Join(", ", model.GenericTypeParameters)}>" 
+            : "";
+
+        var rawName = $"{baseName}Raw{genericParams}";
+        var cleanName = $"{baseName}{genericParams}";
+        var funcName = $"map{baseName}{genericParams}ToRaw{baseName}{genericParams}";
 
         var sb = new StringBuilder();
 

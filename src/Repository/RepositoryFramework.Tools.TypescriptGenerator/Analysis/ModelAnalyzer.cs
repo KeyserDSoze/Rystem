@@ -65,6 +65,7 @@ public class ModelAnalyzer
         return new ModelDescriptor
         {
             Name = type.Name,
+            TypeScriptName = type.Name, // Temporary, will be updated later
             FullName = type.FullName ?? type.Name,
             Namespace = type.Namespace ?? string.Empty,
             Properties = [],
@@ -98,6 +99,7 @@ public class ModelAnalyzer
         return new ModelDescriptor
         {
             Name = type.Name,
+            TypeScriptName = type.Name, // Enums don't have generics
             FullName = type.FullName ?? type.Name,
             Namespace = type.Namespace ?? string.Empty,
             Properties = [],
@@ -204,9 +206,43 @@ public class ModelAnalyzer
             }
         }
 
+        // Build TypeScript display name
+        string typeScriptName;
+        string? actualGenericBaseName = genericBaseName;
+
+        if (type.IsGenericType && !type.IsGenericTypeDefinition)
+        {
+            // Closed generic: EntityVersions<Timeline>
+            // Also set GenericBaseTypeName to mark this as a closed generic
+            var baseName = genericBaseName ?? GetBaseTypeName(type.Name);
+            var typeArgs = type.GetGenericArguments()
+                .Select(arg => GetSimpleTypeName(arg))
+                .ToList();
+            typeScriptName = $"{baseName}<{string.Join(", ", typeArgs)}>";
+
+            // Mark this as closed generic if not already set
+            if (actualGenericBaseName == null)
+            {
+                actualGenericBaseName = baseName;
+            }
+        }
+        else if (type.IsGenericTypeDefinition)
+        {
+            // Open generic: EntityVersions<T>
+            var baseName = genericBaseName ?? GetBaseTypeName(type.Name);
+            typeScriptName = $"{baseName}<{string.Join(", ", genericParameters)}>";
+            // GenericBaseTypeName stays null for open generics
+        }
+        else
+        {
+            // Non-generic: Book
+            typeScriptName = type.Name;
+        }
+
         return new ModelDescriptor
         {
             Name = type.Name,
+            TypeScriptName = typeScriptName,
             FullName = type.FullName ?? type.Name,
             Namespace = type.Namespace ?? string.Empty,
             Properties = properties,
@@ -216,8 +252,43 @@ public class ModelAnalyzer
             DiscoveredByModel = discoveredBy,
             ClrType = type,
             GenericTypeParameters = genericParameters,
-            GenericBaseTypeName = genericBaseName
+            GenericBaseTypeName = actualGenericBaseName
         };
+    }
+
+    /// <summary>
+    /// Gets the simple type name without namespace for display.
+    /// </summary>
+    private static string GetSimpleTypeName(Type type)
+    {
+        if (type.IsGenericParameter)
+            return type.Name;
+
+        var name = type.Name;
+
+        // Remove generic backtick notation
+        var backtickIndex = name.IndexOf('`');
+        if (backtickIndex > 0)
+            name = name[..backtickIndex];
+
+        // For closed generics, append type arguments
+        if (type.IsGenericType && !type.IsGenericTypeDefinition)
+        {
+            var args = type.GetGenericArguments()
+                .Select(GetSimpleTypeName);
+            name = $"{name}<{string.Join(", ", args)}>";
+        }
+
+        return name;
+    }
+
+    /// <summary>
+    /// Gets the base type name without generic backtick.
+    /// </summary>
+    private static string GetBaseTypeName(string typeName)
+    {
+        var backtickIndex = typeName.IndexOf('`');
+        return backtickIndex > 0 ? typeName[..backtickIndex] : typeName;
     }
 
     /// <summary>

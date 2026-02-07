@@ -18,9 +18,8 @@ public static class RawTypeEmitter
 
         var sb = new StringBuilder();
 
-        // Generate type name with generic parameters
-        var typeName = model.GetRawTypeName();
-        var baseTypeName = model.Name.Contains('`') ? model.Name[..model.Name.IndexOf('`')] : model.Name;
+        // Use GetBaseTypeName with generic parameters
+        var baseTypeName = model.GetBaseTypeName();
         var genericParams = model.GenericTypeParameters.Count > 0 
             ? $"<{string.Join(", ", model.GenericTypeParameters)}>" 
             : "";

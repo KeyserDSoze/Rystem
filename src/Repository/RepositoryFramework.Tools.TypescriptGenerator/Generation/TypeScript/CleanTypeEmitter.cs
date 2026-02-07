@@ -19,13 +19,8 @@ public static class CleanTypeEmitter
 
         var sb = new StringBuilder();
 
-        // Generate type name with generic parameters
-        var baseTypeName = model.Name.Contains('`') ? model.Name[..model.Name.IndexOf('`')] : model.Name;
-        var genericParams = model.GenericTypeParameters.Count > 0 
-            ? $"<{string.Join(", ", model.GenericTypeParameters)}>" 
-            : "";
-
-        sb.AppendLine($"export interface {baseTypeName}{genericParams} {{");
+        // Use TypeScriptName which already has clean generic syntax (EntityVersions<T>)
+        sb.AppendLine($"export interface {model.TypeScriptName} {{");
 
         foreach (var property in model.Properties)
         {

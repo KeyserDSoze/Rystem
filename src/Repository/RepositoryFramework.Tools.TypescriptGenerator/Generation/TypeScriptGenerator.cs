@@ -39,17 +39,27 @@ public class TypeScriptGenerator
 
         var generatedFiles = new List<string>();
 
+        // Filter out closed generic types - we only generate open generics (EntityVersions<T>)
+        // Closed generics (EntityVersions<Book>) reuse the open generic definition
+        // Check GenericBaseTypeName: NULL = open generic or non-generic, NON-NULL = closed generic
+        var modelsToGenerate = models.Where(m => m.GenericBaseTypeName == null).ToList();
+
+        Logger.Info($"Filtered {models.Count()} models to {modelsToGenerate.Count} for generation (excluded {models.Count() - modelsToGenerate.Count} closed generics)");
+
         // Generate files for main models
-        foreach (var model in models)
+        foreach (var model in modelsToGenerate)
         {
             var fileName = GenerateTypeFile(model);
-            generatedFiles.Add(fileName);
+            if (!generatedFiles.Contains(fileName))
+            {
+                generatedFiles.Add(fileName);
+            }
         }
 
         // Generate files for keys (if not already generated)
         foreach (var key in keys)
         {
-            if (!generatedFiles.Any(f => f.Equals($"{key.Name.ToLowerInvariant()}.ts", StringComparison.OrdinalIgnoreCase)))
+            if (!generatedFiles.Any(f => f.Equals(key.GetFileName(), StringComparison.OrdinalIgnoreCase)))
             {
                 var fileName = GenerateTypeFile(key);
                 generatedFiles.Add(fileName);
@@ -72,8 +82,11 @@ public class TypeScriptGenerator
         // First generate types
         Generate(models, keys);
 
-        var modelsDict = models.ToDictionary(m => m.Name);
-        var keysDict = keys.ToDictionary(k => k.Name);
+        // Use TypeScriptName as key for generics to avoid collision
+        // EntityVersions<Book> and EntityVersions<Chapter> have same Name ("EntityVersions`1")
+        // but different TypeScriptName ("EntityVersions<Book>" vs "EntityVersions<Chapter>")
+        var modelsDict = models.ToDictionary(m => m.TypeScriptName);
+        var keysDict = keys.ToDictionary(k => k.TypeScriptName);
         var repositoryList = repositories.ToList();
 
         // Generate transformers
@@ -100,9 +113,22 @@ public class TypeScriptGenerator
             var keySimpleName = GetSimpleName(repo.KeyName);
 
             // Generate model transformer
-            if (models.TryGetValue(modelSimpleName, out var model) && !model.IsEnum)
+            ModelDescriptor? model = null;
+            if (models.TryGetValue(modelSimpleName, out model))
             {
-                if (!generatedTransformers.Contains(modelSimpleName))
+                // Found direct match (non-generic or open generic)
+            }
+            else
+            {
+                // Try to find open generic for closed generic type
+                // EntityVersions<Book> -> EntityVersions<T>
+                model = FindOpenGenericForClosedGeneric(modelSimpleName, models.Values);
+            }
+
+            if (model != null && !model.IsEnum)
+            {
+                var transformerKey = model.TypeScriptName; // Use TypeScriptName as unique key
+                if (!generatedTransformers.Contains(transformerKey))
                 {
                     var content = TransformerEmitter.Emit(model);
                     if (!string.IsNullOrEmpty(content))
@@ -110,25 +136,40 @@ public class TypeScriptGenerator
                         var fileName = TransformerEmitter.GetFileName(model);
                         _fileWriter.WriteTransformerFile(fileName, content);
                         transformerFiles.Add(fileName);
-                        generatedTransformers.Add(modelSimpleName);
+                        generatedTransformers.Add(transformerKey);
                         Logger.Info($"Generated transformers/{fileName}");
                     }
                 }
             }
 
             // Generate key transformer (if not primitive)
-            if (!repo.IsPrimitiveKey && keys.TryGetValue(keySimpleName, out var key) && !key.IsEnum)
+            if (!repo.IsPrimitiveKey)
             {
-                if (!generatedTransformers.Contains(keySimpleName))
+                ModelDescriptor? key = null;
+                if (keys.TryGetValue(keySimpleName, out key))
                 {
-                    var content = TransformerEmitter.Emit(key, isKey: true);
-                    if (!string.IsNullOrEmpty(content))
+                    // Found direct match
+                }
+                else
+                {
+                    // Try to find open generic
+                    key = FindOpenGenericForClosedGeneric(keySimpleName, keys.Values);
+                }
+
+                if (key != null && !key.IsEnum)
+                {
+                    var transformerKey = key.TypeScriptName;
+                    if (!generatedTransformers.Contains(transformerKey))
                     {
-                        var fileName = TransformerEmitter.GetFileName(key);
-                        _fileWriter.WriteTransformerFile(fileName, content);
-                        transformerFiles.Add(fileName);
-                        generatedTransformers.Add(keySimpleName);
-                        Logger.Info($"Generated transformers/{fileName}");
+                        var content = TransformerEmitter.Emit(key, isKey: true);
+                        if (!string.IsNullOrEmpty(content))
+                        {
+                            var fileName = TransformerEmitter.GetFileName(key);
+                            _fileWriter.WriteTransformerFile(fileName, content);
+                            transformerFiles.Add(fileName);
+                            generatedTransformers.Add(transformerKey);
+                            Logger.Info($"Generated transformers/{fileName}");
+                        }
                     }
                 }
             }
@@ -140,6 +181,29 @@ public class TypeScriptGenerator
             _fileWriter.WriteIndexFile("transformers", transformerFiles);
             Logger.Info("Generated transformers/index.ts");
         }
+    }
+
+    /// <summary>
+    /// Finds the open generic model for a closed generic type.
+    /// Example: "EntityVersions<Book>" -> model with TypeScriptName "EntityVersions<T>"
+    /// </summary>
+    public static ModelDescriptor? FindOpenGenericForClosedGeneric(
+        string closedGenericName,
+        IEnumerable<ModelDescriptor> models)
+    {
+        // Check if it's a generic type (contains <)
+        if (!closedGenericName.Contains('<'))
+            return null;
+
+        // Extract base name: "EntityVersions<Book>" -> "EntityVersions"
+        var baseName = closedGenericName[..closedGenericName.IndexOf('<')];
+
+        // Find open generic: EntityVersions<T>, EntityVersions<TKey>, etc.
+        return models.FirstOrDefault(m => 
+            m.IsGenericType && 
+            m.GenericBaseTypeName == null && // Open generic
+            m.TypeScriptName.StartsWith($"{baseName}<") &&
+            m.GenericTypeParameters.Count > 0);
     }
 
     /// <summary>
@@ -173,11 +237,11 @@ public class TypeScriptGenerator
     private string GenerateTypeFile(ModelDescriptor model)
     {
         var sb = new StringBuilder();
-        var fileName = $"{model.Name.ToLowerInvariant()}.ts";
+        var fileName = model.GetFileName(); // Use the new method that handles generics properly
 
         // Header comment
         sb.AppendLine("// ============================================");
-        sb.AppendLine($"// {model.Name} Types");
+        sb.AppendLine($"// {model.TypeScriptName} Types");
         sb.AppendLine("// Auto-generated by Rystem TypeScript Generator");
         sb.AppendLine("// ============================================");
         sb.AppendLine();

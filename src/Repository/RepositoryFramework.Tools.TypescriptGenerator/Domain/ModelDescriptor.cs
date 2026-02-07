@@ -11,6 +11,12 @@ public sealed record ModelDescriptor
     public required string Name { get; init; }
 
     /// <summary>
+    /// The TypeScript-friendly display name (e.g., "EntityVersions<Book>").
+    /// For closed generics, includes the concrete type arguments.
+    /// </summary>
+    public string TypeScriptName { get; init; } = string.Empty;
+
+    /// <summary>
     /// The full C# type name including namespace.
     /// </summary>
     public required string FullName { get; init; }
@@ -81,8 +87,15 @@ public sealed record ModelDescriptor
 
     /// <summary>
     /// Gets the TypeScript file name for this model.
+    /// For open generics like EntityVersions&lt;T&gt;, generates: entityversions.ts
+    /// Closed generics (EntityVersions&lt;Book&gt;) are NOT generated - they reuse the open generic.
     /// </summary>
-    public string GetFileName() => $"{GetBaseTypeName().ToLowerInvariant()}.ts";
+    public string GetFileName()
+    {
+        // Always use base name (without backticks) for file naming
+        var baseName = GetBaseTypeName();
+        return $"{baseName.ToLowerInvariant()}.ts";
+    }
 
     /// <summary>
     /// Gets the TypeScript Raw interface name.
@@ -102,7 +115,7 @@ public sealed record ModelDescriptor
     /// Gets the base type name without generic parameters.
     /// E.g., "EntityVersions" from "EntityVersions`1".
     /// </summary>
-    private string GetBaseTypeName()
+    public string GetBaseTypeName()
     {
         var backtickIndex = Name.IndexOf('`');
         return backtickIndex > 0 ? Name[..backtickIndex] : Name;

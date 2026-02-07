@@ -59,31 +59,60 @@ public static class BootstrapEmitter
             var keySimpleName = GetSimpleName(repo.KeyName);
 
             // Add model transformer and type
-            if (models.ContainsKey(modelSimpleName))
+            ModelDescriptor? model = null;
+            if (models.TryGetValue(modelSimpleName, out model))
             {
-                transformers.Add($"{modelSimpleName}Transformer");
+                // Found direct match
+            }
+            else
+            {
+                // Try to find open generic for closed generic type
+                model = TypeScriptGenerator.FindOpenGenericForClosedGeneric(modelSimpleName, models.Values);
+            }
+
+            if (model != null)
+            {
+                var transformerName = $"{model.GetBaseTypeName()}Transformer";
+                transformers.Add(transformerName);
 
                 // Also need to import the clean type for generics
-                if (!typeImports.TryGetValue(modelSimpleName.ToLowerInvariant(), out var list))
+                var fileName = model.GetFileName().Replace(".ts", "");
+                if (!typeImports.TryGetValue(fileName, out var list))
                 {
                     list = [];
-                    typeImports[modelSimpleName.ToLowerInvariant()] = list;
+                    typeImports[fileName] = list;
                 }
-                list.Add(modelSimpleName);
+                list.Add(model.GetBaseTypeName());
             }
 
             // Add key transformer and type (if not primitive)
-            if (!repo.IsPrimitiveKey && keys.ContainsKey(keySimpleName))
+            if (!repo.IsPrimitiveKey)
             {
-                transformers.Add($"{keySimpleName}Transformer");
-
-                // Also need to import the clean key type for generics
-                if (!typeImports.TryGetValue(keySimpleName.ToLowerInvariant(), out var list))
+                ModelDescriptor? key = null;
+                if (keys.TryGetValue(keySimpleName, out key))
                 {
-                    list = [];
-                    typeImports[keySimpleName.ToLowerInvariant()] = list;
+                    // Found direct match
                 }
-                list.Add(keySimpleName);
+                else
+                {
+                    // Try to find open generic
+                    key = TypeScriptGenerator.FindOpenGenericForClosedGeneric(keySimpleName, keys.Values);
+                }
+
+                if (key != null)
+                {
+                    var transformerName = $"{key.GetBaseTypeName()}Transformer";
+                    transformers.Add(transformerName);
+
+                    // Also need to import the clean key type for generics
+                    var fileName = key.GetFileName().Replace(".ts", "");
+                    if (!typeImports.TryGetValue(fileName, out var list))
+                    {
+                        list = [];
+                        typeImports[fileName] = list;
+                    }
+                    list.Add(key.GetBaseTypeName());
+                }
             }
         }
 

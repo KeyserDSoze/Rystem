@@ -76,6 +76,21 @@ public class AnalysisPipeline
 
                 Logger.Info($"  ✓ Analyzed: {repo.ModelName} ({modelDescriptor.Properties.Count} properties)");
 
+                // If this is a closed generic, also analyze the open generic
+                if (modelDescriptor.GenericBaseTypeName != null && modelType.IsGenericType)
+                {
+                    var openGenericType = modelType.GetGenericTypeDefinition();
+                    var openGenericDescriptor = _modelAnalyzer.Analyze(openGenericType, depth: 0);
+
+                    // Add with a unique key (use the open generic's TypeScriptName)
+                    if (!result.Models.ContainsKey(openGenericDescriptor.TypeScriptName))
+                    {
+                        result.Models[openGenericDescriptor.TypeScriptName] = openGenericDescriptor;
+                        _dependencyGraph.AddModel(openGenericDescriptor);
+                        Logger.Info($"  ✓ Also analyzed open generic: {openGenericDescriptor.TypeScriptName}");
+                    }
+                }
+
                 // Find and analyze the key type (if not primitive)
                 if (!PrimitiveTypeRules.IsPrimitiveName(repo.KeyName))
                 {

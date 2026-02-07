@@ -25,7 +25,12 @@ public static class HelperEmitter
             return string.Empty;
 
         var sb = new StringBuilder();
-        var helperName = $"{model.Name}Helper";
+        var baseName = model.GetBaseTypeName();
+        var genericParams = model.GenericTypeParameters.Count > 0 
+            ? $"<{string.Join(", ", model.GenericTypeParameters)}>" 
+            : "";
+        var typeName = $"{baseName}{genericParams}";
+        var helperName = $"{baseName}Helper{genericParams}";
 
         sb.AppendLine($"export class {helperName} {{");
 
@@ -34,9 +39,9 @@ public static class HelperEmitter
         {
             var methodName = $"get{property.CSharpName.ToPascalCase()}";
             var elementType = property.Type.ElementType?.CSharpName ?? "unknown";
-            var paramName = model.Name.ToCamelCase();
+            var paramName = baseName.ToCamelCase();
 
-            sb.AppendLine($"  static {methodName}({paramName}: {model.Name}): {elementType}[] {{");
+            sb.AppendLine($"  static {methodName}({paramName}: {typeName}): {elementType}[] {{");
             sb.AppendLine($"    return {paramName}.{property.TypeScriptName} ?? [];");
             sb.AppendLine("  }");
             sb.AppendLine();
@@ -48,15 +53,15 @@ public static class HelperEmitter
             var keyType = property.Type.KeyType?.TypeScriptName ?? "string";
             var valueType = CleanTypeEmitter.GetTypeString(property.Type.ValueType!, context);
             var methodName = $"get{property.CSharpName.ToPascalCase()}Keys";
-            var paramName = model.Name.ToCamelCase();
+            var paramName = baseName.ToCamelCase();
 
-            sb.AppendLine($"  static {methodName}({paramName}: {model.Name}): {keyType}[] {{");
+            sb.AppendLine($"  static {methodName}({paramName}: {typeName}): {keyType}[] {{");
             sb.AppendLine($"    return Object.keys({paramName}.{property.TypeScriptName} ?? {{}});");
             sb.AppendLine("  }");
             sb.AppendLine();
 
             var getValueMethod = $"get{property.CSharpName.ToPascalCase()}Value";
-            sb.AppendLine($"  static {getValueMethod}({paramName}: {model.Name}, key: {keyType}): {valueType} | undefined {{");
+            sb.AppendLine($"  static {getValueMethod}({paramName}: {typeName}, key: {keyType}): {valueType} | undefined {{");
             sb.AppendLine($"    return {paramName}.{property.TypeScriptName}?.[key];");
             sb.AppendLine("  }");
             sb.AppendLine();

@@ -107,27 +107,58 @@ public static class RepositoryLocatorEmitter
             var keySimpleName = GetSimpleName(repo.KeyName);
 
             // Add model Clean type
-            if (models.ContainsKey(modelSimpleName))
+            ModelDescriptor? model = null;
+            if (models.TryGetValue(modelSimpleName, out model))
             {
-                if (!typesByFile.TryGetValue(modelSimpleName, out var list))
+                // Found direct match
+            }
+            else
+            {
+                // Try to find open generic
+                model = TypeScriptGenerator.FindOpenGenericForClosedGeneric(modelSimpleName, models.Values);
+            }
+
+            if (model != null)
+            {
+                var fileName = model.GetFileName().Replace(".ts", "");
+                var typeName = model.GetBaseTypeName();
+
+                if (!typesByFile.TryGetValue(fileName, out var list))
                 {
                     list = [];
-                    typesByFile[modelSimpleName] = list;
+                    typesByFile[fileName] = list;
                 }
-                if (!list.Contains(modelSimpleName))
-                    list.Add(modelSimpleName);
+                if (!list.Contains(typeName))
+                    list.Add(typeName);
             }
 
             // Add key Clean type (if not primitive)
-            if (!repo.IsPrimitiveKey && keys.ContainsKey(keySimpleName))
+            if (!repo.IsPrimitiveKey)
             {
-                if (!typesByFile.TryGetValue(keySimpleName, out var list))
+                ModelDescriptor? key = null;
+                if (keys.TryGetValue(keySimpleName, out key))
                 {
-                    list = [];
-                    typesByFile[keySimpleName] = list;
+                    // Found direct match
                 }
-                if (!list.Contains(keySimpleName))
-                    list.Add(keySimpleName);
+                else
+                {
+                    // Try to find open generic
+                    key = TypeScriptGenerator.FindOpenGenericForClosedGeneric(keySimpleName, keys.Values);
+                }
+
+                if (key != null)
+                {
+                    var fileName = key.GetFileName().Replace(".ts", "");
+                    var typeName = key.GetBaseTypeName();
+
+                    if (!typesByFile.TryGetValue(fileName, out var list))
+                    {
+                        list = [];
+                        typesByFile[fileName] = list;
+                    }
+                    if (!list.Contains(typeName))
+                        list.Add(typeName);
+                }
             }
         }
 
