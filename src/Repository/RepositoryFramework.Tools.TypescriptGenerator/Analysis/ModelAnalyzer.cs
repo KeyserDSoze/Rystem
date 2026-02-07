@@ -135,6 +135,50 @@ public class ModelAnalyzer
             }
         }
 
+        // Detect generic type parameters
+        var genericParameters = new List<string>();
+        string? genericBaseName = null;
+
+        if (type.IsGenericType)
+        {
+            var genericArgs = type.GetGenericArguments();
+
+            // Check if this is an open generic (contains generic parameters)
+            if (type.IsGenericTypeDefinition || genericArgs.Any(arg => arg.IsGenericParameter))
+            {
+                // Open generic: EntityVersions<T>
+                genericParameters = genericArgs.Select(arg => arg.Name).ToList();
+            }
+            else
+            {
+                // Closed generic: EntityVersions<Timeline>
+                // We need to analyze the open generic base type instead
+                var openGeneric = type.GetGenericTypeDefinition();
+                if (!_analyzedModels.ContainsKey(openGeneric))
+                {
+                    var openDescriptor = Analyze(openGeneric, depth, discoveredBy);
+                    nestedTypes.Add(openDescriptor);
+                }
+
+                // Store reference to open generic
+                var baseName = openGeneric.Name;
+                var backtickIndex = baseName.IndexOf('`');
+                genericBaseName = backtickIndex > 0 ? baseName[..backtickIndex] : baseName;
+
+                // Also analyze the type arguments
+                foreach (var typeArg in genericArgs)
+                {
+                    if (!typeArg.IsGenericParameter && 
+                        !PrimitiveTypeRules.IsPrimitive(typeArg) &&
+                        !_analyzedModels.ContainsKey(typeArg))
+                    {
+                        var argDescriptor = Analyze(typeArg, depth + 1, type.Name);
+                        nestedTypes.Add(argDescriptor);
+                    }
+                }
+            }
+        }
+
         return new ModelDescriptor
         {
             Name = type.Name,
@@ -145,7 +189,9 @@ public class ModelAnalyzer
             NestedTypes = nestedTypes,
             DiscoveryDepth = depth,
             DiscoveredByModel = discoveredBy,
-            ClrType = type
+            ClrType = type,
+            GenericTypeParameters = genericParameters,
+            GenericBaseTypeName = genericBaseName
         };
     }
 

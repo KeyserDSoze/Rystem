@@ -137,11 +137,48 @@ public class TypeResolver
 
     private static TypeDescriptor CreateComplexDescriptor(Type type, bool isNullable)
     {
+        // Handle generic type parameters (T, TKey, etc.)
+        if (type.IsGenericParameter)
+        {
+            return new TypeDescriptor
+            {
+                CSharpName = type.Name,
+                FullName = type.Name,
+                TypeScriptName = type.Name, // T stays as T in TypeScript
+                IsPrimitive = false,
+                IsNullable = false, // Generic parameters handle nullability via usage
+                IsArray = false,
+                IsDictionary = false,
+                IsEnum = false,
+                ClrType = type
+            };
+        }
+
+        // Handle closed generic types (e.g., EntityVersions<Timeline>)
+        var typeName = type.Name;
+        if (type.IsGenericType && !type.IsGenericTypeDefinition)
+        {
+            // Construct TypeScript generic syntax: EntityVersions<Timeline>
+            var baseName = typeName.Contains('`') ? typeName[..typeName.IndexOf('`')] : typeName;
+            var typeArgs = type.GetGenericArguments();
+            var argNames = string.Join(", ", typeArgs.Select(t => 
+                t.IsGenericParameter ? t.Name : GetCleanTypeName(t)));
+            typeName = $"{baseName}<{argNames}>";
+        }
+        else if (type.IsGenericTypeDefinition)
+        {
+            // Open generic: EntityVersions`1 -> EntityVersions<T>
+            var baseName = typeName.Contains('`') ? typeName[..typeName.IndexOf('`')] : typeName;
+            var typeParams = type.GetGenericArguments();
+            var paramNames = string.Join(", ", typeParams.Select(p => p.Name));
+            typeName = $"{baseName}<{paramNames}>";
+        }
+
         return new TypeDescriptor
         {
             CSharpName = type.Name,
             FullName = type.FullName ?? type.Name,
-            TypeScriptName = type.Name,
+            TypeScriptName = typeName,
             IsPrimitive = false,
             IsNullable = isNullable || !type.IsValueType, // Reference types are nullable by default
             IsArray = false,
@@ -149,6 +186,25 @@ public class TypeResolver
             IsEnum = false,
             ClrType = type
         };
+    }
+
+    /// <summary>
+    /// Gets a clean type name for generic arguments.
+    /// </summary>
+    private static string GetCleanTypeName(Type type)
+    {
+        if (type.IsGenericParameter)
+            return type.Name;
+
+        if (type.IsGenericType)
+        {
+            var baseName = type.Name.Contains('`') ? type.Name[..type.Name.IndexOf('`')] : type.Name;
+            var typeArgs = type.GetGenericArguments();
+            var argNames = string.Join(", ", typeArgs.Select(GetCleanTypeName));
+            return $"{baseName}<{argNames}>";
+        }
+
+        return type.Name;
     }
 
     /// <summary>

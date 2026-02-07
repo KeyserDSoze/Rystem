@@ -122,6 +122,42 @@ rystem-ts generate \
   --models "{Fantacalcio.Domain.Calendar,Fantacalcio.Domain.LeagueKey,Repository,serieA}"
 ```
 
+#### With Generic Types
+
+The tool supports generic types with both user-friendly and .NET reflection syntax:
+
+**User-friendly syntax** (recommended):
+
+```bash
+rystem-ts generate \
+  --dest ./src/api \
+  --models "{EntityVersions<Timeline>,Guid,Repository,versionedtimelines,}"
+```
+
+**.NET Reflection syntax** (auto-detected):
+
+```bash
+rystem-ts generate \
+  --dest ./src/api \
+  --models "{EntityVersions`1[[GhostWriter.Business.Timeline]],Guid,Repository,versionedtimelines,}"
+```
+
+Both syntaxes will generate:
+```typescript
+// TypeScript output
+export interface EntityVersions<Timeline> {
+  // ...
+}
+```
+
+**Fully qualified generic types**:
+
+```bash
+rystem-ts generate \
+  --dest ./src/api \
+  --models "{MyCompany.Infrastructure.EntityVersions<MyCompany.Domain.Timeline>,Guid,Repository,versionedtimelines,}"
+```
+
 #### With Specific Project
 
 ```bash

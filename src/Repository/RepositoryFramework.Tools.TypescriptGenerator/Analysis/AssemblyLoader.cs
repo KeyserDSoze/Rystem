@@ -158,10 +158,17 @@ public class AssemblyLoader
     /// <summary>
     /// Finds a type by name in the loaded assemblies.
     /// Supports both simple names (e.g., "Calendar") and fully qualified names (e.g., "Fantacalcio.Domain.Calendar").
+    /// Also supports generic types in both user-friendly (EntityVersions&lt;Timeline&gt;) and reflection syntax (EntityVersions`1[[Timeline]]).
     /// If using a simple name and multiple types with the same name exist, throws an exception.
     /// </summary>
     public Type? FindType(string typeName)
     {
+        // Handle generic types
+        if (GenericTypeHelper.IsGenericType(typeName))
+        {
+            return FindGenericType(typeName);
+        }
+
         // Check if it's a fully qualified name (contains a dot that's not at the start)
         var isFullyQualified = typeName.Contains('.') && !typeName.StartsWith('.');
 
@@ -207,6 +214,49 @@ public class AssemblyLoader
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Finds a generic type by parsing the generic syntax and constructing the closed generic type.
+    /// Supports: EntityVersions&lt;Timeline&gt; or EntityVersions`1[[Timeline]]
+    /// </summary>
+    private Type? FindGenericType(string typeName)
+    {
+        var genericInfo = GenericTypeHelper.Parse(typeName);
+
+        // Find the open generic type (e.g., EntityVersions`1)
+        var openGenericType = FindType(genericInfo.ReflectionName);
+        if (openGenericType == null)
+        {
+            Logger.Warning($"Could not find open generic type: {genericInfo.ReflectionName}");
+            return null;
+        }
+
+        // Find each type argument
+        var typeArgs = new List<Type>();
+        foreach (var argName in genericInfo.TypeArguments)
+        {
+            var argType = FindType(argName);
+            if (argType == null)
+            {
+                Logger.Warning($"Could not find generic type argument: {argName}");
+                return null;
+            }
+            typeArgs.Add(argType);
+        }
+
+        // Construct the closed generic type
+        try
+        {
+            var closedGenericType = openGenericType.MakeGenericType([.. typeArgs]);
+            Logger.Info($"  Constructed generic type: {genericInfo.DisplayName}");
+            return closedGenericType;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Failed to construct generic type {genericInfo.DisplayName}: {ex.Message}");
+            return null;
+        }
     }
 
     /// <summary>

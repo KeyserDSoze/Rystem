@@ -17,9 +17,15 @@ public static class RawTypeEmitter
             throw new ArgumentException("Use EnumEmitter for enum types.", nameof(model));
 
         var sb = new StringBuilder();
-        var typeName = $"{model.Name}Raw";
 
-        sb.AppendLine($"export interface {typeName} {{");
+        // Generate type name with generic parameters
+        var typeName = model.GetRawTypeName();
+        var baseTypeName = model.Name.Contains('`') ? model.Name[..model.Name.IndexOf('`')] : model.Name;
+        var genericParams = model.GenericTypeParameters.Count > 0 
+            ? $"<{string.Join(", ", model.GenericTypeParameters)}>" 
+            : "";
+
+        sb.AppendLine($"export interface {baseTypeName}Raw{genericParams} {{");
 
         foreach (var property in model.Properties)
         {
@@ -74,11 +80,25 @@ public static class RawTypeEmitter
         }
 
         // Complex types - check if they need Raw suffix
-        var complexTypeName = type.CSharpName;
+        // Use TypeScriptName to handle generics correctly (e.g., VersionEntry<T> instead of VersionEntry`1)
+        var complexTypeName = type.TypeScriptName;
 
         // Check if this type requires Raw format
-        if (useRaw && context.TypesRequiringRaw.Contains(complexTypeName))
+        // For generic types, we need to check the base name without type parameters
+        var baseTypeName = type.CSharpName;
+        if (baseTypeName.Contains('`'))
         {
+            baseTypeName = baseTypeName[..baseTypeName.IndexOf('`')];
+        }
+
+        if (useRaw && context.TypesRequiringRaw.Contains(baseTypeName))
+        {
+            // Insert Raw before the generic parameters
+            if (complexTypeName.Contains('<'))
+            {
+                var genericStart = complexTypeName.IndexOf('<');
+                return $"{complexTypeName[..genericStart]}Raw{complexTypeName[genericStart..]}";
+            }
             return $"{complexTypeName}Raw";
         }
 

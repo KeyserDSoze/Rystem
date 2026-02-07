@@ -63,19 +63,50 @@ public sealed record ModelDescriptor
     public Type? ClrType { get; init; }
 
     /// <summary>
+    /// Whether this is a generic type definition (e.g., EntityVersions&lt;T&gt;).
+    /// </summary>
+    public bool IsGenericType => GenericTypeParameters.Count > 0;
+
+    /// <summary>
+    /// Generic type parameters (e.g., ["T", "TKey"]).
+    /// Empty list for non-generic types.
+    /// </summary>
+    public IReadOnlyList<string> GenericTypeParameters { get; init; } = [];
+
+    /// <summary>
+    /// For closed generic types (e.g., EntityVersions&lt;Timeline&gt;), 
+    /// this is the open generic base type (EntityVersions&lt;T&gt;).
+    /// </summary>
+    public string? GenericBaseTypeName { get; init; }
+
+    /// <summary>
     /// Gets the TypeScript file name for this model.
     /// </summary>
-    public string GetFileName() => $"{Name.ToLowerInvariant()}.ts";
+    public string GetFileName() => $"{GetBaseTypeName().ToLowerInvariant()}.ts";
 
     /// <summary>
     /// Gets the TypeScript Raw interface name.
     /// </summary>
-    public string GetRawTypeName() => $"{Name}Raw";
+    public string GetRawTypeName() => IsGenericType 
+        ? $"{GetBaseTypeName()}<{string.Join(", ", GenericTypeParameters)}>Raw"
+        : $"{Name}Raw";
 
     /// <summary>
     /// Gets the TypeScript Clean interface name.
     /// </summary>
-    public string GetCleanTypeName() => Name;
+    public string GetCleanTypeName() => IsGenericType
+        ? $"{GetBaseTypeName()}<{string.Join(", ", GenericTypeParameters)}>"
+        : Name;
+
+    /// <summary>
+    /// Gets the base type name without generic parameters.
+    /// E.g., "EntityVersions" from "EntityVersions`1".
+    /// </summary>
+    private string GetBaseTypeName()
+    {
+        var backtickIndex = Name.IndexOf('`');
+        return backtickIndex > 0 ? Name[..backtickIndex] : Name;
+    }
 }
 
 /// <summary>

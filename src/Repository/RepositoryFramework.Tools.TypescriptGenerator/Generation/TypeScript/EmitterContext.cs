@@ -40,14 +40,21 @@ public class EmitterContext
         // Add all models and keys
         foreach (var model in models)
         {
+            // Get base name without generic parameters for lookup
+            var baseName = model.Name;
+            if (baseName.Contains('`'))
+            {
+                baseName = baseName[..baseName.IndexOf('`')];
+            }
+
             context.AllModels[model.Name] = model;
             if (model.RequiresRawType)
             {
-                context.TypesRequiringRaw.Add(model.Name);
+                context.TypesRequiringRaw.Add(baseName); // Use base name without generics
             }
             if (model.IsEnum)
             {
-                context.EnumTypes.Add(model.Name);
+                context.EnumTypes.Add(baseName); // Use base name without generics
             }
 
             // Process nested types
@@ -56,14 +63,21 @@ public class EmitterContext
 
         foreach (var key in keys)
         {
+            // Get base name without generic parameters for lookup
+            var baseName = key.Name;
+            if (baseName.Contains('`'))
+            {
+                baseName = baseName[..baseName.IndexOf('`')];
+            }
+
             context.AllModels[key.Name] = key;
             if (key.RequiresRawType)
             {
-                context.TypesRequiringRaw.Add(key.Name);
+                context.TypesRequiringRaw.Add(baseName); // Use base name without generics
             }
             if (key.IsEnum)
             {
-                context.EnumTypes.Add(key.Name);
+                context.EnumTypes.Add(baseName); // Use base name without generics
             }
 
             ProcessNestedTypes(key, context);
@@ -82,6 +96,13 @@ public class EmitterContext
     {
         foreach (var nested in model.NestedTypes)
         {
+            // Get base name without generic parameters for lookup
+            var baseName = nested.Name;
+            if (baseName.Contains('`'))
+            {
+                baseName = baseName[..baseName.IndexOf('`')];
+            }
+
             if (!context.AllModels.ContainsKey(nested.Name))
             {
                 context.AllModels[nested.Name] = nested;
@@ -89,12 +110,12 @@ public class EmitterContext
 
             if (nested.RequiresRawType)
             {
-                context.TypesRequiringRaw.Add(nested.Name);
+                context.TypesRequiringRaw.Add(baseName); // Use base name without generics
             }
 
             if (nested.IsEnum)
             {
-                context.EnumTypes.Add(nested.Name);
+                context.EnumTypes.Add(baseName); // Use base name without generics
             }
 
             ProcessNestedTypes(nested, context);

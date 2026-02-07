@@ -19,7 +19,13 @@ public static class CleanTypeEmitter
 
         var sb = new StringBuilder();
 
-        sb.AppendLine($"export interface {model.Name} {{");
+        // Generate type name with generic parameters
+        var baseTypeName = model.Name.Contains('`') ? model.Name[..model.Name.IndexOf('`')] : model.Name;
+        var genericParams = model.GenericTypeParameters.Count > 0 
+            ? $"<{string.Join(", ", model.GenericTypeParameters)}>" 
+            : "";
+
+        sb.AppendLine($"export interface {baseTypeName}{genericParams} {{");
 
         foreach (var property in model.Properties)
         {
@@ -73,8 +79,8 @@ public static class CleanTypeEmitter
             return $"Record<{keyType}, {valueType}>";
         }
 
-        // Complex types - use clean name
-        return type.CSharpName;
+        // Complex types - use TypeScript-friendly name (handles generics correctly)
+        return type.TypeScriptName;
     }
 
     /// <summary>
