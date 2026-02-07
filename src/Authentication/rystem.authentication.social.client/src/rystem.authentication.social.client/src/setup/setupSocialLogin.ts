@@ -4,6 +4,7 @@ import { PlatformType } from "../models/setup/PlatformType";
 import { detectPlatform, isMobilePlatform } from "../utils/platform";
 import { LocalStorageService } from "../services/LocalStorageService";
 import { WindowRoutingService } from "../services/WindowRoutingService";
+import { BrowserPlatformService } from "../services/BrowserPlatformService";
 
 export const setupSocialLogin = function (settings: (settings: SocialLoginSettings) => void): SocialLoginManager {
 // ✅ Lazy evaluation: only access window when actually needed
@@ -20,8 +21,9 @@ const parameters = {
     title: null,
     onLoginFailure: (data: SocialLoginErrorResponse) => { console.log(data.code); },
     automaticRefresh: false,
-    storageService: new LocalStorageService(),  // Default: localStorage
-    routingService: new WindowRoutingService(), // Default: window.location + window.history
+    storageService: new LocalStorageService(),   // Default: localStorage
+    routingService: new WindowRoutingService(),  // Default: window.location + window.history
+    platformService: new BrowserPlatformService(), // Default: browser DOM/BOM APIs
     platform: {
         type: PlatformType.Auto,
         redirectPath: undefined,  // Smart default: will use window.location.origin + "/account/login"

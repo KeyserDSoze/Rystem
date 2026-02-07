@@ -25,6 +25,9 @@ export const SocialLoginWrapper = (c: { children: any; }) => {
 
         // Use routingService to read URL parameters (supports React Router, Next.js, etc.)
         const routingService = settings.routingService;
+        const storageService = settings.storageService;
+        const platformService = settings.platformService;
+
         const code = routingService.getSearchParam(queryCode);
         const stateParam = routingService.getSearchParam(queryState);
 
@@ -32,69 +35,67 @@ export const SocialLoginWrapper = (c: { children: any; }) => {
             code: code ? 'present' : 'missing', 
             state: stateParam, 
             loginMode,
-            isPopup: window.opener !== null,
+            isPopup: platformService.isPopup(),
             alreadyProcessed: callbackProcessedRef.current,
             routingService: routingService.constructor.name
         });
-        
+
         // ⚠️ Prevent double processing (React.StrictMode causes double mount in dev)
         if (callbackProcessedRef.current) {
             console.log('⚠️ Callback already processed, skipping to prevent duplicate API call');
             return;
         }
-        
+
         if (code && stateParam) {
             const providerType = parseInt(stateParam);
-            
+
             if (!isNaN(providerType) && ProviderType[providerType]) {
                 const providerName = ProviderType[providerType];
-                
+
                 // Mark as processed BEFORE making API call
                 callbackProcessedRef.current = true;
-                
-                // Check if we're in a popup window (simpler condition)
-                // If window.opener exists, we're definitely in a popup, regardless of loginMode config
-                if (window.opener) {
+
+                // Check if we're in a popup window using platformService
+                if (platformService.isPopup()) {
                     // POPUP MODE: Process token exchange IN THE POPUP, then save result and close
                     console.log('✅ [Popup] Detected popup window, processing token exchange in popup');
-                    const social_code = `social_code_${providerType}`;
                     const social_result = `social_result_${providerType}`;
-                    
+
                     SocialLoginManager.Instance(null).updateToken(providerType, code)
                         .then(() => {
                             console.log('✅ [Popup] Token exchange successful, saving success result');
-                            
-                            // Save success result for main window
-                            localStorage.setItem(social_result, JSON.stringify({
+
+                            // Save success result for main window using storage service
+                            storageService.set(social_result, JSON.stringify({
                                 success: true,
                                 provider: providerName
                             }));
-                            
-                            // Close popup after ensuring localStorage is written
+
+                            // Close popup after ensuring storage is written
                             setTimeout(() => {
                                 console.log('🔒 [Popup] Closing popup after successful login');
-                                window.close();
+                                platformService.closeWindow();
                             }, 100);
                         })
                         .catch((error) => {
                             console.error('❌ [Popup] Token exchange failed:', error);
-                            
-                            // Save error result for main window
-                            localStorage.setItem(social_result, JSON.stringify({
+
+                            // Save error result for main window using storage service
+                            storageService.set(social_result, JSON.stringify({
                                 success: false,
                                 provider: providerName,
                                 error: error.message || 'Token exchange failed'
                             }));
-                            
-                            // Close popup after ensuring localStorage is written
+
+                            // Close popup after ensuring storage is written
                             setTimeout(() => {
                                 console.log('🔒 [Popup] Closing popup after error');
-                                window.close();
+                                platformService.closeWindow();
                             }, 100);
                         });
-                    
+
                     // Note: The main window's CreateSocialButton will receive the storage event
-                    // and read the result (success or error) from localStorage
+                    // and read the result (success or error) from storage
                 } else {
                     // REDIRECT MODE: Process token exchange directly in main window
                     console.log('✅ [Redirect] Main window detected, processing token exchange');
@@ -104,7 +105,6 @@ export const SocialLoginWrapper = (c: { children: any; }) => {
                             console.log('✅ Token exchange successful');
 
                             // Get return URL saved before OAuth redirect using storage service
-                            const storageService = settings.storageService;
                             const returnUrl = storageService.get('social_login_return_url');
                             storageService.remove('social_login_return_url');
 
@@ -134,7 +134,7 @@ export const SocialLoginWrapper = (c: { children: any; }) => {
                             }
 
                             // Clean return URL on error using storage service
-                            settings.storageService.remove('social_login_return_url');
+                            storageService.remove('social_login_return_url');
 
                             // Clean URL even on error using routing service
                             const cleanPath = routingService.getCurrentPath().split('?')[0];

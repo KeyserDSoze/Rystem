@@ -1,7 +1,7 @@
 import { useContext, useState } from "react";
 import reactLogo from './assets/react.svg'
-import { SocialLoginButtons, SocialLoginContextLogout, SocialLoginContextRefresh, SocialLogoutButton, useSocialToken, useSocialUser } from "./rystem.authentication.social.react/src/index";
-import { AmazonButton, GoogleButton, MicrosoftButton, FacebookButton, GitHubButton, LinkedinButton, XButton, TikTokButton, PinterestButton, InstagramButton } from "./rystem.authentication.social.react/src/index";
+import { SocialLoginButtons, SocialLoginContextLogout, SocialLoginContextRefresh, SocialLogoutButton, useSocialToken, useSocialUser } from "./rystem.authentication.social.client/src/index";
+import { AmazonButton, GoogleButton, MicrosoftButton, FacebookButton, GitHubButton, LinkedinButton, XButton, TikTokButton, PinterestButton, InstagramButton } from "./rystem.authentication.social.client/src/index";
 
 const newOrderButtons = [
     MicrosoftButton,

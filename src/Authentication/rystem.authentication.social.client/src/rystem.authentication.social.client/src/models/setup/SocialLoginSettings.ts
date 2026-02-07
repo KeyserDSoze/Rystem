@@ -2,6 +2,7 @@
 import { PlatformConfig } from "./PlatformConfig";
 import { IStorageService } from "../../services/IStorageService";
 import { IRoutingService } from "../../services/IRoutingService";
+import { IPlatformService } from "../../services/IPlatformService";
 
 export interface SocialLoginSettings {
     apiUri: string;
@@ -34,6 +35,22 @@ export interface SocialLoginSettings {
      * routingService: new NextAppRouterRoutingService()
      */
     routingService: IRoutingService;
+
+    /**
+     * Platform service for environment-specific operations (events, dimensions, scripts)
+     * Default: BrowserPlatformService (uses window, document, DOM APIs)
+     * 
+     * Used by UI components for:
+     * - Storage event listeners (popup ↔ main window communication)
+     * - Screen dimensions (popup positioning)
+     * - External script loading (Google SDK, Facebook SDK)
+     * 
+     * @example React Native custom implementation
+     * platformService: new ReactNativePlatformService()
+     * 
+     * @default BrowserPlatformService
+     */
+    platformService: IPlatformService;
 
     /**
      * Platform configuration (Web, iOS, Android)

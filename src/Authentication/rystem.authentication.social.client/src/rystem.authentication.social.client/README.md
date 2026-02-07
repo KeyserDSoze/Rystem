@@ -94,6 +94,21 @@ The library works with **React Native** without any polyfills! You just need to 
 1. **Storage Service** (use AsyncStorage or Secure Storage instead of localStorage)
 2. **Routing Service** (use Linking API for deep links)
 
+⚠️ **Important**: The React **UI components** (`MicrosoftButton`, `GoogleButton`, etc.) are **web-only** and won't work in React Native. You must create your own native UI components and use the **core services** directly.
+
+#### ✅ What Works in React Native
+
+- ✅ `setupSocialLogin()` - Configuration
+- ✅ `SocialLoginManager` - Core authentication logic
+- ✅ `IStorageService` / `IRoutingService` - Platform abstractions
+- ✅ `useSocialToken()` / `useSocialUser()` - React hooks (if using React Native)
+
+#### ❌ What Doesn't Work in React Native
+
+- ❌ `MicrosoftButton`, `GoogleButton`, etc. - Web-only components (use `window`, `document`)
+- ❌ `SocialLoginButtons` - Web-only component wrapper
+- ❌ `CreateSocialButton` - Web-only internal component
+
 #### Example React Native Setup
 
 ```typescript
@@ -223,6 +238,294 @@ setupSocialLogin(x => {
     };
 });
 ```
+
+#### Creating Custom Login Buttons for React Native
+
+Since the web components don't work in React Native, create your own UI:
+
+```typescript
+// components/SocialLoginButton.tsx
+import React from 'react';
+import { Pressable, Text, StyleSheet } from 'react-native';
+import { SocialLoginManager, ProviderType } from 'rystem.authentication.social.client';
+
+interface Props {
+    provider: ProviderType;
+    clientId: string;
+    title: string;
+    backgroundColor: string;
+}
+
+export const SocialLoginButton = ({ provider, clientId, title, backgroundColor }: Props) => {
+    const handleLogin = async () => {
+        try {
+            // Build OAuth URL manually (library's buttons do this internally for web)
+            const redirectUri = 'myapp://oauth/callback';
+            const state = provider.toString().toLowerCase();
+
+            let authUrl = '';
+            switch (provider) {
+                case ProviderType.Microsoft:
+                    authUrl = `https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=openid%20profile%20email`;
+                    break;
+                case ProviderType.Google:
+                    authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=openid%20profile%20email`;
+                    break;
+                // Add other providers...
+            }
+
+            // Use Linking to open OAuth URL
+            const { Linking } = await import('react-native');
+            await Linking.openURL(authUrl);
+
+            // Note: The deep link callback will be handled by your routing service
+        } catch (error) {
+            console.error('Login error:', error);
+        }
+    };
+
+    return (
+        <Pressable 
+            style={[styles.button, { backgroundColor }]}
+            onPress={handleLogin}
+        >
+            <Text style={styles.text}>{title}</Text>
+        </Pressable>
+    );
+};
+
+const styles = StyleSheet.create({
+    button: {
+        padding: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginVertical: 8,
+    },
+    text: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+});
+
+// Usage in your app:
+// <SocialLoginButton 
+//     provider={ProviderType.Microsoft}
+//     clientId="your-client-id"
+//     title="Sign in with Microsoft"
+//     backgroundColor="#2f2f2f"
+// />
+```
+
+#### 🔥 Production-Ready Examples: Microsoft & Google Login
+
+**Important**: Web SDK scripts (`@azure/msal-browser`, Google Sign-In SDK) **don't work in React Native**. Use native libraries instead:
+
+##### 📘 Microsoft Login with Native MSAL
+
+```bash
+npm install @react-native-community/msal
+```
+
+```typescript
+// components/MicrosoftLoginButton.tsx
+import React from 'react';
+import { Pressable, Text, StyleSheet, Alert } from 'react-native';
+import { MSALWebviewParams, MSALConfiguration, MSALResult } from '@react-native-community/msal';
+import { SocialLoginManager, ProviderType } from 'rystem.authentication.social.client';
+
+const MSAL_CONFIG: MSALConfiguration = {
+    auth: {
+        clientId: 'your-microsoft-client-id',
+        authority: 'https://login.microsoftonline.com/consumers', // or /organizations for work accounts
+    },
+};
+
+export const MicrosoftLoginButton = () => {
+    const handleLogin = async () => {
+        try {
+            const { PublicClientApplication } = await import('@react-native-community/msal');
+            const pca = new PublicClientApplication(MSAL_CONFIG);
+            await pca.init();
+
+            const params = {
+                scopes: ['openid', 'profile', 'email', 'User.Read'],
+            };
+
+            // Acquire token interactively
+            const result: MSALResult = await pca.acquireToken(params);
+
+            // Send token to your backend via SocialLoginManager
+            SocialLoginManager.Instance(null).updateToken(
+                ProviderType.Microsoft,
+                result.idToken // or result.accessToken depending on your backend
+            );
+
+            console.log('✅ Microsoft login successful:', result.account.username);
+        } catch (error: any) {
+            console.error('❌ Microsoft login failed:', error);
+            Alert.alert('Login Failed', error.message || 'Unknown error');
+        }
+    };
+
+    return (
+        <Pressable style={[styles.button, { backgroundColor: '#2f2f2f' }]} onPress={handleLogin}>
+            <Text style={styles.text}>🪟 Sign in with Microsoft</Text>
+        </Pressable>
+    );
+};
+
+const styles = StyleSheet.create({
+    button: {
+        padding: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginVertical: 8,
+    },
+    text: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+});
+```
+
+##### 🔴 Google Login with Native SDK
+
+```bash
+npm install @react-native-google-signin/google-signin
+```
+
+```typescript
+// components/GoogleLoginButton.tsx
+import React from 'react';
+import { Pressable, Text, StyleSheet, Alert } from 'react-native';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { SocialLoginManager, ProviderType } from 'rystem.authentication.social.client';
+
+// Configure Google Sign-In (call this once at app startup, e.g., in App.tsx)
+GoogleSignin.configure({
+    webClientId: 'your-google-web-client-id.apps.googleusercontent.com', // From Google Cloud Console
+    offlineAccess: true, // To get refresh token
+    hostedDomain: '', // Optional: restrict to specific domain
+    forceCodeForRefreshToken: true,
+    iosClientId: 'your-ios-client-id.apps.googleusercontent.com', // Optional iOS-specific
+});
+
+export const GoogleLoginButton = () => {
+    const handleLogin = async () => {
+        try {
+            await GoogleSignin.hasPlayServices();
+            const userInfo = await GoogleSignin.signIn();
+
+            // Send ID token to your backend
+            const idToken = userInfo.idToken;
+            if (!idToken) {
+                throw new Error('No ID token received from Google');
+            }
+
+            SocialLoginManager.Instance(null).updateToken(
+                ProviderType.Google,
+                idToken
+            );
+
+            console.log('✅ Google login successful:', userInfo.user.email);
+        } catch (error: any) {
+            if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+                console.log('User cancelled Google login');
+            } else if (error.code === statusCodes.IN_PROGRESS) {
+                console.log('Google login already in progress');
+            } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+                Alert.alert('Error', 'Play Services not available or outdated');
+            } else {
+                console.error('❌ Google login failed:', error);
+                Alert.alert('Login Failed', error.message || 'Unknown error');
+            }
+        }
+    };
+
+    return (
+        <Pressable style={[styles.button, { backgroundColor: '#4285F4' }]} onPress={handleLogin}>
+            <Text style={styles.text}>🔵 Sign in with Google</Text>
+        </Pressable>
+    );
+};
+
+const styles = StyleSheet.create({
+    button: {
+        padding: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginVertical: 8,
+    },
+    text: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+});
+```
+
+##### 📱 Usage in Your React Native App
+
+```typescript
+// screens/LoginScreen.tsx
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { MicrosoftLoginButton } from '../components/MicrosoftLoginButton';
+import { GoogleLoginButton } from '../components/GoogleLoginButton';
+import { useSocialToken, useSocialUser } from 'rystem.authentication.social.client';
+
+export const LoginScreen = () => {
+    const token = useSocialToken();
+    const user = useSocialUser();
+
+    if (!token.isExpired) {
+        return (
+            <View style={styles.container}>
+                <Text style={styles.welcome}>Welcome, {user.username}!</Text>
+                <Text>Provider: {user.provider}</Text>
+                <Text>Email: {user.email}</Text>
+            </View>
+        );
+    }
+
+    return (
+        <View style={styles.container}>
+            <Text style={styles.title}>Choose Login Method</Text>
+            <MicrosoftLoginButton />
+            <GoogleLoginButton />
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    title: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 20,
+    },
+    welcome: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 10,
+    },
+});
+```
+
+**📋 Summary - React Native Setup Checklist**:
+1. ✅ Install `@react-native-async-storage/async-storage` for storage
+2. ✅ Create `ReactNativeStorageService` and `ReactNativeRoutingService`
+3. ✅ Install native SDKs: `@react-native-community/msal` and/or `@react-native-google-signin/google-signin`
+4. ✅ Create custom button components using native SDKs
+5. ✅ Call `SocialLoginManager.Instance(null).updateToken(provider, token)` after successful native login
+6. ✅ Use `useSocialToken()` and `useSocialUser()` hooks to access authentication state
 
 **Why No Polyfills?**
 - ✅ The library now checks `typeof window !== 'undefined'` before accessing browser APIs

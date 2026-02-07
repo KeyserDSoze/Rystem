@@ -47,6 +47,10 @@ export { UserStorageService } from './services/UserStorageService';
 export type { IRoutingService } from './services/IRoutingService';
 export { WindowRoutingService } from './services/WindowRoutingService';
 
+// Platform services (infrastructure layer - environment-specific operations)
+export type { IPlatformService } from './services/IPlatformService';
+export { BrowserPlatformService } from './services/BrowserPlatformService';
+
 // Platform and login mode support
 export { PlatformType } from './models/setup/PlatformType';
 export { LoginMode } from './models/setup/LoginMode';

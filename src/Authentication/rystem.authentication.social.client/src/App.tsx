@@ -1,6 +1,6 @@
 import './App.css'
 import { Wrapper } from './Wrapper'
-import { SocialLoginWrapper, setupSocialLogin, IIdentityTransformer, PlatformType, LoginMode } from './rystem.authentication.social.react/src';
+import { SocialLoginWrapper, setupSocialLogin, IIdentityTransformer, PlatformType, LoginMode } from './rystem.authentication.social.client/src';
 
 export interface SuperSocialUser {
     email: string;

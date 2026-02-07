@@ -37,8 +37,10 @@ export const CreateSocialButton = ({
         // Clean up any leftover popup result from previous attempts
         // Note: Popup mode uses native localStorage for cross-window communication (storage event)
         // The popup processes token exchange and saves the result (success or error)
-        const social_result = `social_result_${provider}`;
-        localStorage.removeItem(social_result);
+        if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+            const social_result = `social_result_${provider}`;
+            localStorage.removeItem(social_result);
+        }
     }, [provider]);
     
     useEffect(() => {
@@ -59,50 +61,30 @@ export const CreateSocialButton = ({
 
     useEffect(
         () => () => {
-            if (scriptNodeRef.current)
-                scriptNodeRef.current.remove();
+            if (scriptNodeRef.current) {
+                settings.platformService.removeScript(scriptNodeRef.current);
+            }
         },
         [],
     );
 
     const checkIsExistsSDKScript = useCallback(() => {
-        return !!document.getElementById(scriptId);
-    }, []);
-
-    const insertScript = useCallback(
-        (
-            d: HTMLDocument,
-            s: string = 'script',
-            id: string,
-            jsSrc: string,
-            cb: () => void,
-        ) => {
-            const sdkScriptTag: any = d.createElement(s);
-            sdkScriptTag.id = id;
-            sdkScriptTag.src = jsSrc;
-            sdkScriptTag.async = true;
-            sdkScriptTag.defer = true;
-            sdkScriptTag.crossorigin = "anonymous";
-            const scriptNode = document.getElementsByTagName('script')![0];
-            scriptNodeRef.current = sdkScriptTag;
-            scriptNode &&
-                scriptNode.parentNode &&
-                scriptNode.parentNode.insertBefore(sdkScriptTag, scriptNode);
-            sdkScriptTag.onload = cb;
-        },
-        [],
-    );
+        return settings.platformService.scriptExists(scriptId);
+    }, [scriptId]);
 
     const load = useCallback(() => {
         if (checkIsExistsSDKScript()) {
             setIsSdkLoaded(true);
         } else {
-            insertScript(document, 'script', scriptId, scriptUri ?? "", () => {
+            const scriptElement = settings.platformService.loadScript(scriptId, scriptUri ?? "", () => {
                 onScriptLoad && onScriptLoad();
                 setIsSdkLoaded(true);
             });
+            if (scriptElement) {
+                scriptNodeRef.current = scriptElement;
+            }
         }
-    }, [checkIsExistsSDKScript, insertScript]);
+    }, [checkIsExistsSDKScript, scriptId, scriptUri, onScriptLoad]);
 
 
     const handlePostMessage = useCallback(
@@ -122,6 +104,11 @@ export const CreateSocialButton = ({
     }
 
     const onChangeLocalStorage = useCallback(() => {
+        if (typeof window === 'undefined') {
+            console.warn('CreateSocialButton: window not available (React Native or SSR?)');
+            return;
+        }
+
         window.removeEventListener('storage', onChangeLocalStorage, false);
         // Popup mode: The popup processes the token exchange and saves the result
         // We just need to read the result and update the UI (or show error)
@@ -177,11 +164,13 @@ export const CreateSocialButton = ({
                 settings.routingService.navigateTo(redirect_uri);
             } else {
                 // Popup mode: open in popup window using routing service
-                window.addEventListener('storage', onChangeLocalStorage, false);
+                settings.platformService.addStorageListener(onChangeLocalStorage);
+
+                // Calculate popup position
                 const width = 450;
                 const height = 730;
-                const left = window.screen.width / 2 - width / 2;
-                const top = window.screen.height / 2 - height / 2;
+                const left = settings.platformService.getScreenWidth() / 2 - width / 2;
+                const top = settings.platformService.getScreenHeight() / 2 - height / 2;
                 const features = 'menubar=no,location=no,resizable=no,scrollbars=no,status=no, width=' +
                     width +
                     ', height=' +
@@ -202,6 +191,10 @@ export const CreateSocialButton = ({
         isSdkLoaded,
         onChangeLocalStorage,
         loginMode,
+        load,
+        onClick,
+        handlePostMessage,
+        handleError,
     ]);
 
     return (
