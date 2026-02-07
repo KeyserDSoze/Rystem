@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.3.11426.168 d18.3
+VisualStudioVersion = 18.3.11426.168
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B385DA45-F3CA-455B-91F1-1663EAC993E9}"
 EndProject
@@ -291,8 +291,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Authentication", "Authentic
 		.github\workflows\PackageDeploy.Rystem.Authentication.Social.yml = .github\workflows\PackageDeploy.Rystem.Authentication.Social.yml
 	EndProjectSection
 EndProject
-Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "rystem.authentication.social.react", "src\Authentication\rystem.authentication.social.react\rystem.authentication.social.react.esproj", "{0AFE97B4-BB80-46C5-9C48-DA5681715D65}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Concurrency.Redis", "src\Extensions\Concurrency\Rystem.Concurrency.Redis\Rystem.Concurrency.Redis.csproj", "{22600B6E-6DDA-411E-82B1-1F5637DA2170}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Rystem.Authentication.Social.Blazor", "src\Authentication\Rystem.Authentication.Social.Blazor\Rystem.Authentication.Social.Blazor.csproj", "{AD7C5B32-2C94-481A-8902-8DBDD2830A2B}"
@@ -329,6 +327,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rystem.Localization.Test.App", "src\Localization\Tests\Rystem.Localization.Test.App\Rystem.Localization.Test.App.csproj", "{15E47F55-12E8-4580-892E-74477AAD331C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RepositoryFramework.Tools.TypescriptGenerator", "src\Repository\RepositoryFramework.Tools.TypescriptGenerator\RepositoryFramework.Tools.TypescriptGenerator.csproj", "{E10DF79B-867B-4F83-94A6-728DE69E0524}"
+EndProject
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "rystem.authentication.social.client", "src\Authentication\rystem.authentication.social.client\rystem.authentication.social.client.esproj", "{5688F6D4-9B28-539E-28F9-B0B36BC318B3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -570,12 +570,6 @@ Global
 		{4AF6A055-3D9B-44D9-B91F-F443613FA982}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4AF6A055-3D9B-44D9-B91F-F443613FA982}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4AF6A055-3D9B-44D9-B91F-F443613FA982}.Release|Any CPU.Build.0 = Release|Any CPU
-		{0AFE97B4-BB80-46C5-9C48-DA5681715D65}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0AFE97B4-BB80-46C5-9C48-DA5681715D65}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0AFE97B4-BB80-46C5-9C48-DA5681715D65}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
-		{0AFE97B4-BB80-46C5-9C48-DA5681715D65}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0AFE97B4-BB80-46C5-9C48-DA5681715D65}.Release|Any CPU.Build.0 = Release|Any CPU
-		{0AFE97B4-BB80-46C5-9C48-DA5681715D65}.Release|Any CPU.Deploy.0 = Release|Any CPU
 		{22600B6E-6DDA-411E-82B1-1F5637DA2170}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{22600B6E-6DDA-411E-82B1-1F5637DA2170}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{22600B6E-6DDA-411E-82B1-1F5637DA2170}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -620,6 +614,12 @@ Global
 		{E10DF79B-867B-4F83-94A6-728DE69E0524}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E10DF79B-867B-4F83-94A6-728DE69E0524}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E10DF79B-867B-4F83-94A6-728DE69E0524}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5688F6D4-9B28-539E-28F9-B0B36BC318B3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5688F6D4-9B28-539E-28F9-B0B36BC318B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5688F6D4-9B28-539E-28F9-B0B36BC318B3}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{5688F6D4-9B28-539E-28F9-B0B36BC318B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5688F6D4-9B28-539E-28F9-B0B36BC318B3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5688F6D4-9B28-539E-28F9-B0B36BC318B3}.Release|Any CPU.Deploy.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -712,7 +712,6 @@ Global
 		{0B8C2C27-2611-4F24-B1A1-9007A139261D} = {21EA88B3-A513-4C01-8EB2-0E537C31EA07}
 		{31D3C78A-6F66-4CC3-A944-68C0661C942A} = {21EA88B3-A513-4C01-8EB2-0E537C31EA07}
 		{9A85031E-8A37-4E47-8F70-C2D5BEFADC97} = {21EA88B3-A513-4C01-8EB2-0E537C31EA07}
-		{0AFE97B4-BB80-46C5-9C48-DA5681715D65} = {685F643C-C2A2-4499-821A-00C732CE7FBB}
 		{22600B6E-6DDA-411E-82B1-1F5637DA2170} = {B4F0532A-1BB3-413E-AFCA-C0ADFDFA50F0}
 		{AD7C5B32-2C94-481A-8902-8DBDD2830A2B} = {685F643C-C2A2-4499-821A-00C732CE7FBB}
 		{15B4FAED-6281-427B-BD7F-31F7948E1ED6} = {034E0E48-3CB6-46EF-A2D0-C556A032FCF1}
@@ -728,6 +727,7 @@ Global
 		{F3691C56-B5AA-483D-9EC9-0D5E8F2A6E24} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{15E47F55-12E8-4580-892E-74477AAD331C} = {F3691C56-B5AA-483D-9EC9-0D5E8F2A6E24}
 		{E10DF79B-867B-4F83-94A6-728DE69E0524} = {2B79D3F0-8FBE-4F69-996D-51933E5756FD}
+		{5688F6D4-9B28-539E-28F9-B0B36BC318B3} = {685F643C-C2A2-4499-821A-00C732CE7FBB}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {35C6ADE0-7E70-48ED-A810-A71B2BC94F57}
