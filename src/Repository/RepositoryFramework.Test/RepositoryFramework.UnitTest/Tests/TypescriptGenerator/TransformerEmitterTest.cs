@@ -9,6 +9,86 @@ namespace RepositoryFramework.UnitTest.TypescriptGenerator;
 /// </summary>
 public class TransformerEmitterTest
 {
+    /// <summary>
+    /// Creates a model with a custom JsonPropertyName so RequiresRawType is true.
+    /// </summary>
+    private static ModelDescriptor CreateModelWithRawType(string name) => new()
+    {
+        Name = name,
+        FullName = $"Test.{name}",
+        Namespace = "Test",
+        Properties =
+        [
+            new PropertyDescriptor
+            {
+                CSharpName = "UserName",
+                JsonName = "user_name",
+                TypeScriptName = "userName",
+                Type = TestDescriptorFactory.StringType,
+                IsRequired = true,
+                IsOptional = false
+            }
+        ],
+        IsEnum = false
+    };
+
+    // ==============================
+    // Tests for models WITH RequiresRawType (full transformer)
+    // ==============================
+
+    [Fact]
+    public void Emit_WithRawType_GeneratesTransformerConst()
+    {
+        var model = CreateModelWithRawType("Calendar");
+        var result = TransformerEmitter.Emit(model);
+        Assert.Contains("export const CalendarTransformer: ITransformer<Calendar>", result);
+    }
+
+    [Fact]
+    public void Emit_WithRawType_ImportsTypesWithImportType()
+    {
+        var model = CreateModelWithRawType("Calendar");
+        var result = TransformerEmitter.Emit(model);
+        Assert.Contains("import type { Calendar, CalendarRaw } from '../types/calendar';", result);
+    }
+
+    [Fact]
+    public void Emit_WithRawType_ImportsMappersNormally()
+    {
+        var model = CreateModelWithRawType("Calendar");
+        var result = TransformerEmitter.Emit(model);
+        Assert.Contains("import { mapRawCalendarToCalendar, mapCalendarToRawCalendar } from '../types/calendar';", result);
+    }
+
+    [Fact]
+    public void Emit_WithRawType_ImplementsFromPlain()
+    {
+        var model = CreateModelWithRawType("Calendar");
+        var result = TransformerEmitter.Emit(model);
+        Assert.Contains("fromPlain: (plain: CalendarRaw): Calendar => mapRawCalendarToCalendar(plain)", result);
+    }
+
+    [Fact]
+    public void Emit_WithRawType_ImplementsToPlain()
+    {
+        var model = CreateModelWithRawType("Calendar");
+        var result = TransformerEmitter.Emit(model);
+        Assert.Contains("toPlain: (instance: Calendar): CalendarRaw => mapCalendarToRawCalendar(instance)", result);
+    }
+
+    [Fact]
+    public void Emit_WithRawType_IncludesJsDoc()
+    {
+        var model = CreateModelWithRawType("Calendar");
+        var result = TransformerEmitter.Emit(model);
+        Assert.Contains("* Transformer for Calendar type.", result);
+        Assert.Contains("* Converts between Raw (JSON) and Clean (TypeScript) representations.", result);
+    }
+
+    // ==============================
+    // Tests for models WITHOUT RequiresRawType (simple pass-through)
+    // ==============================
+
     [Fact]
     public void Emit_GeneratesTransformerConst()
     {
@@ -36,56 +116,39 @@ public class TransformerEmitterTest
     }
 
     [Fact]
-    public void Emit_ImportsTypesWithImportType()
+    public void Emit_WithoutRawType_ImportsOnlyCleanType()
     {
-        // Arrange
         var model = TestDescriptorFactory.CreateModel("Calendar");
-
-        // Act
         var result = TransformerEmitter.Emit(model);
 
-        // Assert
-        Assert.Contains("import type { Calendar, CalendarRaw } from '../types/calendar';", result);
+        Assert.Contains("import type { Calendar } from '../types/calendar';", result);
+        Assert.DoesNotContain("CalendarRaw", result);
+        Assert.DoesNotContain("mapRaw", result);
     }
 
     [Fact]
-    public void Emit_ImportsMappersNormally()
+    public void Emit_WithoutRawType_UsesPassThrough()
     {
-        // Arrange
         var model = TestDescriptorFactory.CreateModel("Calendar");
-
-        // Act
         var result = TransformerEmitter.Emit(model);
 
-        // Assert
-        Assert.Contains("import { mapRawCalendarToCalendar, mapCalendarToRawCalendar } from '../types/calendar';", result);
+        Assert.Contains("fromPlain: (plain: any): Calendar => plain as Calendar", result);
+        Assert.Contains("toPlain: (instance: Calendar): any => instance", result);
     }
 
     [Fact]
-    public void Emit_ImplementsFromPlain()
+    public void Emit_WithoutRawType_IncludesSimpleJsDoc()
     {
-        // Arrange
         var model = TestDescriptorFactory.CreateModel("Calendar");
-
-        // Act
         var result = TransformerEmitter.Emit(model);
 
-        // Assert
-        Assert.Contains("fromPlain: (plain: CalendarRaw): Calendar => mapRawCalendarToCalendar(plain)", result);
+        Assert.Contains("* Simple transformer for Calendar.", result);
+        Assert.Contains("* The backend API returns data in the correct format, no mapping needed.", result);
     }
 
-    [Fact]
-    public void Emit_ImplementsToPlain()
-    {
-        // Arrange
-        var model = TestDescriptorFactory.CreateModel("Calendar");
-
-        // Act
-        var result = TransformerEmitter.Emit(model);
-
-        // Assert
-        Assert.Contains("toPlain: (instance: Calendar): CalendarRaw => mapCalendarToRawCalendar(instance)", result);
-    }
+    // ==============================
+    // Common tests
+    // ==============================
 
     [Fact]
     public void Emit_EnumModel_ReturnsEmpty()
@@ -140,22 +203,5 @@ public class TransformerEmitterTest
         // Assert
         Assert.Contains("// ============================================", result);
         Assert.Contains("// Calendar Transformer", result);
-        Assert.Contains("// Auto-generated by Rystem TypeScript Generator", result);
-    }
-
-    [Fact]
-    public void Emit_IncludesJsDoc()
-    {
-        // Arrange
-        var model = TestDescriptorFactory.CreateModel("Calendar");
-
-        // Act
-        var result = TransformerEmitter.Emit(model);
-
-        // Assert
-        Assert.Contains("/**", result);
-        Assert.Contains("* Transformer for Calendar type.", result);
-        Assert.Contains("* Converts between Raw (JSON) and Clean (TypeScript) representations.", result);
-        Assert.Contains("*/", result);
     }
 }

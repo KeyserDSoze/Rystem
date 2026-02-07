@@ -1,4 +1,7 @@
-﻿using RepositoryFramework.Tools.TypescriptGenerator.Domain;
+﻿using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using RepositoryFramework.Tools.TypescriptGenerator.Domain;
 using RepositoryFramework.Tools.TypescriptGenerator.Rules;
 
 namespace RepositoryFramework.Tools.TypescriptGenerator.Analysis;
@@ -45,6 +48,14 @@ public class TypeResolver
         if (primitiveTs != null)
         {
             return CreatePrimitiveDescriptor(actualType, primitiveTs, isNullable);
+        }
+
+        // Check if it's a type with [JsonConverter] that wraps a single primitive value
+        // (e.g., LocalizedFormatString with JsonConverter that serializes as plain string)
+        var jsonConverterPrimitive = GetJsonConverterPrimitiveType(actualType);
+        if (jsonConverterPrimitive != null)
+        {
+            return CreatePrimitiveDescriptor(actualType, jsonConverterPrimitive, isNullable);
         }
 
         // Check if it's a dictionary
@@ -186,6 +197,129 @@ public class TypeResolver
             IsEnum = false,
             ClrType = type
         };
+    }
+
+    /// <summary>
+    /// Determines if a type with [JsonConverter] is serialized as a primitive JSON value.
+    /// Uses two strategies:
+    /// 1. IL analysis of the converter's Write method to detect calls to Utf8JsonWriter.Write*Value
+    /// 2. Fallback heuristic: single primitive property pattern
+    /// Returns the TypeScript type name ("string", "number", "boolean") or null if not primitive.
+    /// </summary>
+    private static string? GetJsonConverterPrimitiveType(Type type)
+    {
+        var converterAttr = type.GetCustomAttribute<JsonConverterAttribute>();
+        if (converterAttr?.ConverterType == null)
+            return null;
+
+        // Strategy 1: Analyze the converter's Write method IL to see what it writes
+        var fromIL = TryDetectPrimitiveFromConverterIL(converterAttr.ConverterType, type);
+        if (fromIL != null)
+            return fromIL;
+
+        // Strategy 2: Fallback — single primitive property heuristic
+        return TryDetectPrimitiveFromSingleProperty(type);
+    }
+
+    /// <summary>
+    /// Inspects the IL of the converter's Write method to determine what Utf8JsonWriter
+    /// methods it calls. If it calls exactly one Write*Value method (and no WriteStartObject
+    /// or WriteStartArray), the output is that primitive type.
+    /// Works for ANY converter regardless of the class structure.
+    /// </summary>
+    private static string? TryDetectPrimitiveFromConverterIL(Type converterType, Type targetType)
+    {
+        try
+        {
+            var writeMethod = converterType.GetMethod("Write",
+                BindingFlags.Public | BindingFlags.Instance,
+                null,
+                [typeof(Utf8JsonWriter), targetType, typeof(JsonSerializerOptions)],
+                null);
+
+            if (writeMethod == null)
+                return null;
+
+            var body = writeMethod.GetMethodBody();
+            var il = body?.GetILAsByteArray();
+            if (il == null)
+                return null;
+
+            var module = converterType.Module;
+            var writesString = false;
+            var writesNumber = false;
+            var writesBool = false;
+
+            for (var i = 0; i < il.Length - 4; i++)
+            {
+                // call (0x28) or callvirt (0x6F) followed by 4-byte metadata token
+                if (il[i] is not (0x28 or 0x6F))
+                    continue;
+
+                var token = il[i + 1] | (il[i + 2] << 8) | (il[i + 3] << 16) | (il[i + 4] << 24);
+                try
+                {
+                    var method = module.ResolveMethod(token);
+                    if (method?.DeclaringType != typeof(Utf8JsonWriter))
+                        continue;
+
+                    switch (method.Name)
+                    {
+                        case "WriteStringValue":
+                            writesString = true;
+                            break;
+                        case "WriteNumberValue":
+                            writesNumber = true;
+                            break;
+                        case "WriteBooleanValue":
+                            writesBool = true;
+                            break;
+                        case "WriteStartObject" or "WriteStartArray":
+                            // Converter produces a complex JSON structure, not a primitive
+                            return null;
+                    }
+                }
+                catch
+                {
+                    // Token resolution failed (cross-assembly, generic context, etc.) — skip
+                }
+
+                i += 4; // Skip the 4-byte token
+            }
+
+            // If exactly one primitive write type detected, return it
+            var count = (writesString ? 1 : 0) + (writesNumber ? 1 : 0) + (writesBool ? 1 : 0);
+            if (count == 1)
+            {
+                if (writesString) return "string";
+                if (writesNumber) return "number";
+                if (writesBool) return "boolean";
+            }
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Fallback heuristic: if the type has exactly one public non-indexer property
+    /// of a primitive type, assume the converter serializes as that primitive.
+    /// </summary>
+    private static string? TryDetectPrimitiveFromSingleProperty(Type type)
+    {
+        var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.GetIndexParameters().Length == 0 && p.CanRead)
+            .ToArray();
+
+        if (properties.Length != 1)
+            return null;
+
+        var propType = properties[0].PropertyType;
+        var underlyingType = Nullable.GetUnderlyingType(propType) ?? propType;
+        return PrimitiveTypeRules.GetTypeScriptType(underlyingType);
     }
 
     /// <summary>

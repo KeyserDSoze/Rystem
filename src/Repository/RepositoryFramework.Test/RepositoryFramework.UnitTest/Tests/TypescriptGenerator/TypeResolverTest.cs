@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using RepositoryFramework.Tools.TypescriptGenerator.Analysis;
 using RepositoryFramework.Tools.TypescriptGenerator.Rules;
+using RepositoryFramework.UnitTest.TypescriptGenerator.Models;
 using Xunit;
 
 namespace RepositoryFramework.UnitTest.TypescriptGenerator;
@@ -158,6 +159,102 @@ public class TypeResolverTest
 
         // Assert - should be same instance due to caching
         Assert.Same(result1, result2);
+    }
+
+    [Fact]
+    public void Resolve_TypeWithJsonConverterSingleStringProperty_TreatedAsString()
+    {
+        // Arrange - LocalizedFormatString has [JsonConverter] and single 'Value: string' property
+        // Act
+        var result = _resolver.Resolve(typeof(LocalizedFormatString));
+
+        // Assert - should be resolved as "string", not as a complex type
+        Assert.Equal("string", result.TypeScriptName);
+        Assert.True(result.IsPrimitive);
+        Assert.False(result.IsArray);
+        Assert.False(result.IsDictionary);
+    }
+
+    [Fact]
+    public void Resolve_TypeWithJsonConverterSingleIntProperty_TreatedAsNumber()
+    {
+        // Arrange - WrappedInt has [JsonConverter] and single 'Value: int' property
+        // Act
+        var result = _resolver.Resolve(typeof(WrappedInt));
+
+        // Assert
+        Assert.Equal("number", result.TypeScriptName);
+        Assert.True(result.IsPrimitive);
+    }
+
+    [Fact]
+    public void Resolve_TypeWithJsonConverterMultipleProperties_StaysComplex()
+    {
+        // Arrange - MultiPropertyWithConverter has [JsonConverter] that calls WriteStartObject
+        // IL analysis detects complex output → stays as complex type
+        // Act
+        var result = _resolver.Resolve(typeof(MultiPropertyWithConverter));
+
+        // Assert
+        Assert.False(result.IsPrimitive);
+        Assert.Equal("MultiPropertyWithConverter", result.TypeScriptName);
+    }
+
+    [Fact]
+    public void Resolve_ChapterLocalization_DescriptionIsString()
+    {
+        // Arrange - ChapterLocalization.Description is LocalizedFormatString
+        // which has a [JsonConverter] → should resolve to "string"
+        // Act
+        var result = _resolver.Resolve(typeof(ChapterLocalization));
+
+        // Assert - the type itself is complex
+        Assert.False(result.IsPrimitive);
+
+        // But when we resolve the property type directly
+        var descriptionType = _resolver.Resolve(typeof(LocalizedFormatString));
+        Assert.Equal("string", descriptionType.TypeScriptName);
+        Assert.True(descriptionType.IsPrimitive);
+    }
+
+    [Fact]
+    public void Resolve_OpaqueToken_ZeroPropertiesButConverterWritesString_TreatedAsString()
+    {
+        // Arrange - OpaqueToken has ZERO public properties,
+        // but its converter calls WriteStringValue → IL analysis detects "string"
+        // Old heuristic would FAIL here (requires exactly 1 property)
+        // Act
+        var result = _resolver.Resolve(typeof(OpaqueToken));
+
+        // Assert
+        Assert.Equal("string", result.TypeScriptName);
+        Assert.True(result.IsPrimitive);
+    }
+
+    [Fact]
+    public void Resolve_ScoreValue_MultiplePropertiesButConverterWritesNumber_TreatedAsNumber()
+    {
+        // Arrange - ScoreValue has 3 properties (Points, Category, EarnedAt),
+        // but its converter calls WriteNumberValue → IL analysis detects "number"
+        // Old heuristic would FAIL here (more than 1 property)
+        // Act
+        var result = _resolver.Resolve(typeof(ScoreValue));
+
+        // Assert
+        Assert.Equal("number", result.TypeScriptName);
+        Assert.True(result.IsPrimitive);
+    }
+
+    [Fact]
+    public void Resolve_Flag_ConverterWritesBoolean_TreatedAsBoolean()
+    {
+        // Arrange - Flag has 2 properties but converter calls WriteBooleanValue
+        // Act
+        var result = _resolver.Resolve(typeof(Flag));
+
+        // Assert
+        Assert.Equal("boolean", result.TypeScriptName);
+        Assert.True(result.IsPrimitive);
     }
 }
 

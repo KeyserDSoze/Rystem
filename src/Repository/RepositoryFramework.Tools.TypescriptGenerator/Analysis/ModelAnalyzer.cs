@@ -123,42 +123,18 @@ public class ModelAnalyzer
         foreach (var property in properties)
         {
             var propType = property.Type;
+            var typesToAnalyze = new List<Type>();
 
-            // Get the actual type to analyze
-            Type? typeToAnalyze = null;
+            // Collect all types that need their own TypeScript definitions
+            CollectNestedTypes(typesToAnalyze, propType);
 
-            if (propType.IsEnum && propType.ClrType != null)
+            foreach (var typeToAnalyze in typesToAnalyze)
             {
-                typeToAnalyze = propType.ClrType;
-            }
-            else if (!propType.IsPrimitive && !propType.IsEnum)
-            {
-                if (propType.IsArray && propType.ElementType?.ClrType != null &&
-                    !propType.ElementType.IsPrimitive && !propType.ElementType.IsEnum)
+                if (!_analyzedModels.ContainsKey(typeToAnalyze))
                 {
-                    typeToAnalyze = propType.ElementType.ClrType;
+                    var nestedDescriptor = Analyze(typeToAnalyze, depth + 1, type.Name);
+                    nestedTypes.Add(nestedDescriptor);
                 }
-                else if (propType.IsDictionary && propType.ValueType?.ClrType != null &&
-                         !propType.ValueType.IsPrimitive && !propType.ValueType.IsEnum)
-                {
-                    typeToAnalyze = propType.ValueType.ClrType;
-                }
-                else if (propType.ClrType != null)
-                {
-                    typeToAnalyze = propType.ClrType;
-                }
-            }
-
-            // Also analyze enum element types in arrays
-            if (propType.IsArray && propType.ElementType is { IsEnum: true, ClrType: not null })
-            {
-                typeToAnalyze = propType.ElementType.ClrType;
-            }
-
-            if (typeToAnalyze != null && !_analyzedModels.ContainsKey(typeToAnalyze))
-            {
-                var nestedDescriptor = Analyze(typeToAnalyze, depth + 1, type.Name);
-                nestedTypes.Add(nestedDescriptor);
             }
         }
 
@@ -254,6 +230,37 @@ public class ModelAnalyzer
             GenericTypeParameters = genericParameters,
             GenericBaseTypeName = actualGenericBaseName
         };
+    }
+
+    /// <summary>
+    /// Recursively collects CLR types that need their own TypeScript definitions
+    /// from a TypeDescriptor, drilling into Dictionary key/value and Array element types
+    /// instead of collecting the container types themselves.
+    /// </summary>
+    private static void CollectNestedTypes(List<Type> types, TypeDescriptor? typeDesc)
+    {
+        if (typeDesc == null || typeDesc.ClrType == null)
+            return;
+
+        if (typeDesc.IsPrimitive)
+            return;
+
+        if (typeDesc.IsDictionary)
+        {
+            CollectNestedTypes(types, typeDesc.KeyType);
+            CollectNestedTypes(types, typeDesc.ValueType);
+            return;
+        }
+
+        if (typeDesc.IsArray)
+        {
+            CollectNestedTypes(types, typeDesc.ElementType);
+            return;
+        }
+
+        // Enum or complex type — needs its own TypeScript definition
+        if (!types.Contains(typeDesc.ClrType))
+            types.Add(typeDesc.ClrType);
     }
 
     /// <summary>

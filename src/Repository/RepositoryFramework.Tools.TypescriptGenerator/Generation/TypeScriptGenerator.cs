@@ -234,10 +234,7 @@ public class TypeScriptGenerator
     }
 
     private static string GetSimpleName(string fullName)
-    {
-        var lastDot = fullName.LastIndexOf('.');
-        return lastDot >= 0 ? fullName[(lastDot + 1)..] : fullName;
-    }
+        => fullName.GetSimpleTypeName();
 
     /// <summary>
     /// Generates a complete TypeScript file for a model.
