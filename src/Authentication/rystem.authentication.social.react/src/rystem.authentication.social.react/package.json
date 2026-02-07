@@ -1,9 +1,9 @@
 {
-  "name": "rystem.authentication.social.react",
-  "version": "0.4.0",
+  "name": "rystem.authentication.social.client",
+  "version": "0.5.0",
   "author": "Alessandro Rapiti <alessandro.rapiti44@gmail.com>",
   "license": "MIT",
-  "description": "It can simplify the integration with social identities and .Net.",
+  "description": "Framework-agnostic social authentication library for web and mobile (React, React Native, Next.js, Expo, etc.)",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "scripts": {
@@ -20,5 +20,26 @@
   "files": [
     "lib/",
     "lib/styles/"
-  ]
+  ],
+  "keywords": [
+    "authentication",
+    "social-login",
+    "oauth",
+    "pkce",
+    "react",
+    "react-native",
+    "expo",
+    "nextjs",
+    "typescript",
+    "framework-agnostic",
+    "microsoft",
+    "google",
+    "facebook",
+    "github"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KeyserDSoze/Rystem.git",
+    "directory": "src/Authentication/rystem.authentication.social.client"
+  }
 }

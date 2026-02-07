@@ -1,17 +1,19 @@
 ### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
-# rystem.authentication.social.react
+# rystem.authentication.social.client
 
-React/TypeScript library for social authentication with built-in PKCE support for secure OAuth 2.0 flows.
+Framework-agnostic TypeScript library for social authentication with built-in PKCE support for secure OAuth 2.0 flows.
+
+**Works with**: React, React Native, Next.js, Expo, Remix, and any JavaScript/TypeScript framework.
 
 ### ✨ Key Features
 
 - **🔐 PKCE Built-in**: Automatic code_verifier generation for Microsoft OAuth (RFC 7636)
 - **⚛️ React Hooks**: Type-safe hooks for token and user management
-- **🎨 Ready-to-Use Components**: Login buttons, logout, authentication wrapper
+- **🎨 Ready-to-Use Components**: Login buttons, logout, authentication wrapper (React only)
 - **🔄 Automatic Token Refresh**: Handles token expiration seamlessly
-- **📱 SPA Optimized**: Designed for Single-Page Applications with security best practices
-- **📱 Mobile Support**: Full React Native support with deep link OAuth flows
+- **📱 Multi-Platform**: Web (React, Next.js), Mobile (React Native, Expo), and any framework via interfaces
+- **🔌 Framework-Agnostic Core**: Inject custom storage and routing services for any platform
 
 ## 🆕 What's New - Mobile Platform Support
 
@@ -43,7 +45,7 @@ React/TypeScript library for social authentication with built-in PKCE support fo
 ### Quick Example
 
 ```typescript
-import { setupSocialLogin, PlatformType, LoginMode } from 'rystem.authentication.social.react';
+import { setupSocialLogin, PlatformType, LoginMode } from 'rystem.authentication.social.client';
 import { Platform } from 'react-native'; // Only in React Native projects
 
 setupSocialLogin(x => {
@@ -78,8 +80,154 @@ setupSocialLogin(x => {
 ## 📦 Installation
 
 ```bash
-npm install rystem.authentication.social.react
+npm install rystem.authentication.social.client
+# or
+yarn add rystem.authentication.social.client
+# or
+pnpm add rystem.authentication.social.client
 ```
+
+### 🚀 React Native Setup
+
+The library works with **React Native** without any polyfills! You just need to provide custom implementations for:
+
+1. **Storage Service** (use AsyncStorage or Secure Storage instead of localStorage)
+2. **Routing Service** (use Linking API for deep links)
+
+#### Example React Native Setup
+
+```typescript
+// services/ReactNativeStorageService.ts
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { IStorageService } from 'rystem.authentication.social.react';
+
+export class ReactNativeStorageService implements IStorageService {
+    async get(key: string): Promise<string | null> {
+        try {
+            return await AsyncStorage.getItem(key);
+        } catch (error) {
+            console.error('AsyncStorage get error:', error);
+            return null;
+        }
+    }
+
+    async set(key: string, value: string): Promise<void> {
+        try {
+            await AsyncStorage.setItem(key, value);
+        } catch (error) {
+            console.error('AsyncStorage set error:', error);
+        }
+    }
+
+    async remove(key: string): Promise<void> {
+        try {
+            await AsyncStorage.removeItem(key);
+        } catch (error) {
+            console.error('AsyncStorage remove error:', error);
+        }
+    }
+
+    async has(key: string): Promise<boolean> {
+        const value = await this.get(key);
+        return value !== null;
+    }
+
+    async clear(): Promise<void> {
+        try {
+            await AsyncStorage.clear();
+        } catch (error) {
+            console.error('AsyncStorage clear error:', error);
+        }
+    }
+}
+
+// services/ReactNativeRoutingService.ts
+import { Linking } from 'react-native';
+import { IRoutingService } from 'rystem.authentication.social.react';
+
+export class ReactNativeRoutingService implements IRoutingService {
+    private currentUrl: URL | null = null;
+
+    constructor() {
+        // Parse initial URL
+        Linking.getInitialURL().then(url => {
+            if (url) this.currentUrl = new URL(url);
+        });
+
+        // Listen for deep link events
+        Linking.addEventListener('url', ({ url }) => {
+            this.currentUrl = new URL(url);
+        });
+    }
+
+    getSearchParam(key: string): string | null {
+        if (!this.currentUrl) return null;
+        return this.currentUrl.searchParams.get(key);
+    }
+
+    getAllSearchParams(): URLSearchParams {
+        if (!this.currentUrl) return new URLSearchParams();
+        return this.currentUrl.searchParams;
+    }
+
+    getCurrentPath(): string {
+        if (!this.currentUrl) return '/';
+        return this.currentUrl.pathname + this.currentUrl.search;
+    }
+
+    navigateTo(url: string): void {
+        // For OAuth URLs, open in browser
+        Linking.openURL(url);
+    }
+
+    navigateReplace(path: string): void {
+        // React Native navigation - implement with your router (React Navigation, Expo Router)
+        console.log('Navigate to:', path);
+    }
+
+    openPopup(url: string, name: string, features: string): Window | null {
+        // React Native doesn't support popups - use in-app browser
+        Linking.openURL(url);
+        return null;
+    }
+}
+
+// App setup
+import { setupSocialLogin, PlatformType, LoginMode } from 'rystem.authentication.social.react';
+import { ReactNativeStorageService } from './services/ReactNativeStorageService';
+import { ReactNativeRoutingService } from './services/ReactNativeRoutingService';
+
+setupSocialLogin(x => {
+    x.apiUri = "https://api.yourdomain.com";
+
+    // ✅ Provide React Native implementations
+    x.storageService = new ReactNativeStorageService();
+    x.routingService = new ReactNativeRoutingService();
+
+    // Platform configuration
+    x.platform = {
+        type: PlatformType.Auto,  // Auto-detects iOS/Android
+        redirectPath: Platform.select({
+            ios: 'myapp://oauth/callback',
+            android: 'myapp://oauth/callback',
+            default: '/account/login'
+        }),
+        loginMode: LoginMode.Redirect  // Always redirect for mobile
+    };
+
+    x.microsoft.clientId = "your-client-id";
+    x.google.clientId = "your-client-id";
+
+    x.onLoginFailure = (error) => {
+        Alert.alert('Login Failed', error.message);
+    };
+});
+```
+
+**Why No Polyfills?**
+- ✅ The library now checks `typeof window !== 'undefined'` before accessing browser APIs
+- ✅ You inject platform-specific implementations via `IStorageService` and `IRoutingService`
+- ✅ No need for hacky polyfills or modifying `global` object
 
 ### ⚠️ Important for React Router / Next.js Users
 

@@ -6,8 +6,17 @@ import { LocalStorageService } from "../services/LocalStorageService";
 import { WindowRoutingService } from "../services/WindowRoutingService";
 
 export const setupSocialLogin = function (settings: (settings: SocialLoginSettings) => void): SocialLoginManager {
+// ✅ Lazy evaluation: only access window when actually needed
+const getDefaultApiUri = (): string => {
+    if (typeof window !== 'undefined' && window.location) {
+        return window.location.origin;
+    }
+    // Fallback for React Native or SSR
+    return '';
+};
+
 const parameters = {
-    apiUri: window.location.origin,
+    apiUri: getDefaultApiUri(),  // ✅ Safe: checks window existence
     title: null,
     onLoginFailure: (data: SocialLoginErrorResponse) => { console.log(data.code); },
     automaticRefresh: false,

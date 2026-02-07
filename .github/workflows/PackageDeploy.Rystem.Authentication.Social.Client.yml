@@ -1,10 +1,10 @@
-name: Authentication.Social.React.Npm
+name: Authentication.Social.Client.Npm
 on:
   push:
     branches:
       - master
     paths:
-      - src/Authentication/rystem.authentication.social.react/src/rystem.authentication.social.react/package.json
+      - src/Authentication/rystem.authentication.social.client/src/rystem.authentication.social.client/package.json
       - reload.txt
 jobs:
   publish:
@@ -13,7 +13,7 @@ jobs:
     environment: Rystem.Nuget
     defaults:
         run:
-            working-directory: "src/Authentication/rystem.authentication.social.react/src/rystem.authentication.social.react/"
+            working-directory: "src/Authentication/rystem.authentication.social.client/src/rystem.authentication.social.client/"
     
     steps:
       - uses: actions/checkout@v3
