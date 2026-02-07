@@ -305,5 +305,49 @@ public class GenericTypeHelperTest
         Assert.Equal("System.String", result.TypeArguments[0]);
         Assert.StartsWith("List`1", result.TypeArguments[1]);
     }
+
+    [Fact]
+    public void Parse_NestedGenericWithCommaInsideBrackets_ExtractsCorrectly()
+    {
+        // Arrange - The critical case: commas inside nested brackets should not be treated as assembly separator
+        var typeName = "EntityVersions`1[[EntityVersion`1[[Book, GhostWriter.Core]], GhostWriter.Core]]";
+
+        // Act
+        var result = GenericTypeHelper.Parse(typeName);
+
+        // Assert
+        Assert.True(result.IsGeneric);
+        Assert.Equal("EntityVersions", result.BaseTypeName);
+        Assert.Single(result.TypeArguments);
+
+        // Should extract the full nested generic, not cut it off at the first comma
+        var typeArg = result.TypeArguments[0];
+        Assert.StartsWith("EntityVersion`1", typeArg);
+        Assert.Contains("[[Book", typeArg);
+        Assert.DoesNotContain("GhostWriter.Core", typeArg); // Assembly info should be removed
+    }
+
+    [Fact]
+    public void Parse_DeeplyNestedGenericsWithMultipleCommas_HandlesCorrectly()
+    {
+        // Arrange - Three levels: Outer<Middle<Inner<string>>>
+        var typeName = "Outer`1[[Middle`1[[Inner`1[[System.String, mscorlib, Version=4.0]], MyMiddleAsm, Version=1.0]], MyOuterAsm, Version=1.0]]";
+
+        // Act
+        var result = GenericTypeHelper.Parse(typeName);
+
+        // Assert
+        Assert.True(result.IsGeneric);
+        Assert.Equal("Outer", result.BaseTypeName);
+        Assert.Single(result.TypeArguments);
+
+        var typeArg = result.TypeArguments[0];
+        Assert.StartsWith("Middle`1", typeArg);
+        // Should preserve nested brackets
+        Assert.Contains("[[Inner", typeArg);
+        // Should NOT contain outer assembly info
+        Assert.DoesNotContain("MyOuterAsm", typeArg);
+    }
 }
+
 

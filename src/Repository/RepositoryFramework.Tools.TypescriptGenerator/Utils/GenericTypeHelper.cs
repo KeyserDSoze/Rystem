@@ -22,6 +22,7 @@ public static partial class GenericTypeHelper
     /// Supports both syntaxes:
     /// - User-friendly: EntityVersions&lt;Timeline&gt;
     /// - Reflection: EntityVersions`1[[GhostWriter.Business.Timeline]]
+    /// - Open generic (no args): EntityVersions`1 -> treated as non-generic base type
     /// </summary>
     public static GenericTypeInfo Parse(string typeName)
     {
@@ -39,6 +40,20 @@ public static partial class GenericTypeHelper
         if (typeName.Contains('<'))
         {
             return ParseUserFriendly(typeName);
+        }
+
+        // Check if this is reflection syntax with type arguments: EntityVersions`1[[...]]
+        // or just an open generic definition: EntityVersions`1
+        if (!typeName.Contains("[["))
+        {
+            // This is an open generic type (e.g., EntityVersions`1 without type arguments)
+            // Treat it as the base type name, not a generic to instantiate
+            return new GenericTypeInfo
+            {
+                BaseTypeName = typeName,
+                TypeArguments = [],
+                IsGeneric = false // Important: open generics are NOT considered "generic" for our purposes
+            };
         }
 
         // Otherwise, parse reflection syntax: EntityVersions`1[[Timeline]]
@@ -152,8 +167,9 @@ public static partial class GenericTypeHelper
 
                         // Extract just the type name without assembly info
                         // "GhostWriter.Business.Timeline, Assembly, Version=..." -> "GhostWriter.Business.Timeline"
-                        var commaIndex = fullName.IndexOf(',');
-                        var cleanTypeName = commaIndex > 0 ? fullName[..commaIndex].Trim() : fullName;
+                        // BUT: Respect nested brackets! "EntityVersion`1[[Book, Assembly]], OuterAssembly" 
+                        // should extract "EntityVersion`1[[Book, Assembly]]", not "EntityVersion`1[[Book"
+                        var cleanTypeName = ExtractTypeNameRespectingBrackets(fullName);
 
                         typeArgs.Add(cleanTypeName);
                     }
@@ -173,6 +189,114 @@ public static partial class GenericTypeHelper
         }
 
         return typeArgs;
+    }
+
+    /// <summary>
+    /// Extracts the type name from a string that may contain assembly information,
+    /// respecting nested bracket structures and recursively cleaning nested assembly info.
+    /// Examples:
+    /// - "GhostWriter.Core.Book, Assembly" -> "GhostWriter.Core.Book"
+    /// - "EntityVersion`1[[Book, Asm]], OuterAsm" -> "EntityVersion`1[[Book]]"
+    /// </summary>
+    private static string ExtractTypeNameRespectingBrackets(string fullName)
+    {
+        // First, find where the type name ends (at the first comma outside all brackets)
+        var bracketDepth = 0;
+        var typeNameEnd = fullName.Length;
+
+        for (var i = 0; i < fullName.Length; i++)
+        {
+            var ch = fullName[i];
+
+            // Track bracket depth
+            if (ch == '[')
+            {
+                bracketDepth++;
+            }
+            else if (ch == ']')
+            {
+                bracketDepth--;
+            }
+            // Only consider commas OUTSIDE all brackets
+            else if (ch == ',' && bracketDepth == 0)
+            {
+                // Found the assembly separator
+                typeNameEnd = i;
+                break;
+            }
+        }
+
+        var typeName = fullName[..typeNameEnd].Trim();
+
+        // Now recursively clean nested brackets [[...]]
+        // Replace [[X, Assembly]] with [[X]]
+        return CleanNestedAssemblyInfo(typeName);
+    }
+
+    /// <summary>
+    /// Recursively removes assembly information from nested generic type arguments.
+    /// EntityVersion`1[[Book, GhostWriter.Core]] -> EntityVersion`1[[Book]]
+    /// </summary>
+    private static string CleanNestedAssemblyInfo(string typeName)
+    {
+        // If no brackets, nothing to clean
+        if (!typeName.Contains("[["))
+            return typeName;
+
+        var result = new StringBuilder();
+        var i = 0;
+        var length = typeName.Length;
+
+        while (i < length)
+        {
+            // Look for [[ opening
+            if (i < length - 1 && typeName[i] == '[' && typeName[i + 1] == '[')
+            {
+                result.Append("[[");
+                i += 2;
+
+                // Find the matching ]]
+                var depth = 1;
+                var start = i;
+
+                while (i < length && depth > 0)
+                {
+                    if (i < length - 1 && typeName[i] == '[' && typeName[i + 1] == '[')
+                    {
+                        depth++;
+                        i += 2;
+                    }
+                    else if (i < length - 1 && typeName[i] == ']' && typeName[i + 1] == ']')
+                    {
+                        depth--;
+                        if (depth == 0)
+                        {
+                            // Extract content and clean it recursively
+                            var content = typeName[start..i];
+                            var cleaned = ExtractTypeNameRespectingBrackets(content);
+                            result.Append(cleaned);
+                            result.Append("]]");
+                            i += 2;
+                        }
+                        else
+                        {
+                            i += 2;
+                        }
+                    }
+                    else
+                    {
+                        i++;
+                    }
+                }
+            }
+            else
+            {
+                result.Append(typeName[i]);
+                i++;
+            }
+        }
+
+        return result.ToString();
     }
 
     /// <summary>

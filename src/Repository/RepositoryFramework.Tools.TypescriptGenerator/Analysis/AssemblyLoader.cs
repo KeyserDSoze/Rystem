@@ -224,6 +224,40 @@ public class AssemblyLoader
     {
         var genericInfo = GenericTypeHelper.Parse(typeName);
 
+        // If Parse determined this is NOT a generic (e.g., open generic like EntityVersions`1 without args),
+        // search for it directly without trying to construct a closed generic
+        if (!genericInfo.IsGeneric)
+        {
+            Logger.Info($"  Searching for open generic or base type: {genericInfo.BaseTypeName}");
+
+            // Search directly in assemblies without recursion
+            foreach (var assembly in _loadedAssemblies)
+            {
+                var type = assembly.GetType(genericInfo.BaseTypeName);
+                if (type != null)
+                    return type;
+
+                // Also try simple name matching
+                try
+                {
+                    var types = assembly.GetTypes();
+                    var match = types.FirstOrDefault(t => t.Name.Equals(genericInfo.BaseTypeName, StringComparison.OrdinalIgnoreCase));
+                    if (match != null)
+                        return match;
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    var types = ex.Types.Where(t => t != null).Cast<Type>();
+                    var match = types.FirstOrDefault(t => t.Name.Equals(genericInfo.BaseTypeName, StringComparison.OrdinalIgnoreCase));
+                    if (match != null)
+                        return match;
+                }
+            }
+
+            Logger.Warning($"Could not find type: {genericInfo.BaseTypeName}");
+            return null;
+        }
+
         // Find the open generic type (e.g., EntityVersions`1)
         var openGenericType = FindType(genericInfo.ReflectionName);
         if (openGenericType == null)
