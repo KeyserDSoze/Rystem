@@ -64,6 +64,13 @@ public class DependencyGraph
         if (type.IsEnum)
             return type.CSharpName;
 
+        if (type.IsUnion)
+        {
+            // Union types don't get tracked themselves;
+            // their members are tracked via nested type discovery
+            return null;
+        }
+
         if (type.IsArray && type.ElementType != null)
             return GetTypeToTrack(type.ElementType);
 

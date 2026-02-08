@@ -35,7 +35,7 @@ public class ImportResolverTest
         context.AllModels["Simple"] = model;
 
         // Act
-        var result = ImportResolver.ResolveImports("Simple", model, context, null);
+        var result = ImportResolver.ResolveImports("Simple", [model], context, null);
 
         // Assert
         Assert.True(string.IsNullOrEmpty(result));
@@ -51,7 +51,7 @@ public class ImportResolverTest
         context.AllModels["Tags"] = model;
 
         // Act
-        var result = ImportResolver.ResolveImports("Tags", model, context, null);
+        var result = ImportResolver.ResolveImports("Tags", [model], context, null);
 
         // Assert
         Assert.True(string.IsNullOrEmpty(result));
@@ -72,7 +72,7 @@ public class ImportResolverTest
         context.AllModels["Task"] = model;
 
         // Act
-        var result = ImportResolver.ResolveImports("Task", model, context, null);
+        var result = ImportResolver.ResolveImports("Task", [model], context, null);
 
         // Assert
         Assert.Contains("import", result);
@@ -90,7 +90,7 @@ public class ImportResolverTest
         context.TypeOwnership["Node"] = "Node";
 
         // Act
-        var result = ImportResolver.ResolveImports("Node", model, context, null);
+        var result = ImportResolver.ResolveImports("Node", [model], context, null);
 
         // Assert
         Assert.True(string.IsNullOrEmpty(result) || !result.Contains("from './node'"));
@@ -116,7 +116,7 @@ public class ImportResolverTest
         context.TypeOwnership["OrderItem"] = "Order";
 
         // Act
-        var result = ImportResolver.ResolveImports("Order", model, context, null);
+        var result = ImportResolver.ResolveImports("Order", [model], context, null);
 
         // Assert
         Assert.True(string.IsNullOrEmpty(result) || !result.Contains("OrderItem"));
@@ -134,7 +134,7 @@ public class ImportResolverTest
         context.AllModels["AllPrimitives"] = model;
 
         // Act
-        var result = ImportResolver.ResolveImports("AllPrimitives", model, context, null);
+        var result = ImportResolver.ResolveImports("AllPrimitives", [model], context, null);
 
         // Assert
         Assert.True(string.IsNullOrEmpty(result));
@@ -154,7 +154,7 @@ public class ImportResolverTest
         context.AllModels["Catalog"] = model;
 
         // Act
-        var result = ImportResolver.ResolveImports("Catalog", model, context, null);
+        var result = ImportResolver.ResolveImports("Catalog", [model], context, null);
 
         // Assert
         Assert.Contains("Product", result);

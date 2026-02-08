@@ -185,4 +185,26 @@ public class MapperEmitterTest
         Assert.Contains("clean.status", result);
         Assert.DoesNotContain("mapRawStatusToStatus", result);
     }
+
+    [Fact]
+    public void Emit_OptionalComplexType_UsesUndefinedNotNull()
+    {
+        // Arrange — optional complex property must use `undefined` (not `null`)
+        // because TypeScript `?:` means `T | undefined`, and `null` is not assignable to `undefined`.
+        var context = CreateContext();
+        context.TypesRequiringRaw.Add("HistoricalPeriod");
+
+        var model = CreateModel("Book",
+            CreateProperty("HistoricalPeriod", "p", CreateComplexType("HistoricalPeriod"), isOptional: true));
+
+        // Act
+        var result = MapperEmitter.Emit(model, context);
+
+        // Assert — Raw->Clean: must use undefined
+        Assert.Contains("raw.p ? mapRawHistoricalPeriodToHistoricalPeriod(raw.p) : undefined", result);
+        Assert.DoesNotContain(": null", result);
+
+        // Assert — Clean->Raw: must also use undefined
+        Assert.Contains("clean.historicalPeriod ? mapHistoricalPeriodToRawHistoricalPeriod(clean.historicalPeriod) : undefined", result);
+    }
 }

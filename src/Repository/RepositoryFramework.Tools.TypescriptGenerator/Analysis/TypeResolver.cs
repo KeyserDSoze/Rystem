@@ -50,6 +50,12 @@ public class TypeResolver
             return CreatePrimitiveDescriptor(actualType, primitiveTs, isNullable);
         }
 
+        // Check if it's a Rystem AnyOf<T0, T1, ...> discriminated union
+        if (IsAnyOfUnion(actualType, out var unionArgTypes))
+        {
+            return CreateUnionDescriptor(actualType, unionArgTypes!, isNullable);
+        }
+
         // Check if it's a type with [JsonConverter] that wraps a single primitive value
         // (e.g., LocalizedFormatString with JsonConverter that serializes as plain string)
         var jsonConverterPrimitive = GetJsonConverterPrimitiveType(actualType);
@@ -195,6 +201,51 @@ public class TypeResolver
             IsArray = false,
             IsDictionary = false,
             IsEnum = false,
+            ClrType = type
+        };
+    }
+
+    /// <summary>
+    /// Checks if a type is a Rystem AnyOf&lt;T0, T1, ...&gt; discriminated union.
+    /// Detection: the type must be generic and implement an interface named "IAnyOf".
+    /// </summary>
+    private static bool IsAnyOfUnion(Type type, out Type[]? genericArgs)
+    {
+        genericArgs = null;
+
+        if (!type.IsGenericType)
+            return false;
+
+        // Check if any interface is IAnyOf (from Rystem)
+        var hasIAnyOf = type.GetInterfaces().Any(i => i.Name == "IAnyOf");
+        if (!hasIAnyOf)
+            return false;
+
+        genericArgs = type.GetGenericArguments();
+        return genericArgs.Length > 0 && !genericArgs.Any(a => a.IsGenericParameter);
+    }
+
+    /// <summary>
+    /// Creates a TypeScript union type descriptor from a Rystem AnyOf&lt;T0, T1, ...&gt;.
+    /// E.g., AnyOf&lt;string, long&gt; → "string | number"
+    /// </summary>
+    private TypeDescriptor CreateUnionDescriptor(Type type, Type[] unionArgTypes, bool isNullable)
+    {
+        var unionDescriptors = unionArgTypes.Select(Resolve).ToArray();
+        var tsName = string.Join(" | ", unionDescriptors.Select(d => d.TypeScriptName));
+
+        return new TypeDescriptor
+        {
+            CSharpName = type.Name,
+            FullName = type.FullName ?? type.Name,
+            TypeScriptName = tsName,
+            IsPrimitive = false,
+            IsNullable = isNullable,
+            IsArray = false,
+            IsDictionary = false,
+            IsEnum = false,
+            IsUnion = true,
+            UnionTypes = unionDescriptors,
             ClrType = type
         };
     }

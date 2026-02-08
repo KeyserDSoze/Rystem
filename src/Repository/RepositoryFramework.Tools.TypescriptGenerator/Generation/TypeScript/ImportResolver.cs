@@ -11,17 +11,26 @@ public static class ImportResolver
 {
     /// <summary>
     /// Generates import statements for a model file.
+    /// Collects imports from ALL types included in the file (root model + owned nested types)
+    /// so that nested types' dependencies on external enums/classes are properly imported.
     /// </summary>
     public static string ResolveImports(
         string modelName,
-        ModelDescriptor model,
+        IEnumerable<ModelDescriptor> typesInFile,
         EmitterContext context,
         DependencyGraph? dependencyGraph)
     {
         var imports = new Dictionary<string, HashSet<string>>(); // file -> types
 
-        // Collect types that need to be imported
-        CollectImports(model, modelName, context, imports);
+        // Collect types that need to be imported from ALL types in this file
+        foreach (var typeInFile in typesInFile)
+        {
+            // Enums don't have properties — nothing to import
+            if (!typeInFile.IsEnum)
+            {
+                CollectImports(typeInFile, modelName, context, imports);
+            }
+        }
 
         // Generate import statements
         return GenerateImportStatements(imports, modelName);
@@ -59,6 +68,14 @@ public static class ImportResolver
         if (type.IsEnum)
         {
             AddImportIfExternal(type.CSharpName, currentModelName, context, imports);
+            return;
+        }
+
+        // Handle union types (AnyOf<T0, T1, ...>) - recurse into each member
+        if (type.IsUnion && type.UnionTypes != null)
+        {
+            foreach (var unionMember in type.UnionTypes)
+                CollectTypeImports(unionMember, currentModelName, context, imports);
             return;
         }
 

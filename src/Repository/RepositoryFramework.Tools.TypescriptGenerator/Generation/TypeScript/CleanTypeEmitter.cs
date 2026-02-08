@@ -59,6 +59,13 @@ public static class CleanTypeEmitter
             return type.CSharpName;
         }
 
+        // Union types (AnyOf<T0, T1, ...>) - emit as T0 | T1 | ...
+        if (type.IsUnion && type.UnionTypes != null)
+        {
+            var memberTypes = type.UnionTypes.Select(t => GetTypeString(t, context));
+            return string.Join(" | ", memberTypes);
+        }
+
         // Array types
         if (type.IsArray && type.ElementType != null)
         {

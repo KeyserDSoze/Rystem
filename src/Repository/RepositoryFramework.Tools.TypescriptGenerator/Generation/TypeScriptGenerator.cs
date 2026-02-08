@@ -254,8 +254,8 @@ public class TypeScriptGenerator
         // Collect all types to include in this file
         var typesToInclude = GetTypesToIncludeInFile(model);
 
-        // Generate imports
-        var imports = ImportResolver.ResolveImports(model.Name, model, _context, _dependencyGraph);
+        // Generate imports (pass ALL types in the file so nested types' dependencies are imported)
+        var imports = ImportResolver.ResolveImports(model.Name, typesToInclude, _context, _dependencyGraph);
         if (!string.IsNullOrEmpty(imports))
         {
             sb.Append(imports);
@@ -343,20 +343,27 @@ public class TypeScriptGenerator
 
     /// <summary>
     /// Gets all types that should be included in a model's file.
+    /// Recursively traverses nested types to pick up deeply nested enums and classes.
     /// </summary>
     private List<ModelDescriptor> GetTypesToIncludeInFile(ModelDescriptor model)
     {
         var types = new List<ModelDescriptor> { model };
+        CollectOwnedNestedTypes(model, model.Name, types);
+        return types;
+    }
 
-        // Add owned nested types
-        foreach (var nested in model.NestedTypes)
+    /// <summary>
+    /// Recursively collects all nested types owned by the specified model.
+    /// </summary>
+    private void CollectOwnedNestedTypes(ModelDescriptor current, string ownerModelName, List<ModelDescriptor> types)
+    {
+        foreach (var nested in current.NestedTypes)
         {
-            if (_context.IsOwnedBy(nested.Name, model.Name))
+            if (_context.IsOwnedBy(nested.Name, ownerModelName) && !types.Any(t => t.Name == nested.Name))
             {
                 types.Add(nested);
+                CollectOwnedNestedTypes(nested, ownerModelName, types);
             }
         }
-
-        return types;
     }
 }

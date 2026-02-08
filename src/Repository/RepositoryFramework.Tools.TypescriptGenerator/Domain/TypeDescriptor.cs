@@ -46,6 +46,17 @@ public sealed record TypeDescriptor
     public required bool IsEnum { get; init; }
 
     /// <summary>
+    /// Whether this is a discriminated union type (e.g., Rystem AnyOf&lt;T0, T1&gt;).
+    /// In TypeScript this becomes T0 | T1 | ...
+    /// </summary>
+    public bool IsUnion { get; init; }
+
+    /// <summary>
+    /// For union types, the resolved TypeDescriptors for each union member.
+    /// </summary>
+    public IReadOnlyList<TypeDescriptor>? UnionTypes { get; init; }
+
+    /// <summary>
     /// For collections/arrays, the element type descriptor.
     /// </summary>
     public TypeDescriptor? ElementType { get; init; }

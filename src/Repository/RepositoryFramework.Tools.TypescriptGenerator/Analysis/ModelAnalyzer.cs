@@ -135,6 +135,16 @@ public class ModelAnalyzer
                     var nestedDescriptor = Analyze(typeToAnalyze, depth + 1, type.Name);
                     nestedTypes.Add(nestedDescriptor);
                 }
+                else
+                {
+                    // Already analyzed by another model — still add to NestedTypes
+                    // so that DependencyGraph and file generation can track all dependencies.
+                    var existing = _analyzedModels[typeToAnalyze];
+                    if (!nestedTypes.Contains(existing))
+                    {
+                        nestedTypes.Add(existing);
+                    }
+                }
             }
         }
 
@@ -244,6 +254,17 @@ public class ModelAnalyzer
 
         if (typeDesc.IsPrimitive)
             return;
+
+        if (typeDesc.IsUnion)
+        {
+            // Drill into each union member (e.g., AnyOf<MyClass, string> → discover MyClass)
+            if (typeDesc.UnionTypes != null)
+            {
+                foreach (var unionMember in typeDesc.UnionTypes)
+                    CollectNestedTypes(types, unionMember);
+            }
+            return;
+        }
 
         if (typeDesc.IsDictionary)
         {

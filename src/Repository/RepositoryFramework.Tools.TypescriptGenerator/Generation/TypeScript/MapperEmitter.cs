@@ -122,6 +122,12 @@ public static class MapperEmitter
             return GetDefaultValue(rawAccess, type, property.IsOptional);
         }
 
+        // Union types (AnyOf) - direct pass-through
+        if (type.IsUnion)
+        {
+            return rawAccess;
+        }
+
         // Array of complex types
         if (type.IsArray && type.ElementType != null && !type.ElementType.IsPrimitive && !type.ElementType.IsEnum)
         {
@@ -179,7 +185,7 @@ public static class MapperEmitter
             {
                 var mapperName = $"mapRaw{typeName}To{typeName}";
                 return property.IsOptional
-                    ? $"{rawAccess} ? {mapperName}({rawAccess}) : null"
+                    ? $"{rawAccess} ? {mapperName}({rawAccess}) : undefined"
                     : $"{mapperName}({rawAccess}!)";
             }
         }
@@ -197,6 +203,12 @@ public static class MapperEmitter
 
         // Primitive types - direct mapping
         if (type.IsPrimitive || type.IsEnum)
+        {
+            return cleanAccess;
+        }
+
+        // Union types (AnyOf) - direct pass-through
+        if (type.IsUnion)
         {
             return cleanAccess;
         }
@@ -252,7 +264,7 @@ public static class MapperEmitter
             {
                 var mapperName = $"map{typeName}ToRaw{typeName}";
                 return property.IsOptional
-                    ? $"{cleanAccess} ? {mapperName}({cleanAccess}) : null"
+                    ? $"{cleanAccess} ? {mapperName}({cleanAccess}) : undefined"
                     : $"{mapperName}({cleanAccess}!)";
             }
         }
