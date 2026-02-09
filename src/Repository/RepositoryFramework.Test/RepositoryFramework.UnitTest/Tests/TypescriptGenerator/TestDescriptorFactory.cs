@@ -182,4 +182,17 @@ internal static class TestDescriptorFactory
         IsEnum = false,
         DateKind = DateTypeKind.DateOnly
     };
+
+    public static TypeDescriptor CreateGenericParameterType(string name = "T") => new()
+    {
+        CSharpName = name,
+        FullName = name,
+        TypeScriptName = name,
+        IsPrimitive = false,
+        IsNullable = false,
+        IsArray = false,
+        IsDictionary = false,
+        IsEnum = false,
+        IsGenericParameter = true
+    };
 }

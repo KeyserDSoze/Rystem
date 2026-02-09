@@ -76,14 +76,30 @@ public static class TransformerEmitter
 
             if (isGeneric)
             {
+                // Build callback parameters for each generic type parameter
+                // Use 'any' types for callbacks to avoid TS2345:
+                // the actual mappers take TRaw→T and T→TRaw, not T→T
+                var callbackParams = new List<string>();
+                foreach (var param in model.GenericTypeParameters)
+                {
+                    callbackParams.Add($"map{param}FromRaw: (raw: any) => any = (x: any) => x");
+                    callbackParams.Add($"map{param}ToRaw: (clean: any) => any = (x: any) => x");
+                }
+                var paramsStr = string.Join(",\n  ", callbackParams);
+                var fromRawCallbacks = string.Join(", ", model.GenericTypeParameters.Select(p => $"map{p}FromRaw"));
+                var toRawCallbacks = string.Join(", ", model.GenericTypeParameters.Select(p => $"map{p}ToRaw"));
+
                 sb.AppendLine("/**");
                 sb.AppendLine($" * Creates a transformer for {baseName}<T> type.");
                 sb.AppendLine(" * Converts between Raw (JSON) and Clean (TypeScript) representations.");
+                sb.AppendLine(" * Pass mapper functions for generic type parameter(s) to enable deep mapping.");
                 sb.AppendLine(" */");
-                sb.AppendLine($"export function create{baseName}Transformer{genericParams}(): ITransformer<{typeName}> {{");
+                sb.AppendLine($"export function create{baseName}Transformer{genericParams}(");
+                sb.AppendLine($"  {paramsStr}");
+                sb.AppendLine($"): ITransformer<{typeName}> {{");
                 sb.AppendLine("  return {");
-                sb.AppendLine($"    fromPlain: (plain: {typeNameRaw}): {typeName} => mapRaw{baseName}To{baseName}{genericParams}(plain),");
-                sb.AppendLine($"    toPlain: (instance: {typeName}): {typeNameRaw} => map{baseName}ToRaw{baseName}{genericParams}(instance),");
+                sb.AppendLine($"    fromPlain: (plain: {typeNameRaw}): {typeName} => mapRaw{baseName}To{baseName}{genericParams}(plain, {fromRawCallbacks}),");
+                sb.AppendLine($"    toPlain: (instance: {typeName}): {typeNameRaw} => map{baseName}ToRaw{baseName}{genericParams}(instance, {toRawCallbacks}),");
                 sb.AppendLine("  };");
                 sb.AppendLine("}");
             }

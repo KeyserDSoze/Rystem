@@ -52,6 +52,11 @@ public sealed record TypeDescriptor
     public bool IsUnion { get; init; }
 
     /// <summary>
+    /// Whether this type is a generic type parameter (e.g., T, TKey).
+    /// </summary>
+    public bool IsGenericParameter { get; init; }
+
+    /// <summary>
     /// For union types, the resolved TypeDescriptors for each union member.
     /// </summary>
     public IReadOnlyList<TypeDescriptor>? UnionTypes { get; init; }
@@ -94,6 +99,14 @@ public sealed record TypeDescriptor
     public bool ContainsDateType => IsDate
         || (IsArray && ElementType?.ContainsDateType == true)
         || (IsDictionary && ValueType?.ContainsDateType == true);
+
+    /// <summary>
+    /// Whether this type or any nested element/value types contain a generic type parameter.
+    /// Used to determine if mapper callback propagation is needed.
+    /// </summary>
+    public bool ContainsGenericParameter => IsGenericParameter
+        || (IsArray && ElementType?.ContainsGenericParameter == true)
+        || (IsDictionary && (KeyType?.ContainsGenericParameter == true || ValueType?.ContainsGenericParameter == true));
 
     /// <summary>
     /// Gets the TypeScript type string for use in generated code.

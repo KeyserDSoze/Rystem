@@ -54,6 +54,7 @@ public static class BootstrapEmitter
         // Track transformer imports: baseName -> isGeneric
         var transformerInfos = new Dictionary<string, bool>();
         var typeImports = new Dictionary<string, HashSet<string>>(); // file -> types
+        var mapperImports = new Dictionary<string, HashSet<string>>(); // file -> mapper functions
 
         foreach (var repo in repositories)
         {
@@ -89,6 +90,12 @@ public static class BootstrapEmitter
                     typeImports[fileName] = list;
                 }
                 list.Add(modelBaseName);
+
+                // For generic models, check if type arguments need their own mappers
+                if (model.GenericTypeParameters.Count > 0)
+                {
+                    CollectTypeArgMapperImports(modelSimpleName, models, mapperImports);
+                }
             }
 
             // Add key transformer and type (if not primitive)
@@ -122,6 +129,12 @@ public static class BootstrapEmitter
                         typeImports[fileName] = list;
                     }
                     list.Add(keyBaseName);
+
+                    // For generic keys, check if type arguments need their own mappers
+                    if (key.GenericTypeParameters.Count > 0)
+                    {
+                        CollectTypeArgMapperImports(keySimpleName, keys, mapperImports);
+                    }
                 }
             }
         }
@@ -133,6 +146,15 @@ public static class BootstrapEmitter
             sb.AppendLine($"import type {{ {typesJoined} }} from '../types/{fileName}';");
         }
         if (typeImports.Count > 0)
+            sb.AppendLine();
+
+        // Emit mapper imports for type arguments of generic models
+        foreach (var (fileName, mappers) in mapperImports.OrderBy(x => x.Key))
+        {
+            var mappersJoined = string.Join(", ", mappers.OrderBy(x => x));
+            sb.AppendLine($"import {{ {mappersJoined} }} from '../types/{fileName}';");
+        }
+        if (mapperImports.Count > 0)
             sb.AppendLine();
 
         // Emit transformer imports
@@ -283,7 +305,22 @@ public static class BootstrapEmitter
                 // Generic: use factory function with concrete type args
                 // Extract type args from the closed generic name (e.g., EntityVersions<Book> -> Book)
                 var typeArgs = ExtractTypeArgs(modelSimpleName);
-                sb.AppendLine($"    x.transformer = create{modelBaseName}Transformer<{typeArgs}>();");
+                var mapperArgs = BuildConcreteMapperArgs(typeArgs, models);
+
+                if (mapperArgs.Count > 0)
+                {
+                    sb.AppendLine($"    x.transformer = create{modelBaseName}Transformer<{typeArgs}>(");
+                    for (var j = 0; j < mapperArgs.Count; j++)
+                    {
+                        var comma = j < mapperArgs.Count - 1 ? "," : "";
+                        sb.AppendLine($"      {mapperArgs[j]}{comma}");
+                    }
+                    sb.AppendLine("    );");
+                }
+                else
+                {
+                    sb.AppendLine($"    x.transformer = create{modelBaseName}Transformer<{typeArgs}>();");
+                }
             }
             else
             {
@@ -313,7 +350,22 @@ public static class BootstrapEmitter
                 if (key.GenericTypeParameters.Count > 0)
                 {
                     var typeArgs = ExtractTypeArgs(keySimpleName);
-                    sb.AppendLine($"    x.keyTransformer = create{keyBaseName}Transformer<{typeArgs}>();");
+                    var mapperArgs = BuildConcreteMapperArgs(typeArgs, keys);
+
+                    if (mapperArgs.Count > 0)
+                    {
+                        sb.AppendLine($"    x.keyTransformer = create{keyBaseName}Transformer<{typeArgs}>(");
+                        for (var j = 0; j < mapperArgs.Count; j++)
+                        {
+                            var comma = j < mapperArgs.Count - 1 ? "," : "";
+                            sb.AppendLine($"      {mapperArgs[j]}{comma}");
+                        }
+                        sb.AppendLine("    );");
+                    }
+                    else
+                    {
+                        sb.AppendLine($"    x.keyTransformer = create{keyBaseName}Transformer<{typeArgs}>();");
+                    }
                 }
                 else
                 {
@@ -370,4 +422,66 @@ public static class BootstrapEmitter
 
     private static string GetSimpleName(string fullName)
         => fullName.GetSimpleTypeName();
+
+    /// <summary>
+    /// Collects mapper function imports for type arguments of a generic model.
+    /// For example, EntityVersions&lt;ExtendedBook&gt; needs imports for 
+    /// mapRawExtendedBookToExtendedBook and mapExtendedBookToRawExtendedBook.
+    /// </summary>
+    private static void CollectTypeArgMapperImports(
+        string closedGenericName,
+        IReadOnlyDictionary<string, ModelDescriptor> allModels,
+        Dictionary<string, HashSet<string>> mapperImports)
+    {
+        var typeArgs = ExtractTypeArgs(closedGenericName);
+        var typeArgNames = typeArgs.Split(',').Select(a => a.Trim()).ToList();
+
+        foreach (var argName in typeArgNames)
+        {
+            // Find the model for this type argument
+            var argModel = allModels.Values.FirstOrDefault(m =>
+                m.TypeScriptName == argName || m.GetBaseTypeName() == argName);
+            if (argModel != null && argModel.RequiresRawType)
+            {
+                var argBaseName = argModel.GetBaseTypeName();
+                var fileName = argModel.GetFileName().Replace(".ts", "");
+
+                if (!mapperImports.TryGetValue(fileName, out var importSet))
+                {
+                    importSet = [];
+                    mapperImports[fileName] = importSet;
+                }
+                importSet.Add($"mapRaw{argBaseName}To{argBaseName}");
+                importSet.Add($"map{argBaseName}ToRaw{argBaseName}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Builds the list of mapper function arguments for concrete generic instantiations.
+    /// For each type argument that requires raw type mapping, adds the fromRaw and toRaw mapper names.
+    /// Returns empty list if no type arguments need mapping (use default identity).
+    /// </summary>
+    private static List<string> BuildConcreteMapperArgs(
+        string typeArgs,
+        IReadOnlyDictionary<string, ModelDescriptor> allModels)
+    {
+        var typeArgNames = typeArgs.Split(',').Select(a => a.Trim()).ToList();
+        var args = new List<string>();
+
+        foreach (var argName in typeArgNames)
+        {
+            // Find the model for this type argument
+            var argModel = allModels.Values.FirstOrDefault(m =>
+                m.TypeScriptName == argName || m.GetBaseTypeName() == argName);
+            if (argModel != null && argModel.RequiresRawType)
+            {
+                var argBaseName = argModel.GetBaseTypeName();
+                args.Add($"mapRaw{argBaseName}To{argBaseName}");
+                args.Add($"map{argBaseName}ToRaw{argBaseName}");
+            }
+        }
+
+        return args;
+    }
 }

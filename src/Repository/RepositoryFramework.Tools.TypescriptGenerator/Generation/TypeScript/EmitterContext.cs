@@ -103,7 +103,12 @@ public class EmitterContext
                 baseName = baseName[..baseName.IndexOf('`')];
             }
 
-            if (!context.AllModels.ContainsKey(nested.Name))
+            // Prefer open generics (with GenericTypeParameters) over closed generics.
+            // This ensures IsNestedGenericModel can correctly identify generic models
+            // even when both closed (EntityVersion<ExtendedBook>) and open (EntityVersion<T>)
+            // share the same Name ("EntityVersion`1").
+            if (!context.AllModels.ContainsKey(nested.Name) ||
+                (nested.IsGenericType && !context.AllModels[nested.Name].IsGenericType))
             {
                 context.AllModels[nested.Name] = nested;
             }

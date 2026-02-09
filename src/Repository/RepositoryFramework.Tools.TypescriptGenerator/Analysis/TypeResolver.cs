@@ -169,6 +169,7 @@ public class TypeResolver
                 IsArray = false,
                 IsDictionary = false,
                 IsEnum = false,
+                IsGenericParameter = true,
                 ClrType = type
             };
         }

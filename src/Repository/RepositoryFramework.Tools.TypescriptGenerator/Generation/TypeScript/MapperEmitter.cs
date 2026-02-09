@@ -38,7 +38,8 @@ public static class MapperEmitter
     public static string EmitRawToClean(ModelDescriptor model, EmitterContext context)
     {
         var baseName = model.GetBaseTypeName();
-        var genericParams = model.GenericTypeParameters.Count > 0 
+        var isGeneric = model.GenericTypeParameters.Count > 0;
+        var genericParams = isGeneric 
             ? $"<{string.Join(", ", model.GenericTypeParameters)}>" 
             : "";
 
@@ -49,15 +50,29 @@ public static class MapperEmitter
 
         var sb = new StringBuilder();
 
-        // For generics: export const fn = <T>(raw: Raw<T>): Clean<T> => ({
-        // For non-generics: export const fn = (raw: Raw): Clean => ({
-        sb.AppendLine($"export const {funcName} = {genericParams}(raw: {rawName}): {cleanName} => ({{");
+        if (isGeneric)
+        {
+            // Multi-line signature with callback parameters for generic type param mapping
+            // Use 'any' types to avoid TS2345: the actual mapper takes TRaw→T, not T→T
+            sb.AppendLine($"export const {funcName} = {genericParams}(");
+            sb.Append($"  raw: {rawName}");
+            foreach (var param in model.GenericTypeParameters)
+            {
+                sb.AppendLine(",");
+                sb.Append($"  map{param}FromRaw: (raw: any) => any = (x: any) => x");
+            }
+            sb.AppendLine();
+            sb.AppendLine($"): {cleanName} => ({{");
+        }
+        else
+        {
+            sb.AppendLine($"export const {funcName} = (raw: {rawName}): {cleanName} => ({{");
+        }
 
         foreach (var property in model.Properties)
         {
             var cleanProp = property.TypeScriptName;
-            var rawProp = property.JsonName;
-            var mapping = GetRawToCleanMapping(property, context);
+            var mapping = GetRawToCleanMapping(property, context, model.GenericTypeParameters);
 
             sb.AppendLine($"  {cleanProp}: {mapping},");
         }
@@ -73,7 +88,8 @@ public static class MapperEmitter
     public static string EmitCleanToRaw(ModelDescriptor model, EmitterContext context)
     {
         var baseName = model.GetBaseTypeName();
-        var genericParams = model.GenericTypeParameters.Count > 0 
+        var isGeneric = model.GenericTypeParameters.Count > 0;
+        var genericParams = isGeneric 
             ? $"<{string.Join(", ", model.GenericTypeParameters)}>" 
             : "";
 
@@ -84,15 +100,30 @@ public static class MapperEmitter
 
         var sb = new StringBuilder();
 
-        // For generics: export const fn = <T>(clean: Clean<T>): Raw<T> => ({
-        // For non-generics: export const fn = (clean: Clean): Raw => ({
-        sb.AppendLine($"export const {funcName} = {genericParams}(clean: {cleanName}): {rawName} => ({{");
+        if (isGeneric)
+        {
+            // Multi-line signature with callback parameters for generic type param mapping
+            // Use 'any' types to avoid TS2345: the actual mapper takes T→TRaw, not T→T
+            sb.AppendLine($"export const {funcName} = {genericParams}(");
+            sb.Append($"  clean: {cleanName}");
+            foreach (var param in model.GenericTypeParameters)
+            {
+                sb.AppendLine(",");
+                sb.Append($"  map{param}ToRaw: (clean: any) => any = (x: any) => x");
+            }
+            sb.AppendLine();
+            sb.AppendLine($"): {rawName} => ({{");
+        }
+        else
+        {
+            sb.AppendLine($"export const {funcName} = (clean: {cleanName}): {rawName} => ({{");
+        }
 
         foreach (var property in model.Properties)
         {
             var cleanProp = property.TypeScriptName;
             var rawProp = property.JsonName;
-            var mapping = GetCleanToRawMapping(property, context);
+            var mapping = GetCleanToRawMapping(property, context, model.GenericTypeParameters);
 
             sb.AppendLine($"  {rawProp}: {mapping},");
         }
@@ -105,10 +136,19 @@ public static class MapperEmitter
     /// <summary>
     /// Gets the mapping expression for Raw -> Clean.
     /// </summary>
-    private static string GetRawToCleanMapping(PropertyDescriptor property, EmitterContext context)
+    private static string GetRawToCleanMapping(PropertyDescriptor property, EmitterContext context, IReadOnlyList<string> genericParams)
     {
         var rawAccess = $"raw.{property.JsonName}";
         var type = property.Type;
+
+        // Generic type parameter (T, TKey, etc.) — use callback mapper
+        if (type.IsGenericParameter && genericParams.Contains(type.CSharpName))
+        {
+            var callbackName = $"map{type.CSharpName}FromRaw";
+            return property.IsOptional
+                ? $"{rawAccess} != null ? {callbackName}({rawAccess}) : undefined"
+                : $"{callbackName}({rawAccess})";
+        }
 
         // Date types - parse string to Date
         if (type.IsDate)
@@ -137,6 +177,13 @@ public static class MapperEmitter
             return rawAccess;
         }
 
+        // Array of generic parameter (e.g., T[])
+        if (type.IsArray && type.ElementType?.IsGenericParameter == true && genericParams.Contains(type.ElementType.CSharpName))
+        {
+            var callbackName = $"map{type.ElementType.CSharpName}FromRaw";
+            return $"{rawAccess}?.map({callbackName}) ?? []";
+        }
+
         // Array of date element types
         if (type.IsArray && type.ElementType != null && type.ElementType.IsDate)
         {
@@ -151,6 +198,12 @@ public static class MapperEmitter
             if (context.TypesRequiringRaw.Contains(elementName))
             {
                 var mapperName = $"mapRaw{elementName}To{elementName}";
+                // Propagate callbacks if element type is a generic model
+                if (genericParams.Count > 0 && IsNestedGenericModel(type.ElementType, context))
+                {
+                    var callbacks = BuildFromRawCallbacks(genericParams);
+                    return $"{rawAccess}?.map(item => {mapperName}(item, {callbacks})) ?? []";
+                }
                 return property.IsOptional
                     ? $"{rawAccess}?.map({mapperName}) ?? []"
                     : $"{rawAccess}?.map({mapperName}) ?? []";
@@ -162,6 +215,25 @@ public static class MapperEmitter
         if (type.IsArray)
         {
             return $"{rawAccess} ?? []";
+        }
+
+        // Dictionary with generic parameter value type (e.g., Record<string, T>)
+        if (type.IsDictionary && type.ValueType?.IsGenericParameter == true && genericParams.Contains(type.ValueType.CSharpName))
+        {
+            var callbackName = $"map{type.ValueType.CSharpName}FromRaw";
+            return property.IsOptional
+                ? $"{rawAccess} ? Object.fromEntries(Object.entries({rawAccess}).map(([k, v]) => [k, {callbackName}(v)])) : {{}}"
+                : $"Object.fromEntries(Object.entries({rawAccess} ?? {{}}).map(([k, v]) => [k, {callbackName}(v)]))";
+        }
+
+        // Dictionary with array-of-generic-parameter value type (e.g., Record<string, T[]>)
+        if (type.IsDictionary && type.ValueType is { IsArray: true } && type.ValueType.ElementType?.IsGenericParameter == true
+            && genericParams.Contains(type.ValueType.ElementType.CSharpName))
+        {
+            var callbackName = $"map{type.ValueType.ElementType.CSharpName}FromRaw";
+            return property.IsOptional
+                ? $"{rawAccess} ? Object.fromEntries(Object.entries({rawAccess}).map(([k, v]) => [k, v?.map({callbackName}) ?? []])) : {{}}"
+                : $"Object.fromEntries(Object.entries({rawAccess} ?? {{}}).map(([k, v]) => [k, v?.map({callbackName}) ?? []]))";
         }
 
         // Dictionary with date value type
@@ -192,6 +264,13 @@ public static class MapperEmitter
                 if (context.TypesRequiringRaw.Contains(elementName))
                 {
                     var mapperName = $"mapRaw{elementName}To{elementName}";
+                    if (genericParams.Count > 0 && IsNestedGenericModel(type.ValueType.ElementType, context))
+                    {
+                        var callbacks = BuildFromRawCallbacks(genericParams);
+                        return property.IsOptional
+                            ? $"{rawAccess} ? Object.fromEntries(Object.entries({rawAccess}).map(([k, v]) => [k, v?.map(item => {mapperName}(item, {callbacks})) ?? []])) : {{}}"
+                            : $"Object.fromEntries(Object.entries({rawAccess} ?? {{}}).map(([k, v]) => [k, v?.map(item => {mapperName}(item, {callbacks})) ?? []]))";
+                    }
                     return property.IsOptional
                         ? $"{rawAccess} ? Object.fromEntries(Object.entries({rawAccess}).map(([k, v]) => [k, v?.map({mapperName}) ?? []])) : {{}}"
                         : $"Object.fromEntries(Object.entries({rawAccess} ?? {{}}).map(([k, v]) => [k, v?.map({mapperName}) ?? []]))";
@@ -200,6 +279,13 @@ public static class MapperEmitter
             else if (context.TypesRequiringRaw.Contains(valueName))
             {
                 var mapperName = $"mapRaw{valueName}To{valueName}";
+                if (genericParams.Count > 0 && IsNestedGenericModel(type.ValueType, context))
+                {
+                    var callbacks = BuildFromRawCallbacks(genericParams);
+                    return property.IsOptional
+                        ? $"{rawAccess} ? Object.fromEntries(Object.entries({rawAccess}).map(([k, v]) => [k, {mapperName}(v, {callbacks})])) : {{}}"
+                        : $"Object.fromEntries(Object.entries({rawAccess} ?? {{}}).map(([k, v]) => [k, {mapperName}(v, {callbacks})]))";
+                }
                 return property.IsOptional
                     ? $"{rawAccess} ? Object.fromEntries(Object.entries({rawAccess}).map(([k, v]) => [k, {mapperName}(v)])) : {{}}"
                     : $"Object.fromEntries(Object.entries({rawAccess} ?? {{}}).map(([k, v]) => [k, {mapperName}(v)]))";
@@ -218,6 +304,13 @@ public static class MapperEmitter
             if (context.TypesRequiringRaw.Contains(typeName))
             {
                 var mapperName = $"mapRaw{typeName}To{typeName}";
+                if (genericParams.Count > 0 && IsNestedGenericModel(type, context))
+                {
+                    var callbacks = BuildFromRawCallbacks(genericParams);
+                    return property.IsOptional
+                        ? $"{rawAccess} ? {mapperName}({rawAccess}, {callbacks}) : undefined"
+                        : $"{mapperName}({rawAccess}!, {callbacks})";
+                }
                 return property.IsOptional
                     ? $"{rawAccess} ? {mapperName}({rawAccess}) : undefined"
                     : $"{mapperName}({rawAccess}!)";
@@ -230,10 +323,19 @@ public static class MapperEmitter
     /// <summary>
     /// Gets the mapping expression for Clean -> Raw.
     /// </summary>
-    private static string GetCleanToRawMapping(PropertyDescriptor property, EmitterContext context)
+    private static string GetCleanToRawMapping(PropertyDescriptor property, EmitterContext context, IReadOnlyList<string> genericParams)
     {
         var cleanAccess = $"clean.{property.TypeScriptName}";
         var type = property.Type;
+
+        // Generic type parameter (T, TKey, etc.) — use callback mapper
+        if (type.IsGenericParameter && genericParams.Contains(type.CSharpName))
+        {
+            var callbackName = $"map{type.CSharpName}ToRaw";
+            return property.IsOptional
+                ? $"{cleanAccess} != null ? {callbackName}({cleanAccess}) : undefined"
+                : $"{callbackName}({cleanAccess})";
+        }
 
         // Date types - format Date to string
         if (type.IsDate)
@@ -256,6 +358,13 @@ public static class MapperEmitter
             return cleanAccess;
         }
 
+        // Array of generic parameter (e.g., T[])
+        if (type.IsArray && type.ElementType?.IsGenericParameter == true && genericParams.Contains(type.ElementType.CSharpName))
+        {
+            var callbackName = $"map{type.ElementType.CSharpName}ToRaw";
+            return $"{cleanAccess}?.map({callbackName}) ?? []";
+        }
+
         // Array of date element types
         if (type.IsArray && type.ElementType != null && type.ElementType.IsDate)
         {
@@ -270,6 +379,11 @@ public static class MapperEmitter
             if (context.TypesRequiringRaw.Contains(elementName))
             {
                 var mapperName = $"map{elementName}ToRaw{elementName}";
+                if (genericParams.Count > 0 && IsNestedGenericModel(type.ElementType, context))
+                {
+                    var callbacks = BuildToRawCallbacks(genericParams);
+                    return $"{cleanAccess}?.map(item => {mapperName}(item, {callbacks})) ?? []";
+                }
                 return $"{cleanAccess}?.map({mapperName}) ?? []";
             }
             return $"{cleanAccess} ?? []";
@@ -279,6 +393,25 @@ public static class MapperEmitter
         if (type.IsArray)
         {
             return $"{cleanAccess} ?? []";
+        }
+
+        // Dictionary with generic parameter value type (e.g., Record<string, T>)
+        if (type.IsDictionary && type.ValueType?.IsGenericParameter == true && genericParams.Contains(type.ValueType.CSharpName))
+        {
+            var callbackName = $"map{type.ValueType.CSharpName}ToRaw";
+            return property.IsOptional
+                ? $"{cleanAccess} ? Object.fromEntries(Object.entries({cleanAccess}).map(([k, v]) => [k, {callbackName}(v)])) : {{}}"
+                : $"Object.fromEntries(Object.entries({cleanAccess} ?? {{}}).map(([k, v]) => [k, {callbackName}(v)]))";
+        }
+
+        // Dictionary with array-of-generic-parameter value type (e.g., Record<string, T[]>)
+        if (type.IsDictionary && type.ValueType is { IsArray: true } && type.ValueType.ElementType?.IsGenericParameter == true
+            && genericParams.Contains(type.ValueType.ElementType.CSharpName))
+        {
+            var callbackName = $"map{type.ValueType.ElementType.CSharpName}ToRaw";
+            return property.IsOptional
+                ? $"{cleanAccess} ? Object.fromEntries(Object.entries({cleanAccess}).map(([k, v]) => [k, v?.map({callbackName}) ?? []])) : {{}}"
+                : $"Object.fromEntries(Object.entries({cleanAccess} ?? {{}}).map(([k, v]) => [k, v?.map({callbackName}) ?? []]))";
         }
 
         // Dictionary with date value type
@@ -309,12 +442,22 @@ public static class MapperEmitter
                 if (context.TypesRequiringRaw.Contains(elementName))
                 {
                     var mapperName = $"map{elementName}ToRaw{elementName}";
+                    if (genericParams.Count > 0 && IsNestedGenericModel(type.ValueType.ElementType, context))
+                    {
+                        var callbacks = BuildToRawCallbacks(genericParams);
+                        return $"Object.fromEntries(Object.entries({cleanAccess} ?? {{}}).map(([k, v]) => [k, v?.map(item => {mapperName}(item, {callbacks})) ?? []]))";
+                    }
                     return $"Object.fromEntries(Object.entries({cleanAccess} ?? {{}}).map(([k, v]) => [k, v?.map({mapperName}) ?? []]))";
                 }
             }
             else if (context.TypesRequiringRaw.Contains(valueName))
             {
                 var mapperName = $"map{valueName}ToRaw{valueName}";
+                if (genericParams.Count > 0 && IsNestedGenericModel(type.ValueType, context))
+                {
+                    var callbacks = BuildToRawCallbacks(genericParams);
+                    return $"Object.fromEntries(Object.entries({cleanAccess} ?? {{}}).map(([k, v]) => [k, {mapperName}(v, {callbacks})]))";
+                }
                 return $"Object.fromEntries(Object.entries({cleanAccess} ?? {{}}).map(([k, v]) => [k, {mapperName}(v)]))";
             }
         }
@@ -331,6 +474,13 @@ public static class MapperEmitter
             if (context.TypesRequiringRaw.Contains(typeName))
             {
                 var mapperName = $"map{typeName}ToRaw{typeName}";
+                if (genericParams.Count > 0 && IsNestedGenericModel(type, context))
+                {
+                    var callbacks = BuildToRawCallbacks(genericParams);
+                    return property.IsOptional
+                        ? $"{cleanAccess} ? {mapperName}({cleanAccess}, {callbacks}) : undefined"
+                        : $"{mapperName}({cleanAccess}!, {callbacks})";
+                }
                 return property.IsOptional
                     ? $"{cleanAccess} ? {mapperName}({cleanAccess}) : undefined"
                     : $"{mapperName}({cleanAccess}!)";
@@ -388,6 +538,33 @@ public static class MapperEmitter
         DateTypeKind.DateOnly => "formatDateOnly",
         _ => throw new ArgumentOutOfRangeException(nameof(kind))
     };
+
+    /// <summary>
+    /// Builds comma-separated callback names for Raw -> Clean direction.
+    /// E.g., for ["T"] -> "mapTFromRaw"; for ["T", "U"] -> "mapTFromRaw, mapUFromRaw"
+    /// </summary>
+    private static string BuildFromRawCallbacks(IReadOnlyList<string> genericParams)
+        => string.Join(", ", genericParams.Select(p => $"map{p}FromRaw"));
+
+    /// <summary>
+    /// Builds comma-separated callback names for Clean -> Raw direction.
+    /// E.g., for ["T"] -> "mapTToRaw"; for ["T", "U"] -> "mapTToRaw, mapUToRaw"
+    /// </summary>
+    private static string BuildToRawCallbacks(IReadOnlyList<string> genericParams)
+        => string.Join(", ", genericParams.Select(p => $"map{p}ToRaw"));
+
+    /// <summary>
+    /// Checks if a TypeDescriptor refers to a generic model (has generic type parameters)
+    /// by looking it up in the EmitterContext.
+    /// </summary>
+    private static bool IsNestedGenericModel(TypeDescriptor type, EmitterContext context)
+    {
+        // Check by CSharpName (e.g., "EntityVersion`1") in AllModels
+        if (context.AllModels.TryGetValue(type.CSharpName, out var model) && model.IsGenericType)
+            return true;
+        // Fallback: check CLR type (handles case where closed generic was stored in AllModels)
+        return type.ClrType?.IsGenericType == true && type.ClrType.ContainsGenericParameters;
+    }
 
     /// <summary>
     /// Generates mappers for all models that need them.
