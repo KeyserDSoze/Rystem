@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -27,7 +27,7 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Tools.TypescriptGenerator</RepositoryUrl>
         <PackageId>Rystem.RepositoryFramework.TypescriptGenerator</PackageId>
-        <Version>10.0.3</Version>
+        <Version>10.0.4</Version>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
         <PackageTags>rystem;typescript;generator;repository;cqrs;codegen;cli;dotnet-tool</PackageTags>
