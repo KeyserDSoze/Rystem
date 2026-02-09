@@ -47,7 +47,8 @@ public class TypeResolver
         var primitiveTs = PrimitiveTypeRules.GetTypeScriptType(actualType);
         if (primitiveTs != null)
         {
-            return CreatePrimitiveDescriptor(actualType, primitiveTs, isNullable);
+            var dateKind = PrimitiveTypeRules.GetDateKind(actualType);
+            return CreatePrimitiveDescriptor(actualType, primitiveTs, isNullable, dateKind);
         }
 
         // Check if it's a Rystem AnyOf<T0, T1, ...> discriminated union
@@ -80,7 +81,7 @@ public class TypeResolver
         return CreateComplexDescriptor(actualType, isNullable);
     }
 
-    private static TypeDescriptor CreatePrimitiveDescriptor(Type type, string tsType, bool isNullable)
+    private static TypeDescriptor CreatePrimitiveDescriptor(Type type, string tsType, bool isNullable, DateTypeKind? dateKind = null)
     {
         return new TypeDescriptor
         {
@@ -92,7 +93,8 @@ public class TypeResolver
             IsArray = false,
             IsDictionary = false,
             IsEnum = false,
-            ClrType = type
+            ClrType = type,
+            DateKind = dateKind
         };
     }
 

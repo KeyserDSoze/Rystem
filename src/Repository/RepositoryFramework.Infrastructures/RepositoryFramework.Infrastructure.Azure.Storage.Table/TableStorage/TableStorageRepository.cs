@@ -59,7 +59,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
         {
             var (partitionKey, rowKey) = _keyReader.Read(key, Settings);
             var response = await Client.DeleteEntityAsync(partitionKey, rowKey, cancellationToken: cancellationToken).NoContext();
-            return !response.IsError;
+            return State.Default<T, TKey>(!response.IsError, default!, key);
         }
 
         public async Task<T?> GetAsync(TKey key, CancellationToken cancellationToken = default)
@@ -83,7 +83,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
             await foreach (var entity in Client.QueryAsync<TableEntity>(
                 filter: $"PartitionKey eq '{partitionKey}' and RowKey eq '{rowKey}'", 1, cancellationToken: cancellationToken))
                 return State.Default(true, JsonSerializer.Deserialize<T>(entity.Value)!, key);
-            return false;
+            return State.Default<T, TKey>(false, default!, key);
         }
 
         public Task<State<T, TKey>> InsertAsync(TKey key, T value, CancellationToken cancellationToken = default)

@@ -60,9 +60,15 @@ public static class ImportResolver
         EmitterContext context,
         Dictionary<string, HashSet<string>> imports)
     {
-        // Skip primitives
+        // Primitives - check for date types that need utility imports
         if (type.IsPrimitive)
+        {
+            if (type.IsDate)
+            {
+                CollectDateImports(type.DateKind!.Value, imports);
+            }
             return;
+        }
 
         // Handle enums
         if (type.IsEnum)
@@ -104,6 +110,27 @@ public static class ImportResolver
         {
             AddImportIfExternal($"{type.CSharpName}Raw", currentModelName, context, imports, isRaw: true);
         }
+    }
+
+    /// <summary>
+    /// Collects date parse/format function imports from DateMappers utility.
+    /// </summary>
+    private static void CollectDateImports(DateTypeKind dateKind, Dictionary<string, HashSet<string>> imports)
+    {
+        const string dateMapperFile = "DateMappers";
+        if (!imports.ContainsKey(dateMapperFile))
+            imports[dateMapperFile] = [];
+
+        var (parseFn, formatFn) = dateKind switch
+        {
+            DateTypeKind.DateTime => ("parseDateTime", "formatDateTime"),
+            DateTypeKind.DateTimeOffset => ("parseDateTimeOffset", "formatDateTimeOffset"),
+            DateTypeKind.DateOnly => ("parseDateOnly", "formatDateOnly"),
+            _ => throw new ArgumentOutOfRangeException(nameof(dateKind))
+        };
+
+        imports[dateMapperFile].Add(parseFn);
+        imports[dateMapperFile].Add(formatFn);
     }
 
     /// <summary>
@@ -157,9 +184,9 @@ public static class ImportResolver
             if (types.Count == 0)
                 continue;
 
-            // Separate types from functions (mappers)
-            var typeImports = types.Where(t => !t.StartsWith("map")).OrderBy(t => t).ToList();
-            var functionImports = types.Where(t => t.StartsWith("map")).OrderBy(t => t).ToList();
+            // Separate types from functions (mappers and date utilities)
+            var typeImports = types.Where(t => !IsFunction(t)).OrderBy(t => t).ToList();
+            var functionImports = types.Where(t => IsFunction(t)).OrderBy(t => t).ToList();
 
             // Emit type imports with "import type"
             if (typeImports.Count > 0)
@@ -227,4 +254,11 @@ public static class ImportResolver
 
         return exports;
     }
+
+    /// <summary>
+    /// Determines if an import name represents a function (mapper or date utility)
+    /// rather than a type.
+    /// </summary>
+    private static bool IsFunction(string name)
+        => name.StartsWith("map") || name.StartsWith("parse") || name.StartsWith("format");
 }

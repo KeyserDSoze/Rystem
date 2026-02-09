@@ -38,10 +38,11 @@ public sealed record ModelDescriptor
     public required IReadOnlyList<PropertyDescriptor> Properties { get; init; }
 
     /// <summary>
-    /// Whether this model has any property with a custom JsonPropertyName.
-    /// If true, we need to generate both Raw and Clean interfaces.
+    /// Whether this model needs both Raw and Clean interfaces.
+    /// True when any property has a custom JsonPropertyName or contains a date type
+    /// that requires conversion between string (JSON) and Date (TypeScript).
     /// </summary>
-    public bool RequiresRawType => Properties.Any(p => p.HasCustomJsonName);
+    public bool RequiresRawType => Properties.Any(p => p.HasCustomJsonName || p.Type.ContainsDateType);
 
     /// <summary>
     /// Whether this is an enum type.

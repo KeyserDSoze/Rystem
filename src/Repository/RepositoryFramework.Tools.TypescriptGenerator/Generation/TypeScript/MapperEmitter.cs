@@ -110,6 +110,15 @@ public static class MapperEmitter
         var rawAccess = $"raw.{property.JsonName}";
         var type = property.Type;
 
+        // Date types - parse string to Date
+        if (type.IsDate)
+        {
+            var parseFn = GetDateParseFn(type.DateKind!.Value);
+            return property.IsOptional
+                ? $"{rawAccess} != null ? {parseFn}({rawAccess}) : undefined"
+                : $"{parseFn}({rawAccess})";
+        }
+
         // Primitive types - direct mapping
         if (type.IsPrimitive)
         {
@@ -126,6 +135,13 @@ public static class MapperEmitter
         if (type.IsUnion)
         {
             return rawAccess;
+        }
+
+        // Array of date element types
+        if (type.IsArray && type.ElementType != null && type.ElementType.IsDate)
+        {
+            var parseFn = GetDateParseFn(type.ElementType.DateKind!.Value);
+            return $"{rawAccess}?.map({parseFn}) ?? []";
         }
 
         // Array of complex types
@@ -146,6 +162,24 @@ public static class MapperEmitter
         if (type.IsArray)
         {
             return $"{rawAccess} ?? []";
+        }
+
+        // Dictionary with date value type
+        if (type.IsDictionary && type.ValueType != null && type.ValueType.IsDate)
+        {
+            var parseFn = GetDateParseFn(type.ValueType.DateKind!.Value);
+            return property.IsOptional
+                ? $"{rawAccess} ? Object.fromEntries(Object.entries({rawAccess}).map(([k, v]) => [k, {parseFn}(v)])) : {{}}"
+                : $"Object.fromEntries(Object.entries({rawAccess} ?? {{}}).map(([k, v]) => [k, {parseFn}(v)]))";
+        }
+
+        // Dictionary with array-of-date value type
+        if (type.IsDictionary && type.ValueType is { IsArray: true, ElementType.IsDate: true })
+        {
+            var parseFn = GetDateParseFn(type.ValueType.ElementType!.DateKind!.Value);
+            return property.IsOptional
+                ? $"{rawAccess} ? Object.fromEntries(Object.entries({rawAccess}).map(([k, v]) => [k, v?.map({parseFn}) ?? []])) : {{}}"
+                : $"Object.fromEntries(Object.entries({rawAccess} ?? {{}}).map(([k, v]) => [k, v?.map({parseFn}) ?? []]))";
         }
 
         // Dictionary with complex value type
@@ -201,6 +235,15 @@ public static class MapperEmitter
         var cleanAccess = $"clean.{property.TypeScriptName}";
         var type = property.Type;
 
+        // Date types - format Date to string
+        if (type.IsDate)
+        {
+            var formatFn = GetDateFormatFn(type.DateKind!.Value);
+            return property.IsOptional
+                ? $"{cleanAccess} != null ? {formatFn}({cleanAccess}) : undefined"
+                : $"{formatFn}({cleanAccess})";
+        }
+
         // Primitive types - direct mapping
         if (type.IsPrimitive || type.IsEnum)
         {
@@ -211,6 +254,13 @@ public static class MapperEmitter
         if (type.IsUnion)
         {
             return cleanAccess;
+        }
+
+        // Array of date element types
+        if (type.IsArray && type.ElementType != null && type.ElementType.IsDate)
+        {
+            var formatFn = GetDateFormatFn(type.ElementType.DateKind!.Value);
+            return $"{cleanAccess}?.map({formatFn}) ?? []";
         }
 
         // Array of complex types
@@ -229,6 +279,24 @@ public static class MapperEmitter
         if (type.IsArray)
         {
             return $"{cleanAccess} ?? []";
+        }
+
+        // Dictionary with date value type
+        if (type.IsDictionary && type.ValueType != null && type.ValueType.IsDate)
+        {
+            var formatFn = GetDateFormatFn(type.ValueType.DateKind!.Value);
+            return property.IsOptional
+                ? $"{cleanAccess} ? Object.fromEntries(Object.entries({cleanAccess}).map(([k, v]) => [k, {formatFn}(v)])) : {{}}"
+                : $"Object.fromEntries(Object.entries({cleanAccess} ?? {{}}).map(([k, v]) => [k, {formatFn}(v)]))";
+        }
+
+        // Dictionary with array-of-date value type
+        if (type.IsDictionary && type.ValueType is { IsArray: true, ElementType.IsDate: true })
+        {
+            var formatFn = GetDateFormatFn(type.ValueType.ElementType!.DateKind!.Value);
+            return property.IsOptional
+                ? $"{cleanAccess} ? Object.fromEntries(Object.entries({cleanAccess}).map(([k, v]) => [k, v?.map({formatFn}) ?? []])) : {{}}"
+                : $"Object.fromEntries(Object.entries({cleanAccess} ?? {{}}).map(([k, v]) => [k, v?.map({formatFn}) ?? []]))";
         }
 
         // Dictionary with complex value type
@@ -298,6 +366,28 @@ public static class MapperEmitter
         var backtickIndex = csharpName.IndexOf('`');
         return backtickIndex > 0 ? csharpName[..backtickIndex] : csharpName;
     }
+
+    /// <summary>
+    /// Gets the TypeScript parse function name for a date type (string -> Date).
+    /// </summary>
+    private static string GetDateParseFn(DateTypeKind kind) => kind switch
+    {
+        DateTypeKind.DateTime => "parseDateTime",
+        DateTypeKind.DateTimeOffset => "parseDateTimeOffset",
+        DateTypeKind.DateOnly => "parseDateOnly",
+        _ => throw new ArgumentOutOfRangeException(nameof(kind))
+    };
+
+    /// <summary>
+    /// Gets the TypeScript format function name for a date type (Date -> string).
+    /// </summary>
+    private static string GetDateFormatFn(DateTypeKind kind) => kind switch
+    {
+        DateTypeKind.DateTime => "formatDateTime",
+        DateTypeKind.DateTimeOffset => "formatDateTimeOffset",
+        DateTypeKind.DateOnly => "formatDateOnly",
+        _ => throw new ArgumentOutOfRangeException(nameof(kind))
+    };
 
     /// <summary>
     /// Generates mappers for all models that need them.

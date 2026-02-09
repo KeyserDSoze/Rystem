@@ -1,4 +1,6 @@
-﻿namespace RepositoryFramework.Tools.TypescriptGenerator.Rules;
+﻿using RepositoryFramework.Tools.TypescriptGenerator.Domain;
+
+namespace RepositoryFramework.Tools.TypescriptGenerator.Rules;
 
 /// <summary>
 /// Rules for mapping C# primitive types to TypeScript types.
@@ -119,5 +121,18 @@ public static class PrimitiveTypeRules
             or "long" or "int64" or "ulong" or "uint64" or "float" or "single"
             or "double" or "decimal" or "bool" or "boolean" or "datetime"
             or "datetimeoffset" or "timespan" or "dateonly" or "timeonly" or "guid";
+    }
+
+    /// <summary>
+    /// Gets the DateTypeKind for a C# type, or null if it's not a date type that maps to JavaScript Date.
+    /// Only DateTime, DateTimeOffset, and DateOnly map to Date. TimeOnly and TimeSpan remain as string.
+    /// </summary>
+    public static DateTypeKind? GetDateKind(Type type)
+    {
+        var underlyingType = Nullable.GetUnderlyingType(type) ?? type;
+        if (underlyingType == typeof(DateTime)) return DateTypeKind.DateTime;
+        if (underlyingType == typeof(DateTimeOffset)) return DateTypeKind.DateTimeOffset;
+        if (underlyingType == typeof(DateOnly)) return DateTypeKind.DateOnly;
+        return null;
     }
 }

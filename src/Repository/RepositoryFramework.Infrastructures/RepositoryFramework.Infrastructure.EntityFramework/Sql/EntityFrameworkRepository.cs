@@ -50,13 +50,13 @@ namespace RepositoryFramework.Infrastructure.EntityFramework
                 _context.Remove(entity);
                 return await _context.SaveChangesAsync(cancellationToken) > 0;
             }
-            return false;
+            return State.Default<T, TKey>(false, default!, key);
         }
 
         public async Task<State<T, TKey>> ExistAsync(TKey key, CancellationToken cancellationToken = default)
         {
             var result = await _dbSet.AnyAsync(_mapper.FindById(key), cancellationToken);
-            return result;
+            return State.Default<T, TKey>(result, default!, key);
         }
 
         public async Task<T?> GetAsync(TKey key, CancellationToken cancellationToken = default)

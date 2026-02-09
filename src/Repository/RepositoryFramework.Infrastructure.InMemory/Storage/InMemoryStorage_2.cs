@@ -83,7 +83,7 @@ namespace RepositoryFramework.InMemory
                 var keyAsString = GetKeyAsString(key);
                 if (_values.ContainsKey(keyAsString))
                     return SetState(_values.TryRemove(keyAsString, out _), default!, key);
-                return false;
+                return State.Default<T, TKey>(false, default!, key);
             }, cancellationToken);
 
         public async Task<T?> GetAsync(TKey key, CancellationToken cancellationToken = default)
@@ -136,7 +136,7 @@ namespace RepositoryFramework.InMemory
                     return SetState(true, value, key);
                 }
                 else
-                    return false;
+                    return SetState(false, value, key);
             }, cancellationToken);
 
         public async IAsyncEnumerable<Entity<T, TKey>> QueryAsync(IFilterExpression filter,

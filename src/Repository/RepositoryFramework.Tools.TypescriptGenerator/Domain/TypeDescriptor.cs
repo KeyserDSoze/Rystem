@@ -77,6 +77,25 @@ public sealed record TypeDescriptor
     public Type? ClrType { get; init; }
 
     /// <summary>
+    /// For date types (DateTime, DateTimeOffset, DateOnly), identifies the specific C# date kind.
+    /// Null for non-date types. Used to select the correct parse/format functions in generated TypeScript.
+    /// </summary>
+    public DateTypeKind? DateKind { get; init; }
+
+    /// <summary>
+    /// Whether this type is a C# date type that maps to JavaScript Date.
+    /// </summary>
+    public bool IsDate => DateKind != null;
+
+    /// <summary>
+    /// Whether this type or any nested element/value types contain a Date type.
+    /// Used to determine if a model needs Raw type generation for date conversion.
+    /// </summary>
+    public bool ContainsDateType => IsDate
+        || (IsArray && ElementType?.ContainsDateType == true)
+        || (IsDictionary && ValueType?.ContainsDateType == true);
+
+    /// <summary>
     /// Gets the TypeScript type string for use in generated code.
     /// </summary>
     public string ToTypeScriptString()

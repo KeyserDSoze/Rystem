@@ -50,7 +50,7 @@ public static class CleanTypeEmitter
         // Primitive types
         if (type.IsPrimitive)
         {
-            return type.TypeScriptName;
+            return type.IsDate ? "Date" : type.TypeScriptName;
         }
 
         // Enum types - use the enum name directly

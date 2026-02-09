@@ -142,4 +142,44 @@ internal static class TestDescriptorFactory
             Value = v.Value 
         }).ToList()
     };
+
+    // Date TypeDescriptors
+    public static TypeDescriptor DateTimeType => new()
+    {
+        CSharpName = "DateTime",
+        FullName = "System.DateTime",
+        TypeScriptName = "string",
+        IsPrimitive = true,
+        IsNullable = false,
+        IsArray = false,
+        IsDictionary = false,
+        IsEnum = false,
+        DateKind = DateTypeKind.DateTime
+    };
+
+    public static TypeDescriptor DateTimeOffsetType => new()
+    {
+        CSharpName = "DateTimeOffset",
+        FullName = "System.DateTimeOffset",
+        TypeScriptName = "string",
+        IsPrimitive = true,
+        IsNullable = false,
+        IsArray = false,
+        IsDictionary = false,
+        IsEnum = false,
+        DateKind = DateTypeKind.DateTimeOffset
+    };
+
+    public static TypeDescriptor DateOnlyType => new()
+    {
+        CSharpName = "DateOnly",
+        FullName = "System.DateOnly",
+        TypeScriptName = "string",
+        IsPrimitive = true,
+        IsNullable = false,
+        IsArray = false,
+        IsDictionary = false,
+        IsEnum = false,
+        DateKind = DateTypeKind.DateOnly
+    };
 }

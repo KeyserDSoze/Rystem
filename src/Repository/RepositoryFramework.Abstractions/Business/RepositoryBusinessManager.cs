@@ -100,14 +100,14 @@ namespace RepositoryFramework
                 .Select(x => x.First()))
             {
                 result = await business.BeforeInsertAsync(result.Entity!, cancellationToken);
-                if (!result.HasEntity)
-                    result.Entity = entity;
+                CheckEntityNull(result, value, key);
                 if (!result.IsOk)
                     return result;
             }
 
             result = await command.InsertAsync(result.Entity!.Key!, result.Entity!.Value!, cancellationToken);
             entity = result.Entity;
+            CheckEntityNull(result, value, key);
 
             foreach (var business in _afterInserted
                 .OrderBy(x => x.Priority)
@@ -115,11 +115,21 @@ namespace RepositoryFramework
                 .Select(x => x.First()))
             {
                 result = await business.AfterInsertAsync(result, result.Entity!, cancellationToken);
-                if (!result.HasEntity)
-                    result.Entity = entity;
+                CheckEntityNull(result, value, key);
             }
 
+
             return result;
+        }
+
+        private static void CheckEntityNull(State<T, TKey> result, T? startingValue, TKey startingKey)
+        {
+            if (!result.HasEntity)
+                result.Entity = Entity.Default(startingValue!, startingKey);
+            if (result.Entity!.Key == null)
+                result.Entity.Key = startingKey;
+            if (result.Entity.Value == null)
+                result.Entity.Value = startingValue;
         }
         public async Task<State<T, TKey>> UpdateAsync(ICommandPattern<T, TKey> command, TKey key, T value, CancellationToken cancellationToken = default)
         {
@@ -132,14 +142,14 @@ namespace RepositoryFramework
                 .Select(x => x.First()))
             {
                 result = await business.BeforeUpdateAsync(result.Entity!, cancellationToken);
-                if (!result.HasEntity)
-                    result.Entity = entity;
+                CheckEntityNull(result, value, key);
                 if (!result.IsOk)
                     return result;
             }
 
             result = await command.UpdateAsync(result.Entity!.Key!, result.Entity!.Value!, cancellationToken);
             entity = result.Entity!;
+            CheckEntityNull(result, value, key);
 
             foreach (var business in _afterUpdated
                 .OrderBy(x => x.Priority)
@@ -147,8 +157,7 @@ namespace RepositoryFramework
                 .Select(x => x.First()))
             {
                 result = await business.AfterUpdateAsync(result, result.Entity!, cancellationToken);
-                if (!result.HasEntity)
-                    result.Entity = entity;
+                CheckEntityNull(result, value, key);
             }
 
             return result;
@@ -164,17 +173,22 @@ namespace RepositoryFramework
                 .Select(x => x.First()))
             {
                 result = await business.BeforeDeleteAsync(result.Entity!.Key!, cancellationToken);
+                CheckEntityNull(result, default!, key);
                 if (!result.IsOk)
                     return result;
             }
 
             result = await command.DeleteAsync(result.Entity!.Key!, cancellationToken);
+            CheckEntityNull(result, default!, key);
 
             foreach (var business in _afterDeleted
                 .OrderBy(x => x.Priority)
                 .GroupBy(x => x.Priority)
                 .Select(x => x.First()))
+            {
                 result = await business.AfterDeleteAsync(result, result.Entity!.Key!, cancellationToken);
+                CheckEntityNull(result, default!, key);
+            }
 
             return result;
         }
@@ -224,19 +238,24 @@ namespace RepositoryFramework
                 .Select(x => x.First()))
             {
                 result = await business.BeforeExistAsync(result.Entity!.Key!, cancellationToken);
+                CheckEntityNull(result, default!, key);
                 if (!result.IsOk)
                     return result;
             }
 
-            var response = await query.ExistAsync(result.Entity!.Key!, cancellationToken);
+            result = await query.ExistAsync(result.Entity!.Key!, cancellationToken);
+            CheckEntityNull(result, default!, key);
 
             foreach (var business in _afterExisted
                 .OrderBy(x => x.Priority)
                 .GroupBy(x => x.Priority)
                 .Select(x => x.First()))
-                response = await business.AfterExistAsync(response, result.Entity!.Key!, cancellationToken);
+            {
+                result = await business.AfterExistAsync(result, result.Entity!.Key!, cancellationToken);
+                CheckEntityNull(result, default!, key);
+            }
 
-            return response;
+            return result;
         }
 
         public async Task<T?> GetAsync(IQueryPattern<T, TKey> query, TKey key, CancellationToken cancellationToken = default)
@@ -250,9 +269,8 @@ namespace RepositoryFramework
                 .Select(x => x.First()))
             {
                 result = await business.BeforeGetAsync(result.Entity!.Key!, cancellationToken);
-                if (result.HasEntity && result.Entity!.HasValue)
-                    return result.Entity.Value;
-                else if (!result.IsOk)
+                CheckEntityNull(result, default!, key);
+                if (!result.IsOk)
                     return default;
             }
 
@@ -262,7 +280,9 @@ namespace RepositoryFramework
                 .OrderBy(x => x.Priority)
                 .GroupBy(x => x.Priority)
                 .Select(x => x.First()))
+            {
                 response = await business.AfterGetAsync(response, result.Entity!.Key!, cancellationToken);
+            }
 
             return response;
         }

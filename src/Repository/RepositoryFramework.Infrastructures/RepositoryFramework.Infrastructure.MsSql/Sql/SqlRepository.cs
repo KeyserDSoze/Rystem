@@ -39,7 +39,7 @@ namespace RepositoryFramework.Infrastructure.MsSql
             var command = await GetCommandAsync(_options.Delete);
             command.Parameters.Add(new SqlParameter("Key", keyAsString));
             var response = (await command.ExecuteScalarAsync(cancellationToken)).Cast<int>();
-            return response >= 0;
+            return State.Default<T, TKey>(response >= 0, default!, key);
         }
 
         public async Task<State<T, TKey>> ExistAsync(TKey key, CancellationToken cancellationToken = default)
@@ -48,7 +48,7 @@ namespace RepositoryFramework.Infrastructure.MsSql
             var command = await GetCommandAsync(_options.Exist);
             command.Parameters.Add(new SqlParameter("Key", keyAsString));
             var response = (await command.ExecuteScalarAsync(cancellationToken)).Cast<int>();
-            return response > 0;
+            return State.Default<T, TKey>(response > 0, default!, key);
         }
 
         public async Task<T?> GetAsync(TKey key, CancellationToken cancellationToken = default)

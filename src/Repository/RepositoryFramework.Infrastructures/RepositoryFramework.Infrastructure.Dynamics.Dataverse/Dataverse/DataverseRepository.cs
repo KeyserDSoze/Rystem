@@ -41,9 +41,9 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
             if (entityRetrieved != null)
             {
                 await Client.DeleteAsync(Settings.LogicalTableName, entityRetrieved.Id, cancellationToken);
-                return true;
+                return State.Default<T, TKey>(true, default!, key);
             }
-            return false;
+            return State.Default<T, TKey>(false, default!, key);
         }
 
         public async Task<State<T, TKey>> ExistAsync(TKey key, CancellationToken cancellationToken = default)
@@ -140,7 +140,7 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
                 await Client.UpdateAsync(dataverseEntity, cancellationToken);
                 return new State<T, TKey>(true, value, key);
             }
-            return false;
+            return State.Default(false, value, key);
         }
         public async IAsyncEnumerable<BatchResult<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)

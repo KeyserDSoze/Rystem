@@ -39,6 +39,12 @@ public class TypeScriptGenerator
 
         var generatedFiles = new List<string>();
 
+        // Generate DateMappers.ts utility (always available for date conversion)
+        var dateMapperContent = DateMapperEmitter.Emit();
+        _fileWriter.WriteTypeFile(DateMapperEmitter.FileName, dateMapperContent);
+        generatedFiles.Add(DateMapperEmitter.FileName);
+        Logger.Info($"Generated types/{DateMapperEmitter.FileName}");
+
         // Filter out closed generic types - we only generate open generics (EntityVersions<T>)
         // Closed generics (EntityVersions<Book>) reuse the open generic definition
         // Check GenericBaseTypeName: NULL = open generic or non-generic, NON-NULL = closed generic

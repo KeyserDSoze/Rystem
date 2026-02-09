@@ -32,7 +32,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
         {
             var keyAsString = GetKeyAsString(key);
             var response = await Client.DeleteItemAsync<T>(keyAsString, new PartitionKey(keyAsString), cancellationToken: cancellationToken).NoContext();
-            return State.Default<T, TKey>(response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.NoContent);
+            return State.Default<T, TKey>(response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.NoContent, default!, key);
         }
         public async Task<State<T, TKey>> ExistAsync(TKey key, CancellationToken cancellationToken = default)
         {
@@ -41,7 +41,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
             .WithParameter("@id", keyAsString);
             using var filteredFeed = Client.GetItemQueryIterator<T>(queryDefinition: parameterizedQuery);
             var response = await filteredFeed.ReadNextAsync(cancellationToken);
-            return State.Default<T, TKey>(response.Any());
+            return State.Default<T, TKey>(response.Any(), default!, key);
         }
 
         public async Task<T?> GetAsync(TKey key, CancellationToken cancellationToken = default)
@@ -67,7 +67,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
             foreach (var property in Properties)
                 flexible.TryAdd(property.Name, property.GetValue(value));
             var response = await Client.CreateItemAsync(flexible, new PartitionKey(keyAsString), cancellationToken: cancellationToken).NoContext();
-            return State.Default<T, TKey>(response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created, value);
+            return State.Default(response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created, value, key);
         }
         private const FilterOperations AvailableOperations = FilterOperations.Where;
         private const FilterOperations NotAvailableOperations = FilterOperations.OrderBy | FilterOperations.Top | FilterOperations.Skip |
@@ -111,7 +111,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
             foreach (var property in Properties)
                 flexible.TryAdd(property.Name, property.GetValue(value));
             var response = await Client.UpsertItemAsync(flexible, new PartitionKey(keyAsString), cancellationToken: cancellationToken).NoContext();
-            return State.Default<T, TKey>(response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created, value);
+            return State.Default(response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created, value, key);
         }
         public async IAsyncEnumerable<BatchResult<T, TKey>> BatchAsync(BatchOperations<T, TKey> operations,
             [EnumeratorCancellation] CancellationToken cancellationToken = default)

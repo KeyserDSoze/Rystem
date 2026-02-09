@@ -26,7 +26,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
         public async Task<State<T, TKey>> DeleteAsync(TKey key, CancellationToken cancellationToken = default)
         {
             var response = await Options!.Client.DeleteBlobAsync(GetFileName(key), cancellationToken: cancellationToken).NoContext();
-            return !response.IsError;
+            return State.Default<T, TKey>(!response.IsError, default!, key);
         }
 
         public async Task<T?> GetAsync(TKey key, CancellationToken cancellationToken = default)
@@ -42,7 +42,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
         public async Task<State<T, TKey>> ExistAsync(TKey key, CancellationToken cancellationToken = default)
         {
             var blobClient = Options!.Client.GetBlobClient(GetFileName(key));
-            return (await blobClient.ExistsAsync(cancellationToken).NoContext()).Value;
+            return State.Default<T, TKey>((await blobClient.ExistsAsync(cancellationToken).NoContext()).Value, default!, key);
         }
 
         public async Task<State<T, TKey>> InsertAsync(TKey key, T value, CancellationToken cancellationToken = default)
@@ -82,7 +82,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
             var blobClient = Options!.Client.GetBlobClient(GetFileName(key));
             var entityWithKey = Entity.Default(value, key);
             var response = await blobClient.UploadAsync(new BinaryData(entityWithKey.ToJson()), true, cancellationToken).NoContext();
-            return State.Default<T, TKey>(response.Value != null, value);
+            return State.Default(response.Value != null, value, key);
         }
 
         public async ValueTask<TProperty> OperationAsync<TProperty>(
