@@ -76,6 +76,11 @@ public enum AiResponseStatus
     Completed,
 
     /// <summary>
+    /// Budget limit exceeded - execution stopped.
+    /// </summary>
+    BudgetExceeded,
+
+    /// <summary>
     /// Error occurred during execution.
     /// </summary>
     Error

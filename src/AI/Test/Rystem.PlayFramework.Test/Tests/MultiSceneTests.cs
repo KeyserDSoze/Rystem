@@ -35,7 +35,7 @@ public sealed class MultiSceneTests : PlayFrameworkTestBase
 - Analyze data
 - Generate reports
 When a task requires multiple operations, plan the execution carefully.")
-                
+
                 // Scene 1: Calculator
                 .AddScene(sceneBuilder =>
                 {
@@ -55,7 +55,7 @@ When a task requires multiple operations, plan the execution carefully.")
                             actorBuilder.AddActor("Always use calculator tools for precise calculations.");
                         });
                 })
-                
+
                 // Scene 2: Weather
                 .AddScene(sceneBuilder =>
                 {
@@ -74,7 +74,7 @@ When a task requires multiple operations, plan the execution carefully.")
                             actorBuilder.AddActor("Provide weather information in a clear, user-friendly format.");
                         });
                 })
-                
+
                 // Scene 3: Data Analysis
                 .AddScene(sceneBuilder =>
                 {
@@ -94,7 +94,7 @@ When a task requires multiple operations, plan the execution carefully.")
                             actorBuilder.AddActor("Analyze data carefully and provide statistical insights.");
                         });
                 })
-                
+
                 // Scene 4: Report Generator
                 .AddScene(sceneBuilder =>
                 {
@@ -273,7 +273,7 @@ When a task requires multiple operations, plan the execution carefully.")
 
         // Assert
         Assert.NotEmpty(responses);
-        
+
         // Should execute multiple scenes
         var executedScenes = responses.Where(r => r.SceneName != null).Select(r => r.SceneName).Distinct().ToList();
         Assert.Contains("Weather", executedScenes);
@@ -301,11 +301,11 @@ When a task requires multiple operations, plan the execution carefully.")
 
         // Assert
         Assert.NotEmpty(responses);
-        
+
         // Should call multiple calculator tools
         var toolCalls = responses.Where(r => r.FunctionName != null).Select(r => r.FunctionName).ToList();
         Assert.True(toolCalls.Count >= 3, $"Should execute at least 3 tool calls, got {toolCalls.Count}");
-        
+
         // Final result should be: (15 + 25) * 2 - 10 = 40 * 2 - 10 = 80 - 10 = 70
         var finalResponse = responses.LastOrDefault(r => r.Status == AiResponseStatus.Running);
         Assert.NotNull(finalResponse?.Message);
@@ -463,8 +463,8 @@ public sealed class MockReportService : IReportService
     public Task<string> GenerateSummaryAsync(string text)
     {
         var words = text.Split(' ');
-        var summary = words.Length > 20 
-            ? string.Join(" ", words.Take(20)) + "..." 
+        var summary = words.Length > 20
+            ? string.Join(" ", words.Take(20)) + "..."
             : text;
         return Task.FromResult($"Summary: {summary}");
     }

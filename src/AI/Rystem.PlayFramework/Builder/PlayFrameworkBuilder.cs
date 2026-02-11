@@ -150,6 +150,69 @@ public sealed class PlayFrameworkBuilder
     }
 
     /// <summary>
+    /// Enables cost tracking with default settings (USD currency, costs must be configured).
+    /// </summary>
+    public PlayFrameworkBuilder WithCostTracking()
+    {
+        Settings.CostTracking.Enabled = true;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures cost tracking with specific currency and token costs.
+    /// </summary>
+    /// <param name="currency">Currency code (e.g., "USD", "EUR", "GBP")</param>
+    /// <param name="inputCostPer1K">Cost per 1,000 input tokens</param>
+    /// <param name="outputCostPer1K">Cost per 1,000 output tokens</param>
+    /// <param name="cachedInputCostPer1K">Cost per 1,000 cached input tokens (optional, defaults to inputCost * 0.1)</param>
+    public PlayFrameworkBuilder WithCostTracking(
+        string currency,
+        decimal inputCostPer1K,
+        decimal outputCostPer1K,
+        decimal? cachedInputCostPer1K = null)
+    {
+        Settings.CostTracking.Enabled = true;
+        Settings.CostTracking.Currency = currency;
+        Settings.CostTracking.InputTokenCostPer1K = inputCostPer1K;
+        Settings.CostTracking.OutputTokenCostPer1K = outputCostPer1K;
+        Settings.CostTracking.CachedInputTokenCostPer1K = cachedInputCostPer1K ?? (inputCostPer1K * 0.1m);
+        return this;
+    }
+
+    /// <summary>
+    /// Configures cost tracking with a configuration action.
+    /// </summary>
+    public PlayFrameworkBuilder WithCostTracking(Action<TokenCostSettings> configure)
+    {
+        Settings.CostTracking.Enabled = true;
+        configure(Settings.CostTracking);
+        return this;
+    }
+
+    /// <summary>
+    /// Adds model-specific cost configuration (e.g., different costs for GPT-4 vs GPT-3.5).
+    /// </summary>
+    /// <param name="modelId">Model identifier (e.g., "gpt-4", "gpt-3.5-turbo")</param>
+    /// <param name="inputCostPer1K">Cost per 1,000 input tokens for this model</param>
+    /// <param name="outputCostPer1K">Cost per 1,000 output tokens for this model</param>
+    /// <param name="cachedInputCostPer1K">Cost per 1,000 cached input tokens (optional)</param>
+    public PlayFrameworkBuilder WithModelCosts(
+        string modelId,
+        decimal inputCostPer1K,
+        decimal outputCostPer1K,
+        decimal? cachedInputCostPer1K = null)
+    {
+        Settings.CostTracking.ModelCosts[modelId] = new ModelCostSettings
+        {
+            ModelId = modelId,
+            InputTokenCostPer1K = inputCostPer1K,
+            OutputTokenCostPer1K = outputCostPer1K,
+            CachedInputTokenCostPer1K = cachedInputCostPer1K ?? (inputCostPer1K * 0.1m)
+        };
+        return this;
+    }
+
+    /// <summary>
     /// Adds a scene.
     /// </summary>
     public PlayFrameworkBuilder AddScene(Action<SceneBuilder> configure)

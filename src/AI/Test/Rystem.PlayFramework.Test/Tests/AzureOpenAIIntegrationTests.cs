@@ -71,10 +71,10 @@ public sealed class AzureOpenAIIntegrationTests : PlayFrameworkTestBase
         Assert.NotNull(response);
         Assert.NotNull(response.Messages);
         Assert.NotEmpty(response.Messages);
-        
+
         var messageText = response.Messages.FirstOrDefault()?.Text;
         Assert.NotNull(messageText);
-        
+
         _output.WriteLine($"Response: {messageText}");
         _output.WriteLine($"Model: {response.ModelId}");
         _output.WriteLine($"Tokens - Input: {response.Usage?.InputTokenCount}, Output: {response.Usage?.OutputTokenCount}");
@@ -92,13 +92,13 @@ public sealed class AzureOpenAIIntegrationTests : PlayFrameworkTestBase
         {
             responses.Add(response);
             _output.WriteLine($"[{response.Status}] {response.SceneName}: {response.Message}");
-            
+
             if (response.FunctionName != null)
             {
                 _output.WriteLine($"  Function: {response.FunctionName}");
                 _output.WriteLine($"  Arguments: {response.FunctionArguments}");
             }
-            
+
             if (response.Cost.HasValue)
             {
                 _output.WriteLine($"  Cost: ${response.Cost:F6} (Total: ${response.TotalCost:F6})");
@@ -108,11 +108,11 @@ public sealed class AzureOpenAIIntegrationTests : PlayFrameworkTestBase
         // Assert
         Assert.NotEmpty(responses);
         Assert.Contains(responses, r => r.Status == AiResponseStatus.Completed);
-        
+
         // Check if calculator tool was called
         var toolCalls = responses.Where(r => r.Status == AiResponseStatus.FunctionCompleted).ToList();
         _output.WriteLine($"\nTotal tool calls: {toolCalls.Count}");
-        
+
         // Check for result containing "42"
         var finalMessages = responses.Where(r => r.Status == AiResponseStatus.Running && !string.IsNullOrEmpty(r.Message)).ToList();
         _output.WriteLine($"\nFinal messages:");
@@ -138,10 +138,10 @@ public sealed class AzureOpenAIIntegrationTests : PlayFrameworkTestBase
 
         // Assert
         Assert.NotEmpty(responses);
-        
+
         var toolCalls = responses.Where(r => r.Status == AiResponseStatus.FunctionCompleted).ToList();
         _output.WriteLine($"\nTotal operations: {toolCalls.Count}");
-        
+
         // Should have at least 2 operations: addition and multiplication
         Assert.True(toolCalls.Count >= 2, $"Expected at least 2 tool calls, got {toolCalls.Count}");
     }
@@ -162,11 +162,11 @@ public sealed class AzureOpenAIIntegrationTests : PlayFrameworkTestBase
         // Assert
         var finalResponse = responses.LastOrDefault(r => r.Status == AiResponseStatus.Completed);
         Assert.NotNull(finalResponse);
-        
+
         _output.WriteLine($"Total Cost: ${finalResponse.TotalCost:F6}");
         _output.WriteLine($"Total Input Tokens: {responses.Sum(r => r.InputTokens ?? 0)}");
         _output.WriteLine($"Total Output Tokens: {responses.Sum(r => r.OutputTokens ?? 0)}");
-        
+
         Assert.True(finalResponse.TotalCost > 0, "Total cost should be greater than zero");
     }
 }

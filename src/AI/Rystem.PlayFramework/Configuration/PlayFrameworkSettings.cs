@@ -26,6 +26,11 @@ public sealed class PlayFrameworkSettings
     public CacheSettings Cache { get; set; } = new();
 
     /// <summary>
+    /// Cost tracking configuration.
+    /// </summary>
+    public TokenCostSettings CostTracking { get; set; } = new();
+
+    /// <summary>
     /// Default model to use for chat completions.
     /// </summary>
     public string? DefaultModelId { get; set; }

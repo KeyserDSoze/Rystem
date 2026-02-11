@@ -46,6 +46,13 @@ public sealed class SceneRequestSettings
     public CacheBehavior CacheBehavior { get; set; } = CacheBehavior.Default;
 
     /// <summary>
+    /// Maximum budget for this request (in the configured currency).
+    /// If set, execution will stop when total cost exceeds this value.
+    /// Set to null for unlimited budget (default).
+    /// </summary>
+    public decimal? MaxBudget { get; set; }
+
+    /// <summary>
     /// Cache key (auto-generated if null).
     /// </summary>
     public string? CacheKey { get; set; }

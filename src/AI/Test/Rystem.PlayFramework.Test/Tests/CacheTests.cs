@@ -122,10 +122,10 @@ public sealed class CacheTests : PlayFrameworkTestBase
 
         // Act
         await cacheService.SetAsync(key, responses, CacheBehavior.Forever);
-        
+
         // Simulate delay (in real scenario, this would be longer)
         await Task.Delay(100);
-        
+
         var retrieved = await cacheService.GetAsync(key);
 
         // Assert

@@ -16,6 +16,7 @@ internal sealed class SceneManager : ISceneManager
     private readonly ISummarizer? _summarizer;
     private readonly IDirector? _director;
     private readonly ICacheService? _cacheService;
+    private readonly ICostCalculator _costCalculator;
 
     public SceneManager(
         IServiceProvider serviceProvider,
@@ -23,6 +24,7 @@ internal sealed class SceneManager : ISceneManager
         IChatClient chatClientFactory,
         PlayFrameworkSettings settings,
         List<ActorConfiguration> mainActors,
+        ICostCalculator costCalculator,
         IPlanner? planner = null,
         ISummarizer? summarizer = null,
         IDirector? director = null,
@@ -33,6 +35,7 @@ internal sealed class SceneManager : ISceneManager
         _chatClientFactory = chatClientFactory;
         _settings = settings;
         _mainActors = mainActors;
+        _costCalculator = costCalculator;
         _planner = planner;
         _summarizer = summarizer;
         _director = director;
@@ -45,7 +48,7 @@ internal sealed class SceneManager : ISceneManager
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         settings ??= new SceneRequestSettings();
-        
+
         // Initialize
         yield return YieldStatus(AiResponseStatus.Initializing, "Initializing context");
 
@@ -55,7 +58,7 @@ internal sealed class SceneManager : ISceneManager
         if (settings.CacheBehavior != CacheBehavior.Avoidable && _cacheService != null && context.CacheKey != null)
         {
             yield return YieldStatus(AiResponseStatus.LoadingCache, "Loading from cache");
-            
+
             var cached = await _cacheService.GetAsync(context.CacheKey, cancellationToken);
             if (cached != null)
             {
@@ -63,10 +66,10 @@ internal sealed class SceneManager : ISceneManager
                 if (_summarizer != null && _summarizer.ShouldSummarize(cached))
                 {
                     yield return YieldStatus(AiResponseStatus.Summarizing, "Summarizing cached conversation");
-                    
+
                     var summary = await _summarizer.SummarizeAsync(cached, cancellationToken);
                     context.ConversationSummary = summary;
-                    
+
                     // Add summary to chat
                     // Store summary in context to include in future messages
                     context.Properties["conversation_summary"] = summary;
@@ -91,7 +94,7 @@ internal sealed class SceneManager : ISceneManager
         {
             // Create execution plan
             yield return YieldStatus(AiResponseStatus.Planning, "Creating execution plan");
-            
+
             var plan = await _planner.CreatePlanAsync(context, settings, cancellationToken);
             context.ExecutionPlan = plan;
 
@@ -217,7 +220,7 @@ internal sealed class SceneManager : ISceneManager
             }
 
             // Execute scene
-            await foreach (var response in ExecuteSceneAsync(context, scene, cancellationToken))
+            await foreach (var response in ExecuteSceneAsync(context, scene, settings, cancellationToken))
             {
                 yield return response;
             }
@@ -230,7 +233,7 @@ internal sealed class SceneManager : ISceneManager
         if (allStepsCompleted)
         {
             // Generate final response
-            await foreach (var response in GenerateFinalResponseAsync(context, cancellationToken))
+            await foreach (var response in GenerateFinalResponseAsync(context, settings, cancellationToken))
             {
                 yield return response;
             }
@@ -263,6 +266,26 @@ internal sealed class SceneManager : ISceneManager
             chatOptions,
             cancellationToken);
 
+        // Track costs for scene selection
+        var selectionResponse = new AiSceneResponse
+        {
+            Status = AiResponseStatus.Running,
+            Message = "Scene selection"
+        };
+        var canContinue = TrackCosts(response, selectionResponse, context, settings);
+
+        // Check budget limit
+        if (!canContinue)
+        {
+            yield return YieldAndTrack(context, new AiSceneResponse
+            {
+                Status = AiResponseStatus.BudgetExceeded,
+                Message = $"Budget limit of {settings.MaxBudget:F6} {_costCalculator.Currency} exceeded. Total cost: {context.TotalCost:F6}",
+                ErrorMessage = "Maximum budget reached"
+            });
+            yield break;
+        }
+
         // Process function calls (scene selections)
         var responseMessage = response.Messages?.FirstOrDefault();
         if (responseMessage?.Contents != null)
@@ -285,7 +308,7 @@ internal sealed class SceneManager : ISceneManager
                     var scene = FindSceneByFuzzyMatch(selectedSceneName);
                     if (scene != null)
                     {
-                        await foreach (var sceneResponse in ExecuteSceneAsync(context, scene, cancellationToken))
+                        await foreach (var sceneResponse in ExecuteSceneAsync(context, scene, settings, cancellationToken))
                         {
                             yield return sceneResponse;
                         }
@@ -315,6 +338,7 @@ internal sealed class SceneManager : ISceneManager
     private async IAsyncEnumerable<AiSceneResponse> ExecuteSceneAsync(
         SceneContext context,
         IScene scene,
+        SceneRequestSettings settings,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
         yield return YieldStatus(AiResponseStatus.ExecutingScene, $"Entering scene: {scene.Name}");
@@ -361,12 +385,26 @@ internal sealed class SceneManager : ISceneManager
             var responseMessage = response.Messages?.FirstOrDefault();
             if (responseMessage == null)
             {
-                yield return YieldAndTrack(context, new AiSceneResponse
+                var errorResponse = new AiSceneResponse
                 {
                     Status = AiResponseStatus.Error,
                     SceneName = scene.Name,
                     Message = "No response from LLM"
-                });
+                };
+                var canContinue = TrackCosts(response, errorResponse, context, settings);
+                yield return YieldAndTrack(context, errorResponse);
+
+                if (!canContinue)
+                {
+                    yield return YieldAndTrack(context, new AiSceneResponse
+                    {
+                        Status = AiResponseStatus.BudgetExceeded,
+                        SceneName = scene.Name,
+                        Message = $"Budget limit of {settings.MaxBudget:F6} {_costCalculator.Currency} exceeded. Total cost: {context.TotalCost:F6}",
+                        ErrorMessage = "Maximum budget reached"
+                    });
+                }
+
                 yield break;
             }
 
@@ -381,12 +419,26 @@ internal sealed class SceneManager : ISceneManager
             if (functionCalls.Count == 0)
             {
                 // No more function calls - return final text response
-                yield return YieldAndTrack(context, new AiSceneResponse
+                var finalResponse = new AiSceneResponse
                 {
                     Status = AiResponseStatus.Running,
                     SceneName = scene.Name,
                     Message = responseMessage.Text ?? string.Empty
-                });
+                };
+                var canContinue = TrackCosts(response, finalResponse, context, settings);
+                yield return YieldAndTrack(context, finalResponse);
+
+                if (!canContinue)
+                {
+                    yield return YieldAndTrack(context, new AiSceneResponse
+                    {
+                        Status = AiResponseStatus.BudgetExceeded,
+                        SceneName = scene.Name,
+                        Message = $"Budget limit of {settings.MaxBudget:F6} {_costCalculator.Currency} exceeded. Total cost: {context.TotalCost:F6}",
+                        ErrorMessage = "Maximum budget reached"
+                    });
+                }
+
                 yield break;
             }
 
@@ -398,9 +450,9 @@ internal sealed class SceneManager : ISceneManager
                 if (tool == null)
                 {
                     // Tool not found - send error result
-                    var errorResult = new FunctionResultContent(functionCall.CallId, functionCall.Name) 
-                    { 
-                        Result = $"Tool '{functionCall.Name}' not found" 
+                    var errorResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
+                    {
+                        Result = $"Tool '{functionCall.Name}' not found"
                     };
                     conversationMessages.Add(new ChatMessage(ChatRole.Tool, [errorResult]));
                     continue;
@@ -424,9 +476,9 @@ internal sealed class SceneManager : ISceneManager
                     var toolResult = await tool.ExecuteAsync(argsJson, context, cancellationToken);
 
                     // Send result back to LLM
-                    var functionResult = new FunctionResultContent(functionCall.CallId, functionCall.Name) 
-                    { 
-                        Result = toolResult 
+                    var functionResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
+                    {
+                        Result = toolResult
                     };
                     conversationMessages.Add(new ChatMessage(ChatRole.Tool, [functionResult]));
 
@@ -441,9 +493,9 @@ internal sealed class SceneManager : ISceneManager
                 catch (Exception ex)
                 {
                     // Send error result
-                    var errorResult = new FunctionResultContent(functionCall.CallId, functionCall.Name) 
-                    { 
-                        Result = $"Error executing tool: {ex.Message}" 
+                    var errorResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
+                    {
+                        Result = $"Error executing tool: {ex.Message}"
                     };
                     conversationMessages.Add(new ChatMessage(ChatRole.Tool, [errorResult]));
 
@@ -474,13 +526,14 @@ internal sealed class SceneManager : ISceneManager
 
     private async IAsyncEnumerable<AiSceneResponse> GenerateFinalResponseAsync(
         SceneContext context,
+        SceneRequestSettings settings,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
         yield return YieldStatus(AiResponseStatus.GeneratingFinalResponse, "Generating final response");
 
         // Check if any scene already provided a SPECIFIC_COMMAND
         var directAnswer = context.Responses
-            .Where(r => r.Status == AiResponseStatus.Running && 
+            .Where(r => r.Status == AiResponseStatus.Running &&
                        r.Message?.Contains("SPECIFIC_COMMAND:") == true)
             .LastOrDefault();
 
@@ -496,16 +549,28 @@ internal sealed class SceneManager : ISceneManager
 
         // Generate final response based on gathered data
         var finalPrompt = new ChatMessage(ChatRole.User, "Based on all the information gathered, provide the final answer to the user's request.");
-        
+
         var response = await context.ChatClient.GetResponseAsync(
             new[] { finalPrompt },
             cancellationToken: cancellationToken);
 
-        yield return YieldAndTrack(context, new AiSceneResponse
+        var finalResponse = new AiSceneResponse
         {
             Status = AiResponseStatus.Running,
             Message = response.Messages?.FirstOrDefault()?.Text
-        });
+        };
+        var canContinue = TrackCosts(response, finalResponse, context, settings);
+        yield return YieldAndTrack(context, finalResponse);
+
+        if (!canContinue)
+        {
+            yield return YieldAndTrack(context, new AiSceneResponse
+            {
+                Status = AiResponseStatus.BudgetExceeded,
+                Message = $"Budget limit of {settings.MaxBudget:F6} {_costCalculator.Currency} exceeded. Total cost: {context.TotalCost:F6}",
+                ErrorMessage = "Maximum budget reached"
+            });
+        }
     }
 
     private IScene? FindSceneByFuzzyMatch(string requestedName)
@@ -557,5 +622,45 @@ internal sealed class SceneManager : ISceneManager
         response.TotalCost = context.TotalCost;
         context.Responses.Add(response);
         return response;
+    }
+
+    /// <summary>
+    /// Extracts token usage from ChatResponse and calculates costs.
+    /// </summary>
+    /// <returns>True if execution should continue; False if budget exceeded.</returns>
+    private bool TrackCosts(ChatResponse chatResponse, AiSceneResponse sceneResponse, SceneContext context, SceneRequestSettings? settings = null)
+    {
+        if (!_costCalculator.IsEnabled || chatResponse.Usage == null)
+            return true; // Continue execution
+
+        // Extract token usage from ChatResponse
+        var usage = new TokenUsage
+        {
+            InputTokens = (int)(chatResponse.Usage.InputTokenCount ?? 0),
+            OutputTokens = (int)(chatResponse.Usage.OutputTokenCount ?? 0),
+            CachedInputTokens = 0, // Azure OpenAI may provide this in future
+            ModelId = chatResponse.ModelId
+        };
+
+        // Calculate costs
+        var costCalculation = _costCalculator.Calculate(usage);
+
+        // Update scene response with token and cost info
+        sceneResponse.InputTokens = usage.InputTokens;
+        sceneResponse.OutputTokens = usage.OutputTokens;
+        sceneResponse.CachedInputTokens = usage.CachedInputTokens;
+        sceneResponse.Cost = costCalculation.TotalCost;
+
+        // Accumulate total cost
+        context.TotalCost += costCalculation.TotalCost;
+        sceneResponse.TotalCost = context.TotalCost;
+
+        // Check budget limit
+        if (settings?.MaxBudget.HasValue == true && context.TotalCost > settings.MaxBudget.Value)
+        {
+            return false; // Budget exceeded - stop execution
+        }
+
+        return true; // Continue execution
     }
 }

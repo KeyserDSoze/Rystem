@@ -106,7 +106,7 @@ public sealed class SimpleCalculatorTests : PlayFrameworkTestBase
         // Assert
         Assert.NotEmpty(responses);
         Assert.Contains(responses, r => r.Status == AiResponseStatus.Completed);
-        
+
         // Check if we got a response mentioning "15"
         var finalResponse = responses.LastOrDefault(r => r.Status == AiResponseStatus.Running);
         Assert.NotNull(finalResponse);

@@ -49,7 +49,7 @@ When handling complex requests:
 4. Provide clear, comprehensive responses
 
 Always explain your reasoning and show intermediate steps.")
-                
+
                 // Calculator Scene
                 .AddScene(sceneBuilder =>
                 {
@@ -69,7 +69,7 @@ Always explain your reasoning and show intermediate steps.")
                             actorBuilder.AddActor("Use calculator tools for all numeric operations. Show step-by-step calculations.");
                         });
                 })
-                
+
                 // Weather Scene
                 .AddScene(sceneBuilder =>
                 {
@@ -88,7 +88,7 @@ Always explain your reasoning and show intermediate steps.")
                             actorBuilder.AddActor("Provide weather information clearly. Include temperature units (°C).");
                         });
                 })
-                
+
                 // Data Analysis Scene
                 .AddScene(sceneBuilder =>
                 {
@@ -108,7 +108,7 @@ Always explain your reasoning and show intermediate steps.")
                             actorBuilder.AddActor("Provide statistical insights. Explain the significance of calculated values.");
                         });
                 })
-                
+
                 // Report Generator Scene
                 .AddScene(sceneBuilder =>
                 {
@@ -138,7 +138,7 @@ Always explain your reasoning and show intermediate steps.")
     {
         // Arrange
         var sceneManager = ServiceProvider.GetRequiredService<ISceneManager>();
-        
+
         Console.WriteLine("\n=== DEMO 1: Simple Calculation ===");
         Console.WriteLine("Request: Calculate (25 + 15) * 2\n");
 
@@ -146,16 +146,16 @@ Always explain your reasoning and show intermediate steps.")
         await foreach (var response in sceneManager.ExecuteAsync("Calculate (25 + 15) * 2"))
         {
             Console.WriteLine($"[{response.Status}] {response.Message}");
-            
+
             if (response.SceneName != null)
                 Console.WriteLine($"  └─ Scene: {response.SceneName}");
-            
+
             if (response.FunctionName != null)
                 Console.WriteLine($"  └─ Tool: {response.FunctionName}");
-            
+
             if (response.Cost.HasValue)
                 Console.WriteLine($"  └─ Cost: ${response.Cost:F4} | Total: ${response.TotalCost:F4}");
-            
+
             Console.WriteLine();
         }
     }
@@ -168,35 +168,35 @@ Always explain your reasoning and show intermediate steps.")
     {
         // Arrange
         var sceneManager = ServiceProvider.GetRequiredService<ISceneManager>();
-        
+
         Console.WriteLine("\n=== DEMO 2: Weather Analysis (Multi-Scene) ===");
         Console.WriteLine("Request: Get temperatures for Rome, Milan, Venice. Calculate average and identify warmest city.\n");
 
         // Act
         var scenesUsed = new HashSet<string>();
         var toolsCalled = new List<string>();
-        
+
         await foreach (var response in sceneManager.ExecuteAsync(
             "Get the current temperatures for Rome, Milan, and Venice. " +
             "Then calculate the average temperature and tell me which city is the warmest."))
         {
             Console.WriteLine($"[{response.Status,-25}] {response.Message}");
-            
+
             if (response.SceneName != null)
             {
                 scenesUsed.Add(response.SceneName);
                 Console.WriteLine($"  └─ Scene: {response.SceneName}");
             }
-            
+
             if (response.FunctionName != null)
             {
                 toolsCalled.Add(response.FunctionName);
                 Console.WriteLine($"  └─ Tool: {response.FunctionName}");
             }
-            
+
             Console.WriteLine();
         }
-        
+
         Console.WriteLine($"\n📊 Summary:");
         Console.WriteLine($"   Scenes used: {string.Join(", ", scenesUsed)}");
         Console.WriteLine($"   Tools called: {toolsCalled.Count} ({string.Join(", ", toolsCalled)})");
@@ -210,7 +210,7 @@ Always explain your reasoning and show intermediate steps.")
     {
         // Arrange
         var sceneManager = ServiceProvider.GetRequiredService<ISceneManager>();
-        
+
         Console.WriteLine("\n=== DEMO 3: Complex Workflow with Planning ===");
         Console.WriteLine("Request: Multi-step analysis with report generation\n");
 
@@ -233,28 +233,28 @@ I need a comprehensive analysis:
         await foreach (var response in sceneManager.ExecuteAsync(request))
         {
             responses.Add(response);
-            
+
             Console.WriteLine($"[{response.Status,-25}] {response.Message}");
-            
+
             if (response.SceneName != null)
                 Console.WriteLine($"  └─ Scene: {response.SceneName}");
-            
+
             if (response.FunctionName != null)
                 Console.WriteLine($"  └─ Tool: {response.FunctionName}");
-            
+
             if (response.InputTokens.HasValue || response.OutputTokens.HasValue)
                 Console.WriteLine($"  └─ Tokens: {response.InputTokens ?? 0} in, {response.OutputTokens ?? 0} out");
-            
+
             Console.WriteLine();
         }
-        
+
         // Summary
         Console.WriteLine($"\n📊 Execution Summary:");
         Console.WriteLine($"   Total responses: {responses.Count}");
         Console.WriteLine($"   Scenes used: {responses.Where(r => r.SceneName != null).Select(r => r.SceneName).Distinct().Count()}");
         Console.WriteLine($"   Tools called: {responses.Count(r => r.FunctionName != null)}");
         Console.WriteLine($"   Total cost: ${responses.Last().TotalCost:F4}");
-        
+
         var planningResponse = responses.FirstOrDefault(r => r.Status == AiResponseStatus.Planning);
         if (planningResponse != null)
             Console.WriteLine($"   Planning: ✅ Used");
@@ -268,7 +268,7 @@ I need a comprehensive analysis:
     {
         // Arrange
         var sceneManager = ServiceProvider.GetRequiredService<ISceneManager>();
-        
+
         Console.WriteLine("\n=== DEMO 4: Error Handling ===");
         Console.WriteLine("Request: Calculate 100 / 0 (will trigger error)\n");
 
@@ -276,13 +276,13 @@ I need a comprehensive analysis:
         await foreach (var response in sceneManager.ExecuteAsync("Calculate 100 divided by 0"))
         {
             Console.WriteLine($"[{response.Status,-25}] {response.Message}");
-            
+
             if (response.ErrorMessage != null)
                 Console.WriteLine($"  ⚠️ Error: {response.ErrorMessage}");
-            
+
             if (response.FunctionName != null)
                 Console.WriteLine($"  └─ Tool: {response.FunctionName}");
-            
+
             Console.WriteLine();
         }
     }
@@ -295,9 +295,9 @@ I need a comprehensive analysis:
     {
         // Arrange
         var sceneManager = ServiceProvider.GetRequiredService<ISceneManager>();
-        
+
         Console.WriteLine("\n=== DEMO 5: Dynamic Scene Selection ===");
-        
+
         var requests = new[]
         {
             "What's 15 + 27?",
@@ -310,9 +310,9 @@ I need a comprehensive analysis:
         {
             Console.WriteLine($"\nRequest: {request}");
             Console.WriteLine(new string('-', 80));
-            
+
             string? selectedScene = null;
-            
+
             await foreach (var response in sceneManager.ExecuteAsync(request))
             {
                 if (response.SceneName != null && selectedScene == null)
@@ -320,11 +320,11 @@ I need a comprehensive analysis:
                     selectedScene = response.SceneName;
                     Console.WriteLine($"✅ Selected Scene: {selectedScene}");
                 }
-                
+
                 if (response.Status == AiResponseStatus.Running)
                     Console.WriteLine($"📝 Response: {response.Message}");
             }
-            
+
             Console.WriteLine();
         }
     }
@@ -337,36 +337,36 @@ I need a comprehensive analysis:
     {
         // Arrange
         var sceneManager = ServiceProvider.GetRequiredService<ISceneManager>();
-        
+
         Console.WriteLine("\n=== DEMO 6: Response Streaming Visualization ===");
         Console.WriteLine("Request: Calculate (10 + 20) * 3\n");
 
         // Act
         var startTime = DateTime.UtcNow;
         var stepNumber = 0;
-        
+
         await foreach (var response in sceneManager.ExecuteAsync("Calculate (10 + 20) * 3"))
         {
             stepNumber++;
             var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
-            
+
             Console.WriteLine($"Step {stepNumber,2} [{elapsed,7:F0}ms] {GetStatusIcon(response.Status)} {response.Status}");
-            
+
             if (!string.IsNullOrEmpty(response.Message))
                 Console.WriteLine($"         {response.Message}");
-            
+
             if (response.SceneName != null)
                 Console.WriteLine($"         🎬 Scene: {response.SceneName}");
-            
+
             if (response.FunctionName != null)
                 Console.WriteLine($"         🔧 Tool: {response.FunctionName}");
-            
+
             if (response.Cost.HasValue)
                 Console.WriteLine($"         💰 Cost: ${response.Cost:F4}");
-            
+
             Console.WriteLine();
         }
-        
+
         Console.WriteLine($"⏱️  Total execution time: {(DateTime.UtcNow - startTime).TotalMilliseconds:F0}ms");
     }
 

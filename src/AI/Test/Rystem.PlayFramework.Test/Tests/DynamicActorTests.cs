@@ -95,7 +95,7 @@ public sealed class DatabaseContextActor : IActor
     public async Task<ActorResponse> PlayAsync(SceneContext context, CancellationToken cancellationToken = default)
     {
         var userName = await _userContext.GetUserNameAsync();
-        
+
         return new ActorResponse
         {
             Message = $"Database context: User '{userName}' is authenticated.",

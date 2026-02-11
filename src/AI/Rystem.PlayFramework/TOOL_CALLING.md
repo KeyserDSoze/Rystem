@@ -396,7 +396,7 @@ Status: Error, Message: "Azure OpenAI API error: 401 Unauthorized"
 
 ---
 
-**Implementation Date**: January 2025  
-**Framework Version**: Rystem.PlayFramework 1.0.0  
+**Implementation Date**: January 2026  
+**Framework Version**: Rystem.PlayFramework 10.1.0.beta-1  
 **Azure OpenAI SDK**: 2.1.0  
 **Microsoft.Extensions.AI**: 10.3.0

@@ -53,6 +53,19 @@ public static class ServiceCollectionExtensions
             services.TryAddScoped<ICacheService, CacheService>();
         }
 
+        // Register cost calculator
+        if (builder.Settings.CostTracking.Enabled)
+        {
+            services.AddSingleton<ICostCalculator>(sp => 
+                new CostCalculator(builder.Settings.CostTracking));
+        }
+        else
+        {
+            // Register disabled cost calculator
+            services.AddSingleton<ICostCalculator>(sp => 
+                new CostCalculator(new TokenCostSettings { Enabled = false }));
+        }
+
         // Register actor types from scenes
         foreach (var scene in builder.Scenes)
         {
