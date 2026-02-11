@@ -1,0 +1,36 @@
+﻿namespace Rystem.PlayFramework;
+
+/// <summary>
+/// Factory for creating actors from configuration.
+/// </summary>
+internal static class ActorFactory
+{
+    public static IActor Create(ActorConfiguration config, IServiceProvider serviceProvider)
+    {
+        // Custom actor type
+        if (config.ActorType != null)
+        {
+            return (IActor)serviceProvider.GetService(config.ActorType)!;
+        }
+
+        // Static message
+        if (config.StaticMessage != null)
+        {
+            return new StaticActor(config.StaticMessage, config.CacheForSubsequentCalls);
+        }
+
+        // Dynamic factory
+        if (config.MessageFactory != null)
+        {
+            return new DynamicActor(config.MessageFactory, config.CacheForSubsequentCalls);
+        }
+
+        // Async factory
+        if (config.AsyncMessageFactory != null)
+        {
+            return new AsyncDynamicActor(config.AsyncMessageFactory, config.CacheForSubsequentCalls);
+        }
+
+        throw new InvalidOperationException("Invalid actor configuration");
+    }
+}
