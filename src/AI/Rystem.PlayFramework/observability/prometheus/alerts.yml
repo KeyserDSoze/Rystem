@@ -1,0 +1,113 @@
+# PlayFramework Alert Rules
+
+groups:
+  - name: playframework_alerts
+    interval: 30s
+    rules:
+      # High Error Rate
+      - alert: HighSceneErrorRate
+        expr: |
+          (
+            sum(rate(playframework_scene_executions_total{success="false"}[5m]))
+            /
+            sum(rate(playframework_scene_executions_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: playframework
+        annotations:
+          summary: "High scene error rate detected"
+          description: "Scene error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      # High Latency
+      - alert: HighSceneLatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(playframework_scene_duration_milliseconds_bucket[5m])) by (le, scene_name)
+          ) > 10000
+        for: 5m
+        labels:
+          severity: warning
+          component: playframework
+        annotations:
+          summary: "High scene latency detected"
+          description: "P95 latency for scene {{ $labels.scene_name }} is {{ $value }}ms (threshold: 10s)"
+
+      # High Cost
+      - alert: HighHourlyCost
+        expr: |
+          sum(rate(playframework_cost_per_execution_usd[1h])) * 3600 > 10.0
+        for: 10m
+        labels:
+          severity: critical
+          component: playframework
+        annotations:
+          summary: "High hourly cost detected"
+          description: "Projected hourly cost is ${{ $value | humanize }} (threshold: $10/hour)"
+
+      # Low Cache Hit Rate
+      - alert: LowCacheHitRate
+        expr: |
+          (
+            sum(rate(playframework_cache_hits_total[10m]))
+            /
+            (sum(rate(playframework_cache_hits_total[10m])) + sum(rate(playframework_cache_misses_total[10m])))
+          ) < 0.5
+        for: 10m
+        labels:
+          severity: info
+          component: playframework
+        annotations:
+          summary: "Low cache hit rate detected"
+          description: "Cache hit rate is {{ $value | humanizePercentage }} (threshold: 50%)"
+
+      # High Token Usage
+      - alert: HighTokenUsageRate
+        expr: |
+          sum(rate(playframework_llm_tokens_total[5m])) > 10000
+        for: 5m
+        labels:
+          severity: warning
+          component: playframework
+        annotations:
+          summary: "High token usage rate"
+          description: "Token usage rate is {{ $value }} tokens/sec (threshold: 10k tokens/sec)"
+
+      # No Metrics
+      - alert: PlayFrameworkMetricsDown
+        expr: up{job="playframework-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: playframework
+        annotations:
+          summary: "PlayFramework metrics endpoint is down"
+          description: "Cannot scrape metrics from PlayFramework API"
+
+      # High Tool Failure Rate
+      - alert: HighToolFailureRate
+        expr: |
+          (
+            sum(rate(playframework_tool_calls_total{success="false"}[5m]))
+            /
+            sum(rate(playframework_tool_calls_total[5m]))
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: playframework
+        annotations:
+          summary: "High tool failure rate detected"
+          description: "Tool failure rate is {{ $value | humanizePercentage }} (threshold: 10%)"
+
+      # Memory Pressure (based on active scenes)
+      - alert: HighActiveScenes
+        expr: playframework_scene_active > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: playframework
+        annotations:
+          summary: "High number of active scenes"
+          description: "{{ $value }} concurrent scenes running (threshold: 100)"

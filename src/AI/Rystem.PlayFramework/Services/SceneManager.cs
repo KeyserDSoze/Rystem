@@ -2,6 +2,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Mcp;
+using Rystem.PlayFramework.Telemetry;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace Rystem.PlayFramework;
 
@@ -107,7 +110,124 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(
         string message,
         SceneRequestSettings? settings = null,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        // Start root activity for telemetry
+        using var activity = _settings.Telemetry.EnableTracing
+            ? PlayFrameworkActivitySource.Instance.StartActivity(
+                PlayFrameworkActivitySource.Activities.SceneManagerExecute,
+                ActivityKind.Internal)
+            : null;
+
+        activity?.SetTag(PlayFrameworkActivitySource.Tags.FactoryName, _factoryName);
+        activity?.SetTag(PlayFrameworkActivitySource.Tags.ServiceVersion, PlayFrameworkActivitySource.Version);
+
+        if (_settings.Telemetry.IncludeLlmPrompts)
+        {
+            var truncatedMessage = message.Length > _settings.Telemetry.MaxAttributeLength
+                ? message[.._settings.Telemetry.MaxAttributeLength] + "..."
+                : message;
+            activity?.SetTag(PlayFrameworkActivitySource.Tags.UserMessage, truncatedMessage);
+        }
+
+        // Add custom attributes
+        foreach (var attr in _settings.Telemetry.CustomAttributes)
+        {
+            activity?.SetTag(attr.Key, attr.Value);
+        }
+
+        // Increment active scenes gauge
+        if (_settings.Telemetry.EnableMetrics)
+        {
+            PlayFrameworkMetrics.IncrementActiveScenes();
+        }
+
+        var startTime = DateTime.UtcNow;
+        var success = false;
+        var sceneName = "unknown";
+        var totalTokens = 0;
+        var totalCost = 0m;
+        Exception? exception = null;
+
+        // Execute without try-catch (yield return restriction)
+        await foreach (var response in ExecuteInternalAsync(message, settings, cancellationToken))
+        {
+            // Track scene name from first real response
+            if (response.Status != AiResponseStatus.Initializing && !string.IsNullOrEmpty(response.SceneName))
+            {
+                sceneName = response.SceneName;
+                activity?.SetTag(PlayFrameworkActivitySource.Tags.SceneName, sceneName);
+            }
+
+            // Track tokens and cost
+            if (response.TotalTokens.HasValue && response.TotalTokens.Value > 0)
+            {
+                totalTokens = response.TotalTokens.Value;
+                activity?.SetTag(PlayFrameworkActivitySource.Tags.TokensTotal, totalTokens);
+            }
+
+            if (response.Cost.HasValue && response.Cost.Value > 0)
+            {
+                totalCost = response.TotalCost;  // Use cumulative cost
+                activity?.SetTag(PlayFrameworkActivitySource.Tags.Cost, (double)totalCost);
+            }
+
+            // Track errors
+            if (response.Status == AiResponseStatus.Error)
+            {
+                exception = new InvalidOperationException(response.ErrorMessage ?? "Unknown error");
+                activity?.SetStatus(ActivityStatusCode.Error, response.ErrorMessage);
+                activity?.SetTag("exception.message", response.ErrorMessage);
+                activity?.AddEvent(new ActivityEvent(PlayFrameworkActivitySource.Events.SceneFailed));
+            }
+
+            // Mark success if completed
+            if (response.Status == AiResponseStatus.Completed)
+            {
+                success = true;
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                activity?.AddEvent(new ActivityEvent(PlayFrameworkActivitySource.Events.SceneCompleted));
+            }
+
+            yield return response;
+        }
+
+        // Finalization (always executes)
+        try
+        {
+            // If no explicit status was set, mark as OK
+            if (activity != null && activity.Status == ActivityStatusCode.Unset && exception == null)
+            {
+                activity.SetStatus(ActivityStatusCode.Ok);
+            }
+        }
+        finally
+        {
+            // Decrement active scenes gauge
+            if (_settings.Telemetry.EnableMetrics)
+            {
+                PlayFrameworkMetrics.DecrementActiveScenes();
+
+                // Record final metrics
+                var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                PlayFrameworkMetrics.RecordSceneExecution(
+                    sceneName: sceneName,
+                    executionMode: settings?.ExecutionMode?.ToString() ?? _settings.DefaultExecutionMode.ToString(),
+                    success: success,
+                    durationMs: duration,
+                    tokenCount: totalTokens,
+                    cost: (double)totalCost);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Internal implementation of ExecuteAsync (original logic without telemetry wrapper).
+    /// </summary>
+    private async IAsyncEnumerable<AiSceneResponse> ExecuteInternalAsync(
+        string message,
+        SceneRequestSettings? settings = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         settings ??= new SceneRequestSettings();
 

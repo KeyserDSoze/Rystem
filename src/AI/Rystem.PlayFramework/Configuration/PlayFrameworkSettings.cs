@@ -1,5 +1,7 @@
 ﻿namespace Rystem.PlayFramework;
 
+using Rystem.PlayFramework.Telemetry;
+
 /// <summary>
 /// Global settings for PlayFramework.
 /// </summary>
@@ -36,6 +38,11 @@ public sealed class PlayFrameworkSettings
     /// Cost tracking configuration.
     /// </summary>
     public TokenCostSettings CostTracking { get; set; } = new();
+
+    /// <summary>
+    /// Telemetry and observability configuration.
+    /// </summary>
+    public TelemetrySettings Telemetry { get; set; } = new();
 
     /// <summary>
     /// Default model to use for chat completions.

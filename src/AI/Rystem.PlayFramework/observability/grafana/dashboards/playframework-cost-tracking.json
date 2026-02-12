@@ -1,0 +1,221 @@
+{
+  "dashboard": {
+    "title": "PlayFramework - Cost Tracking",
+    "tags": ["playframework", "cost", "billing"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "10s",
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "title": "Hourly Cost Projection ($)",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "playframework:cost_per_hour:5m"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "decimals": 4,
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 5, "color": "yellow"},
+                {"value": 10, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Daily Cost Projection ($)",
+        "type": "stat",
+        "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "playframework:cost_per_day:5m"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "decimals": 2
+          }
+        }
+      },
+      {
+        "title": "Monthly Cost Projection ($)",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "playframework:cost_per_day:5m * 30"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "decimals": 2
+          }
+        }
+      },
+      {
+        "title": "Avg Cost per Request ($)",
+        "type": "stat",
+        "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "playframework:avg_cost_per_request:5m"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "decimals": 6
+          }
+        }
+      },
+      {
+        "title": "Cumulative Cost Over Time ($)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(increase(playframework_cost_per_execution_usd_sum[1h]))",
+            "legendFormat": "Hourly Spend"
+          }
+        ],
+        "yaxes": [
+          {"format": "currencyUSD"}
+        ]
+      },
+      {
+        "title": "Cost Rate ($/hour)",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "playframework:cost_per_hour:5m",
+            "legendFormat": "Cost Rate"
+          }
+        ],
+        "yaxes": [
+          {"format": "currencyUSD"}
+        ]
+      },
+      {
+        "title": "Cost by Scene ($/hour)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(playframework_cost_per_execution_usd_sum[5m])) by (scene_name) * 3600",
+            "legendFormat": "{{ scene_name }}"
+          }
+        ],
+        "yaxes": [
+          {"format": "currencyUSD"}
+        ]
+      },
+      {
+        "title": "Token Usage vs Cost",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+        "yaxes": [
+          {"format": "short", "label": "Tokens/s", "logBase": 1},
+          {"format": "currencyUSD", "label": "$/hour"}
+        ],
+        "targets": [
+          {
+            "expr": "playframework:token_rate:5m",
+            "legendFormat": "Tokens/s",
+            "yaxis": 1
+          },
+          {
+            "expr": "playframework:cost_per_hour:5m",
+            "legendFormat": "$/hour",
+            "yaxis": 2
+          }
+        ]
+      },
+      {
+        "title": "Cost per 1K Tokens ($)",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 20, "w": 8, "h": 4},
+        "targets": [
+          {
+            "expr": "(sum(rate(playframework_cost_per_execution_usd_sum[5m])) / sum(rate(playframework_llm_tokens_total[5m]))) * 1000"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "decimals": 6
+          }
+        }
+      },
+      {
+        "title": "Cache Savings ($/hour)",
+        "type": "stat",
+        "gridPos": {"x": 8, "y": 20, "w": 8, "h": 4},
+        "targets": [
+          {
+            "expr": "(sum(rate(playframework_cache_hits_total[5m])) * playframework:avg_cost_per_request:5m) * 3600"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "decimals": 4
+          }
+        }
+      },
+      {
+        "title": "Requests Served (total)",
+        "type": "stat",
+        "gridPos": {"x": 16, "y": 20, "w": 8, "h": 4},
+        "targets": [
+          {
+            "expr": "sum(playframework_scene_executions_total)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0
+          }
+        }
+      },
+      {
+        "title": "Cost Distribution by Execution Mode",
+        "type": "piechart",
+        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(playframework_cost_per_execution_usd_sum[5m])) by (execution_mode)",
+            "legendFormat": "{{ execution_mode }}"
+          }
+        ]
+      },
+      {
+        "title": "Top 5 Most Expensive Scenes ($/hour)",
+        "type": "table",
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "topk(5, sum(rate(playframework_cost_per_execution_usd_sum[5m])) by (scene_name) * 3600)",
+            "format": "table",
+            "instant": true
+          }
+        ]
+      }
+    ]
+  }
+}

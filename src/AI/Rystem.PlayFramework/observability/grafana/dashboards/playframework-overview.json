@@ -1,0 +1,178 @@
+{
+  "dashboard": {
+    "title": "PlayFramework - Overview",
+    "tags": ["playframework", "overview"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "title": "Scene Execution Rate (req/s)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 8, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(playframework_scene_executions_total[5m])) by (scene_name)",
+            "legendFormat": "{{ scene_name }}"
+          }
+        ]
+      },
+      {
+        "title": "Success Rate (%)",
+        "type": "stat",
+        "gridPos": {"x": 8, "y": 0, "w": 4, "h": 4},
+        "targets": [
+          {
+            "expr": "playframework:success_rate:5m * 100"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 95, "color": "yellow"},
+                {"value": 99, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Active Scenes",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 0, "w": 4, "h": 4},
+        "targets": [
+          {
+            "expr": "playframework_scene_active"
+          }
+        ]
+      },
+      {
+        "title": "Hourly Cost ($)",
+        "type": "stat",
+        "gridPos": {"x": 16, "y": 0, "w": 4, "h": 4},
+        "targets": [
+          {
+            "expr": "playframework:cost_per_hour:5m"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "decimals": 4
+          }
+        }
+      },
+      {
+        "title": "Cache Hit Ratio (%)",
+        "type": "stat",
+        "gridPos": {"x": 20, "y": 0, "w": 4, "h": 4},
+        "targets": [
+          {
+            "expr": "playframework:cache_hit_ratio:5m * 100"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 50, "color": "yellow"},
+                {"value": 80, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "P95 Latency by Scene (ms)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "playframework:scene_latency_p95:5m",
+            "legendFormat": "{{ scene_name }}"
+          }
+        ],
+        "yaxes": [
+          {"format": "ms", "label": "Latency"}
+        ]
+      },
+      {
+        "title": "Token Usage Rate (tokens/s)",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "playframework:token_rate:5m",
+            "legendFormat": "Token Rate"
+          }
+        ]
+      },
+      {
+        "title": "Tool Success Rate (%)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "playframework:tool_success_rate:5m * 100",
+            "legendFormat": "Success Rate"
+          }
+        ],
+        "yaxes": [
+          {"format": "percent", "min": 0, "max": 100}
+        ]
+      },
+      {
+        "title": "Cache Hits vs Misses (req/s)",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(playframework_cache_hits_total[5m]))",
+            "legendFormat": "Hits"
+          },
+          {
+            "expr": "sum(rate(playframework_cache_misses_total[5m]))",
+            "legendFormat": "Misses"
+          }
+        ]
+      },
+      {
+        "title": "Error Rate by Scene (errors/s)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(playframework_scene_executions_total{success=\"false\"}[5m])) by (scene_name)",
+            "legendFormat": "{{ scene_name }}"
+          }
+        ]
+      },
+      {
+        "title": "Cumulative Cost ($)",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(increase(playframework_cost_per_execution_usd_sum[1h]))",
+            "legendFormat": "Hourly Spend"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD"
+          }
+        }
+      }
+    ]
+  }
+}

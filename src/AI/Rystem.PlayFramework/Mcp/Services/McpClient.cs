@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
+using Rystem.PlayFramework.Telemetry;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
@@ -151,11 +153,30 @@ internal sealed class McpClient : IMcpClient
         string argumentsJson,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("Executing tool {ToolName} on MCP server: {ServerUrl} (Factory: {FactoryName})",
-            toolName, settings.Url, settings.Name);
+        // Create activity for MCP tool execution
+        using var activity = Activity.Current?.Source.Name == PlayFrameworkActivitySource.SourceName
+            ? PlayFrameworkActivitySource.Instance.StartActivity(
+                PlayFrameworkActivitySource.Activities.McpToolExecute,
+                ActivityKind.Client)
+            : null;
+
+        var startTime = DateTime.UtcNow;
+        var success = false;
 
         try
         {
+            _logger.LogDebug("Executing tool {ToolName} on MCP server: {ServerUrl} (Factory: {FactoryName})",
+                toolName, settings.Url, settings.Name);
+
+            // Add tags
+            activity?.SetTag(PlayFrameworkActivitySource.Tags.ToolName, toolName);
+            activity?.SetTag(PlayFrameworkActivitySource.Tags.ToolType, "MCP");
+            activity?.SetTag(PlayFrameworkActivitySource.Tags.McpServerUrl, settings.Url);
+            activity?.SetTag(PlayFrameworkActivitySource.Tags.McpFactoryName, settings.Name);
+
+            // Record start event
+            activity?.AddEvent(new ActivityEvent(PlayFrameworkActivitySource.Events.McpToolCalled));
+
             var client = CreateHttpClient(settings);
 
             var request = new
@@ -174,6 +195,10 @@ internal sealed class McpClient : IMcpClient
 
             var result = await response.Content.ReadAsStringAsync(cancellationToken);
 
+            success = true;
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            activity?.AddEvent(new ActivityEvent(PlayFrameworkActivitySource.Events.McpToolCompleted));
+
             _logger.LogInformation("Tool {ToolName} executed successfully on MCP server: {ServerUrl} (Factory: {FactoryName})",
                 toolName, settings.Url, settings.Name);
 
@@ -181,9 +206,24 @@ internal sealed class McpClient : IMcpClient
         }
         catch (Exception ex)
         {
+            success = false;
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.AddEvent(new ActivityEvent(PlayFrameworkActivitySource.Events.McpToolFailed,
+                tags: new ActivityTagsCollection
+                {
+                    { "exception.type", ex.GetType().Name },
+                    { "exception.message", ex.Message }
+                }));
+
             _logger.LogError(ex, "Failed to execute tool {ToolName} on MCP server: {ServerUrl} (Factory: {FactoryName})",
                 toolName, settings.Url, settings.Name);
             throw;
+        }
+        finally
+        {
+            // Record metrics
+            var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            PlayFrameworkMetrics.RecordMcpToolExecution(settings.Name.ToString() ?? "default", toolName, success, duration);
         }
     }
 

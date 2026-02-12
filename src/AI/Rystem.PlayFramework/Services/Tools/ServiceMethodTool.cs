@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.AI;
+using Rystem.PlayFramework.Telemetry;
+using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 

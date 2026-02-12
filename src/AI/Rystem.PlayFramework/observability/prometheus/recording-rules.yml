@@ -1,0 +1,85 @@
+# PlayFramework Recording Rules
+# Pre-aggregate common queries for faster dashboard loading
+
+groups:
+  - name: playframework_recording_rules
+    interval: 30s
+    rules:
+      # Scene Success Rate (per scene)
+      - record: playframework:scene_success_rate:5m
+        expr: |
+          sum(rate(playframework_scene_executions_total{success="true"}[5m])) by (scene_name)
+          /
+          sum(rate(playframework_scene_executions_total[5m])) by (scene_name)
+
+      # Overall Success Rate
+      - record: playframework:success_rate:5m
+        expr: |
+          sum(rate(playframework_scene_executions_total{success="true"}[5m]))
+          /
+          sum(rate(playframework_scene_executions_total[5m]))
+
+      # Scene Throughput (requests per second)
+      - record: playframework:scene_throughput:5m
+        expr: sum(rate(playframework_scene_executions_total[5m])) by (scene_name)
+
+      # P50 Latency (per scene)
+      - record: playframework:scene_latency_p50:5m
+        expr: |
+          histogram_quantile(0.50,
+            sum(rate(playframework_scene_duration_milliseconds_bucket[5m])) by (le, scene_name)
+          )
+
+      # P95 Latency (per scene)
+      - record: playframework:scene_latency_p95:5m
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(playframework_scene_duration_milliseconds_bucket[5m])) by (le, scene_name)
+          )
+
+      # P99 Latency (per scene)
+      - record: playframework:scene_latency_p99:5m
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(playframework_scene_duration_milliseconds_bucket[5m])) by (le, scene_name)
+          )
+
+      # Cache Hit Ratio
+      - record: playframework:cache_hit_ratio:5m
+        expr: |
+          sum(rate(playframework_cache_hits_total[5m]))
+          /
+          (sum(rate(playframework_cache_hits_total[5m])) + sum(rate(playframework_cache_misses_total[5m])))
+
+      # Hourly Cost Projection
+      - record: playframework:cost_per_hour:5m
+        expr: sum(rate(playframework_cost_per_execution_usd[5m])) * 3600
+
+      # Daily Cost Projection
+      - record: playframework:cost_per_day:5m
+        expr: sum(rate(playframework_cost_per_execution_usd[5m])) * 86400
+
+      # Token Usage Rate (tokens/sec)
+      - record: playframework:token_rate:5m
+        expr: sum(rate(playframework_llm_tokens_total[5m]))
+
+      # Tool Success Rate
+      - record: playframework:tool_success_rate:5m
+        expr: |
+          sum(rate(playframework_tool_calls_total{success="true"}[5m]))
+          /
+          sum(rate(playframework_tool_calls_total[5m]))
+
+      # Average Tokens per Request
+      - record: playframework:avg_tokens_per_request:5m
+        expr: |
+          sum(rate(playframework_llm_tokens_total[5m]))
+          /
+          sum(rate(playframework_scene_executions_total[5m]))
+
+      # Average Cost per Request
+      - record: playframework:avg_cost_per_request:5m
+        expr: |
+          sum(rate(playframework_cost_per_execution_usd_sum[5m]))
+          /
+          sum(rate(playframework_cost_per_execution_usd_count[5m]))

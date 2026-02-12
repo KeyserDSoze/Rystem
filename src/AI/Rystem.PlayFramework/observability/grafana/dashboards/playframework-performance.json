@@ -1,0 +1,134 @@
+{
+  "dashboard": {
+    "title": "PlayFramework - Performance Deep Dive",
+    "tags": ["playframework", "performance"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "title": "Latency Percentiles (P50/P95/P99) - ms",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "playframework:scene_latency_p50:5m",
+            "legendFormat": "P50 - {{ scene_name }}"
+          },
+          {
+            "expr": "playframework:scene_latency_p95:5m",
+            "legendFormat": "P95 - {{ scene_name }}"
+          },
+          {
+            "expr": "playframework:scene_latency_p99:5m",
+            "legendFormat": "P99 - {{ scene_name }}"
+          }
+        ],
+        "yaxes": [
+          {"format": "ms", "label": "Duration", "logBase": 1}
+        ]
+      },
+      {
+        "title": "Tool Call Duration (P95) - ms",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(playframework_tool_duration_milliseconds_bucket[5m])) by (le, tool_name))",
+            "legendFormat": "{{ tool_name }}"
+          }
+        ],
+        "yaxes": [
+          {"format": "ms"}
+        ]
+      },
+      {
+        "title": "Cache Operation Latency (P95) - ms",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(playframework_cache_duration_milliseconds_bucket[5m])) by (le, operation))",
+            "legendFormat": "{{ operation }}"
+          }
+        ],
+        "yaxes": [
+          {"format": "ms"}
+        ]
+      },
+      {
+        "title": "LLM Call Duration (P95) - ms",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(playframework_llm_duration_milliseconds_bucket[5m])) by (le, llm_model))",
+            "legendFormat": "{{ llm_model }}"
+          }
+        ],
+        "yaxes": [
+          {"format": "ms"}
+        ]
+      },
+      {
+        "title": "Throughput by Scene (req/s)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "playframework:scene_throughput:5m",
+            "legendFormat": "{{ scene_name }}"
+          }
+        ]
+      },
+      {
+        "title": "Active LLM Calls (concurrent)",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "playframework_llm_active"
+          }
+        ]
+      },
+      {
+        "title": "Tokens per Request (Histogram)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(playframework_llm_tokens_per_request_bucket[5m])) by (le))",
+            "legendFormat": "P50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(playframework_llm_tokens_per_request_bucket[5m])) by (le))",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(playframework_llm_tokens_per_request_bucket[5m])) by (le))",
+            "legendFormat": "P99"
+          }
+        ]
+      },
+      {
+        "title": "Average Latency by Execution Mode",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(playframework_scene_duration_milliseconds_sum[5m])) by (execution_mode) / sum(rate(playframework_scene_duration_milliseconds_count[5m])) by (execution_mode)",
+            "legendFormat": "{{ execution_mode }}"
+          }
+        ],
+        "yaxes": [
+          {"format": "ms"}
+        ]
+      }
+    ]
+  }
+}
