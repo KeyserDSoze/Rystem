@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Rystem.PlayFramework.Mcp;
 
 namespace Rystem.PlayFramework;
 
@@ -51,6 +52,7 @@ public static class ServiceCollectionExtensions
         services.AddEngineFactory<IDirector>();
         services.AddEngineFactory<ICacheService>();
         services.AddEngineFactory<IJsonService>();
+        services.AddEngineFactory<IMcpServerManager>();  // Add MCP server manager factory
 
         // Register SceneManager with factory pattern
         services.AddFactory<ISceneManager, SceneManager>(name, ServiceLifetime.Transient);

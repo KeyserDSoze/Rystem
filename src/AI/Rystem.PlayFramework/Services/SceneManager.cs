@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Rystem.PlayFramework.Mcp;
 
 namespace Rystem.PlayFramework;
 
@@ -21,6 +22,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private readonly IFactory<IDirector> _directorFactory;
     private readonly IFactory<ICacheService> _cacheServiceFactory;
     private readonly IFactory<IJsonService> _jsonServiceFactory;
+    private readonly IFactory<IMcpServerManager> _mcpServerManagerFactory;
 
     // Resolved dependencies (set via SetFactoryName)
     private string? _factoryName;
@@ -47,7 +49,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         IFactory<ISummarizer> summarizerFactory,
         IFactory<IDirector> directorFactory,
         IFactory<ICacheService> cacheServiceFactory,
-        IFactory<IJsonService> jsonServiceFactory)
+        IFactory<IJsonService> jsonServiceFactory,
+        IFactory<IMcpServerManager> mcpServerManagerFactory)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -61,6 +64,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _directorFactory = directorFactory;
         _cacheServiceFactory = cacheServiceFactory;
         _jsonServiceFactory = jsonServiceFactory;
+        _mcpServerManagerFactory = mcpServerManagerFactory;
     }
 
     public void SetFactoryName(AnyOf<string?, Enum>? name)
@@ -418,6 +422,56 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         // Execute scene actors
         await scene.ExecuteActorsAsync(context, cancellationToken);
 
+        // Load MCP tools, resources, and prompts
+        var mcpTools = new List<AIFunction>();
+        var mcpSystemMessages = new List<string>();
+
+        if (scene.McpServerReferences.Count > 0)
+        {
+            _logger.LogDebug("Loading MCP capabilities from {McpServerCount} server(s) for scene: {SceneName} (Factory: {FactoryName})",
+                scene.McpServerReferences.Count, scene.Name, _factoryName);
+
+            foreach (var mcpRef in scene.McpServerReferences)
+            {
+                try
+                {
+                    var mcpManager = _mcpServerManagerFactory.Create(mcpRef.FactoryName);
+
+                    // Load tools
+                    var tools = await mcpManager.GetToolsAsync(mcpRef.FilterSettings, cancellationToken);
+                    _logger.LogDebug("Loaded {ToolCount} MCP tools from server {McpServerName} (Factory: {FactoryName})",
+                        tools.Count, mcpRef.FactoryName, _factoryName);
+
+                    // Convert MCP tools to AIFunction and add to chat options
+                    foreach (var tool in tools)
+                    {
+                        var aiFunction = CreateMcpToolFunction(tool, mcpManager);
+                        mcpTools.Add(aiFunction);
+                    }
+
+                    // Build system message from resources and prompts
+                    var systemMessage = await mcpManager.BuildSystemMessageAsync(mcpRef.FilterSettings, cancellationToken);
+                    if (!string.IsNullOrWhiteSpace(systemMessage))
+                    {
+                        mcpSystemMessages.Add(systemMessage);
+                        _logger.LogDebug("Built MCP system message from server {McpServerName} (Length: {MessageLength} chars, Factory: {FactoryName})",
+                            mcpRef.FactoryName, systemMessage.Length, _factoryName);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to load MCP capabilities from server {McpServerName} (Factory: {FactoryName})",
+                        mcpRef.FactoryName, _factoryName);
+                }
+            }
+
+            if (mcpTools.Count > 0)
+            {
+                _logger.LogInformation("Loaded {McpToolCount} MCP tools for scene: {SceneName} (Factory: {FactoryName})",
+                    mcpTools.Count, scene.Name, _factoryName);
+            }
+        }
+
         // Get scene tools
         var sceneTools = scene.GetTools().ToList();
         var sceneToolsFunctions = sceneTools.Select(t => t.ToAIFunction()).ToList();
@@ -435,10 +489,27 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             conversationMessages.Add(new ChatMessage(ChatRole.System, mainActorText));
         }
 
+        // Add MCP system messages (resources and prompts)
+        if (mcpSystemMessages.Count > 0)
+        {
+            var combinedMcpMessage = string.Join("\n\n---\n\n", mcpSystemMessages);
+            conversationMessages.Add(new ChatMessage(ChatRole.System, combinedMcpMessage));
+
+            _logger.LogDebug("Added MCP system message to conversation (Total length: {MessageLength} chars, Factory: {FactoryName})",
+                combinedMcpMessage.Length, _factoryName);
+        }
+
+        // Combine scene tools and MCP tools
+        var allTools = sceneToolsFunctions.Cast<AITool>().ToList();
+        allTools.AddRange(mcpTools.Cast<AITool>());
+
         var chatOptions = new ChatOptions
         {
-            Tools = sceneToolsFunctions.Cast<AITool>().ToList()
+            Tools = allTools
         };
+
+        _logger.LogDebug("Scene {SceneName} executing with {SceneToolCount} scene tools + {McpToolCount} MCP tools (Factory: {FactoryName})",
+            scene.Name, sceneToolsFunctions.Count, mcpTools.Count, _factoryName);
 
         // Tool calling loop - continue until LLM stops calling tools
         const int MaxToolCallIterations = 10;
@@ -1175,5 +1246,37 @@ Respond with 'YES' if you need more information from another scene, or 'NO' if y
         }
 
         await Task.CompletedTask; // Satisfy async requirement
+    }
+
+    /// <summary>
+    /// Creates an AIFunction wrapper for an MCP tool.
+    /// </summary>
+    private AIFunction CreateMcpToolFunction(McpTool mcpTool, IMcpServerManager mcpManager)
+    {
+        return AIFunctionFactory.Create(
+            async (string argsJson) =>
+            {
+                _logger.LogDebug("Executing MCP tool: {ToolName} from server {ServerUrl} (Factory: {FactoryName})",
+                    mcpTool.Name, mcpTool.ServerUrl, _factoryName);
+
+                try
+                {
+                    var result = await mcpManager.ExecuteToolAsync(mcpTool.Name, argsJson, CancellationToken.None);
+
+                    _logger.LogInformation("MCP tool {ToolName} executed successfully (Factory: {FactoryName})",
+                        mcpTool.Name, _factoryName);
+
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to execute MCP tool {ToolName} from server {ServerUrl} (Factory: {FactoryName})",
+                        mcpTool.Name, mcpTool.ServerUrl, _factoryName);
+
+                    return $"Error executing MCP tool: {ex.Message}";
+                }
+            },
+            mcpTool.Name,
+            mcpTool.Description);
     }
 }

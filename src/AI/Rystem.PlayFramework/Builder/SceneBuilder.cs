@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Rystem.PlayFramework.Mcp;
 
 namespace Rystem.PlayFramework;
 
@@ -53,6 +54,25 @@ public sealed class SceneBuilder
         configure(builder);
         return this;
     }
+
+    /// <summary>
+    /// Adds an MCP server to this scene with optional filtering.
+    /// </summary>
+    /// <param name="factoryName">Factory name of the registered MCP server.</param>
+    /// <param name="configure">Optional action to configure filter settings.</param>
+    public SceneBuilder WithMcpServer(AnyOf<string?, Enum> factoryName, Action<McpFilterSettings>? configure = null)
+    {
+        var filterSettings = new McpFilterSettings();
+        configure?.Invoke(filterSettings);
+
+        _config.McpServerReferences.Add(new McpServerReference
+        {
+            FactoryName = factoryName,
+            FilterSettings = filterSettings
+        });
+
+        return this;
+    }
 }
 
 /// <summary>
@@ -64,4 +84,14 @@ internal sealed class SceneConfiguration
     public string Description { get; set; } = string.Empty;
     public List<ServiceToolConfiguration> ServiceTools { get; set; } = [];
     public List<ActorConfiguration> Actors { get; set; } = [];
+    public List<McpServerReference> McpServerReferences { get; set; } = [];
+}
+
+/// <summary>
+/// Reference to an MCP server with filter settings.
+/// </summary>
+public sealed class McpServerReference
+{
+    public required AnyOf<string?, Enum> FactoryName { get; init; }
+    public required McpFilterSettings FilterSettings { get; init; }
 }

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.AI;
+using Rystem.PlayFramework.Mcp;
 
 namespace Rystem.PlayFramework;
 
@@ -30,6 +31,7 @@ internal sealed class Scene : IScene
 
     public string Name => _config.Name;
     public string Description => _config.Description;
+    public IReadOnlyList<McpServerReference> McpServerReferences => _config.McpServerReferences;
 
     public IEnumerable<ISceneTool> GetTools() => _tools;
     public IEnumerable<IActor> GetActors() => _actors;

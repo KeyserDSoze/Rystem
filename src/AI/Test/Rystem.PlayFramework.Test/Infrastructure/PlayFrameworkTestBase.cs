@@ -73,6 +73,22 @@ public abstract class PlayFrameworkTestBase : IDisposable
         // Override in derived classes to add scenes, actors, etc.
     }
 
+    /// <summary>
+    /// Creates a mock chat client that returns a fixed response.
+    /// </summary>
+    public static IChatClient CreateMockChatClient(string response = "Mock response")
+    {
+        return new MockChatClient(response);
+    }
+
+    /// <summary>
+    /// Creates a mock chat client that captures all messages sent to it.
+    /// </summary>
+    public static IChatClient CreateMockChatClient(string response, List<string> capturedMessages)
+    {
+        return new MockChatClient(response, capturedMessages);
+    }
+
     public void Dispose()
     {
         if (ServiceProvider is IDisposable disposable)
@@ -88,6 +104,15 @@ public abstract class PlayFrameworkTestBase : IDisposable
 /// </summary>
 internal sealed class MockChatClient : IChatClient
 {
+    private readonly string _defaultResponse;
+    private readonly List<string>? _capturedMessages;
+
+    public MockChatClient(string defaultResponse = "Mock response", List<string>? capturedMessages = null)
+    {
+        _defaultResponse = defaultResponse;
+        _capturedMessages = capturedMessages;
+    }
+
     public ChatClientMetadata Metadata => new("mock-provider", new Uri("http://localhost"), "mock-model");
 
     public Task<ChatResponse> GetResponseAsync(
@@ -95,8 +120,22 @@ internal sealed class MockChatClient : IChatClient
         ChatOptions? options = null,
         CancellationToken cancellationToken = default)
     {
+        // Capture messages if requested
+        if (_capturedMessages != null)
+        {
+            foreach (var message in messages)
+            {
+                if (message.Text != null)
+                {
+                    _capturedMessages.Add(message.Text);
+                }
+            }
+        }
+
         var lastMessage = messages.LastOrDefault();
-        var responseText = $"Mock response to: {lastMessage?.Text ?? "empty"}";
+        var responseText = string.IsNullOrEmpty(_defaultResponse) 
+            ? $"Mock response to: {lastMessage?.Text ?? "empty"}"
+            : _defaultResponse;
 
         var response = new ChatResponse(
             [new ChatMessage(ChatRole.Assistant, responseText)]
@@ -122,7 +161,8 @@ internal sealed class MockChatClient : IChatClient
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await Task.Delay(10, cancellationToken);
-        yield return new ChatResponseUpdate(ChatRole.Assistant, "Mock streaming response");
+        var responseText = string.IsNullOrEmpty(_defaultResponse) ? "Mock streaming response" : _defaultResponse;
+        yield return new ChatResponseUpdate(ChatRole.Assistant, responseText);
     }
 
     public object? GetService(Type serviceType, object? serviceKey = null) => null;

@@ -1,4 +1,6 @@
-﻿namespace Rystem.PlayFramework;
+﻿using Rystem.PlayFramework.Mcp;
+
+namespace Rystem.PlayFramework;
 
 /// <summary>
 /// Represents a scene with tools and actors.
@@ -14,6 +16,11 @@ public interface IScene
     /// Scene description for AI selection.
     /// </summary>
     string Description { get; }
+
+    /// <summary>
+    /// MCP server references configured for this scene.
+    /// </summary>
+    IReadOnlyList<McpServerReference> McpServerReferences { get; }
 
     /// <summary>
     /// Gets all tools available in this scene.
