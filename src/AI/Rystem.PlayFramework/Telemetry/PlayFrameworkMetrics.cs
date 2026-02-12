@@ -81,6 +81,13 @@ public static class PlayFrameworkMetrics
         "playframework.rag.tokens",
         description: "Total embedding tokens consumed by RAG");
 
+    /// <summary>
+    /// Total number of web searches performed.
+    /// </summary>
+    private static readonly Counter<long> _webSearchCounter = _meter.CreateCounter<long>(
+        "playframework.web_search.searches",
+        description: "Total number of web searches performed");
+
     // ========== HISTOGRAMS ==========
     
     /// <summary>
@@ -145,6 +152,29 @@ public static class PlayFrameworkMetrics
         "playframework.rag.cost",
         unit: "USD",
         description: "Cost per RAG search in USD");
+
+    /// <summary>
+    /// Web search duration distribution.
+    /// </summary>
+    private static readonly Histogram<double> _webSearchDurationHistogram = _meter.CreateHistogram<double>(
+        "playframework.web_search.duration",
+        unit: "ms",
+        description: "Web search duration in milliseconds");
+
+    /// <summary>
+    /// Web search cost distribution.
+    /// </summary>
+    private static readonly Histogram<double> _webSearchCostHistogram = _meter.CreateHistogram<double>(
+        "playframework.web_search.cost",
+        unit: "USD",
+        description: "Cost per web search in USD");
+
+    /// <summary>
+    /// Number of web search results returned per search.
+    /// </summary>
+    private static readonly Histogram<int> _webSearchResultsHistogram = _meter.CreateHistogram<int>(
+        "playframework.web_search.results",
+        description: "Number of results returned per web search");
 
     // ========== GAUGES (Observable) ==========
 
@@ -332,6 +362,40 @@ public static class PlayFrameworkMetrics
         }
 
         _ragDurationHistogram.Record(durationMs, tags);
+    }
+
+    /// <summary>
+    /// Records a web search operation with cost tracking.
+    /// </summary>
+    /// <param name="provider">Web search provider name (e.g., "bing", "google", or factory key).</param>
+    /// <param name="resultsFound">Number of results returned.</param>
+    /// <param name="cost">Total cost in USD.</param>
+    /// <param name="durationMs">Search duration in milliseconds.</param>
+    public static void RecordWebSearch(
+        string provider,
+        int resultsFound,
+        double cost,
+        double durationMs)
+    {
+        var tags = new TagList
+        {
+            { "web_search.provider", provider },
+            { "web_search.results_found", resultsFound }
+        };
+
+        _webSearchCounter.Add(1, tags);
+
+        if (resultsFound > 0)
+        {
+            _webSearchResultsHistogram.Record(resultsFound, tags);
+        }
+
+        if (cost > 0)
+        {
+            _webSearchCostHistogram.Record(cost, tags);
+        }
+
+        _webSearchDurationHistogram.Record(durationMs, tags);
     }
 
     // ========== GAUGE MANAGEMENT ==========

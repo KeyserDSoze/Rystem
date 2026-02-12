@@ -90,6 +90,11 @@ internal sealed class SceneConfiguration
     /// Scene-specific RAG configurations (key = factory key or empty for default).
     /// </summary>
     public Dictionary<string, RagSettings> RagSettings { get; set; } = new();
+
+    /// <summary>
+    /// Scene-specific web search configurations (key = factory key or empty for default).
+    /// </summary>
+    public Dictionary<string, WebSearchSettings> WebSearchSettings { get; set; } = new();
 }
 
 /// <summary>

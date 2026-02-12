@@ -56,6 +56,17 @@ public sealed class PlayFrameworkSettings
     public Dictionary<string, RagCostSettings> RagCostSettings { get; set; } = new();
 
     /// <summary>
+    /// Global Web Search configurations (key = factory key or empty for default).
+    /// </summary>
+    public Dictionary<string, WebSearchSettings> GlobalWebSearchSettings { get; set; } = new();
+
+    /// <summary>
+    /// Web Search cost settings per factory key (key = factory key or empty for default).
+    /// Used to calculate costs when IWebSearchService returns Cost=null.
+    /// </summary>
+    public Dictionary<string, WebSearchCostSettings> WebSearchCostSettings { get; set; } = new();
+
+    /// <summary>
     /// Default model to use for chat completions.
     /// </summary>
     public string? DefaultModelId { get; set; }
