@@ -45,6 +45,17 @@ public sealed class PlayFrameworkSettings
     public TelemetrySettings Telemetry { get; set; } = new();
 
     /// <summary>
+    /// Global RAG configurations (key = factory key or empty for default).
+    /// </summary>
+    public Dictionary<string, RagSettings> GlobalRagSettings { get; set; } = new();
+
+    /// <summary>
+    /// RAG cost settings per factory key (key = factory key or empty for default).
+    /// Used to calculate costs when IRagService returns TokenUsage but not Cost.
+    /// </summary>
+    public Dictionary<string, RagCostSettings> RagCostSettings { get; set; } = new();
+
+    /// <summary>
     /// Default model to use for chat completions.
     /// </summary>
     public string? DefaultModelId { get; set; }

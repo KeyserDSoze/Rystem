@@ -85,6 +85,11 @@ internal sealed class SceneConfiguration
     public List<ServiceToolConfiguration> ServiceTools { get; set; } = [];
     public List<ActorConfiguration> Actors { get; set; } = [];
     public List<McpServerReference> McpServerReferences { get; set; } = [];
+
+    /// <summary>
+    /// Scene-specific RAG configurations (key = factory key or empty for default).
+    /// </summary>
+    public Dictionary<string, RagSettings> RagSettings { get; set; } = new();
 }
 
 /// <summary>

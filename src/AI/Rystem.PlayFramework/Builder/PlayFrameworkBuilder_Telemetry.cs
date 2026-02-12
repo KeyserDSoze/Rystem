@@ -34,12 +34,12 @@ public static class PlayFrameworkBuilderTelemetryExtensions
         Action<TelemetrySettings> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
-        
+
         configure(builder.Settings.Telemetry);
-        
+
         return builder;
     }
-    
+
     /// <summary>
     /// Enables tracing for all PlayFramework operations.
     /// </summary>
@@ -52,10 +52,10 @@ public static class PlayFrameworkBuilderTelemetryExtensions
     {
         builder.Settings.Telemetry.EnableTracing = true;
         builder.Settings.Telemetry.SamplingRate = samplingRate;
-        
+
         return builder;
     }
-    
+
     /// <summary>
     /// Enables metrics collection for all PlayFramework operations.
     /// </summary>
@@ -65,10 +65,10 @@ public static class PlayFrameworkBuilderTelemetryExtensions
         this PlayFrameworkBuilder builder)
     {
         builder.Settings.Telemetry.EnableMetrics = true;
-        
+
         return builder;
     }
-    
+
     /// <summary>
     /// Disables telemetry completely (useful for testing or development).
     /// </summary>
@@ -79,7 +79,7 @@ public static class PlayFrameworkBuilderTelemetryExtensions
     {
         builder.Settings.Telemetry.EnableTracing = false;
         builder.Settings.Telemetry.EnableMetrics = false;
-        
+
         return builder;
-    }
+    } 
 }

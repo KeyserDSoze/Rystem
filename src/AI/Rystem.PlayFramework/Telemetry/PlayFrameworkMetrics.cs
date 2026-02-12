@@ -66,7 +66,21 @@ public static class PlayFrameworkMetrics
     private static readonly Counter<long> _mcpToolExecutionCounter = _meter.CreateCounter<long>(
         "playframework.mcp.tool_executions",
         description: "Total number of MCP tool executions");
-    
+
+    /// <summary>
+    /// Total number of RAG searches performed.
+    /// </summary>
+    private static readonly Counter<long> _ragSearchCounter = _meter.CreateCounter<long>(
+        "playframework.rag.searches",
+        description: "Total number of RAG searches performed");
+
+    /// <summary>
+    /// Total number of embedding tokens consumed by RAG operations.
+    /// </summary>
+    private static readonly Counter<long> _ragTokenCounter = _meter.CreateCounter<long>(
+        "playframework.rag.tokens",
+        description: "Total embedding tokens consumed by RAG");
+
     // ========== HISTOGRAMS ==========
     
     /// <summary>
@@ -115,7 +129,23 @@ public static class PlayFrameworkMetrics
         "playframework.cache.duration",
         unit: "ms",
         description: "Cache access duration in milliseconds");
-    
+
+    /// <summary>
+    /// RAG search duration distribution.
+    /// </summary>
+    private static readonly Histogram<double> _ragDurationHistogram = _meter.CreateHistogram<double>(
+        "playframework.rag.duration",
+        unit: "ms",
+        description: "RAG search duration in milliseconds");
+
+    /// <summary>
+    /// RAG search cost distribution.
+    /// </summary>
+    private static readonly Histogram<double> _ragCostHistogram = _meter.CreateHistogram<double>(
+        "playframework.rag.cost",
+        unit: "USD",
+        description: "Cost per RAG search in USD");
+
     // ========== GAUGES (Observable) ==========
 
     private static long _activeScenes = 0;
@@ -263,11 +293,47 @@ public static class PlayFrameworkMetrics
             { "mcp.tool", toolName },
             { "success", success }
         };
-        
+
         _mcpToolExecutionCounter.Add(1, tags);
         _toolExecutionDuration.Record(durationMs, tags);
     }
-    
+
+    /// <summary>
+    /// Records a RAG search operation with token usage and cost tracking.
+    /// </summary>
+    /// <param name="provider">RAG provider name (e.g., "azure", "pinecone", or factory key).</param>
+    /// <param name="documentsFound">Number of documents returned.</param>
+    /// <param name="tokens">Total tokens consumed (embedding generation).</param>
+    /// <param name="cost">Total cost in USD.</param>
+    /// <param name="durationMs">Search duration in milliseconds.</param>
+    public static void RecordRagSearch(
+        string provider,
+        int documentsFound,
+        int tokens,
+        double cost,
+        double durationMs)
+    {
+        var tags = new TagList
+        {
+            { "rag.provider", provider },
+            { "rag.documents_found", documentsFound }
+        };
+
+        _ragSearchCounter.Add(1, tags);
+
+        if (tokens > 0)
+        {
+            _ragTokenCounter.Add(tokens, tags);
+        }
+
+        if (cost > 0)
+        {
+            _ragCostHistogram.Record(cost, tags);
+        }
+
+        _ragDurationHistogram.Record(durationMs, tags);
+    }
+
     // ========== GAUGE MANAGEMENT ==========
 
     /// <summary>
