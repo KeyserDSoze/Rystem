@@ -6,6 +6,13 @@
 public sealed class PlayFrameworkSettings
 {
     /// <summary>
+    /// Default execution mode for all requests.
+    /// Can be overridden per-request via SceneRequestSettings.ExecutionMode.
+    /// Default: Direct (single scene, fast execution).
+    /// </summary>
+    public SceneExecutionMode DefaultExecutionMode { get; set; } = SceneExecutionMode.Direct;
+
+    /// <summary>
     /// Planning configuration.
     /// </summary>
     public PlanningSettings Planning { get; set; } = new();

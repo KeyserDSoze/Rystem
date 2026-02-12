@@ -72,21 +72,26 @@ internal sealed class ServiceMethodTool : ISceneTool
             return parameters.Length == 0 ? Array.Empty<object>() : new object?[parameters.Length];
         }
 
-        var argsDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(argumentsJson);
+        var jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        var argsDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(argumentsJson, jsonOptions);
         if (argsDict == null)
         {
             return new object?[parameters.Length];
         }
 
         var args = new object?[parameters.Length];
-        
+
         for (int i = 0; i < parameters.Length; i++)
         {
             var param = parameters[i];
-            
+
             if (argsDict.TryGetValue(param.Name!, out var value))
             {
-                args[i] = JsonSerializer.Deserialize(value.GetRawText(), param.ParameterType);
+                args[i] = JsonSerializer.Deserialize(value.GetRawText(), param.ParameterType, jsonOptions);
             }
             else if (param.HasDefaultValue)
             {

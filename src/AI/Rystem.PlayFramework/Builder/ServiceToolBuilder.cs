@@ -27,7 +27,7 @@ public sealed class ServiceToolBuilder<TService> where TService : class
         string description)
     {
         var methodInfo = ExtractMethodInfo(methodSelector);
-        
+
         _config.ServiceTools.Add(new ServiceToolConfiguration
         {
             ServiceType = typeof(TService),
@@ -57,7 +57,7 @@ public sealed class ServiceToolBuilder<TService> where TService : class
         if (methodSelector.Body is MemberExpression { Member: PropertyInfo property })
         {
             // For properties, we need to get the getter method
-            return property.GetMethod 
+            return property.GetMethod
                 ?? throw new ArgumentException($"Property '{property.Name}' does not have a getter", nameof(methodSelector));
         }
 

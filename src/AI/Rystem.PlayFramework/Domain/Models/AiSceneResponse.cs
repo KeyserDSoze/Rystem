@@ -31,6 +31,17 @@ public sealed class AiSceneResponse
     public string? Message { get; set; }
 
     /// <summary>
+    /// Streaming chunk - the new piece of text received in this streaming event.
+    /// Only populated when Status is Streaming.
+    /// </summary>
+    public string? StreamingChunk { get; set; }
+
+    /// <summary>
+    /// Indicates if this is the last chunk in a streaming response.
+    /// </summary>
+    public bool IsStreamingComplete { get; set; }
+
+    /// <summary>
     /// Error message (if Status is Error).
     /// </summary>
     public string? ErrorMessage { get; set; }

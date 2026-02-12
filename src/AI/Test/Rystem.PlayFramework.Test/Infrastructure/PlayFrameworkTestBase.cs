@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Rystem.PlayFramework.Test;
 
@@ -31,6 +32,14 @@ public abstract class PlayFrameworkTestBase : IDisposable
 
         // Build service collection
         var services = new ServiceCollection();
+
+        // Register logging (required for SceneManager)
+        services.AddLogging(logging =>
+        {
+            logging.AddConsole();
+            logging.AddDebug();
+            logging.SetMinimumLevel(LogLevel.Information);
+        });
 
         // Register configuration
         services.AddSingleton(Configuration);

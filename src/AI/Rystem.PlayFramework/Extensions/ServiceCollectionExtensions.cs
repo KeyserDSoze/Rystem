@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Rystem.PlayFramework;
@@ -18,68 +19,112 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         Action<PlayFrameworkBuilder> configure)
     {
-        var builder = new PlayFrameworkBuilder(services);
+        return AddPlayFramework(services, null, configure);
+    }
+
+    /// <summary>
+    /// Adds PlayFramework services with a specific key for factory-based resolution.
+    /// Use IFactory&lt;ISceneManager&gt; to resolve by key.
+    /// </summary>
+    /// <param name="services">Service collection.</param>
+    /// <param name="name">Factory name (can be string or enum).</param>
+    /// <param name="configure">Configuration action.</param>
+    /// <returns>Service collection for chaining.</returns>
+    public static IServiceCollection AddPlayFramework(
+        this IServiceCollection services,
+        AnyOf<string?, Enum>? name,
+        Action<PlayFrameworkBuilder> configure)
+    {
+        var builder = new PlayFrameworkBuilder(services, name);
         configure(builder);
 
-        // Register settings as singleton
-        services.AddSingleton(builder.Settings);
+        // Ensure all IFactory<T> types that SceneManager depends on are registered
+        // This allows them to be injected even when the service itself is not registered
+        services.AddEngineFactory<ISceneFactory>();
+        services.AddEngineFactory<IChatClient>();
+        services.AddEngineFactory<PlayFrameworkSettings>();
+        services.AddEngineFactory<List<SceneConfiguration>>();
+        services.AddEngineFactory<List<ActorConfiguration>>();
+        services.AddEngineFactory<ICostCalculator>();
+        services.AddEngineFactory<IPlanner>();
+        services.AddEngineFactory<ISummarizer>();
+        services.AddEngineFactory<IDirector>();
+        services.AddEngineFactory<ICacheService>();
+        services.AddEngineFactory<IJsonService>();
 
-        // Register scene configurations
-        services.AddSingleton(builder.Scenes);
-        services.AddSingleton(builder.MainActors);
+        // Register SceneManager with factory pattern
+        services.AddFactory<ISceneManager, SceneManager>(name, ServiceLifetime.Transient);
 
-        // Register core services
-        services.TryAddScoped<ISceneManager, SceneManager>();
-        services.TryAddScoped<ISceneFactory, SceneFactory>();
+        // Register SceneFactory with factory pattern (used by SceneManager)
+        services.AddFactory<ISceneFactory>((sp, _) =>
+        {
+            var scenesFactory = sp.GetRequiredService<IFactory<List<SceneConfiguration>>>();
+            var scenes = scenesFactory.Create(name) ?? [];
+            return new SceneFactory(scenes, sp);
+        }, name, ServiceLifetime.Transient);
 
-        // Register default implementations if not customized
+        // Register settings with factory pattern (Singleton) - using instance overload
+        services.AddFactory(builder.Settings, name, ServiceLifetime.Singleton);
+
+        // Register scenes configuration with factory pattern (Singleton)
+        services.AddFactory(builder.Scenes, name, ServiceLifetime.Singleton);
+
+        // Register main actors with factory pattern (Singleton)
+        services.AddFactory(builder.MainActors, name, ServiceLifetime.Singleton);
+
+        // Register cost calculator with factory pattern (Singleton)
+        var costCalculator = builder.Settings.CostTracking.Enabled
+            ? new CostCalculator(builder.Settings.CostTracking)
+            : new CostCalculator(new TokenCostSettings { Enabled = false });
+        services.AddFactory<ICostCalculator>(costCalculator, name, ServiceLifetime.Singleton);
+
+        // Register default planner if not customized and planning is enabled
         if (!builder.HasCustomPlanner && builder.Settings.Planning.Enabled)
         {
-            services.TryAddScoped<IPlanner, DeterministicPlanner>();
+            services.AddFactory<IPlanner, DeterministicPlanner>(name, ServiceLifetime.Transient);
         }
 
+        // Register default summarizer if not customized and summarization is enabled
         if (!builder.HasCustomSummarizer && builder.Settings.Summarization.Enabled)
         {
-            services.TryAddScoped<ISummarizer, DefaultSummarizer>();
+            services.AddFactory<ISummarizer, DefaultSummarizer>(name, ServiceLifetime.Transient);
         }
 
+        // Register default director if not customized and director is enabled
         if (!builder.HasCustomDirector && builder.Settings.Director.Enabled)
         {
-            services.TryAddScoped<IDirector, MainDirector>();
+            services.AddFactory<IDirector, MainDirector>(name, ServiceLifetime.Transient);
         }
 
+        // Register default cache service if not customized and cache is enabled
         if (!builder.HasCustomCache && builder.Settings.Cache.Enabled)
         {
-            services.TryAddScoped<ICacheService, CacheService>();
+            services.AddFactory<ICacheService, CacheService>(name, ServiceLifetime.Transient);
         }
 
-        // Register cost calculator
-        if (builder.Settings.CostTracking.Enabled)
+        // Register default JSON service if not customized
+        if (!builder.HasCustomJsonService)
         {
-            services.AddSingleton<ICostCalculator>(sp => 
-                new CostCalculator(builder.Settings.CostTracking));
-        }
-        else
-        {
-            // Register disabled cost calculator
-            services.AddSingleton<ICostCalculator>(sp => 
-                new CostCalculator(new TokenCostSettings { Enabled = false }));
+            services.AddFactory<IJsonService, DefaultJsonService>(name, ServiceLifetime.Singleton);
         }
 
-        // Register actor types from scenes
+        // Register actor types from scenes (Transient)
         foreach (var scene in builder.Scenes)
         {
             foreach (var actor in scene.Actors.Where(a => a.ActorType != null))
             {
-                services.TryAddScoped(actor.ActorType!);
+                services.TryAddTransient(actor.ActorType!);
             }
         }
 
-        // Register main actor types
+        // Register main actor types (Transient)
         foreach (var actor in builder.MainActors.Where(a => a.ActorType != null))
         {
-            services.TryAddScoped(actor.ActorType!);
+            services.TryAddTransient(actor.ActorType!);
         }
+
+        // Register IPlayFramework wrapper (always Transient)
+        services.TryAddTransient<IPlayFramework, PlayFramework>();
 
         return services;
     }

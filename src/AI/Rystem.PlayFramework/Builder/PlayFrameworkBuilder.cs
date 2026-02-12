@@ -8,6 +8,7 @@ namespace Rystem.PlayFramework;
 public sealed class PlayFrameworkBuilder
 {
     internal IServiceCollection Services { get; }
+    internal AnyOf<string?, Enum>? Name { get; }
     internal PlayFrameworkSettings Settings { get; } = new();
     internal List<SceneConfiguration> Scenes { get; } = [];
     internal List<ActorConfiguration> MainActors { get; } = [];
@@ -15,10 +16,12 @@ public sealed class PlayFrameworkBuilder
     internal bool HasCustomSummarizer { get; set; }
     internal bool HasCustomDirector { get; set; }
     internal bool HasCustomCache { get; set; }
+    internal bool HasCustomJsonService { get; set; }
 
-    internal PlayFrameworkBuilder(IServiceCollection services)
+    internal PlayFrameworkBuilder(IServiceCollection services, AnyOf<string?, Enum>? name = null)
     {
         Services = services;
+        Name = name;
     }
 
     /// <summary>
@@ -84,6 +87,24 @@ public sealed class PlayFrameworkBuilder
     public PlayFrameworkBuilder Configure(Action<PlayFrameworkSettings> configure)
     {
         configure(Settings);
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the default execution mode for all requests.
+    /// Can be overridden per-request via SceneRequestSettings.ExecutionMode.
+    /// </summary>
+    /// <param name="mode">Default execution mode (Direct, Planning, or DynamicChaining)</param>
+    public PlayFrameworkBuilder WithExecutionMode(SceneExecutionMode mode)
+    {
+        Settings.DefaultExecutionMode = mode;
+
+        // If Planning mode is selected, enable planning automatically
+        if (mode == SceneExecutionMode.Planning)
+        {
+            Settings.Planning.Enabled = true;
+        }
+
         return this;
     }
 
@@ -229,7 +250,7 @@ public sealed class PlayFrameworkBuilder
     /// </summary>
     public PlayFrameworkBuilder AddCustomPlanner<TPlanner>() where TPlanner : class, IPlanner
     {
-        Services.AddScoped<IPlanner, TPlanner>();
+        Services.AddFactory<IPlanner, TPlanner>(Name, ServiceLifetime.Transient);
         HasCustomPlanner = true;
         return this;
     }
@@ -239,7 +260,7 @@ public sealed class PlayFrameworkBuilder
     /// </summary>
     public PlayFrameworkBuilder AddCustomSummarizer<TSummarizer>() where TSummarizer : class, ISummarizer
     {
-        Services.AddScoped<ISummarizer, TSummarizer>();
+        Services.AddFactory<ISummarizer, TSummarizer>(Name, ServiceLifetime.Transient);
         HasCustomSummarizer = true;
         return this;
     }
@@ -249,8 +270,29 @@ public sealed class PlayFrameworkBuilder
     /// </summary>
     public PlayFrameworkBuilder AddCustomDirector<TDirector>() where TDirector : class, IDirector
     {
-        Services.AddScoped<IDirector, TDirector>();
+        Services.AddFactory<IDirector, TDirector>(Name, ServiceLifetime.Transient);
         HasCustomDirector = true;
+        return this;
+    }
+
+    /// <summary>
+    /// Uses a custom JSON service.
+    /// </summary>
+    public PlayFrameworkBuilder AddCustomJsonService<TJsonService>() where TJsonService : class, IJsonService
+    {
+        Services.AddFactory<IJsonService, TJsonService>(Name, ServiceLifetime.Singleton);
+        HasCustomJsonService = true;
+        return this;
+    }
+
+    /// <summary>
+    /// Uses a custom JSON service with a factory.
+    /// </summary>
+    public PlayFrameworkBuilder AddCustomJsonService(Func<IServiceProvider, IJsonService> factory)
+    {
+        Func<IServiceProvider, object?, IJsonService> factoryFunc = (sp, _) => factory(sp);
+        Services.AddFactory(factoryFunc, Name, ServiceLifetime.Singleton);
+        HasCustomJsonService = true;
         return this;
     }
 }

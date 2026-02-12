@@ -11,9 +11,13 @@ public sealed class SceneRequestSettings
     public int MaxRecursionDepth { get; set; } = 5;
 
     /// <summary>
-    /// Whether to enable planning for this request.
+    /// Execution mode for this request.
+    /// - Direct: Single scene, fast execution (default)
+    /// - Planning: Multi-scene with upfront plan (requires IPlanner)
+    /// - DynamicChaining: Multi-scene with live decisions
+    /// If not set, uses the default configured in PlayFrameworkSettings.
     /// </summary>
-    public bool EnablePlanning { get; set; } = true;
+    public SceneExecutionMode? ExecutionMode { get; set; }
 
     /// <summary>
     /// Whether to enable summarization for this request.
@@ -51,6 +55,19 @@ public sealed class SceneRequestSettings
     /// Set to null for unlimited budget (default).
     /// </summary>
     public decimal? MaxBudget { get; set; }
+
+    /// <summary>
+    /// Enable streaming for text responses.
+    /// When enabled, text responses are streamed token-by-token for better UX.
+    /// Note: Tool/function calls are never streamed (require complete JSON).
+    /// </summary>
+    public bool EnableStreaming { get; set; }
+
+    /// <summary>
+    /// Maximum number of scenes that can be executed in dynamic chaining mode.
+    /// Prevents infinite loops. Default: 5.
+    /// </summary>
+    public int MaxDynamicScenes { get; set; } = 5;
 
     /// <summary>
     /// Cache key (auto-generated if null).

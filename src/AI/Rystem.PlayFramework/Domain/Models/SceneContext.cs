@@ -39,6 +39,17 @@ public sealed class SceneContext
     public HashSet<string> ExecutedTools { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
+    /// Accumulated results from each scene execution (for dynamic chaining).
+    /// Key: scene name, Value: accumulated text response from scene.
+    /// </summary>
+    public Dictionary<string, string> SceneResults { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Ordered list of scene names as they were executed (for dynamic chaining tracking).
+    /// </summary>
+    public List<string> ExecutedSceneOrder { get; init; } = [];
+
+    /// <summary>
     /// Conversation summary from previous summarization.
     /// </summary>
     public string? ConversationSummary { get; set; }

@@ -40,10 +40,11 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         // Mock calculator service
         services.AddSingleton<ICalculatorService, CalculatorService>();
 
-        // Mock chat client (simulate 1000 tokens per call)
+        // Mock chat client (simulate 2000 tokens per call: 1000 input + 1000 output)
+        // Cost per call: (1000/1000 * $0.03) + (1000/1000 * $0.06) = $0.03 + $0.06 = $0.09
         services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(
-            inputTokens: 500,
-            outputTokens: 500));
+            inputTokens: 1000,
+            outputTokens: 1000));
 
         var serviceProvider = services.BuildServiceProvider();
         var sceneManager = serviceProvider.GetRequiredService<ISceneManager>();
@@ -52,7 +53,7 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         // Set budget to $0.15 - should stop after 2nd LLM call
         var settings = new SceneRequestSettings
         {
-            EnablePlanning = false,
+            ExecutionMode = SceneExecutionMode.Direct,
             MaxBudget = 0.15m // $0.15 budget
         };
 
@@ -104,7 +105,7 @@ public class BudgetLimitTests : PlayFrameworkTestBase
 
         var settings = new SceneRequestSettings
         {
-            EnablePlanning = false,
+            ExecutionMode = SceneExecutionMode.Direct,
             MaxBudget = 10.0m // High budget - should complete
         };
 
@@ -150,10 +151,10 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         });
 
         services.AddSingleton<ICalculatorService, CalculatorService>();
-        
-        // Each call uses 1000 tokens (500 input + 500 output)
-        // Cost per call: 1000 / 1000 * ($0.01 + $0.02) = $0.03
-        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(500, 500));
+
+        // Each call uses 2000 tokens (1000 input + 1000 output)  
+        // Cost per call: (1000/1000 * $0.01) + (1000/1000 * $0.02) = $0.01 + $0.02 = $0.03
+        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(1000, 1000));
 
         var serviceProvider = services.BuildServiceProvider();
         var sceneManager = serviceProvider.GetRequiredService<ISceneManager>();
@@ -161,7 +162,7 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         // Budget allows 3 calls maximum ($0.09 / $0.03 = 3)
         var settings = new SceneRequestSettings
         {
-            EnablePlanning = false,
+            ExecutionMode = SceneExecutionMode.Direct,
             MaxBudget = 0.09m
         };
 
@@ -225,7 +226,7 @@ public class BudgetLimitTests : PlayFrameworkTestBase
 
         var settings = new SceneRequestSettings
         {
-            EnablePlanning = false,
+            ExecutionMode = SceneExecutionMode.Direct,
             MaxBudget = null // No budget limit
         };
 
@@ -278,7 +279,7 @@ public class BudgetLimitTests : PlayFrameworkTestBase
 
         var settings = new SceneRequestSettings
         {
-            EnablePlanning = false,
+            ExecutionMode = SceneExecutionMode.Direct,
             MaxBudget = 0.10m // €0.10 budget
         };
 
@@ -326,17 +327,18 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         });
 
         services.AddSingleton<ICalculatorService, CalculatorService>();
-        
-        // First call: 100 tokens = 0.1K → (0.1 * 0.1) + (0.1 * 0.2) = $0.03
-        // Second call would exceed budget
-        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(50, 50));
+
+        // Each call: 200 tokens (100 input + 100 output)
+        // Cost per call: (100/1000 * $0.1) + (100/1000 * $0.2) = $0.01 + $0.02 = $0.03
+        // Budget is $0.05, so second call would exceed (Call 1: $0.03, Call 2: $0.06 > $0.05)
+        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(100, 100));
 
         var serviceProvider = services.BuildServiceProvider();
         var sceneManager = serviceProvider.GetRequiredService<ISceneManager>();
 
         var settings = new SceneRequestSettings
         {
-            EnablePlanning = false,
+            ExecutionMode = SceneExecutionMode.Direct,
             MaxBudget = 0.05m // Very tight budget - should stop after 1-2 calls
         };
 
@@ -363,6 +365,7 @@ internal class MockCostTrackingChatClient : IChatClient
 {
     private readonly int _inputTokens;
     private readonly int _outputTokens;
+    private int _callCount = 0;
 
     public MockCostTrackingChatClient(int inputTokens, int outputTokens)
     {
@@ -379,18 +382,42 @@ internal class MockCostTrackingChatClient : IChatClient
     {
         await Task.Delay(10, cancellationToken); // Simulate delay
 
+        _callCount++;
         var responseMessage = new ChatMessage(ChatRole.Assistant, "Mock response");
 
         // Simulate function calls based on available tools
         if (options?.Tools?.Count > 0)
         {
-            var tool = options.Tools.First();
-            var functionCall = new FunctionCallContent(
-                callId: Guid.NewGuid().ToString(),
-                name: tool.GetType().GetProperty("Name")?.GetValue(tool)?.ToString() ?? "unknown",
-                arguments: new Dictionary<string, object?> { ["a"] = 10, ["b"] = 5 });
+            // Direct mode flow: scene selection → tool calls → final answer
+            if (_callCount == 1)
+            {
+                // Scene selection - return scene name
+                var sceneTool = options.Tools.First();
+                var sceneName = sceneTool.GetType().GetProperty("Name")?.GetValue(sceneTool)?.ToString() ?? "Calculator";
+                var sceneSelectionCall = new FunctionCallContent(
+                    callId: Guid.NewGuid().ToString(),
+                    name: sceneName,
+                    arguments: new Dictionary<string, object?>());
 
-            responseMessage.Contents.Add(functionCall);
+                responseMessage.Contents.Add(sceneSelectionCall);
+            }
+            else if (_callCount <= 10)
+            {
+                // Continue calling tools - the framework's budget check will stop us when exceeded
+                // Keep calling until MaxToolCallIterations (10) or budget check stops execution
+                var tool = options.Tools.First();
+                var functionCall = new FunctionCallContent(
+                    callId: Guid.NewGuid().ToString(),
+                    name: tool.GetType().GetProperty("Name")?.GetValue(tool)?.ToString() ?? "unknown",
+                    arguments: new Dictionary<string, object?> { ["a"] = 10, ["b"] = 5 });
+
+                responseMessage.Contents.Add(functionCall);
+            }
+            else
+            {
+                // After max iterations, return final text response
+                responseMessage = new ChatMessage(ChatRole.Assistant, "Result is 15");
+            }
         }
 
         return new ChatResponse([responseMessage])

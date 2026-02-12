@@ -48,6 +48,11 @@ public enum AiResponseStatus
     /// <summary>
     /// AI is generating streaming response.
     /// </summary>
+    Streaming,
+
+    /// <summary>
+    /// AI is generating streaming response.
+    /// </summary>
     Running,
 
     /// <summary>

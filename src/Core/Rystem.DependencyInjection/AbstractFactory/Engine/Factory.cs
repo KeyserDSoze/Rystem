@@ -52,6 +52,8 @@
                     {
                         if (service is IServiceForFactory factoryService)
                             factoryService.SetFactoryName(nameAsString);
+                        if (service is IFactoryName serviceWithName)
+                            serviceWithName.SetFactoryName(name);
                         if (service is IDecoratorService<TService> decoratorService && decoration >= 0)
                             decoratorService.SetDecoratedServices(Create(name, decoration - 1, enumerate)!);
                         if (service is IServiceWithFactoryWithOptions serviceWithCustomOptions)

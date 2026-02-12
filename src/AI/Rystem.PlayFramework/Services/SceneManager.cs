@@ -1,45 +1,103 @@
 ﻿using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Rystem.PlayFramework;
 
 /// <summary>
 /// Main orchestrator for PlayFramework execution.
 /// </summary>
-internal sealed class SceneManager : ISceneManager
+internal sealed class SceneManager : ISceneManager, IFactoryName
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly ISceneFactory _sceneFactory;
-    private readonly IChatClient _chatClientFactory;
-    private readonly PlayFrameworkSettings _settings;
-    private readonly List<ActorConfiguration> _mainActors;
-    private readonly IPlanner? _planner;
-    private readonly ISummarizer? _summarizer;
-    private readonly IDirector? _director;
-    private readonly ICacheService? _cacheService;
-    private readonly ICostCalculator _costCalculator;
+    private readonly ILogger<SceneManager> _logger;
+    private readonly IFactory<ISceneFactory> _sceneFactoryFactory;
+    private readonly IFactory<IChatClient> _chatClientFactory;
+    private readonly IFactory<PlayFrameworkSettings> _settingsFactory;
+    private readonly IFactory<List<ActorConfiguration>> _mainActorsFactory;
+    private readonly IFactory<ICostCalculator> _costCalculatorFactory;
+    private readonly IFactory<IPlanner> _plannerFactory;
+    private readonly IFactory<ISummarizer> _summarizerFactory;
+    private readonly IFactory<IDirector> _directorFactory;
+    private readonly IFactory<ICacheService> _cacheServiceFactory;
+    private readonly IFactory<IJsonService> _jsonServiceFactory;
+
+    // Resolved dependencies (set via SetFactoryName)
+    private string? _factoryName;
+    private ISceneFactory _sceneFactory = null!;
+    private IChatClient _chatClient = null!;
+    private PlayFrameworkSettings _settings = null!;
+    private List<ActorConfiguration> _mainActors = null!;
+    private ICostCalculator _costCalculator = null!;
+    private IPlanner? _planner;
+    private ISummarizer? _summarizer;
+    private IDirector? _director;
+    private ICacheService? _cacheService;
+    private IJsonService _jsonService = null!;
 
     public SceneManager(
         IServiceProvider serviceProvider,
-        ISceneFactory sceneFactory,
-        IChatClient chatClientFactory,
-        PlayFrameworkSettings settings,
-        List<ActorConfiguration> mainActors,
-        ICostCalculator costCalculator,
-        IPlanner? planner = null,
-        ISummarizer? summarizer = null,
-        IDirector? director = null,
-        ICacheService? cacheService = null)
+        ILogger<SceneManager> logger,
+        IFactory<ISceneFactory> sceneFactoryFactory,
+        IFactory<IChatClient> chatClientFactory,
+        IFactory<PlayFrameworkSettings> settingsFactory,
+        IFactory<List<ActorConfiguration>> mainActorsFactory,
+        IFactory<ICostCalculator> costCalculatorFactory,
+        IFactory<IPlanner> plannerFactory,
+        IFactory<ISummarizer> summarizerFactory,
+        IFactory<IDirector> directorFactory,
+        IFactory<ICacheService> cacheServiceFactory,
+        IFactory<IJsonService> jsonServiceFactory)
     {
         _serviceProvider = serviceProvider;
-        _sceneFactory = sceneFactory;
+        _logger = logger;
+        _sceneFactoryFactory = sceneFactoryFactory;
         _chatClientFactory = chatClientFactory;
-        _settings = settings;
-        _mainActors = mainActors;
-        _costCalculator = costCalculator;
-        _planner = planner;
-        _summarizer = summarizer;
-        _director = director;
-        _cacheService = cacheService;
+        _settingsFactory = settingsFactory;
+        _mainActorsFactory = mainActorsFactory;
+        _costCalculatorFactory = costCalculatorFactory;
+        _plannerFactory = plannerFactory;
+        _summarizerFactory = summarizerFactory;
+        _directorFactory = directorFactory;
+        _cacheServiceFactory = cacheServiceFactory;
+        _jsonServiceFactory = jsonServiceFactory;
+    }
+
+    public void SetFactoryName(AnyOf<string?, Enum>? name)
+    {
+        _factoryName = name?.ToString() ?? "default";
+
+        _logger.LogDebug("Initializing SceneManager for factory: {FactoryName}", _factoryName);
+
+        _sceneFactory = _sceneFactoryFactory.Create(name) ?? throw new InvalidOperationException($"SceneFactory not found for name: {name}");
+        _logger.LogTrace("SceneFactory resolved: {SceneFactoryType} (Factory: {FactoryName})", _sceneFactory.GetType().Name, _factoryName);
+
+        // Try to get ChatClient from factory, fall back to service provider if not found
+        _chatClient = _chatClientFactory.Create(name) 
+            ?? _serviceProvider.GetService<IChatClient>()
+            ?? throw new InvalidOperationException($"IChatClient not found. Please register IChatClient with AddFactory or as a singleton service.");
+        _logger.LogTrace("ChatClient resolved: {ChatClientType} (Factory: {FactoryName})", _chatClient.GetType().Name, _factoryName);
+
+        _settings = _settingsFactory.Create(name) ?? new PlayFrameworkSettings();
+        _logger.LogDebug("Settings loaded - ExecutionMode: {ExecutionMode}, Planning: {PlanningEnabled}, Cache: {CacheEnabled} (Factory: {FactoryName})", 
+            _settings.DefaultExecutionMode, _settings.Planning.Enabled, _settings.Cache.Enabled, _factoryName);
+
+        _mainActors = _mainActorsFactory.Create(name) ?? [];
+        _logger.LogDebug("{ActorCount} main actors loaded (Factory: {FactoryName})", _mainActors.Count, _factoryName);
+
+        _costCalculator = _costCalculatorFactory.Create(name) ?? new CostCalculator(new TokenCostSettings { Enabled = false });
+        _logger.LogDebug("Cost calculator initialized - Enabled: {CostTrackingEnabled}, Currency: {Currency} (Factory: {FactoryName})", 
+            _costCalculator.IsEnabled, _costCalculator.Currency, _factoryName);
+
+        _planner = _plannerFactory.Create(name);
+        _summarizer = _summarizerFactory.Create(name);
+        _director = _directorFactory.Create(name);
+        _cacheService = _cacheServiceFactory.Create(name);
+        _jsonService = _jsonServiceFactory.Create(name) ?? new DefaultJsonService();
+
+        var availableScenes = _sceneFactory.GetSceneNames().Count();
+        _logger.LogInformation("SceneManager initialized successfully - Scenes: {SceneCount}, Planner: {HasPlanner}, Summarizer: {HasSummarizer}, Director: {HasDirector}, Cache: {HasCache} (Factory: {FactoryName})", 
+            availableScenes, _planner != null, _summarizer != null, _director != null, _cacheService != null, _factoryName);
     }
 
     public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(
@@ -70,7 +128,6 @@ internal sealed class SceneManager : ISceneManager
                     var summary = await _summarizer.SummarizeAsync(cached, cancellationToken);
                     context.ConversationSummary = summary;
 
-                    // Add summary to chat
                     // Store summary in context to include in future messages
                     context.Properties["conversation_summary"] = summary;
                 }
@@ -89,40 +146,64 @@ internal sealed class SceneManager : ISceneManager
         yield return YieldStatus(AiResponseStatus.ExecutingMainActors, "Executing main actors");
         await ExecuteMainActorsAsync(context, cancellationToken);
 
-        // Planning mode or direct execution
-        if (settings.EnablePlanning && _planner != null)
+        // Determine execution mode (request setting overrides default)
+        var executionMode = settings.ExecutionMode ?? _settings.DefaultExecutionMode;
+
+        // Route to appropriate execution method based on mode
+        switch (executionMode)
         {
-            // Create execution plan
-            yield return YieldStatus(AiResponseStatus.Planning, "Creating execution plan");
-
-            var plan = await _planner.CreatePlanAsync(context, settings, cancellationToken);
-            context.ExecutionPlan = plan;
-
-            if (!plan.NeedsExecution)
-            {
-                // Direct answer available
-                yield return YieldAndTrack(context, new AiSceneResponse
+            case SceneExecutionMode.Planning:
+                if (_planner == null)
                 {
-                    Status = AiResponseStatus.Running,
-                    Message = plan.Reasoning
-                });
-            }
-            else
-            {
-                // Execute plan
-                await foreach (var response in ExecutePlanAsync(context, settings, plan, cancellationToken))
+                    yield return YieldAndTrack(context, new AiSceneResponse
+                    {
+                        Status = AiResponseStatus.Error,
+                        ErrorMessage = "Planning mode requested but no IPlanner is registered"
+                    });
+                    yield break;
+                }
+
+                // Create execution plan
+                yield return YieldStatus(AiResponseStatus.Planning, "Creating execution plan");
+
+                var plan = await _planner.CreatePlanAsync(context, settings, cancellationToken);
+                context.ExecutionPlan = plan;
+
+                if (!plan.NeedsExecution)
+                {
+                    // Direct answer available
+                    yield return YieldAndTrack(context, new AiSceneResponse
+                    {
+                        Status = AiResponseStatus.Running,
+                        Message = plan.Reasoning
+                    });
+                }
+                else
+                {
+                    // Execute plan
+                    await foreach (var response in ExecutePlanAsync(context, settings, plan, cancellationToken))
+                    {
+                        yield return response;
+                    }
+                }
+                break;
+
+            case SceneExecutionMode.DynamicChaining:
+                // Dynamic scene chaining mode
+                await foreach (var response in DynamicChainAsync(context, settings, cancellationToken))
                 {
                     yield return response;
                 }
-            }
-        }
-        else
-        {
-            // Direct execution (no planning)
-            await foreach (var response in RequestAsync(context, settings, cancellationToken))
-            {
-                yield return response;
-            }
+                break;
+
+            case SceneExecutionMode.Direct:
+            default:
+                // Direct execution (no planning)
+                await foreach (var response in RequestAsync(context, settings, cancellationToken))
+                {
+                    yield return response;
+                }
+                break;
         }
 
         // Save to cache
@@ -135,30 +216,21 @@ internal sealed class SceneManager : ISceneManager
         yield return YieldStatus(AiResponseStatus.Completed, "Execution completed", context.TotalCost);
     }
 
-    private async Task<SceneContext> InitializeContextAsync(
+    private Task<SceneContext> InitializeContextAsync(
         string message,
         SceneRequestSettings settings,
         CancellationToken cancellationToken)
     {
-        // Create chat client
-        var chatClient = _chatClientFactory;
-
-        // Apply settings
-        if (!string.IsNullOrEmpty(settings.ModelId))
-        {
-            // Model override would be applied here
-        }
-
         var context = new SceneContext
         {
             ServiceProvider = _serviceProvider,
             InputMessage = message,
-            ChatClient = chatClient,
+            ChatClient = _chatClient,
             CacheKey = settings.CacheKey ?? Guid.NewGuid().ToString(),
             CacheBehavior = settings.CacheBehavior
         };
 
-        return context;
+        return Task.FromResult(context);
     }
 
     private async Task ExecuteMainActorsAsync(SceneContext context, CancellationToken cancellationToken)
@@ -341,7 +413,7 @@ internal sealed class SceneManager : ISceneManager
         SceneRequestSettings settings,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        yield return YieldStatus(AiResponseStatus.ExecutingScene, $"Entering scene: {scene.Name}");
+        yield return YieldStatus(AiResponseStatus.Running, $"Entering scene: {scene.Name}");
 
         // Execute scene actors
         await scene.ExecuteActorsAsync(context, cancellationToken);
@@ -412,33 +484,79 @@ internal sealed class SceneManager : ISceneManager
             conversationMessages.Add(responseMessage);
 
             // Check for function calls
-            var functionCalls = responseMessage.Contents?.
-                OfType<FunctionCallContent>()
+            var functionCalls = responseMessage.Contents?
+                .OfType<FunctionCallContent>()
                 .ToList() ?? [];
 
             if (functionCalls.Count == 0)
             {
-                // No more function calls - return final text response
-                var finalResponse = new AiSceneResponse
+                // No more function calls - check if streaming is enabled
+                if (settings.EnableStreaming)
                 {
-                    Status = AiResponseStatus.Running,
-                    SceneName = scene.Name,
-                    Message = responseMessage.Text ?? string.Empty
-                };
-                var canContinue = TrackCosts(response, finalResponse, context, settings);
-                yield return YieldAndTrack(context, finalResponse);
-
-                if (!canContinue)
-                {
-                    yield return YieldAndTrack(context, new AiSceneResponse
+                    // Stream the final text response
+                    await foreach (var streamResponse in StreamTextResponseAsync(
+                        responseMessage,
+                        response,
+                        scene.Name,
+                        context,
+                        settings,
+                        cancellationToken))
                     {
-                        Status = AiResponseStatus.BudgetExceeded,
+                        yield return streamResponse;
+                    }
+                }
+                else
+                {
+                    // Non-streaming: return complete response
+                    var finalResponse = new AiSceneResponse
+                    {
+                        Status = AiResponseStatus.Running,
                         SceneName = scene.Name,
-                        Message = $"Budget limit of {settings.MaxBudget:F6} {_costCalculator.Currency} exceeded. Total cost: {context.TotalCost:F6}",
-                        ErrorMessage = "Maximum budget reached"
-                    });
+                        Message = responseMessage.Text ?? string.Empty
+                    };
+                    var canContinue = TrackCosts(response, finalResponse, context, settings);
+                    yield return YieldAndTrack(context, finalResponse);
+
+                    if (!canContinue)
+                    {
+                        yield return YieldAndTrack(context, new AiSceneResponse
+                        {
+                            Status = AiResponseStatus.BudgetExceeded,
+                            SceneName = scene.Name,
+                            Message = $"Budget limit of {settings.MaxBudget:F6} {_costCalculator.Currency} exceeded. Total cost: {context.TotalCost:F6}",
+                            ErrorMessage = "Maximum budget reached"
+                        });
+                    }
                 }
 
+                yield break;
+            }
+
+            // Track costs for this LLM response (even if it contains function calls)
+            var llmResponse = new AiSceneResponse
+            {
+                Status = AiResponseStatus.Running,
+                SceneName = scene.Name,
+                Message = $"LLM returned {functionCalls.Count} function call(s)"
+            };
+            var canContinueAfterLLM = TrackCosts(response, llmResponse, context, settings);
+
+            // Only yield if there are costs to report
+            if (llmResponse.Cost.HasValue)
+            {
+                yield return YieldAndTrack(context, llmResponse);
+            }
+
+            // Check budget before executing tools
+            if (!canContinueAfterLLM)
+            {
+                yield return YieldAndTrack(context, new AiSceneResponse
+                {
+                    Status = AiResponseStatus.BudgetExceeded,
+                    SceneName = scene.Name,
+                    Message = $"Budget limit of {settings.MaxBudget:F6} {_costCalculator.Currency} exceeded. Total cost: {context.TotalCost:F6}",
+                    ErrorMessage = "Maximum budget reached"
+                });
                 yield break;
             }
 
@@ -469,8 +587,8 @@ internal sealed class SceneManager : ISceneManager
                 AiSceneResponse resultResponse;
                 try
                 {
-                    // Serialize arguments to JSON
-                    var argsJson = System.Text.Json.JsonSerializer.Serialize(functionCall.Arguments ?? new Dictionary<string, object?>());
+                    // Serialize arguments to JSON using IJsonService
+                    var argsJson = _jsonService.Serialize(functionCall.Arguments ?? new Dictionary<string, object?>());
 
                     // Execute the tool
                     var toolResult = await tool.ExecuteAsync(argsJson, context, cancellationToken);
@@ -550,27 +668,308 @@ internal sealed class SceneManager : ISceneManager
         // Generate final response based on gathered data
         var finalPrompt = new ChatMessage(ChatRole.User, "Based on all the information gathered, provide the final answer to the user's request.");
 
-        var response = await context.ChatClient.GetResponseAsync(
-            new[] { finalPrompt },
-            cancellationToken: cancellationToken);
-
-        var finalResponse = new AiSceneResponse
+        if (settings.EnableStreaming)
         {
-            Status = AiResponseStatus.Running,
-            Message = response.Messages?.FirstOrDefault()?.Text
-        };
-        var canContinue = TrackCosts(response, finalResponse, context, settings);
-        yield return YieldAndTrack(context, finalResponse);
-
-        if (!canContinue)
+            // Streaming mode
+            await foreach (var streamChunk in context.ChatClient.GetStreamingResponseAsync(
+                new[] { finalPrompt },
+                cancellationToken: cancellationToken))
+            {
+                await foreach (var streamResponse in ProcessStreamingChunkAsync(
+                    streamChunk,
+                    null, // No scene name for final response
+                    context,
+                    settings,
+                    cancellationToken))
+                {
+                    yield return streamResponse;
+                }
+            }
+        }
+        else
         {
+            // Non-streaming mode
+            var response = await context.ChatClient.GetResponseAsync(
+                new[] { finalPrompt },
+                cancellationToken: cancellationToken);
+
+            var finalResponse = new AiSceneResponse
+            {
+                Status = AiResponseStatus.Running,
+                Message = response.Messages?.FirstOrDefault()?.Text
+            };
+            var canContinue = TrackCosts(response, finalResponse, context, settings);
+            yield return YieldAndTrack(context, finalResponse);
+
+            if (!canContinue)
+            {
+                yield return YieldAndTrack(context, new AiSceneResponse
+                {
+                    Status = AiResponseStatus.BudgetExceeded,
+                    Message = $"Budget limit of {settings.MaxBudget:F6} {_costCalculator.Currency} exceeded. Total cost: {context.TotalCost:F6}",
+                    ErrorMessage = "Maximum budget reached"
+                });
+            }
+        }
+    }
+
+    private async IAsyncEnumerable<AiSceneResponse> DynamicChainAsync(
+        SceneContext context,
+        SceneRequestSettings settings,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        yield return YieldStatus(AiResponseStatus.Running, "Starting dynamic scene chaining");
+
+        var sceneExecutionCount = 0;
+
+        while (sceneExecutionCount < settings.MaxDynamicScenes)
+        {
+            // Get available scenes (exclude already executed ones)
+            var availableScenes = _sceneFactory.GetSceneNames()
+                .Where(name => !context.ExecutedScenes.ContainsKey(name))
+                .Select(name => _sceneFactory.Create(name))
+                .ToList();
+
+            if (availableScenes.Count == 0)
+            {
+                yield return YieldStatus(AiResponseStatus.Running, "No more scenes available");
+                break;
+            }
+
+            // Select next scene to execute
+            yield return YieldStatus(AiResponseStatus.Running, $"Selecting scene {sceneExecutionCount + 1}/{settings.MaxDynamicScenes}");
+
+            var selectedScene = await SelectSceneForChainingAsync(context, availableScenes, settings, cancellationToken);
+            if (selectedScene == null)
+            {
+                yield return YieldStatus(AiResponseStatus.Running, "No suitable scene found, ending chain");
+                break;
+            }
+
             yield return YieldAndTrack(context, new AiSceneResponse
             {
-                Status = AiResponseStatus.BudgetExceeded,
-                Message = $"Budget limit of {settings.MaxBudget:F6} {_costCalculator.Currency} exceeded. Total cost: {context.TotalCost:F6}",
-                ErrorMessage = "Maximum budget reached"
+                Status = AiResponseStatus.ExecutingScene,
+                SceneName = selectedScene.Name,
+                Message = $"Executing scene: {selectedScene.Name}"
             });
+
+            // Execute the selected scene
+            var sceneResultBuilder = new System.Text.StringBuilder();
+            await foreach (var response in ExecuteSceneAsync(context, selectedScene, settings, cancellationToken))
+            {
+                // Accumulate scene results
+                if (response.Status == AiResponseStatus.Running && !string.IsNullOrWhiteSpace(response.Message))
+                {
+                    sceneResultBuilder.AppendLine(response.Message);
+                }
+
+                yield return response;
+
+                // Check for budget exceeded
+                if (response.Status == AiResponseStatus.BudgetExceeded)
+                {
+                    yield break;
+                }
+            }
+
+            // Store scene result
+            var sceneResult = sceneResultBuilder.ToString();
+            context.SceneResults[selectedScene.Name] = sceneResult;
+            context.ExecutedSceneOrder.Add(selectedScene.Name);
+
+            sceneExecutionCount++;
+
+            // Ask LLM if it needs to continue to another scene
+            if (sceneExecutionCount < settings.MaxDynamicScenes && availableScenes.Count > 1)
+            {
+                yield return YieldStatus(AiResponseStatus.Running, "Evaluating if more scenes are needed");
+
+                var shouldContinue = await AskContinueToNextSceneAsync(context, settings, cancellationToken);
+                if (!shouldContinue)
+                {
+                    yield return YieldStatus(AiResponseStatus.Running, "Scene chain complete - generating final response");
+                    break;
+                }
+            }
         }
+
+        if (sceneExecutionCount >= settings.MaxDynamicScenes)
+        {
+            yield return YieldStatus(AiResponseStatus.Running, $"Maximum scene limit ({settings.MaxDynamicScenes}) reached");
+        }
+
+        // Generate final response using all accumulated scene results
+        await foreach (var response in GenerateFinalResponseAsync(context, settings, cancellationToken))
+        {
+            yield return response;
+        }
+    }
+
+    private async Task<IScene?> SelectSceneForChainingAsync(
+        SceneContext context,
+        List<IScene> availableScenes,
+        SceneRequestSettings settings,
+        CancellationToken cancellationToken)
+    {
+        // Build context message with execution history
+        var contextMessage = BuildChainingContext(context);
+
+        // Create scene selection tools from available scenes
+        var sceneTools = availableScenes
+            .Select(scene => CreateSceneSelectionTool(scene))
+            .ToList();
+
+        var chatOptions = new ChatOptions
+        {
+            Tools = sceneTools.Cast<AITool>().ToList()
+        };
+
+        // Build prompt
+        var messages = new List<ChatMessage>
+        {
+            new ChatMessage(ChatRole.User, context.InputMessage)
+        };
+
+        if (!string.IsNullOrWhiteSpace(contextMessage))
+        {
+            messages.Add(new ChatMessage(ChatRole.System, contextMessage));
+        }
+
+        // Call LLM for scene selection
+        var response = await context.ChatClient.GetResponseAsync(
+            messages,
+            chatOptions,
+            cancellationToken);
+
+        // Track costs
+        var selectionResponse = new AiSceneResponse
+        {
+            Status = AiResponseStatus.Running,
+            Message = "Scene selection for chaining"
+        };
+        TrackCosts(response, selectionResponse, context, settings);
+
+        // Extract function call
+        var responseMessage = response.Messages?.FirstOrDefault();
+        var functionCall = responseMessage?.Contents?.OfType<FunctionCallContent>().FirstOrDefault();
+
+        if (functionCall != null)
+        {
+            var selectedSceneName = functionCall.Name;
+            return FindSceneByFuzzyMatch(selectedSceneName);
+        }
+
+        return null;
+    }
+
+    private async Task<bool> AskContinueToNextSceneAsync(
+        SceneContext context,
+        SceneRequestSettings settings,
+        CancellationToken cancellationToken)
+    {
+        // Build summary of what has been done
+        var executionSummary = BuildExecutionSummary(context);
+
+        // Get remaining available scenes
+        var remainingScenes = _sceneFactory.GetSceneNames()
+            .Where(name => !context.ExecutedScenes.ContainsKey(name))
+            .ToList();
+
+        if (remainingScenes.Count == 0)
+        {
+            return false; // No more scenes available
+        }
+
+        var prompt = $@"Based on the user's original request: ""{context.InputMessage}""
+
+Execution so far:
+{executionSummary}
+
+Available scenes for further execution:
+{string.Join("\n", remainingScenes.Select(s => $"- {s}"))}
+
+Do you need to execute another scene to complete the user's request?
+Respond with 'YES' if you need more information from another scene, or 'NO' if you have enough information to provide a complete answer.";
+
+        var response = await context.ChatClient.GetResponseAsync(
+            new[] { new ChatMessage(ChatRole.User, prompt) },
+            cancellationToken: cancellationToken);
+
+        // Track costs
+        var continueResponse = new AiSceneResponse
+        {
+            Status = AiResponseStatus.Running,
+            Message = "Continuation decision"
+        };
+        TrackCosts(response, continueResponse, context, settings);
+
+        var responseText = response.Messages?.FirstOrDefault()?.Text?.Trim().ToUpperInvariant() ?? "";
+        return responseText.Contains("YES");
+    }
+
+    private string BuildChainingContext(SceneContext context)
+    {
+        if (context.ExecutedSceneOrder.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var builder = new System.Text.StringBuilder();
+        builder.AppendLine("Previously executed scenes and their results:");
+        builder.AppendLine();
+
+        foreach (var sceneName in context.ExecutedSceneOrder)
+        {
+            if (context.SceneResults.TryGetValue(sceneName, out var result))
+            {
+                builder.AppendLine($"Scene: {sceneName}");
+                builder.AppendLine($"Result: {result}");
+                builder.AppendLine();
+            }
+        }
+
+        // Add information about executed tools
+        if (context.ExecutedScenes.Count > 0)
+        {
+            builder.AppendLine("Executed tools:");
+            foreach (var (sceneName, tools) in context.ExecutedScenes)
+            {
+                foreach (var tool in tools)
+                {
+                    builder.AppendLine($"- {sceneName}.{tool.ToolName}({tool.Arguments ?? "no args"})");
+                }
+            }
+        }
+
+        return builder.ToString();
+    }
+
+    private string BuildExecutionSummary(SceneContext context)
+    {
+        var builder = new System.Text.StringBuilder();
+
+        foreach (var sceneName in context.ExecutedSceneOrder)
+        {
+            builder.AppendLine($"✓ Executed scene: {sceneName}");
+
+            if (context.ExecutedScenes.TryGetValue(sceneName, out var tools))
+            {
+                foreach (var tool in tools)
+                {
+                    builder.AppendLine($"  - Tool: {tool.ToolName}");
+                }
+            }
+
+            if (context.SceneResults.TryGetValue(sceneName, out var result) && !string.IsNullOrWhiteSpace(result))
+            {
+                var preview = result.Length > 200 ? result.Substring(0, 200) + "..." : result;
+                builder.AppendLine($"  Result preview: {preview}");
+            }
+
+            builder.AppendLine();
+        }
+
+        return builder.ToString();
     }
 
     private IScene? FindSceneByFuzzyMatch(string requestedName)
@@ -662,5 +1061,119 @@ internal sealed class SceneManager : ISceneManager
         }
 
         return true; // Continue execution
+    }
+
+    /// <summary>
+    /// Streams a text response that's already been received (non-streaming fallback).
+    /// </summary>
+    private async IAsyncEnumerable<AiSceneResponse> StreamTextResponseAsync(
+        ChatMessage responseMessage,
+        ChatResponse chatResponse,
+        string? sceneName,
+        SceneContext context,
+        SceneRequestSettings settings,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var text = responseMessage.Text ?? string.Empty;
+        var accumulatedText = new System.Text.StringBuilder();
+
+        // Simulate streaming by splitting into words
+        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        for (int i = 0; i < words.Length; i++)
+        {
+            var word = i == 0 ? words[i] : $" {words[i]}";
+            accumulatedText.Append(word);
+
+            var isLastChunk = i == words.Length - 1;
+
+            var streamResponse = new AiSceneResponse
+            {
+                Status = isLastChunk ? AiResponseStatus.Running : AiResponseStatus.Streaming,
+                SceneName = sceneName,
+                StreamingChunk = word,
+                Message = accumulatedText.ToString(),
+                IsStreamingComplete = isLastChunk
+            };
+
+            // Track costs only on the last chunk
+            if (isLastChunk)
+            {
+                var canContinue = TrackCosts(chatResponse, streamResponse, context, settings);
+                yield return YieldAndTrack(context, streamResponse);
+
+                if (!canContinue)
+                {
+                    yield return YieldAndTrack(context, new AiSceneResponse
+                    {
+                        Status = AiResponseStatus.BudgetExceeded,
+                        SceneName = sceneName,
+                        Message = $"Budget limit of {settings.MaxBudget:F6} {_costCalculator.Currency} exceeded. Total cost: {context.TotalCost:F6}",
+                        ErrorMessage = "Maximum budget reached"
+                    });
+                }
+            }
+            else
+            {
+                streamResponse.TotalCost = context.TotalCost;
+                yield return streamResponse;
+            }
+
+            // Small delay to simulate streaming
+            await Task.Delay(5, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Processes streaming chunks from IChatClient.GetStreamingResponseAsync.
+    /// </summary>
+    private async IAsyncEnumerable<AiSceneResponse> ProcessStreamingChunkAsync(
+        ChatResponseUpdate streamChunk,
+        string? sceneName,
+        SceneContext context,
+        SceneRequestSettings settings,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        // Accumulate complete message (stored in context for tracking)
+        var contextKey = $"streaming_message_{sceneName ?? "final"}";
+        if (!context.Properties.TryGetValue(contextKey, out var accumulatedObj))
+        {
+            accumulatedObj = new System.Text.StringBuilder();
+            context.Properties[contextKey] = accumulatedObj;
+        }
+        var accumulated = (System.Text.StringBuilder)accumulatedObj;
+
+        // Get the text from this chunk
+        var chunkText = streamChunk.Text ?? string.Empty;
+        accumulated.Append(chunkText);
+
+        // Check if this is the final chunk (has completion reason)
+        var isComplete = streamChunk.FinishReason != null;
+
+        var streamResponse = new AiSceneResponse
+        {
+            Status = isComplete ? AiResponseStatus.Running : AiResponseStatus.Streaming,
+            SceneName = sceneName,
+            StreamingChunk = chunkText,
+            Message = accumulated.ToString(),
+            IsStreamingComplete = isComplete
+        };
+
+        // On the last chunk, try to estimate costs (usage may not be available in streaming)
+        if (isComplete)
+        {
+            streamResponse.TotalCost = context.TotalCost;
+            yield return YieldAndTrack(context, streamResponse);
+
+            // Clean up accumulated text
+            context.Properties.Remove(contextKey);
+        }
+        else
+        {
+            streamResponse.TotalCost = context.TotalCost;
+            yield return streamResponse;
+        }
+
+        await Task.CompletedTask; // Satisfy async requirement
     }
 }
