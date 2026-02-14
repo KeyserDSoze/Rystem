@@ -73,9 +73,4 @@ public sealed class SceneRequestSettings
     /// Cache key (auto-generated if null).
     /// </summary>
     public string? CacheKey { get; set; }
-
-    /// <summary>
-    /// Additional metadata for this request.
-    /// </summary>
-    public Dictionary<string, object> Metadata { get; set; } = [];
 }

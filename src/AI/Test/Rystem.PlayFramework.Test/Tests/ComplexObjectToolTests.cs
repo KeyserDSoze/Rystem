@@ -47,7 +47,7 @@ public class ComplexObjectToolTests : PlayFrameworkTestBase
 
         // Act
         var responses = new List<AiSceneResponse>();
-        await foreach (var response in sceneManager.ExecuteAsync("Create user Alessandro", settings))
+        await foreach (var response in sceneManager.ExecuteAsync("Create user Alessandro", metadata: null, settings))
         {
             responses.Add(response);
         }
@@ -103,7 +103,7 @@ public class ComplexObjectToolTests : PlayFrameworkTestBase
 
         // Act
         var responses = new List<AiSceneResponse>();
-        await foreach (var response in sceneManager.ExecuteAsync("Create order for Mario", settings))
+        await foreach (var response in sceneManager.ExecuteAsync("Create order for Mario", metadata: null, settings))
         {
             responses.Add(response);
         }
@@ -156,7 +156,7 @@ public class ComplexObjectToolTests : PlayFrameworkTestBase
 
         // Act
         var responses = new List<AiSceneResponse>();
-        await foreach (var response in sceneManager.ExecuteAsync("Process batch", settings))
+        await foreach (var response in sceneManager.ExecuteAsync("Process batch", metadata: null, settings))
         {
             responses.Add(response);
         }

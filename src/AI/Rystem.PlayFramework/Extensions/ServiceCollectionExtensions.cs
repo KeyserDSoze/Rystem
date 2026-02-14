@@ -56,6 +56,7 @@ public static class ServiceCollectionExtensions
         services.AddEngineFactory<ICacheService>();
         services.AddEngineFactory<IJsonService>();
         services.AddEngineFactory<IMcpServerManager>();  // Add MCP server manager factory
+        services.AddEngineFactory<IRateLimiter>();  // Add rate limiter factory (optional, but DI needs it registered)
 
         // Register SceneManager with factory pattern
         services.AddFactory<ISceneManager, SceneManager>(name, ServiceLifetime.Transient);
@@ -91,6 +92,30 @@ public static class ServiceCollectionExtensions
         {
             services.AddFactory<ITransientErrorDetector, DefaultTransientErrorDetector>(
                 name, ServiceLifetime.Singleton);
+        }
+
+        // Register rate limiting components if enabled
+        if (builder.Settings.RateLimiting?.Enabled == true)
+        {
+            // Register storage (InMemory by default, unless Custom is specified)
+            if (builder.Settings.RateLimiting.StorageType == RateLimitStorage.InMemory)
+            {
+                services.AddFactory<IRateLimitStorage, InMemoryRateLimitStorage>(
+                    name, ServiceLifetime.Singleton);
+            }
+            // If Custom, user must register IRateLimitStorage separately
+
+            // Register rate limiter based on strategy
+            switch (builder.Settings.RateLimiting.Strategy)
+            {
+                case RateLimitingStrategy.TokenBucket:
+                    services.AddFactory<IRateLimiter, TokenBucketRateLimiter>(name, ServiceLifetime.Singleton);
+                    break;
+
+                // Future strategies can be added here (SlidingWindow, FixedWindow, Concurrent)
+                default:
+                    throw new NotSupportedException($"Rate limiting strategy '{builder.Settings.RateLimiting.Strategy}' is not yet implemented. Use TokenBucket for now.");
+            }
         }
 
         // Register unified chat client manager (handles load balancing, fallback, retry, and cost)

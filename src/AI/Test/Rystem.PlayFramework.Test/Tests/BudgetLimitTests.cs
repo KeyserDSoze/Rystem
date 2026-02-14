@@ -57,7 +57,7 @@ public class BudgetLimitTests : PlayFrameworkTestBase
 
         // Act
         var responses = new List<AiSceneResponse>();
-        await foreach (var response in sceneManager.ExecuteAsync("Calculate 10 + 5", settings))
+        await foreach (var response in sceneManager.ExecuteAsync("Calculate 10 + 5", metadata: null, settings))
         {
             responses.Add(response);
         }
@@ -107,7 +107,7 @@ public class BudgetLimitTests : PlayFrameworkTestBase
 
         // Act
         var responses = new List<AiSceneResponse>();
-        await foreach (var response in sceneManager.ExecuteAsync("Calculate 5 + 3", settings))
+        await foreach (var response in sceneManager.ExecuteAsync("Calculate 5 + 3", metadata: null, settings))
         {
             responses.Add(response);
         }
@@ -162,7 +162,7 @@ public class BudgetLimitTests : PlayFrameworkTestBase
 
         // Act
         var responses = new List<AiSceneResponse>();
-        await foreach (var response in sceneManager.ExecuteAsync("Calculate something complex", settings))
+        await foreach (var response in sceneManager.ExecuteAsync("Calculate something complex", metadata: null, settings))
         {
             responses.Add(response);
         }
@@ -224,7 +224,7 @@ public class BudgetLimitTests : PlayFrameworkTestBase
 
         // Act
         var responses = new List<AiSceneResponse>();
-        await foreach (var response in sceneManager.ExecuteAsync("Calculate 10 + 20", settings))
+        await foreach (var response in sceneManager.ExecuteAsync("Calculate 10 + 20", metadata: null, settings))
         {
             responses.Add(response);
         }
@@ -275,7 +275,7 @@ public class BudgetLimitTests : PlayFrameworkTestBase
 
         // Act
         var responses = new List<AiSceneResponse>();
-        await foreach (var response in sceneManager.ExecuteAsync("Add numbers", settings))
+        await foreach (var response in sceneManager.ExecuteAsync("Add numbers", metadata: null, settings))
         {
             responses.Add(response);
         }
@@ -332,7 +332,7 @@ public class BudgetLimitTests : PlayFrameworkTestBase
 
         // Act
         var responses = new List<AiSceneResponse>();
-        await foreach (var response in sceneManager.ExecuteAsync("Complex calculation", settings))
+        await foreach (var response in sceneManager.ExecuteAsync("Complex calculation", metadata: null, settings))
         {
             responses.Add(response);
         }

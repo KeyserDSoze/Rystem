@@ -458,7 +458,7 @@ public class LoadBalancingAndFallbackTests : IDisposable
         bool gotResponse = false;
         string? finalMessage = null;
 
-        await foreach (var response in sceneManager.ExecuteAsync("Test request", new SceneRequestSettings
+        await foreach (var response in sceneManager.ExecuteAsync("Test request", metadata: null, new SceneRequestSettings
         {
             ExecutionMode = SceneExecutionMode.Direct,
             CacheBehavior = CacheBehavior.Avoidable

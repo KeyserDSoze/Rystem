@@ -77,7 +77,7 @@ public sealed class DynamicSceneChainingTests : PlayFrameworkTestBase
         var results = new List<AiSceneResponse>();
         await foreach (var response in sceneManager.ExecuteAsync(
             "Analyze Q1 sales and generate a report",
-            settings))
+            metadata: null, settings))
         {
             results.Add(response);
         }
@@ -149,7 +149,7 @@ public sealed class DynamicSceneChainingTests : PlayFrameworkTestBase
         };
 
         var results = new List<AiSceneResponse>();
-        await foreach (var response in sceneManager.ExecuteAsync("Execute multiple scenes", settings))
+        await foreach (var response in sceneManager.ExecuteAsync("Execute multiple scenes", metadata: null, settings))
         {
             results.Add(response);
         }
@@ -209,7 +209,7 @@ public sealed class DynamicSceneChainingTests : PlayFrameworkTestBase
         };
 
         var results = new List<AiSceneResponse>();
-        await foreach (var response in sceneManager.ExecuteAsync("Fetch and analyze data", settings))
+        await foreach (var response in sceneManager.ExecuteAsync("Fetch and analyze data", metadata: null, settings))
         {
             results.Add(response);
         }
@@ -266,7 +266,7 @@ public sealed class DynamicSceneChainingTests : PlayFrameworkTestBase
         };
 
         var results = new List<AiSceneResponse>();
-        await foreach (var response in sceneManager.ExecuteAsync("What is 2 + 3?", settings))
+        await foreach (var response in sceneManager.ExecuteAsync("What is 2 + 3?", metadata: null, settings))
         {
             results.Add(response);
         }

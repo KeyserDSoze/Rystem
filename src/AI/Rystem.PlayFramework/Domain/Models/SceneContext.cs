@@ -18,6 +18,12 @@ public sealed class SceneContext
     public required string InputMessage { get; set; }
 
     /// <summary>
+    /// Request metadata for rate limiting, telemetry, and custom logic.
+    /// Examples: userId, tenantId, sessionId, region, priority, apiKey, etc.
+    /// </summary>
+    public Dictionary<string, object> Metadata { get; init; } = new();
+
+    /// <summary>
     /// Chat client manager with built-in retry, fallback, and cost calculation.
     /// </summary>
     public required IChatClientManager ChatClientManager { get; set; }

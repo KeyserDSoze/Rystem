@@ -48,7 +48,7 @@ public class StreamingTests : PlayFrameworkTestBase
 
         // Act
         var responses = new List<AiSceneResponse>();
-        await foreach (var response in sceneManager.ExecuteAsync("Calculate 10 + 5", settings))
+        await foreach (var response in sceneManager.ExecuteAsync("Calculate 10 + 5", metadata: null, settings))
         {
             responses.Add(response);
         }
@@ -118,7 +118,7 @@ public class StreamingTests : PlayFrameworkTestBase
 
         // Act
         var responses = new List<AiSceneResponse>();
-        await foreach (var response in sceneManager.ExecuteAsync("Calculate 5 + 3", settings))
+        await foreach (var response in sceneManager.ExecuteAsync("Calculate 5 + 3", metadata: null, settings))
         {
             responses.Add(response);
         }
@@ -171,7 +171,7 @@ public class StreamingTests : PlayFrameworkTestBase
 
         // Act
         var responses = new List<AiSceneResponse>();
-        await foreach (var response in sceneManager.ExecuteAsync("Add numbers", settings))
+        await foreach (var response in sceneManager.ExecuteAsync("Add numbers", metadata: null, settings))
         {
             responses.Add(response);
         }
@@ -230,7 +230,7 @@ public class StreamingTests : PlayFrameworkTestBase
 
         // Act
         var responses = new List<AiSceneResponse>();
-        await foreach (var response in sceneManager.ExecuteAsync("Add numbers", settings))
+        await foreach (var response in sceneManager.ExecuteAsync("Add numbers", metadata: null, settings))
         {
             responses.Add(response);
         }

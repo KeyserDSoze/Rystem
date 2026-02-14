@@ -88,6 +88,13 @@ public sealed class PlayFrameworkSettings
     public double RetryBaseDelaySeconds { get; set; } = 1.0;
 
     /// <summary>
+    /// Rate limiting configuration.
+    /// Controls request rate to prevent overloading LLM providers.
+    /// Disabled by default. Enable via .WithRateLimit() builder.
+    /// </summary>
+    public RateLimitSettings? RateLimiting { get; set; }
+
+    /// <summary>
     /// Global RAG configurations (key = factory key or empty for default).
     /// </summary>
     public Dictionary<string, RagSettings> GlobalRagSettings { get; set; } = new();

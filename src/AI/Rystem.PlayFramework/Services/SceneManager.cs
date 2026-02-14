@@ -25,6 +25,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private readonly IFactory<ICacheService> _cacheServiceFactory;
     private readonly IFactory<IJsonService> _jsonServiceFactory;
     private readonly IFactory<IMcpServerManager> _mcpServerManagerFactory;
+    private readonly IFactory<IRateLimiter>? _rateLimiterFactory;
 
     // Resolved dependencies (set via SetFactoryName)
     private string? _factoryName;
@@ -37,6 +38,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private IDirector? _director;
     private ICacheService? _cacheService;
     private IJsonService _jsonService = null!;
+    private IRateLimiter? _rateLimiter;
 
     public SceneManager(
         IServiceProvider serviceProvider,
@@ -50,7 +52,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         IFactory<IDirector> directorFactory,
         IFactory<ICacheService> cacheServiceFactory,
         IFactory<IJsonService> jsonServiceFactory,
-        IFactory<IMcpServerManager> mcpServerManagerFactory)
+        IFactory<IMcpServerManager> mcpServerManagerFactory,
+        IFactory<IRateLimiter>? rateLimiterFactory = null)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -64,6 +67,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _cacheServiceFactory = cacheServiceFactory;
         _jsonServiceFactory = jsonServiceFactory;
         _mcpServerManagerFactory = mcpServerManagerFactory;
+        _rateLimiterFactory = rateLimiterFactory;
     }
 
     public void SetFactoryName(AnyOf<string?, Enum>? name)
@@ -94,13 +98,22 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _cacheService = _cacheServiceFactory.Create(name);
         _jsonService = _jsonServiceFactory.Create(name) ?? new DefaultJsonService();
 
+        // Resolve rate limiter if enabled
+        _rateLimiter = _rateLimiterFactory?.Create(name);
+        if (_rateLimiter != null)
+        {
+            _logger.LogDebug("Rate limiter enabled with strategy: {Strategy} (Factory: {FactoryName})", 
+                _settings.RateLimiting?.Strategy, _factoryName);
+        }
+
         var availableScenes = _sceneFactory.GetSceneNames().Count();
-        _logger.LogInformation("SceneManager initialized successfully - Scenes: {SceneCount}, ChatClients: {ChatClientCount}, FallbackMode: {FallbackMode}, Planner: {HasPlanner}, Summarizer: {HasSummarizer}, Director: {HasDirector}, Cache: {HasCache} (Factory: {FactoryName})", 
-            availableScenes, _settings.ChatClientNames?.Count ?? 1, _settings.FallbackMode, _planner != null, _summarizer != null, _director != null, _cacheService != null, _factoryName);
+        _logger.LogInformation("SceneManager initialized successfully - Scenes: {SceneCount}, ChatClients: {ChatClientCount}, FallbackMode: {FallbackMode}, Planner: {HasPlanner}, Summarizer: {HasSummarizer}, Director: {HasDirector}, Cache: {HasCache}, RateLimit: {HasRateLimit} (Factory: {FactoryName})", 
+            availableScenes, _settings.ChatClientNames?.Count ?? 1, _settings.FallbackMode, _planner != null, _summarizer != null, _director != null, _cacheService != null, _rateLimiter != null, _factoryName);
     }
 
     public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(
         string message,
+        Dictionary<string, object>? metadata = null,
         SceneRequestSettings? settings = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -142,7 +155,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         Exception? exception = null;
 
         // Execute without try-catch (yield return restriction)
-        await foreach (var response in ExecuteInternalAsync(message, settings, cancellationToken))
+        await foreach (var response in ExecuteInternalAsync(message, metadata, settings, cancellationToken))
         {
             // Track scene name from first real response
             if (response.Status != AiResponseStatus.Initializing && !string.IsNullOrEmpty(response.SceneName))
@@ -214,10 +227,45 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     }
 
     /// <summary>
+    /// Builds rate limit key from metadata based on GroupByKeys configuration.
+    /// Returns "global" if no grouping keys specified, uses "unknown" for missing metadata values.
+    /// </summary>
+    private string BuildRateLimitKey(Dictionary<string, object>? metadata)
+    {
+        var groupByKeys = _settings.RateLimiting?.GroupByKeys;
+
+        if (groupByKeys == null || groupByKeys.Length == 0)
+        {
+            _logger.LogWarning("Rate limiting enabled but no GroupBy keys specified. Using 'global' key for rate limiting. Configure with .GroupBy(\"userId\") or similar to enable per-user/tenant rate limits.");
+            return "global";
+        }
+
+        var keyParts = new List<string>();
+
+        foreach (var key in groupByKeys)
+        {
+            if (metadata?.TryGetValue(key, out var value) == true && value != null)
+            {
+                keyParts.Add($"{key}:{value}");
+            }
+            else
+            {
+                _logger.LogWarning("Metadata key '{Key}' not found in request metadata. Using 'unknown' for rate limiting. Pass metadata dictionary with required keys in ExecuteAsync(message, metadata, settings).", key);
+                keyParts.Add($"{key}:unknown");
+            }
+        }
+
+        var rateLimitKey = string.Join("|", keyParts);
+        _logger.LogDebug("Built rate limit key: {RateLimitKey} from GroupBy keys: {GroupByKeys}", rateLimitKey, string.Join(", ", groupByKeys));
+        return rateLimitKey;
+    }
+
+    /// <summary>
     /// Internal implementation of ExecuteAsync (original logic without telemetry wrapper).
     /// </summary>
     private async IAsyncEnumerable<AiSceneResponse> ExecuteInternalAsync(
         string message,
+        Dictionary<string, object>? metadata,
         SceneRequestSettings? settings = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -226,7 +274,47 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         // Initialize
         yield return YieldStatus(AiResponseStatus.Initializing, "Initializing context");
 
-        var context = await InitializeContextAsync(message, settings, cancellationToken);
+        var context = await InitializeContextAsync(message, metadata, settings, cancellationToken);
+
+        // Rate limiting check
+        if (_rateLimiter != null && _settings.RateLimiting?.Enabled == true)
+        {
+            yield return YieldStatus(AiResponseStatus.Initializing, "Checking rate limit");
+
+            var rateLimitKey = BuildRateLimitKey(metadata);
+            RateLimitCheckResult? checkResult = null;
+            RateLimitExceededException? rateLimitException = null;
+
+            try
+            {
+                checkResult = await _rateLimiter.CheckAndWaitAsync(
+                    rateLimitKey,
+                    cost: 1,
+                    cancellationToken);
+            }
+            catch (RateLimitExceededException ex)
+            {
+                rateLimitException = ex;
+            }
+
+            if (rateLimitException != null)
+            {
+                _logger.LogError("Rate limit exceeded for key '{Key}': {Error}. RetryAfter: {RetryAfter}",
+                    rateLimitKey, rateLimitException.Message, rateLimitException.RetryAfter);
+
+                yield return YieldAndTrack(context, new AiSceneResponse
+                {
+                    Status = AiResponseStatus.Error,
+                    ErrorMessage = $"Rate limit exceeded: {rateLimitException.Message}. Retry after {rateLimitException.RetryAfter?.TotalSeconds:F0} seconds.",
+                    Message = $"Rate limit exceeded. Please try again in {rateLimitException.RetryAfter?.TotalSeconds:F0} seconds."
+                });
+
+                yield break; // Stop execution
+            }
+
+            _logger.LogDebug("Rate limit check passed for key '{Key}'. Remaining: {Remaining}, Reset: {ResetTime}",
+                rateLimitKey, checkResult!.RemainingTokens, checkResult.ResetTime);
+        }
 
         // Load from cache if available
         if (settings.CacheBehavior != CacheBehavior.Avoidable && _cacheService != null && context.CacheKey != null)
@@ -334,6 +422,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
 
     private Task<SceneContext> InitializeContextAsync(
         string message,
+        Dictionary<string, object>? metadata,
         SceneRequestSettings settings,
         CancellationToken cancellationToken)
     {
@@ -341,6 +430,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         {
             ServiceProvider = _serviceProvider,
             InputMessage = message,
+            Metadata = metadata ?? new Dictionary<string, object>(),
             ChatClientManager = _chatClientManager,
             CacheKey = settings.CacheKey ?? Guid.NewGuid().ToString(),
             CacheBehavior = settings.CacheBehavior
