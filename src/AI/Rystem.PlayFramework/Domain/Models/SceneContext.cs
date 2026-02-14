@@ -76,9 +76,9 @@ public sealed class SceneContext
     public decimal TotalCost { get; set; }
 
     /// <summary>
-    /// Cache key for storing/retrieving conversation.
+    /// Unique key for this conversation (used by cache and memory).
     /// </summary>
-    public string? CacheKey { get; set; }
+    public string? ConversationKey { get; set; }
 
     /// <summary>
     /// Cache behavior for this request.

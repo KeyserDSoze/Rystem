@@ -26,6 +26,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private readonly IFactory<IJsonService> _jsonServiceFactory;
     private readonly IFactory<IMcpServerManager> _mcpServerManagerFactory;
     private readonly IFactory<IRateLimiter>? _rateLimiterFactory;
+    private readonly IFactory<IMemory>? _memoryFactory;
+    private readonly IFactory<IMemoryStorage>? _memoryStorageFactory;
 
     // Resolved dependencies (set via SetFactoryName)
     private string? _factoryName;
@@ -39,6 +41,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private ICacheService? _cacheService;
     private IJsonService _jsonService = null!;
     private IRateLimiter? _rateLimiter;
+    private IMemory? _memory;
+    private IMemoryStorage? _memoryStorage;
 
     public SceneManager(
         IServiceProvider serviceProvider,
@@ -53,7 +57,9 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         IFactory<ICacheService> cacheServiceFactory,
         IFactory<IJsonService> jsonServiceFactory,
         IFactory<IMcpServerManager> mcpServerManagerFactory,
-        IFactory<IRateLimiter>? rateLimiterFactory = null)
+        IFactory<IRateLimiter>? rateLimiterFactory = null,
+        IFactory<IMemory>? memoryFactory = null,
+        IFactory<IMemoryStorage>? memoryStorageFactory = null)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -68,6 +74,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _jsonServiceFactory = jsonServiceFactory;
         _mcpServerManagerFactory = mcpServerManagerFactory;
         _rateLimiterFactory = rateLimiterFactory;
+        _memoryFactory = memoryFactory;
+        _memoryStorageFactory = memoryStorageFactory;
     }
 
     public void SetFactoryName(AnyOf<string?, Enum>? name)
@@ -106,9 +114,18 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                 _settings.RateLimiting?.Strategy, _factoryName);
         }
 
+        // Resolve memory components if enabled
+        _memory = _memoryFactory?.Create(name);
+        _memoryStorage = _memoryStorageFactory?.Create(name);
+        if (_memory != null && _memoryStorage != null)
+        {
+            _logger.LogDebug("Memory enabled with max summary length: {MaxLength} (Factory: {FactoryName})",
+                _settings.Memory?.MaxSummaryLength, _factoryName);
+        }
+
         var availableScenes = _sceneFactory.GetSceneNames().Count();
-        _logger.LogInformation("SceneManager initialized successfully - Scenes: {SceneCount}, ChatClients: {ChatClientCount}, FallbackMode: {FallbackMode}, Planner: {HasPlanner}, Summarizer: {HasSummarizer}, Director: {HasDirector}, Cache: {HasCache}, RateLimit: {HasRateLimit} (Factory: {FactoryName})", 
-            availableScenes, _settings.ChatClientNames?.Count ?? 1, _settings.FallbackMode, _planner != null, _summarizer != null, _director != null, _cacheService != null, _rateLimiter != null, _factoryName);
+        _logger.LogInformation("SceneManager initialized successfully - Scenes: {SceneCount}, ChatClients: {ChatClientCount}, FallbackMode: {FallbackMode}, Planner: {HasPlanner}, Summarizer: {HasSummarizer}, Director: {HasDirector}, Cache: {HasCache}, RateLimit: {HasRateLimit}, Memory: {HasMemory} (Factory: {FactoryName})", 
+            availableScenes, _settings.ChatClientNames?.Count ?? 1, _settings.FallbackMode, _planner != null, _summarizer != null, _director != null, _cacheService != null, _rateLimiter != null, _memory != null, _factoryName);
     }
 
     public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(
@@ -316,12 +333,36 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                 rateLimitKey, checkResult!.RemainingTokens, checkResult.ResetTime);
         }
 
+        // Load previous memory if enabled
+        ConversationMemory? previousMemory = null;
+        if (_memory != null && _memoryStorage != null && _settings.Memory?.Enabled == true && context.ConversationKey != null)
+        {
+            yield return YieldStatus(AiResponseStatus.LoadingCache, "Loading conversation memory");
+
+            previousMemory = await _memoryStorage.GetAsync(context.ConversationKey, metadata, settings, cancellationToken);
+
+            if (previousMemory != null)
+            {
+                _logger.LogInformation(
+                    "Previous memory loaded for conversation '{Key}': {ConversationCount} conversations, summary length: {Length} (Factory: {FactoryName})",
+                    context.ConversationKey, previousMemory.ConversationCount, previousMemory.Summary?.Length ?? 0, _factoryName);
+
+                // Add memory context to the beginning of conversation
+                context.Properties["previous_memory"] = previousMemory;
+            }
+            else
+            {
+                _logger.LogDebug("No previous memory found for conversation '{Key}' (Factory: {FactoryName})",
+                    context.ConversationKey, _factoryName);
+            }
+        }
+
         // Load from cache if available
-        if (settings.CacheBehavior != CacheBehavior.Avoidable && _cacheService != null && context.CacheKey != null)
+        if (settings.CacheBehavior != CacheBehavior.Avoidable && _cacheService != null && context.ConversationKey != null)
         {
             yield return YieldStatus(AiResponseStatus.LoadingCache, "Loading from cache");
 
-            var cached = await _cacheService.GetAsync(context.CacheKey, cancellationToken);
+            var cached = await _cacheService.GetAsync(context.ConversationKey, cancellationToken);
             if (cached != null)
             {
                 // Check if summarization needed for cached data
@@ -411,10 +452,53 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         }
 
         // Save to cache
-        if (settings.CacheBehavior != CacheBehavior.Avoidable && _cacheService != null && context.CacheKey != null)
+        if (settings.CacheBehavior != CacheBehavior.Avoidable && _cacheService != null && context.ConversationKey != null)
         {
             yield return YieldStatus(AiResponseStatus.SavingCache, "Saving to cache");
-            await _cacheService.SetAsync(context.CacheKey, context.Responses, settings.CacheBehavior, cancellationToken);
+            await _cacheService.SetAsync(context.ConversationKey, context.Responses, settings.CacheBehavior, cancellationToken);
+        }
+
+        // Save updated memory if enabled
+        if (_memory != null && _memoryStorage != null && _settings.Memory?.Enabled == true && context.ConversationKey != null)
+        {
+            yield return YieldStatus(AiResponseStatus.SavingCache, "Saving conversation memory");
+
+            // Collect all conversation messages from responses
+            var conversationMessages = context.Responses
+                .Where(r => !string.IsNullOrWhiteSpace(r.Message))
+                .Select(r => new ChatMessage(ChatRole.Assistant, r.Message ?? string.Empty))
+                .ToList();
+
+            // Add user's initial message
+            conversationMessages.Insert(0, new ChatMessage(ChatRole.User, message));
+
+            // Get previous memory from context
+            var prevMemoryFromContext = context.Properties.TryGetValue("previous_memory", out var prevMem)
+                ? prevMem as ConversationMemory
+                : null;
+
+            try
+            {
+                // Summarize and save
+                var updatedMemory = await _memory.SummarizeAsync(
+                    prevMemoryFromContext,
+                    message,
+                    conversationMessages,
+                    metadata,
+                    settings,
+                    _chatClientManager,
+                    cancellationToken);
+
+                _logger.LogInformation(
+                    "Conversation memory updated and saved. Key: '{Key}', ConversationCount: {Count} (Factory: {FactoryName})",
+                    context.ConversationKey, updatedMemory.ConversationCount, _factoryName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save conversation memory for key '{Key}' (Factory: {FactoryName})",
+                    context.ConversationKey, _factoryName);
+                // Don't fail the entire request if memory save fails
+            }
         }
 
         yield return YieldStatus(AiResponseStatus.Completed, "Execution completed", context.TotalCost);
@@ -432,7 +516,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             InputMessage = message,
             Metadata = metadata ?? new Dictionary<string, object>(),
             ChatClientManager = _chatClientManager,
-            CacheKey = settings.CacheKey ?? Guid.NewGuid().ToString(),
+            ConversationKey = settings.ConversationKey ?? Guid.NewGuid().ToString(),
             CacheBehavior = settings.CacheBehavior
         };
 
@@ -693,6 +777,27 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         {
             var mainActorText = string.Join("\n\n", context.MainActorContext);
             conversationMessages.Add(new ChatMessage(ChatRole.System, mainActorText));
+        }
+
+        // Add previous memory context if available
+        if (context.Properties.TryGetValue("previous_memory", out var previousMemoryObj) &&
+            previousMemoryObj is ConversationMemory previousMemory)
+        {
+            var memoryContext = $@"Previous conversation context (Conversation #{previousMemory.ConversationCount}):
+
+Summary: {previousMemory.Summary}
+
+Important Facts:
+{System.Text.Json.JsonSerializer.Serialize(previousMemory.ImportantFacts, new System.Text.Json.JsonSerializerOptions { WriteIndented = true })}
+
+Last Updated: {previousMemory.LastUpdated:yyyy-MM-dd HH:mm:ss} UTC
+
+Use this context to provide personalized and coherent responses.";
+
+            conversationMessages.Insert(0, new ChatMessage(ChatRole.System, memoryContext));
+
+            _logger.LogDebug("Added previous memory to conversation (ConversationCount: {Count}, SummaryLength: {Length}, Factory: {FactoryName})",
+                previousMemory.ConversationCount, previousMemory.Summary?.Length ?? 0, _factoryName);
         }
 
         // Add MCP system messages (resources and prompts)

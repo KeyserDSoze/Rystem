@@ -152,6 +152,38 @@ public static class ServiceCollectionExtensions
             services.AddFactory<IJsonService, DefaultJsonService>(name, ServiceLifetime.Singleton);
         }
 
+        // Register memory components if enabled
+        if (builder.Settings.Memory?.Enabled == true)
+        {
+            // Register memory settings
+            services.AddFactory(builder.Settings.Memory, name, ServiceLifetime.Singleton);
+
+            // Register memory storage (InMemory by default, unless Custom is specified)
+            if (!builder.HasCustomMemoryStorage)
+            {
+                services.AddFactory<IMemoryStorage, InMemoryMemoryStorage>(name, ServiceLifetime.Singleton);
+            }
+            else if (builder.CustomMemoryStorageType != null)
+            {
+                services.AddFactory(typeof(IMemoryStorage), builder.CustomMemoryStorageType, name, ServiceLifetime.Singleton);
+            }
+
+            // Register memory service (default or custom)
+            if (!builder.HasCustomMemory)
+            {
+                services.AddFactory<IMemory, Memory>(name, ServiceLifetime.Singleton);
+            }
+            else if (builder.CustomMemoryType != null)
+            {
+                services.AddFactory(typeof(IMemory), builder.CustomMemoryType, name, ServiceLifetime.Singleton);
+            }
+
+            // Register factory engines
+            services.AddEngineFactory<IMemory>();
+            services.AddEngineFactory<IMemoryStorage>();
+            services.AddEngineFactory<MemorySettings>();
+        }
+
         // Register actor types from scenes (Transient)
         foreach (var scene in builder.Scenes)
         {

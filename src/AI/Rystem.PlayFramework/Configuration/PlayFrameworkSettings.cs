@@ -95,6 +95,13 @@ public sealed class PlayFrameworkSettings
     public RateLimitSettings? RateLimiting { get; set; }
 
     /// <summary>
+    /// Memory configuration.
+    /// Enables conversation memory that persists important information across requests.
+    /// Disabled by default. Enable via .WithMemory() builder.
+    /// </summary>
+    public MemorySettings? Memory { get; set; }
+
+    /// <summary>
     /// Global RAG configurations (key = factory key or empty for default).
     /// </summary>
     public Dictionary<string, RagSettings> GlobalRagSettings { get; set; } = new();

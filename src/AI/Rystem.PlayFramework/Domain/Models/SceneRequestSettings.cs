@@ -70,7 +70,9 @@ public sealed class SceneRequestSettings
     public int MaxDynamicScenes { get; set; } = 5;
 
     /// <summary>
-    /// Cache key (auto-generated if null).
+    /// Unique key for this conversation.
+    /// Used by cache and memory to store and retrieve conversation-specific data.
+    /// If not provided, a new GUID will be generated (resulting in no cache/memory reuse).
     /// </summary>
-    public string? CacheKey { get; set; }
+    public string? ConversationKey { get; set; }
 }

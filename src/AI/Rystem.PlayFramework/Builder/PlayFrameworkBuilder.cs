@@ -18,6 +18,10 @@ public sealed class PlayFrameworkBuilder
     internal bool HasCustomCache { get; set; }
     internal bool HasCustomJsonService { get; set; }
     internal bool HasCustomTransientErrorDetector { get; set; }
+    internal bool HasCustomMemory { get; set; }
+    internal bool HasCustomMemoryStorage { get; set; }
+    internal Type? CustomMemoryType { get; set; }
+    internal Type? CustomMemoryStorageType { get; set; }
 
     internal PlayFrameworkBuilder(IServiceCollection services, AnyOf<string?, Enum>? name = null)
     {

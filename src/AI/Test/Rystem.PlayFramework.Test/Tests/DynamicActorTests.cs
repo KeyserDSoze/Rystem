@@ -56,7 +56,7 @@ public sealed class DynamicActorTests : PlayFrameworkTestBase
         var sceneManager = ServiceProvider.GetRequiredService<ISceneManager>();
         var requestSettings = new SceneRequestSettings
         {
-            CacheKey = Guid.NewGuid().ToString()
+            ConversationKey = Guid.NewGuid().ToString()
         };
 
         // We can't easily test dynamic actors without full execution
