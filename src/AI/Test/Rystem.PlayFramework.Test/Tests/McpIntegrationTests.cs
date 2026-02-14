@@ -277,9 +277,7 @@ public sealed class McpIntegrationTests : PlayFrameworkTestBase
         // Register PlayFramework with scene using MCP
         services.AddPlayFramework(builder =>
         {
-            builder.AddScene(scene => scene
-                .WithName("TestScene")
-                .WithDescription("Test scene with MCP tools")
+            builder.AddScene("TestScene", "Test scene with MCP tools", scene => scene
                 .WithMcpServer("TestMcpServer", filter =>
                 {
                     filter.Tools = new List<string> { "get_weather" };
@@ -324,9 +322,7 @@ public sealed class McpIntegrationTests : PlayFrameworkTestBase
         // Register PlayFramework with scene using MCP
         services.AddPlayFramework(builder =>
         {
-            builder.AddScene(scene => scene
-                .WithName("TestScene")
-                .WithDescription("Test scene with MCP resources")
+            builder.AddScene("TestScene", "Test scene with MCP resources", scene => scene
                 .WithMcpServer("TestMcpServer", filter =>
                 {
                     filter.Resources = new List<string> { "company_policy" };
@@ -374,14 +370,10 @@ public sealed class McpIntegrationTests : PlayFrameworkTestBase
         // Register PlayFramework with two scenes using different MCP servers
         services.AddPlayFramework(builder =>
         {
-            builder.AddScene(scene => scene
-                .WithName("SceneA")
-                .WithDescription("Scene using Server A")
+            builder.AddScene("SceneA", "Scene using Server A", scene => scene
                 .WithMcpServer("ServerA"));
 
-            builder.AddScene(scene => scene
-                .WithName("SceneB")
-                .WithDescription("Scene using Server B")
+            builder.AddScene("SceneB", "Scene using Server B", scene => scene
                 .WithMcpServer("ServerB"));
         });
 

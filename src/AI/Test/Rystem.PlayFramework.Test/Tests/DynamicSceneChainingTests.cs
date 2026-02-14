@@ -43,21 +43,17 @@ public sealed class DynamicSceneChainingTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .AddScene(sceneBuilder =>
+                .AddScene("SalesAnalysis", "Analyzes sales data", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("SalesAnalysis")
-                        .WithDescription("Analyzes sales data")
                         .WithService<SalesService>(serviceBuilder =>
                         {
                             serviceBuilder.WithMethod(x => x.GetSalesData(), "GetSalesData", "Get sales data");
                         });
                 })
-                .AddScene(sceneBuilder =>
+                .AddScene("ReportGenerator", "Generates formatted reports", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("ReportGenerator")
-                        .WithDescription("Generates formatted reports")
                         .WithService<ReportService>(serviceBuilder =>
                         {
                             serviceBuilder.WithMethod(x => x.GenerateReport(), "GenerateReport", "Generate report");
@@ -134,10 +130,10 @@ public sealed class DynamicSceneChainingTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .AddScene(s => s.WithName("Scene1").WithService<TestService>(b => b.WithMethod(x => x.Tool1(), "Tool1", "")))
-                .AddScene(s => s.WithName("Scene2").WithService<TestService>(b => b.WithMethod(x => x.Tool2(), "Tool2", "")))
-                .AddScene(s => s.WithName("Scene3").WithService<TestService>(b => b.WithMethod(x => x.Tool3(), "Tool3", "")))
-                .AddScene(s => s.WithName("Scene4").WithService<TestService>(b => b.WithMethod(x => x.Tool4(), "Tool4", ""))); // Won't be reached
+                .AddScene("Scene1", "Scene1", s => s.WithService<TestService>(b => b.WithMethod(x => x.Tool1(), "Tool1", "")))
+                .AddScene("Scene2", "Scene2", s => s.WithService<TestService>(b => b.WithMethod(x => x.Tool2(), "Tool2", "")))
+                .AddScene("Scene3", "Scene3", s => s.WithService<TestService>(b => b.WithMethod(x => x.Tool3(), "Tool3", "")))
+                .AddScene("Scene4", "Scene4", s => s.WithService<TestService>(b => b.WithMethod(x => x.Tool4(), "Tool4", ""))); // Won't be reached
         });
 
         services.AddSingleton<TestService>();
@@ -195,9 +191,9 @@ public sealed class DynamicSceneChainingTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .AddScene(s => s.WithName("DataFetcher").WithService<DataService>(b => b.WithMethod(x => x.FetchData(), "FetchData", "")))
-                .AddScene(s => s.WithName("Analyzer").WithService<DataService>(b => b.WithMethod(x => x.AnalyzeData(), "AnalyzeData", "")))
-                .AddScene(s => s.WithName("Reporter").WithService<DataService>(b => b.WithMethod(x => x.GenerateReport(), "GenerateReport", "")));
+                .AddScene("DataFetcher", "DataFetcher", s => s.WithService<DataService>(b => b.WithMethod(x => x.FetchData(), "FetchData", "")))
+                .AddScene("Analyzer", "Analyzer", s => s.WithService<DataService>(b => b.WithMethod(x => x.AnalyzeData(), "AnalyzeData", "")))
+                .AddScene("Reporter", "Reporter", s => s.WithService<DataService>(b => b.WithMethod(x => x.GenerateReport(), "GenerateReport", "")));
         });
 
         services.AddSingleton<DataService>();
@@ -243,8 +239,8 @@ public sealed class DynamicSceneChainingTests : PlayFrameworkTestBase
             callCount++;
             return callCount switch
             {
-                1 => CreateSceneSelectionResponse("SimpleCalculator"),
-                2 => CreateToolCallResponse("Add"),
+                1 => CreateSceneSelectionResponse("Add"), // Select "Add" scene (registered below)
+                2 => CreateToolCallResponse("Add"), // Call Add tool
                 3 => CreateTextResponse("Result: 5"),
                 4 => CreateContinueResponse(false), // NO - stop immediately
                 _ => CreateTextResponse("The sum is 5")
@@ -254,8 +250,8 @@ public sealed class DynamicSceneChainingTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .AddScene(s => s.WithName("SimpleCalculator").WithService<CalculatorService>(b => b.WithMethod(x => x.Add(default, default), "Add", "")))
-                .AddScene(s => s.WithName("AdvancedMath").WithService<CalculatorService>(b => b.WithMethod(x => x.Multiply(default, default), "Multiply", "")));
+                .AddScene("Add", "Add", s => s.WithService<CalculatorService>(b => b.WithMethod(x => x.Add(default, default), "Add", "")))
+                .AddScene("Multiply", "Multiply", s => s.WithService<CalculatorService>(b => b.WithMethod(x => x.Multiply(default, default), "Multiply", "")));
         });
 
         services.AddSingleton<CalculatorService>();
@@ -278,7 +274,7 @@ public sealed class DynamicSceneChainingTests : PlayFrameworkTestBase
         // Assert
         var sceneExecutions = results.Where(r => r.Status == AiResponseStatus.ExecutingScene).ToList();
         Assert.Single(sceneExecutions); // Only one scene executed
-        Assert.Equal("SimpleCalculator", sceneExecutions[0].SceneName);
+        Assert.Equal("Add", sceneExecutions[0].SceneName); // Should be "Add" scene
     }
 
     // Helper methods to create responses

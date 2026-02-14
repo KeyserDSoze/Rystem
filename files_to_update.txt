@@ -1,0 +1,19 @@
+// Lista file da aggiornare con pattern: .AddScene(builder => ... WithName/WithDescription)
+// Formato: AddScene("name", "description", builder => ...)
+
+CacheTests.cs - scene con WithName/WithDescription
+MultiSceneTests.cs - 4 scene con WithName/WithDescription
+StreamingTests.cs - 4 scene con WithName/WithDescription
+FactoryPatternTests.cs - scene con WithName/WithDescription
+AzureOpenAIIntegrationTests.cs - 1 scena
+BudgetLimitTests.cs - 6 scene
+AdvancedIntegrationTests.cs - 6 scene
+ComplexObjectToolTests.cs - 3 scene
+InMemoryMcpServerTests.cs - 1 scena
+InteractiveMultiSceneDemo.cs - 4 scene
+DynamicSceneChainingTests.cs - scene con WithName
+Cost Tracking Tests.cs - 2 scene
+McpIntegrationTests.cs - scene
+PlayFrameworkServiceTests.cs - scene
+WebSearchIntegrationTests.cs - scene
+RagIntegrationTests.cs - scene

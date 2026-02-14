@@ -13,6 +13,7 @@ public static class PlayFrameworkBuilderWebSearchExtensions
     /// <param name="configure">Configuration action for web search settings.</param>
     /// <param name="name">Factory key (string or enum) to identify the IWebSearchService. Use null for default.</param>
     /// <returns>Builder for chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when configure is null.</exception>
     /// <example>
     /// // Configure global web search with Bing
     /// builder.WithWebSearch(settings =>
@@ -35,6 +36,17 @@ public static class PlayFrameworkBuilderWebSearchExtensions
     ///     settings.MaxResults = 5;
     /// });
     /// </example>
+    /// <remarks>
+    /// ⚠️ Important: Before calling WithWebSearch(), you must register an IWebSearchService:
+    /// <code>
+    /// services.AddWebSearchService&lt;YourWebSearchService&gt;(cost =>
+    /// {
+    ///     cost.CostPerSearch = 0.005m;
+    ///     cost.CostPerResult = 0.0001m;
+    /// }, name: "bing");
+    /// </code>
+    /// Otherwise, you'll get a runtime error when the scene tries to use web search.
+    /// </remarks>
     public static PlayFrameworkBuilder WithWebSearch(
         this PlayFrameworkBuilder builder,
         Action<WebSearchSettings> configure,
@@ -50,7 +62,7 @@ public static class PlayFrameworkBuilderWebSearchExtensions
             webSearchSettings = new WebSearchSettings { FactoryKey = key };
             builder.Settings.GlobalWebSearchSettings[key] = webSearchSettings;
         }
-        
+
         // Apply configuration
         configure(webSearchSettings);
 

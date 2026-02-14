@@ -207,9 +207,7 @@ public class InMemoryMcpServerTests
         // Add PlayFramework with scene using in-memory MCP
         services.AddPlayFramework(builder =>
         {
-            builder.AddScene(scene => scene
-                .WithName("WeatherScene")
-                .WithDescription("Weather information scene")
+            builder.AddScene("WeatherScene", "Weather information scene", scene => scene
                 .WithMcpServer("WeatherServer"));
         });
 

@@ -21,11 +21,9 @@ public class ComplexObjectToolTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .AddScene(sceneBuilder =>
+                .AddScene("UserManagement", "Manage users with complex data", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("UserManagement")
-                        .WithDescription("Manage users with complex data")
                         .WithService<IUserService>(serviceBuilder =>
                         {
                             serviceBuilder.WithMethod(
@@ -82,11 +80,9 @@ public class ComplexObjectToolTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .AddScene(sceneBuilder =>
+                .AddScene("OrderManagement", "Manage orders", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("OrderManagement")
-                        .WithDescription("Manage orders")
                         .WithService<IOrderService>(serviceBuilder =>
                         {
                             serviceBuilder.WithMethod(
@@ -137,11 +133,9 @@ public class ComplexObjectToolTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .AddScene(sceneBuilder =>
+                .AddScene("BatchProcessing", "Process multiple items", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("BatchProcessing")
-                        .WithDescription("Process multiple items")
                         .WithService<IBatchService>(serviceBuilder =>
                         {
                             serviceBuilder.WithMethod(

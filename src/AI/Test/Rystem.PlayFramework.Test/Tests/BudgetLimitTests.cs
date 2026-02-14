@@ -23,11 +23,9 @@ public class BudgetLimitTests : PlayFrameworkTestBase
             builder
                 // Enable cost tracking with GPT-4 pricing
                 .WithCostTracking("USD", 0.03m, 0.06m) // Input: $0.03/1K, Output: $0.06/1K
-                .AddScene(sceneBuilder =>
+                .AddScene("Calculator", "Performs mathematical calculations", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Calculator")
-                        .WithDescription("Performs mathematical calculations")
                         .WithService<ICalculatorService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -84,11 +82,9 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         {
             builder
                 .WithCostTracking("USD", 0.001m, 0.002m) // Cheap pricing
-                .AddScene(sceneBuilder =>
+                .AddScene("Calculator", "Performs calculations", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Calculator")
-                        .WithDescription("Performs calculations")
                         .WithService<ICalculatorService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -136,11 +132,9 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         {
             builder
                 .WithCostTracking("USD", 0.01m, 0.02m) // Input: $0.01/1K, Output: $0.02/1K
-                .AddScene(sceneBuilder =>
+                .AddScene("Calculator", "Math operations", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Calculator")
-                        .WithDescription("Math operations")
                         .WithService<ICalculatorService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -205,11 +199,9 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         {
             builder
                 .WithCostTracking("USD", 1.0m, 2.0m) // High cost per token
-                .AddScene(sceneBuilder =>
+                .AddScene("Calculator", "Calculations", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Calculator")
-                        .WithDescription("Calculations")
                         .WithService<ICalculatorService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -258,11 +250,9 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         {
             builder
                 .WithCostTracking("EUR", 0.025m, 0.05m) // EUR pricing
-                .AddScene(sceneBuilder =>
+                .AddScene("Calculator", "Math", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Calculator")
-                        .WithDescription("Math")
                         .WithService<ICalculatorService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -312,11 +302,9 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         {
             builder
                 .WithCostTracking("USD", 0.1m, 0.2m) // $0.1 input, $0.2 output per 1K
-                .AddScene(sceneBuilder =>
+                .AddScene("Calculator", "Calculations", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Calculator")
-                        .WithDescription("Calculations")
                         .WithService<ICalculatorService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -432,12 +420,31 @@ internal class MockCostTrackingChatClient : IChatClient
         };
     }
 
-    public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        CancellationToken cancellationToken = default)
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("Streaming not needed for budget tests");
+        await Task.Delay(10, cancellationToken);
+
+        _callCount++;
+
+        // For streaming, simulate streaming text word-by-word
+        var words = new[] { "Mock", "streaming", "response" };
+
+        for (int i = 0; i < words.Length; i++)
+        {
+            await Task.Delay(5, cancellationToken);
+
+            var isLast = i == words.Length - 1;
+            var text = i == 0 ? words[i] : $" {words[i]}";
+
+            yield return new ChatResponseUpdate(ChatRole.Assistant, text)
+            {
+                ModelId = "mock-model",
+                FinishReason = isLast ? ChatFinishReason.Stop : null
+            };
+        }
     }
 
     public void Dispose() { }

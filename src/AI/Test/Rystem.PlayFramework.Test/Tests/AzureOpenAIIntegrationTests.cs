@@ -32,11 +32,9 @@ public sealed class AzureOpenAIIntegrationTests : PlayFrameworkTestBase
                 })
                 .AddMainActor("You are a helpful math assistant. When asked to perform calculations, use the available calculator tools.")
                 .AddCache(cache => cache.WithMemory())
-                .AddScene(sceneBuilder =>
+                .AddScene("Calculator", "Use this scene to perform mathematical calculations. Available operations: add, subtract, multiply, divide.", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Calculator")
-                        .WithDescription("Use this scene to perform mathematical calculations. Available operations: add, subtract, multiply, divide.")
                         .WithService<ICalculatorService>(serviceBuilder =>
                         {
                             serviceBuilder

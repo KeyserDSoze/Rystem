@@ -27,11 +27,9 @@ public sealed class DynamicActorTests : PlayFrameworkTestBase
                     return $"Current user: {userId}";
                 }, cacheForSubsequentCalls: true)
                 .AddMainActor<DatabaseContextActor>(cacheForSubsequentCalls: false)
-                .AddScene(sceneBuilder =>
+                .AddScene("UserInfo", "Provides user information", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("UserInfo")
-                        .WithDescription("Provides user information")
                         .WithService<IUserContextService>(serviceBuilder =>
                         {
                             serviceBuilder

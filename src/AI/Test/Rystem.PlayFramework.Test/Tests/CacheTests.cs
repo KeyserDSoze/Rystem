@@ -24,11 +24,8 @@ public sealed class CacheTests : PlayFrameworkTestBase
                     cacheBuilder.WithMemory();
                 })
                 .AddMainActor("You are a test assistant.")
-                .AddScene(sceneBuilder =>
+                .AddScene("TestScene", "A test scene", sceneBuilder =>
                 {
-                    sceneBuilder
-                        .WithName("TestScene")
-                        .WithDescription("A test scene");
                 });
         });
     }

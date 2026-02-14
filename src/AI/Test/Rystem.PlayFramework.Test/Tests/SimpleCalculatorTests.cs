@@ -27,11 +27,9 @@ public sealed class SimpleCalculatorTests : PlayFrameworkTestBase
                     settings.Summarization.Enabled = false;
                 })
                 .AddMainActor("You are a helpful math assistant. When asked to perform calculations, use the available tools.")
-                .AddScene(sceneBuilder =>
+                .AddScene("Calculator", "Use this scene to perform mathematical calculations", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Calculator")
-                        .WithDescription("Use this scene to perform mathematical calculations")
                         .WithService<ICalculatorService>(serviceBuilder =>
                         {
                             serviceBuilder

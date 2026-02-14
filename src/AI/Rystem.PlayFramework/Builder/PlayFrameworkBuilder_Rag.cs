@@ -17,6 +17,7 @@ public static class PlayFrameworkBuilderRagExtensions
     /// <param name="configure">Configuration action for RAG settings.</param>
     /// <param name="name">Factory key (string or enum) to identify the IRagService. Use null for default.</param>
     /// <returns>Builder for chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when configure is null.</exception>
     /// <example>
     /// // Configure global RAG with Azure AI Search
     /// builder.WithRag(settings =>
@@ -38,6 +39,16 @@ public static class PlayFrameworkBuilderRagExtensions
     ///     settings.TopK = 10;
     /// });
     /// </example>
+    /// <remarks>
+    /// ⚠️ Important: Before calling WithRag(), you must register an IRagService:
+    /// <code>
+    /// services.AddRagService&lt;YourRagService&gt;(cost =>
+    /// {
+    ///     cost.CostPerThousandEmbeddingTokens = 0.0001m;
+    /// }, name: "azure");
+    /// </code>
+    /// Otherwise, you'll get a runtime error when the scene tries to use RAG.
+    /// </remarks>
     public static PlayFrameworkBuilder WithRag(
         this PlayFrameworkBuilder builder,
         Action<RagSettings> configure,

@@ -51,11 +51,9 @@ When handling complex requests:
 Always explain your reasoning and show intermediate steps.")
 
                 // Calculator Scene
-                .AddScene(sceneBuilder =>
+                .AddScene("Calculator", "Mathematical calculations: addition, subtraction, multiplication, division", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Calculator")
-                        .WithDescription("Mathematical calculations: addition, subtraction, multiplication, division")
                         .WithService<ICalculatorService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -71,11 +69,9 @@ Always explain your reasoning and show intermediate steps.")
                 })
 
                 // Weather Scene
-                .AddScene(sceneBuilder =>
+                .AddScene("Weather", "Weather information: current conditions, temperature, forecasts for any city", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Weather")
-                        .WithDescription("Weather information: current conditions, temperature, forecasts for any city")
                         .WithService<IWeatherService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -90,11 +86,9 @@ Always explain your reasoning and show intermediate steps.")
                 })
 
                 // Data Analysis Scene
-                .AddScene(sceneBuilder =>
+                .AddScene("DataAnalysis", "Statistical analysis: calculate average, minimum, maximum, sum of number arrays", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("DataAnalysis")
-                        .WithDescription("Statistical analysis: calculate average, minimum, maximum, sum of number arrays")
                         .WithService<IDataAnalysisService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -110,11 +104,9 @@ Always explain your reasoning and show intermediate steps.")
                 })
 
                 // Report Generator Scene
-                .AddScene(sceneBuilder =>
+                .AddScene("ReportGenerator", "Generate formatted reports, summaries, markdown tables, and documentation", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("ReportGenerator")
-                        .WithDescription("Generate formatted reports, summaries, markdown tables, and documentation")
                         .WithService<IReportService>(serviceBuilder =>
                         {
                             serviceBuilder

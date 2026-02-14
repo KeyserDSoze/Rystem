@@ -22,11 +22,9 @@ public class StreamingTests : PlayFrameworkTestBase
         {
             builder
                 .WithCostTracking("USD", 0.03m, 0.06m)
-                .AddScene(sceneBuilder =>
+                .AddScene("Calculator", "Math operations", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Calculator")
-                        .WithDescription("Math operations")
                         .WithService<ICalculatorService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -94,11 +92,9 @@ public class StreamingTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .AddScene(sceneBuilder =>
+                .AddScene("Calculator", "Math", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Calculator")
-                        .WithDescription("Math")
                         .WithService<ICalculatorService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -149,11 +145,9 @@ public class StreamingTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .AddScene(sceneBuilder =>
+                .AddScene("Calculator", "Math", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Calculator")
-                        .WithDescription("Math")
                         .WithService<ICalculatorService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -209,11 +203,9 @@ public class StreamingTests : PlayFrameworkTestBase
         {
             builder
                 .WithCostTracking("USD", 0.1m, 0.2m) // High cost
-                .AddScene(sceneBuilder =>
+                .AddScene("Calculator", "Math", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Calculator")
-                        .WithDescription("Math")
                         .WithService<ICalculatorService>(serviceBuilder =>
                         {
                             serviceBuilder

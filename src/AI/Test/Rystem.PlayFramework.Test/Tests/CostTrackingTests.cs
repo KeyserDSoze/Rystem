@@ -40,11 +40,9 @@ public sealed class CostTrackingTests : PlayFrameworkTestBase
                     settings.Summarization.Enabled = false;
                 })
                 .AddMainActor("You are a helpful math assistant.")
-                .AddScene(sceneBuilder =>
+                .AddScene("Calculator", "Perform mathematical calculations", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Calculator")
-                        .WithDescription("Perform mathematical calculations")
                         .WithService<ICalculatorService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -214,11 +212,9 @@ public sealed class DisabledCostTrackingTests : PlayFrameworkTestBase
                     settings.Summarization.Enabled = false;
                 })
                 .AddMainActor("You are a helpful assistant.")
-                .AddScene(sceneBuilder =>
+                .AddScene("Calculator", "Calculator", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Calculator")
-                        .WithDescription("Calculator")
                         .WithService<ICalculatorService>(serviceBuilder =>
                         {
                             serviceBuilder.WithMethod(x => x.AddAsync(default, default), "add", "Add");

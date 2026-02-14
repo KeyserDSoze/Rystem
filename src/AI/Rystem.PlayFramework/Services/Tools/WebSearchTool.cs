@@ -186,32 +186,78 @@ internal sealed class WebSearchTool : ISceneTool
 
     private IWebSearchService GetWebSearchService(WebSearchSettings settings)
     {
+        var factoryKey = settings.FactoryKey ?? string.Empty;
+
         try
         {
             // Try factory with key
-            if (!string.IsNullOrEmpty(settings.FactoryKey))
+            var webSearchService = !string.IsNullOrEmpty(factoryKey)
+                ? _webSearchServiceFactory.Create(factoryKey)
+                : _webSearchServiceFactory.Create(string.Empty);
+
+            if (webSearchService == null)
             {
-                return _webSearchServiceFactory.Create(settings.FactoryKey);
+                ThrowWebSearchServiceNotFoundException(factoryKey);
             }
 
-            // Try factory with empty key
-            var service = _webSearchServiceFactory.Create(string.Empty);
-            if (service != null)
-            {
-                return service;
-            }
-
-            // Fallback to DI
-            return _serviceProvider.GetRequiredService<IWebSearchService>();
+            return webSearchService!;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not InvalidOperationException)
         {
-            _logger.LogError(ex, "Failed to resolve IWebSearchService for scene {SceneName} with key {FactoryKey}",
-                _sceneName, _factoryKey);
-            throw new InvalidOperationException(
-                $"No IWebSearchService registered for factory key '{settings.FactoryKey}'. " +
-                "Register a service using services.AddWebSearchService<TService>(configureCost, name).", ex);
+            // Factory threw an exception (service not registered)
+            ThrowWebSearchServiceNotFoundException(factoryKey, ex);
+            return null!; // Never reached
         }
+    }
+
+    private void ThrowWebSearchServiceNotFoundException(string factoryKey, Exception? innerException = null)
+    {
+        var keyDescription = string.IsNullOrEmpty(factoryKey) ? "default (empty key)" : $"'{factoryKey}'";
+
+        var errorMessage = $$"""
+            No IWebSearchService registered for factory key {{keyDescription}}.
+
+            🔧 How to fix:
+
+            1️⃣ Register web search service with factory key:
+
+               services.AddWebSearchService<YourWebSearchService>(cost => 
+               {
+                   cost.CostPerSearch = 0.005m;      // $0.005 per search
+                   cost.CostPerResult = 0.0001m;     // $0.0001 per result
+               }, name: "{{factoryKey}}");
+
+            2️⃣ Example with Bing Search API:
+
+               services.AddWebSearchService<BingSearchService>(cost =>
+               {
+                   cost.CostPerSearch = 0.003m;       // Bing pricing
+                   cost.MonthlyQuota = 1000;
+               }, name: "bing");
+
+            3️⃣ Example with Google Custom Search (using enum):
+
+               services.AddWebSearchService<GoogleSearchService>(cost =>
+               {
+                   cost.CostPerSearch = 0.005m;       // Google pricing
+                   cost.MonthlyQuota = 10000;
+               }, name: WebSearchProvider.Google);
+
+            4️⃣ Example with default (no key):
+
+               services.AddWebSearchService<YourWebSearchService>(cost =>
+               {
+                   cost.CostPerSearch = 0.005m;
+               });  // No name parameter = default
+
+            📖 Documentation: https://rystem.net/mcp/tools/content-repository.md
+            """;
+
+        _logger.LogError(innerException, 
+            "Web search service with factory key {FactoryKey} not found. Scene: {SceneName}", 
+            factoryKey, _sceneName);
+
+        throw new InvalidOperationException(errorMessage, innerException);
     }
 
     private decimal CalculateCost(int resultCount)

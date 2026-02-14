@@ -64,11 +64,10 @@ When handling complex requests:
 Always explain your reasoning and show intermediate results.")
 
                 // Calculator Scene (Enhanced)
-                .AddScene(sceneBuilder =>
+                .AddScene("Calculator", "Advanced mathematical operations: arithmetic, percentages, compound calculations, financial formulas",
+                sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Calculator")
-                        .WithDescription("Advanced mathematical operations: arithmetic, percentages, compound calculations, financial formulas")
                         .WithService<ICalculatorService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -86,11 +85,9 @@ Always explain your reasoning and show intermediate results.")
                 })
 
                 // Weather Scene
-                .AddScene(sceneBuilder =>
+                .AddScene("Weather", "Weather and climate data: temperatures, forecasts, seasonal patterns", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Weather")
-                        .WithDescription("Weather and climate data: temperatures, forecasts, seasonal patterns")
                         .WithService<IWeatherService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -105,11 +102,9 @@ Always explain your reasoning and show intermediate results.")
                 })
 
                 // Data Analysis Scene (Enhanced)
-                .AddScene(sceneBuilder =>
+                .AddScene("DataAnalysis", "Advanced statistical analysis: averages, extremes, trends, variance, correlations", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("DataAnalysis")
-                        .WithDescription("Advanced statistical analysis: averages, extremes, trends, variance, correlations")
                         .WithService<IDataAnalysisService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -127,11 +122,9 @@ Always explain your reasoning and show intermediate results.")
                 })
 
                 // Report Generator Scene
-                .AddScene(sceneBuilder =>
+                .AddScene("ReportGenerator", "Professional document generation: executive summaries, detailed reports, data tables, markdown formatting", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("ReportGenerator")
-                        .WithDescription("Professional document generation: executive summaries, detailed reports, data tables, markdown formatting")
                         .WithService<IReportService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -146,11 +139,9 @@ Always explain your reasoning and show intermediate results.")
                 })
 
                 // Sales Analysis Scene (NEW)
-                .AddScene(sceneBuilder =>
+                .AddScene("SalesAnalysis", "Sales data analysis: retrieve sales figures, calculate growth, analyze performance", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("SalesAnalysis")
-                        .WithDescription("Sales data analysis: retrieve sales figures, calculate growth, analyze performance")
                         .WithService<ISalesService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -165,11 +156,9 @@ Always explain your reasoning and show intermediate results.")
                 })
 
                 // Business Analytics Scene (NEW)
-                .AddScene(sceneBuilder =>
+                .AddScene("BusinessAnalytics", "Advanced business metrics: growth rate calculation, trend analysis, forecasting, KPI tracking", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("BusinessAnalytics")
-                        .WithDescription("Advanced business metrics: growth rate calculation, trend analysis, forecasting, KPI tracking")
                         .WithService<IBusinessAnalyticsService>(serviceBuilder =>
                         {
                             serviceBuilder

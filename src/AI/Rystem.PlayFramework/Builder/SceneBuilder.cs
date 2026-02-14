@@ -18,24 +18,6 @@ public sealed class SceneBuilder
     }
 
     /// <summary>
-    /// Sets the scene name.
-    /// </summary>
-    public SceneBuilder WithName(string name)
-    {
-        _config.Name = name;
-        return this;
-    }
-
-    /// <summary>
-    /// Sets the scene description.
-    /// </summary>
-    public SceneBuilder WithDescription(string description)
-    {
-        _config.Description = description;
-        return this;
-    }
-
-    /// <summary>
     /// Adds service methods as tools.
     /// </summary>
     public SceneBuilder WithService<TService>(Action<ServiceToolBuilder<TService>> configure) where TService : class

@@ -45,6 +45,49 @@ public sealed class PlayFrameworkSettings
     public TelemetrySettings Telemetry { get; set; } = new();
 
     /// <summary>
+    /// Chat client names for PRIMARY load balancing pool.
+    /// These clients handle normal traffic with load distribution.
+    /// Example: ["gpt-4o-1", "gpt-4o-2", "gpt-4o-3"]
+    /// </summary>
+    public List<string> ChatClientNames { get; set; } = [];
+
+    /// <summary>
+    /// Load balancing mode for primary client pool.
+    /// - None: Use only first client (no load balancing)
+    /// - Sequential: Distribute sequentially (client1 → client2 → client3 → client1...)
+    /// - RoundRobin: Balanced rotation
+    /// - Random: Random selection
+    /// Default: None
+    /// </summary>
+    public LoadBalancingMode LoadBalancingMode { get; set; } = LoadBalancingMode.None;
+
+    /// <summary>
+    /// Chat client names for FALLBACK chain.
+    /// These clients are used ONLY if all primary clients fail.
+    /// Example: ["claude-sonnet", "llama-3.1-local"]
+    /// </summary>
+    public List<string> FallbackChatClientNames { get; set; } = [];
+
+    /// <summary>
+    /// Fallback mode for fallback chain (Sequential/RoundRobin/Random).
+    /// Default: Sequential.
+    /// </summary>
+    public FallbackMode FallbackMode { get; set; } = FallbackMode.Sequential;
+
+    /// <summary>
+    /// Maximum retry attempts per client on transient errors.
+    /// Default: 3.
+    /// </summary>
+    public int MaxRetryAttempts { get; set; } = 3;
+
+    /// <summary>
+    /// Base delay for exponential backoff (in seconds).
+    /// Retry delays: 1s, 2s, 4s with default base of 1.
+    /// Default: 1.0.
+    /// </summary>
+    public double RetryBaseDelaySeconds { get; set; } = 1.0;
+
+    /// <summary>
     /// Global RAG configurations (key = factory key or empty for default).
     /// </summary>
     public Dictionary<string, RagSettings> GlobalRagSettings { get; set; } = new();

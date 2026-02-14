@@ -16,10 +16,9 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<SceneManager> _logger;
     private readonly IFactory<ISceneFactory> _sceneFactoryFactory;
-    private readonly IFactory<IChatClient> _chatClientFactory;
+    private readonly IFactory<IChatClientManager> _chatClientManagerFactory;
     private readonly IFactory<PlayFrameworkSettings> _settingsFactory;
     private readonly IFactory<List<ActorConfiguration>> _mainActorsFactory;
-    private readonly IFactory<ICostCalculator> _costCalculatorFactory;
     private readonly IFactory<IPlanner> _plannerFactory;
     private readonly IFactory<ISummarizer> _summarizerFactory;
     private readonly IFactory<IDirector> _directorFactory;
@@ -30,10 +29,9 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     // Resolved dependencies (set via SetFactoryName)
     private string? _factoryName;
     private ISceneFactory _sceneFactory = null!;
-    private IChatClient _chatClient = null!;
+    private IChatClientManager _chatClientManager = null!;
     private PlayFrameworkSettings _settings = null!;
     private List<ActorConfiguration> _mainActors = null!;
-    private ICostCalculator _costCalculator = null!;
     private IPlanner? _planner;
     private ISummarizer? _summarizer;
     private IDirector? _director;
@@ -44,10 +42,9 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         IServiceProvider serviceProvider,
         ILogger<SceneManager> logger,
         IFactory<ISceneFactory> sceneFactoryFactory,
-        IFactory<IChatClient> chatClientFactory,
+        IFactory<IChatClientManager> chatClientManagerFactory,
         IFactory<PlayFrameworkSettings> settingsFactory,
         IFactory<List<ActorConfiguration>> mainActorsFactory,
-        IFactory<ICostCalculator> costCalculatorFactory,
         IFactory<IPlanner> plannerFactory,
         IFactory<ISummarizer> summarizerFactory,
         IFactory<IDirector> directorFactory,
@@ -58,10 +55,9 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _serviceProvider = serviceProvider;
         _logger = logger;
         _sceneFactoryFactory = sceneFactoryFactory;
-        _chatClientFactory = chatClientFactory;
+        _chatClientManagerFactory = chatClientManagerFactory;
         _settingsFactory = settingsFactory;
         _mainActorsFactory = mainActorsFactory;
-        _costCalculatorFactory = costCalculatorFactory;
         _plannerFactory = plannerFactory;
         _summarizerFactory = summarizerFactory;
         _directorFactory = directorFactory;
@@ -79,22 +75,18 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _sceneFactory = _sceneFactoryFactory.Create(name) ?? throw new InvalidOperationException($"SceneFactory not found for name: {name}");
         _logger.LogTrace("SceneFactory resolved: {SceneFactoryType} (Factory: {FactoryName})", _sceneFactory.GetType().Name, _factoryName);
 
-        // Try to get ChatClient from factory, fall back to service provider if not found
-        _chatClient = _chatClientFactory.Create(name) 
-            ?? _serviceProvider.GetService<IChatClient>()
-            ?? throw new InvalidOperationException($"IChatClient not found. Please register IChatClient with AddFactory or as a singleton service.");
-        _logger.LogTrace("ChatClient resolved: {ChatClientType} (Factory: {FactoryName})", _chatClient.GetType().Name, _factoryName);
+        // Get ChatClientManager from factory
+        _chatClientManager = _chatClientManagerFactory.Create(name) 
+            ?? throw new InvalidOperationException($"ChatClientManager not found for factory key: {name}. Make sure IChatClientManager is registered.");
+
+        _logger.LogTrace("ChatClientManager resolved: {ChatClientManagerType} (Factory: {FactoryName})", _chatClientManager.GetType().Name, _factoryName);
 
         _settings = _settingsFactory.Create(name) ?? new PlayFrameworkSettings();
-        _logger.LogDebug("Settings loaded - ExecutionMode: {ExecutionMode}, Planning: {PlanningEnabled}, Cache: {CacheEnabled} (Factory: {FactoryName})", 
-            _settings.DefaultExecutionMode, _settings.Planning.Enabled, _settings.Cache.Enabled, _factoryName);
+        _logger.LogDebug("Settings loaded - ExecutionMode: {ExecutionMode}, Planning: {PlanningEnabled}, Cache: {CacheEnabled}, FallbackMode: {FallbackMode} (Factory: {FactoryName})", 
+            _settings.DefaultExecutionMode, _settings.Planning.Enabled, _settings.Cache.Enabled, _settings.FallbackMode, _factoryName);
 
         _mainActors = _mainActorsFactory.Create(name) ?? [];
         _logger.LogDebug("{ActorCount} main actors loaded (Factory: {FactoryName})", _mainActors.Count, _factoryName);
-
-        _costCalculator = _costCalculatorFactory.Create(name) ?? new CostCalculator(new TokenCostSettings { Enabled = false });
-        _logger.LogDebug("Cost calculator initialized - Enabled: {CostTrackingEnabled}, Currency: {Currency} (Factory: {FactoryName})", 
-            _costCalculator.IsEnabled, _costCalculator.Currency, _factoryName);
 
         _planner = _plannerFactory.Create(name);
         _summarizer = _summarizerFactory.Create(name);
@@ -103,8 +95,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _jsonService = _jsonServiceFactory.Create(name) ?? new DefaultJsonService();
 
         var availableScenes = _sceneFactory.GetSceneNames().Count();
-        _logger.LogInformation("SceneManager initialized successfully - Scenes: {SceneCount}, Planner: {HasPlanner}, Summarizer: {HasSummarizer}, Director: {HasDirector}, Cache: {HasCache} (Factory: {FactoryName})", 
-            availableScenes, _planner != null, _summarizer != null, _director != null, _cacheService != null, _factoryName);
+        _logger.LogInformation("SceneManager initialized successfully - Scenes: {SceneCount}, ChatClients: {ChatClientCount}, FallbackMode: {FallbackMode}, Planner: {HasPlanner}, Summarizer: {HasSummarizer}, Director: {HasDirector}, Cache: {HasCache} (Factory: {FactoryName})", 
+            availableScenes, _settings.ChatClientNames?.Count ?? 1, _settings.FallbackMode, _planner != null, _summarizer != null, _director != null, _cacheService != null, _factoryName);
     }
 
     public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(
@@ -349,7 +341,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         {
             ServiceProvider = _serviceProvider,
             InputMessage = message,
-            ChatClient = _chatClient,
+            ChatClientManager = _chatClientManager,
             CacheKey = settings.CacheKey ?? Guid.NewGuid().ToString(),
             CacheBehavior = settings.CacheBehavior
         };
@@ -457,7 +449,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         };
 
         // Call LLM for scene selection
-        var response = await context.ChatClient.GetResponseAsync(
+        var responseWithCost = await context.ChatClientManager.GetResponseAsync(
             new[] { userMessage },
             chatOptions,
             cancellationToken);
@@ -466,24 +458,28 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         var selectionResponse = new AiSceneResponse
         {
             Status = AiResponseStatus.Running,
-            Message = "Scene selection"
+            Message = "Scene selection",
+            InputTokens = responseWithCost.InputTokens,
+            OutputTokens = responseWithCost.OutputTokens,
+            CachedInputTokens = responseWithCost.CachedInputTokens,
+            Cost = responseWithCost.CalculatedCost,
+            TotalCost = context.AddCost(responseWithCost.CalculatedCost)
         };
-        var canContinue = TrackCosts(response, selectionResponse, context, settings);
 
         // Check budget limit
-        if (!canContinue)
+        if (settings.MaxBudget.HasValue && context.TotalCost > settings.MaxBudget.Value)
         {
             yield return YieldAndTrack(context, new AiSceneResponse
             {
                 Status = AiResponseStatus.BudgetExceeded,
-                Message = $"Budget limit of {settings.MaxBudget:F6} {_costCalculator.Currency} exceeded. Total cost: {context.TotalCost:F6}",
+                Message = $"Budget limit of {settings.MaxBudget:F6} {_chatClientManager.Currency} exceeded. Total cost: {context.TotalCost:F6}",
                 ErrorMessage = "Maximum budget reached"
             });
             yield break;
         }
 
         // Process function calls (scene selections)
-        var responseMessage = response.Messages?.FirstOrDefault();
+        var responseMessage = responseWithCost.Response.Messages?.FirstOrDefault();
         if (responseMessage?.Contents != null)
         {
             foreach (var content in responseMessage.Contents)
@@ -640,30 +636,34 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             iteration++;
 
             // Call LLM
-            var response = await context.ChatClient.GetResponseAsync(
+            var responseWithCost = await context.ChatClientManager.GetResponseAsync(
                 conversationMessages,
                 chatOptions,
                 cancellationToken);
 
-            var responseMessage = response.Messages?.FirstOrDefault();
+            var responseMessage = responseWithCost.Response.Messages?.FirstOrDefault();
             if (responseMessage == null)
             {
                 var errorResponse = new AiSceneResponse
                 {
                     Status = AiResponseStatus.Error,
                     SceneName = scene.Name,
-                    Message = "No response from LLM"
+                    Message = "No response from LLM",
+                    InputTokens = responseWithCost.InputTokens,
+                    OutputTokens = responseWithCost.OutputTokens,
+                    CachedInputTokens = responseWithCost.CachedInputTokens,
+                    Cost = responseWithCost.CalculatedCost,
+                    TotalCost = context.AddCost(responseWithCost.CalculatedCost)
                 };
-                var canContinue = TrackCosts(response, errorResponse, context, settings);
                 yield return YieldAndTrack(context, errorResponse);
 
-                if (!canContinue)
+                if (settings.MaxBudget.HasValue && context.TotalCost > settings.MaxBudget.Value)
                 {
                     yield return YieldAndTrack(context, new AiSceneResponse
                     {
                         Status = AiResponseStatus.BudgetExceeded,
                         SceneName = scene.Name,
-                        Message = $"Budget limit of {settings.MaxBudget:F6} {_costCalculator.Currency} exceeded. Total cost: {context.TotalCost:F6}",
+                        Message = $"Budget limit of {settings.MaxBudget:F6} {_chatClientManager.Currency} exceeded. Total cost: {context.TotalCost:F6}",
                         ErrorMessage = "Maximum budget reached"
                     });
                 }
@@ -687,7 +687,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                     // Stream the final text response
                     await foreach (var streamResponse in StreamTextResponseAsync(
                         responseMessage,
-                        response,
+                        responseWithCost,
                         scene.Name,
                         context,
                         settings,
@@ -703,18 +703,22 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                     {
                         Status = AiResponseStatus.Running,
                         SceneName = scene.Name,
-                        Message = responseMessage.Text ?? string.Empty
+                        Message = responseMessage.Text ?? string.Empty,
+                        InputTokens = responseWithCost.InputTokens,
+                        OutputTokens = responseWithCost.OutputTokens,
+                        CachedInputTokens = responseWithCost.CachedInputTokens,
+                        Cost = responseWithCost.CalculatedCost,
+                        TotalCost = context.AddCost(responseWithCost.CalculatedCost)
                     };
-                    var canContinue = TrackCosts(response, finalResponse, context, settings);
                     yield return YieldAndTrack(context, finalResponse);
 
-                    if (!canContinue)
+                    if (settings.MaxBudget.HasValue && context.TotalCost > settings.MaxBudget.Value)
                     {
                         yield return YieldAndTrack(context, new AiSceneResponse
                         {
                             Status = AiResponseStatus.BudgetExceeded,
                             SceneName = scene.Name,
-                            Message = $"Budget limit of {settings.MaxBudget:F6} {_costCalculator.Currency} exceeded. Total cost: {context.TotalCost:F6}",
+                            Message = $"Budget limit of {settings.MaxBudget:F6} {_chatClientManager.Currency} exceeded. Total cost: {context.TotalCost:F6}",
                             ErrorMessage = "Maximum budget reached"
                         });
                     }
@@ -728,9 +732,13 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             {
                 Status = AiResponseStatus.Running,
                 SceneName = scene.Name,
-                Message = $"LLM returned {functionCalls.Count} function call(s)"
+                Message = $"LLM returned {functionCalls.Count} function call(s)",
+                InputTokens = responseWithCost.InputTokens,
+                OutputTokens = responseWithCost.OutputTokens,
+                CachedInputTokens = responseWithCost.CachedInputTokens,
+                Cost = responseWithCost.CalculatedCost,
+                TotalCost = context.AddCost(responseWithCost.CalculatedCost)
             };
-            var canContinueAfterLLM = TrackCosts(response, llmResponse, context, settings);
 
             // Only yield if there are costs to report
             if (llmResponse.Cost.HasValue)
@@ -739,13 +747,13 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             }
 
             // Check budget before executing tools
-            if (!canContinueAfterLLM)
+            if (settings.MaxBudget.HasValue && context.TotalCost > settings.MaxBudget.Value)
             {
                 yield return YieldAndTrack(context, new AiSceneResponse
                 {
                     Status = AiResponseStatus.BudgetExceeded,
                     SceneName = scene.Name,
-                    Message = $"Budget limit of {settings.MaxBudget:F6} {_costCalculator.Currency} exceeded. Total cost: {context.TotalCost:F6}",
+                    Message = $"Budget limit of {settings.MaxBudget:F6} {_chatClientManager.Currency} exceeded. Total cost: {context.TotalCost:F6}",
                     ErrorMessage = "Maximum budget reached"
                 });
                 yield break;
@@ -862,12 +870,12 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         if (settings.EnableStreaming)
         {
             // Streaming mode
-            await foreach (var streamChunk in context.ChatClient.GetStreamingResponseAsync(
+            await foreach (var streamUpdateWithCost in context.ChatClientManager.GetStreamingResponseAsync(
                 new[] { finalPrompt },
                 cancellationToken: cancellationToken))
             {
                 await foreach (var streamResponse in ProcessStreamingChunkAsync(
-                    streamChunk,
+                    streamUpdateWithCost.Update,
                     null, // No scene name for final response
                     context,
                     settings,
@@ -880,24 +888,28 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         else
         {
             // Non-streaming mode
-            var response = await context.ChatClient.GetResponseAsync(
+            var responseWithCost = await context.ChatClientManager.GetResponseAsync(
                 new[] { finalPrompt },
                 cancellationToken: cancellationToken);
 
             var finalResponse = new AiSceneResponse
             {
                 Status = AiResponseStatus.Running,
-                Message = response.Messages?.FirstOrDefault()?.Text
+                Message = responseWithCost.Response.Messages?.FirstOrDefault()?.Text,
+                InputTokens = responseWithCost.InputTokens,
+                OutputTokens = responseWithCost.OutputTokens,
+                CachedInputTokens = responseWithCost.CachedInputTokens,
+                Cost = responseWithCost.CalculatedCost,
+                TotalCost = context.AddCost(responseWithCost.CalculatedCost)
             };
-            var canContinue = TrackCosts(response, finalResponse, context, settings);
             yield return YieldAndTrack(context, finalResponse);
 
-            if (!canContinue)
+            if (settings.MaxBudget.HasValue && context.TotalCost > settings.MaxBudget.Value)
             {
                 yield return YieldAndTrack(context, new AiSceneResponse
                 {
                     Status = AiResponseStatus.BudgetExceeded,
-                    Message = $"Budget limit of {settings.MaxBudget:F6} {_costCalculator.Currency} exceeded. Total cost: {context.TotalCost:F6}",
+                    Message = $"Budget limit of {settings.MaxBudget:F6} {_chatClientManager.Currency} exceeded. Total cost: {context.TotalCost:F6}",
                     ErrorMessage = "Maximum budget reached"
                 });
             }
@@ -1027,7 +1039,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         }
 
         // Call LLM for scene selection
-        var response = await context.ChatClient.GetResponseAsync(
+        var responseWithCost = await context.ChatClientManager.GetResponseAsync(
             messages,
             chatOptions,
             cancellationToken);
@@ -1036,12 +1048,16 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         var selectionResponse = new AiSceneResponse
         {
             Status = AiResponseStatus.Running,
-            Message = "Scene selection for chaining"
+            Message = "Scene selection for chaining",
+            InputTokens = responseWithCost.InputTokens,
+            OutputTokens = responseWithCost.OutputTokens,
+            CachedInputTokens = responseWithCost.CachedInputTokens,
+            Cost = responseWithCost.CalculatedCost,
+            TotalCost = context.AddCost(responseWithCost.CalculatedCost)
         };
-        TrackCosts(response, selectionResponse, context, settings);
 
         // Extract function call
-        var responseMessage = response.Messages?.FirstOrDefault();
+        var responseMessage = responseWithCost.Response.Messages?.FirstOrDefault();
         var functionCall = responseMessage?.Contents?.OfType<FunctionCallContent>().FirstOrDefault();
 
         if (functionCall != null)
@@ -1082,7 +1098,7 @@ Available scenes for further execution:
 Do you need to execute another scene to complete the user's request?
 Respond with 'YES' if you need more information from another scene, or 'NO' if you have enough information to provide a complete answer.";
 
-        var response = await context.ChatClient.GetResponseAsync(
+        var responseWithCost = await context.ChatClientManager.GetResponseAsync(
             new[] { new ChatMessage(ChatRole.User, prompt) },
             cancellationToken: cancellationToken);
 
@@ -1090,11 +1106,15 @@ Respond with 'YES' if you need more information from another scene, or 'NO' if y
         var continueResponse = new AiSceneResponse
         {
             Status = AiResponseStatus.Running,
-            Message = "Continuation decision"
+            Message = "Continuation decision",
+            InputTokens = responseWithCost.InputTokens,
+            OutputTokens = responseWithCost.OutputTokens,
+            CachedInputTokens = responseWithCost.CachedInputTokens,
+            Cost = responseWithCost.CalculatedCost,
+            TotalCost = context.AddCost(responseWithCost.CalculatedCost)
         };
-        TrackCosts(response, continueResponse, context, settings);
 
-        var responseText = response.Messages?.FirstOrDefault()?.Text?.Trim().ToUpperInvariant() ?? "";
+        var responseText = responseWithCost.Response.Messages?.FirstOrDefault()?.Text?.Trim().ToUpperInvariant() ?? "";
         return responseText.Contains("YES");
     }
 
@@ -1215,51 +1235,11 @@ Respond with 'YES' if you need more information from another scene, or 'NO' if y
     }
 
     /// <summary>
-    /// Extracts token usage from ChatResponse and calculates costs.
-    /// </summary>
-    /// <returns>True if execution should continue; False if budget exceeded.</returns>
-    private bool TrackCosts(ChatResponse chatResponse, AiSceneResponse sceneResponse, SceneContext context, SceneRequestSettings? settings = null)
-    {
-        if (!_costCalculator.IsEnabled || chatResponse.Usage == null)
-            return true; // Continue execution
-
-        // Extract token usage from ChatResponse
-        var usage = new TokenUsage
-        {
-            InputTokens = (int)(chatResponse.Usage.InputTokenCount ?? 0),
-            OutputTokens = (int)(chatResponse.Usage.OutputTokenCount ?? 0),
-            CachedInputTokens = 0, // Azure OpenAI may provide this in future
-            ModelId = chatResponse.ModelId
-        };
-
-        // Calculate costs
-        var costCalculation = _costCalculator.Calculate(usage);
-
-        // Update scene response with token and cost info
-        sceneResponse.InputTokens = usage.InputTokens;
-        sceneResponse.OutputTokens = usage.OutputTokens;
-        sceneResponse.CachedInputTokens = usage.CachedInputTokens;
-        sceneResponse.Cost = costCalculation.TotalCost;
-
-        // Accumulate total cost
-        context.TotalCost += costCalculation.TotalCost;
-        sceneResponse.TotalCost = context.TotalCost;
-
-        // Check budget limit
-        if (settings?.MaxBudget.HasValue == true && context.TotalCost > settings.MaxBudget.Value)
-        {
-            return false; // Budget exceeded - stop execution
-        }
-
-        return true; // Continue execution
-    }
-
-    /// <summary>
     /// Streams a text response that's already been received (non-streaming fallback).
     /// </summary>
     private async IAsyncEnumerable<AiSceneResponse> StreamTextResponseAsync(
         ChatMessage responseMessage,
-        ChatResponse chatResponse,
+        ChatResponseWithCost responseWithCost,
         string? sceneName,
         SceneContext context,
         SceneRequestSettings settings,
@@ -1290,16 +1270,20 @@ Respond with 'YES' if you need more information from another scene, or 'NO' if y
             // Track costs only on the last chunk
             if (isLastChunk)
             {
-                var canContinue = TrackCosts(chatResponse, streamResponse, context, settings);
+                streamResponse.InputTokens = responseWithCost.InputTokens;
+                streamResponse.OutputTokens = responseWithCost.OutputTokens;
+                streamResponse.CachedInputTokens = responseWithCost.CachedInputTokens;
+                streamResponse.Cost = responseWithCost.CalculatedCost;
+                streamResponse.TotalCost = context.AddCost(responseWithCost.CalculatedCost);
                 yield return YieldAndTrack(context, streamResponse);
 
-                if (!canContinue)
+                if (settings.MaxBudget.HasValue && context.TotalCost > settings.MaxBudget.Value)
                 {
                     yield return YieldAndTrack(context, new AiSceneResponse
                     {
                         Status = AiResponseStatus.BudgetExceeded,
                         SceneName = sceneName,
-                        Message = $"Budget limit of {settings.MaxBudget:F6} {_costCalculator.Currency} exceeded. Total cost: {context.TotalCost:F6}",
+                        Message = $"Budget limit of {settings.MaxBudget:F6} {_chatClientManager.Currency} exceeded. Total cost: {context.TotalCost:F6}",
                         ErrorMessage = "Maximum budget reached"
                     });
                 }
@@ -1398,5 +1382,69 @@ Respond with 'YES' if you need more information from another scene, or 'NO' if y
             },
             mcpTool.Name,
             mcpTool.Description);
+    }
+
+    private void ThrowChatClientNotFoundException(AnyOf<string?, Enum>? name)
+    {
+        var factoryKeyDisplay = string.IsNullOrEmpty(name?.ToString()) || name?.ToString() == "default"
+            ? "default (empty key)"
+            : $"'{name}'";
+
+        var errorMessage = $$"""
+            No IChatClient registered for factory key {{factoryKeyDisplay}}.
+
+            🔧 How to fix:
+
+            1️⃣ Register IChatClient as singleton (simplest):
+
+               services.AddSingleton<IChatClient>(sp =>
+               {
+                   return new AzureOpenAIClient(endpoint, apiKey, modelName);
+               });
+
+            2️⃣ Register with factory pattern (for multiple models):
+
+               services.AddFactory<IChatClient, AzureOpenAIClient>(name: "gpt4");
+               services.AddFactory<IChatClient, OllamaClient>(name: "llama");
+
+            3️⃣ Example with Azure OpenAI:
+
+               using Microsoft.Extensions.AI;
+               using Azure.AI.OpenAI;
+
+               services.AddSingleton<IChatClient>(sp =>
+               {
+                   var client = new AzureOpenAIClient(
+                       new Uri("https://your-resource.openai.azure.com"),
+                       new AzureKeyCredential("your-api-key"));
+
+                   return client.AsChatClient("gpt-4o");
+               });
+
+            4️⃣ Example with Ollama (local):
+
+               services.AddSingleton<IChatClient>(sp =>
+               {
+                   var client = new HttpClient 
+                   { 
+                       BaseAddress = new Uri("http://localhost:11434") 
+                   };
+                   return new OllamaChatClient(client, "llama3.1");
+               });
+
+            5️⃣ Example with OpenAI (cloud):
+
+               services.AddSingleton<IChatClient>(sp =>
+               {
+                   var client = new OpenAI.OpenAIClient("your-openai-api-key");
+                   return client.AsChatClient("gpt-4o");
+               });
+
+            📖 Documentation: https://learn.microsoft.com/dotnet/ai/get-started
+            """;
+
+        _logger.LogError("IChatClient with factory key {FactoryKey} not registered", name);
+
+        throw new InvalidOperationException(errorMessage);
     }
 }

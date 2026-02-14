@@ -141,7 +141,12 @@ internal sealed class MockChatClient : IChatClient
             [new ChatMessage(ChatRole.Assistant, responseText)]
         )
         {
-            ModelId = "mock-model"
+            ModelId = "mock-model",
+            Usage = new UsageDetails
+            {
+                InputTokenCount = 100,
+                OutputTokenCount = 200
+            }
         };
 
         return Task.FromResult(response);

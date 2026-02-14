@@ -234,9 +234,60 @@ internal sealed class McpServerManager : IMcpServerManager, IFactoryName
     {
         if (_settings == null)
         {
-            throw new InvalidOperationException(
-                $"MCP server manager '{_factoryName}' is not configured. " +
-                "Ensure AddMcpServer() was called during service registration with the correct factory name.");
+            var factoryKeyDisplay = string.IsNullOrEmpty(_factoryName) || _factoryName == "default" 
+                ? "default (empty key)" 
+                : $"'{_factoryName}'";
+
+            var errorMessage = $$"""
+                MCP server not configured for factory key {{factoryKeyDisplay}}.
+
+                🔧 How to fix:
+
+                1️⃣ Register MCP server with factory key:
+
+                   services.AddMcpServer(settings =>
+                   {
+                       settings.Url = "http://localhost:3000";
+                       settings.Type = "http";
+                   }, name: "{{_factoryName}}");
+
+                2️⃣ Example with stdio (local process):
+
+                   services.AddMcpServer(settings =>
+                   {
+                       settings.Command = "node";
+                       settings.Arguments = ["path/to/mcp-server.js"];
+                       settings.Type = "stdio";
+                   }, name: "local-mcp");
+
+                3️⃣ Example with enum:
+
+                   services.AddMcpServer(settings =>
+                   {
+                       settings.Url = "http://localhost:3000";
+                       settings.Type = "http";
+                   }, name: McpServerType.Custom);
+
+                4️⃣ Example with default (no key):
+
+                   services.AddMcpServer(settings =>
+                   {
+                       settings.Url = "http://localhost:3000";
+                   });  // No name parameter = default
+
+                5️⃣ Then reference it in your scene:
+
+                   sceneBuilder.WithMcpServer("{{_factoryName}}", filter =>
+                   {
+                       filter.IncludeTools("file_*", "search_*");
+                   });
+
+                📖 Documentation: https://rystem.net/mcp/integration
+                """;
+
+            _logger.LogError("MCP server with factory key {FactoryKey} not configured", _factoryName);
+
+            throw new InvalidOperationException(errorMessage);
         }
     }
 }

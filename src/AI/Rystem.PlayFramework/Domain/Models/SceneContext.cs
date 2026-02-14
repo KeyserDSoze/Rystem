@@ -18,9 +18,9 @@ public sealed class SceneContext
     public required string InputMessage { get; set; }
 
     /// <summary>
-    /// Centralized chat client shared across all operations.
+    /// Chat client manager with built-in retry, fallback, and cost calculation.
     /// </summary>
-    public required IChatClient ChatClient { get; set; }
+    public required IChatClientManager ChatClientManager { get; set; }
 
     /// <summary>
     /// All responses generated during execution.

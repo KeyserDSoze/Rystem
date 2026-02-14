@@ -190,35 +190,76 @@ internal sealed class RagTool : ISceneTool
 
     private IRagService GetRagService(RagSettings settings)
     {
+        var factoryKey = settings.FactoryKey ?? string.Empty;
+
         try
         {
             // Try factory with key
-            if (!string.IsNullOrEmpty(settings.FactoryKey))
-            {
-                return _ragServiceFactory.Create(settings.FactoryKey);
-            }
-
-            // Try factory without key (default)
-            return _ragServiceFactory.Create();
-        }
-        catch
-        {
-            // Fallback to DI (no factory registered)
-            _logger.LogWarning(
-                "No IRagService registered in factory. Attempting to resolve from DI. " +
-                "Consider using services.AddRagService<TService>() for factory registration.");
-
-            var ragService = _serviceProvider.GetService(typeof(IRagService)) as IRagService;
+            var ragService = !string.IsNullOrEmpty(factoryKey)
+                ? _ragServiceFactory.Create(factoryKey)
+                : _ragServiceFactory.Create(string.Empty);
 
             if (ragService == null)
             {
-                throw new InvalidOperationException(
-                    "No IRagService registered. Please register using services.AddRagService<TService>() " +
-                    "or services.AddSingleton<IRagService, TImplementation>().");
+                ThrowRagServiceNotFoundException(factoryKey);
             }
 
-            return ragService;
+            return ragService!;
         }
+        catch (Exception ex) when (ex is not InvalidOperationException)
+        {
+            // Factory threw an exception (service not registered)
+            ThrowRagServiceNotFoundException(factoryKey, ex);
+            return null!; // Never reached
+        }
+    }
+
+    private void ThrowRagServiceNotFoundException(string factoryKey, Exception? innerException = null)
+    {
+        var keyDescription = string.IsNullOrEmpty(factoryKey) ? "default (empty key)" : $"'{factoryKey}'";
+
+        var errorMessage = $$"""
+            No IRagService registered for factory key {{keyDescription}}.
+
+            🔧 How to fix:
+
+            1️⃣ Register RAG service with factory key:
+
+               services.AddRagService<YourRagService>(cost => 
+               {
+                   cost.CostPerThousandEmbeddingTokens = 0.0001m;
+               }, name: "{{factoryKey}}");
+
+            2️⃣ Example with Azure AI Search:
+
+               services.AddRagService<AzureAISearchRagService>(cost =>
+               {
+                   cost.CostPerThousandEmbeddingTokens = 0.0001m; // text-embedding-ada-002
+                   cost.CostPerThousandSearchTokens = 0m;
+               }, name: "azure");
+
+            3️⃣ Example with Pinecone (using enum):
+
+               services.AddRagService<PineconeRagService>(cost =>
+               {
+                   cost.CostPerThousandEmbeddingTokens = 0.0001m;
+               }, name: RagProvider.Pinecone);
+
+            4️⃣ Example with default (no key):
+
+               services.AddRagService<YourRagService>(cost =>
+               {
+                   cost.CostPerThousandEmbeddingTokens = 0.0001m;
+               });  // No name parameter = default
+
+            📖 Documentation: https://rystem.net/mcp/tools/repository-setup.md
+            """;
+
+        _logger.LogError(innerException, 
+            "RAG service with factory key {FactoryKey} not found. Scene: {SceneName}", 
+            factoryKey, _sceneName);
+
+        throw new InvalidOperationException(errorMessage, innerException);
     }
 
     private static string FormatResultsForLlm(RagResult result)

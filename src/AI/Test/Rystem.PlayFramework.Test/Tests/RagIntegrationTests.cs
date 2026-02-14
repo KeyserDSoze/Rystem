@@ -45,11 +45,9 @@ public class RagIntegrationTests : PlayFrameworkTestBase
                 }, "default")
                 .AddMainActor("You are a helpful assistant with access to a knowledge base.")
                 // Scene 1: Customer Support (override TopK)
-                .AddScene(scene =>
+                .AddScene("CustomerSupport", "Customer support with knowledge base", scene =>
                 {
                     scene
-                        .WithName("CustomerSupport")
-                        .WithDescription("Customer support with knowledge base")
                         .WithRag(settings =>
                         {
                             settings.TopK = 3; // Fewer, more relevant documents

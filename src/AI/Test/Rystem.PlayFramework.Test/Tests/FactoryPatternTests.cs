@@ -26,9 +26,7 @@ public class FactoryPatternTests : PlayFrameworkTestBase
         {
             builder
                 .WithExecutionMode(SceneExecutionMode.Direct)
-                .AddScene(s => s
-                    .WithName("Calculator")
-                    .WithDescription("Basic calculator")
+                .AddScene("Calculator", "Basic calculator", s => s
                     .WithService<CalculatorService>(b => b
                         .WithMethod(x => x.Add(default, default), "add", "Add numbers")));
         });
@@ -39,9 +37,7 @@ public class FactoryPatternTests : PlayFrameworkTestBase
             builder
                 .WithExecutionMode(SceneExecutionMode.DynamicChaining)
                 .WithCostTracking("USD", 0.03m, 0.06m)
-                .AddScene(s => s
-                    .WithName("AdvancedCalculator")
-                    .WithDescription("Advanced calculator with history")
+                .AddScene("AdvancedCalculator", "Advanced calculator with history", s => s
                     .WithService<CalculatorService>(b => b
                         .WithMethod(x => x.Add(default, default), "add", "Add")
                         .WithMethod(x => x.Multiply(default, default), "multiply", "Multiply")));
@@ -102,7 +98,7 @@ public class FactoryPatternTests : PlayFrameworkTestBase
         {
             builder
                 .WithExecutionMode(SceneExecutionMode.Direct)
-                .AddScene(s => s.WithName("DevCalculator").WithDescription("Dev"));
+                .AddScene("DevCalculator", "DevCalculator", s => s = s);
         });
 
         // Production configuration
@@ -111,7 +107,7 @@ public class FactoryPatternTests : PlayFrameworkTestBase
             builder
                 .WithExecutionMode(SceneExecutionMode.Planning)
                 .WithPlanning()
-                .AddScene(s => s.WithName("ProdCalculator").WithDescription("Prod"));
+                .AddScene("ProdCalculator", "ProdCalculator", s => s = s);
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -141,7 +137,7 @@ public class FactoryPatternTests : PlayFrameworkTestBase
 
         services.AddPlayFramework("existing-config", builder =>
         {
-            builder.AddScene(s => s.WithName("Test").WithDescription("Test"));
+            builder.AddScene("Test", "Test", s => s = s);
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -165,12 +161,12 @@ public class FactoryPatternTests : PlayFrameworkTestBase
 
         services.AddPlayFramework("config1", builder =>
         {
-            builder.AddScene(s => s.WithName("Scene1").WithDescription("1"));
+            builder.AddScene("Scene1", "1", s => s = s);
         });
 
         services.AddPlayFramework("config2", builder =>
         {
-            builder.AddScene(s => s.WithName("Scene2").WithDescription("2"));
+            builder.AddScene("Scene2", "2", s => s = s);
         });
 
         var serviceProvider = services.BuildServiceProvider();

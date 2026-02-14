@@ -17,6 +17,7 @@ public sealed class PlayFrameworkBuilder
     internal bool HasCustomDirector { get; set; }
     internal bool HasCustomCache { get; set; }
     internal bool HasCustomJsonService { get; set; }
+    internal bool HasCustomTransientErrorDetector { get; set; }
 
     internal PlayFrameworkBuilder(IServiceCollection services, AnyOf<string?, Enum>? name = null)
     {
@@ -85,6 +86,15 @@ public sealed class PlayFrameworkBuilder
     /// Configures all settings.
     /// </summary>
     public PlayFrameworkBuilder Configure(Action<PlayFrameworkSettings> configure)
+    {
+        configure(Settings);
+        return this;
+    }
+
+    /// <summary>
+    /// Internal method for configuring settings (used by extension methods).
+    /// </summary>
+    internal PlayFrameworkBuilder ConfigureSettings(Action<PlayFrameworkSettings> configure)
     {
         configure(Settings);
         return this;
@@ -234,13 +244,22 @@ public sealed class PlayFrameworkBuilder
     }
 
     /// <summary>
-    /// Adds a scene.
+    /// Adds a scene with required name, description, and configuration.
     /// </summary>
-    public PlayFrameworkBuilder AddScene(Action<SceneBuilder> configure)
+    /// <param name="name">Scene name (required)</param>
+    /// <param name="description">Scene description (required)</param>
+    /// <param name="configure">Action to configure actors, tools, and other scene settings (required, use empty lambda if no configuration needed)</param>
+    public PlayFrameworkBuilder AddScene(string name, string description, Action<SceneBuilder> configure)
     {
-        var sceneConfig = new SceneConfiguration();
+        var sceneConfig = new SceneConfiguration 
+        { 
+            Name = name,
+            Description = description
+        };
+
         var builder = new SceneBuilder(sceneConfig, Services);
         configure(builder);
+
         Scenes.Add(sceneConfig);
         return this;
     }

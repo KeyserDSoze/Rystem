@@ -43,10 +43,13 @@ public static class ServiceCollectionExtensions
         // This allows them to be injected even when the service itself is not registered
         services.AddEngineFactory<ISceneFactory>();
         services.AddEngineFactory<IChatClient>();
+        services.AddEngineFactory<IChatClientManager>();  // Add chat client manager factory
         services.AddEngineFactory<PlayFrameworkSettings>();
         services.AddEngineFactory<List<SceneConfiguration>>();
         services.AddEngineFactory<List<ActorConfiguration>>();
         services.AddEngineFactory<ICostCalculator>();
+        services.AddEngineFactory<ITransientErrorDetector>();  // Add error detector factory
+        services.AddEngineFactory<TokenCostSettings>();  // Add token cost settings factory
         services.AddEngineFactory<IPlanner>();
         services.AddEngineFactory<ISummarizer>();
         services.AddEngineFactory<IDirector>();
@@ -79,6 +82,20 @@ public static class ServiceCollectionExtensions
             ? new CostCalculator(builder.Settings.CostTracking)
             : new CostCalculator(new TokenCostSettings { Enabled = false });
         services.AddFactory<ICostCalculator>(costCalculator, name, ServiceLifetime.Singleton);
+
+        // Register default cost settings for direct IChatClient fallback
+        services.AddFactory(builder.Settings.CostTracking, name, ServiceLifetime.Singleton);
+
+        // Register default transient error detector if not customized
+        if (!builder.HasCustomTransientErrorDetector)
+        {
+            services.AddFactory<ITransientErrorDetector, DefaultTransientErrorDetector>(
+                name, ServiceLifetime.Singleton);
+        }
+
+        // Register unified chat client manager (handles load balancing, fallback, retry, and cost)
+        services.AddFactory<IChatClientManager, ChatClientManager>(
+            name, ServiceLifetime.Singleton);
 
         // Register default planner if not customized and planning is enabled
         if (!builder.HasCustomPlanner && builder.Settings.Planning.Enabled)

@@ -37,11 +37,9 @@ public sealed class MultiSceneTests : PlayFrameworkTestBase
 When a task requires multiple operations, plan the execution carefully.")
 
                 // Scene 1: Calculator
-                .AddScene(sceneBuilder =>
+                .AddScene("Calculator", "Use this scene to perform mathematical calculations like addition, subtraction, multiplication, and division", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Calculator")
-                        .WithDescription("Use this scene to perform mathematical calculations like addition, subtraction, multiplication, and division")
                         .WithService<ICalculatorService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -57,11 +55,9 @@ When a task requires multiple operations, plan the execution carefully.")
                 })
 
                 // Scene 2: Weather
-                .AddScene(sceneBuilder =>
+                .AddScene("Weather", "Use this scene to get current weather information and temperature for cities", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("Weather")
-                        .WithDescription("Use this scene to get current weather information and temperature for cities")
                         .WithService<IWeatherService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -76,11 +72,9 @@ When a task requires multiple operations, plan the execution carefully.")
                 })
 
                 // Scene 3: Data Analysis
-                .AddScene(sceneBuilder =>
+                .AddScene("DataAnalysis", "Use this scene to analyze data, calculate statistics like average, minimum, maximum, and sum", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("DataAnalysis")
-                        .WithDescription("Use this scene to analyze data, calculate statistics like average, minimum, maximum, and sum")
                         .WithService<IDataAnalysisService>(serviceBuilder =>
                         {
                             serviceBuilder
@@ -96,11 +90,9 @@ When a task requires multiple operations, plan the execution carefully.")
                 })
 
                 // Scene 4: Report Generator
-                .AddScene(sceneBuilder =>
+                .AddScene("ReportGenerator", "Use this scene to generate formatted reports, summaries, and documentation", sceneBuilder =>
                 {
                     sceneBuilder
-                        .WithName("ReportGenerator")
-                        .WithDescription("Use this scene to generate formatted reports, summaries, and documentation")
                         .WithService<IReportService>(serviceBuilder =>
                         {
                             serviceBuilder

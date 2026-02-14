@@ -24,14 +24,14 @@ public class PlayFrameworkServiceTests : PlayFrameworkTestBase
         {
             builder
                 .WithExecutionMode(SceneExecutionMode.Direct)
-                .AddScene(s => s.WithName("BasicCalc").WithDescription("Basic"));
+                .AddScene("BasicCalc", "Basic", s => { });
         });
 
         services.AddPlayFramework("premium", builder =>
         {
             builder
                 .WithExecutionMode(SceneExecutionMode.DynamicChaining)
-                .AddScene(s => s.WithName("AdvancedCalc").WithDescription("Advanced"));
+                .AddScene("AdvancedCalc", "Advanced", s => { });
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -62,7 +62,7 @@ public class PlayFrameworkServiceTests : PlayFrameworkTestBase
         // Register default (no key)
         services.AddPlayFramework(builder =>
         {
-            builder.AddScene(s => s.WithName("Default").WithDescription("Default scene"));
+            builder.AddScene("Default", "Default scene", s => { });
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -89,7 +89,7 @@ public class PlayFrameworkServiceTests : PlayFrameworkTestBase
         // Only register keyed configurations (no default)
         services.AddPlayFramework("keyed", builder =>
         {
-            builder.AddScene(s => s.WithName("Keyed").WithDescription("Keyed"));
+            builder.AddScene("Keyed", "Keyed", s => { });
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -113,7 +113,7 @@ public class PlayFrameworkServiceTests : PlayFrameworkTestBase
 
         services.AddPlayFramework("test-config", builder =>
         {
-            builder.AddScene(s => s.WithName("Test").WithDescription("Test"));
+            builder.AddScene("Test", "Test", s => { });
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -139,7 +139,7 @@ public class PlayFrameworkServiceTests : PlayFrameworkTestBase
 
         services.AddPlayFramework("existing", builder =>
         {
-            builder.AddScene(s => s.WithName("Existing").WithDescription("Existing"));
+            builder.AddScene("Existing", "Existing", s => { });
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -163,7 +163,7 @@ public class PlayFrameworkServiceTests : PlayFrameworkTestBase
 
         services.AddPlayFramework("config-a", builder =>
         {
-            builder.AddScene(s => s.WithName("A").WithDescription("A"));
+            builder.AddScene("A", "A", s => { });
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -187,17 +187,17 @@ public class PlayFrameworkServiceTests : PlayFrameworkTestBase
 
         services.AddPlayFramework("config-1", builder =>
         {
-            builder.AddScene(s => s.WithName("Scene1").WithDescription("1"));
+            builder.AddScene("Scene1", "1", s => { });
         });
 
         services.AddPlayFramework("config-2", builder =>
         {
-            builder.AddScene(s => s.WithName("Scene2").WithDescription("2"));
+            builder.AddScene("Scene2", "2", s => { });
         });
 
         services.AddPlayFramework("config-3", builder =>
         {
-            builder.AddScene(s => s.WithName("Scene3").WithDescription("3"));
+            builder.AddScene("Scene3", "3", s => { });
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -231,14 +231,14 @@ public class PlayFrameworkServiceTests : PlayFrameworkTestBase
         {
             builder
                 .WithExecutionMode(SceneExecutionMode.Direct)
-                .AddScene(s => s.WithName("FreeScene").WithDescription("Free tier"));
+                .AddScene("FreeScene", "Free tier", s => { });
         });
 
         services.AddPlayFramework(AppTier.Premium, builder =>
         {
             builder
                 .WithExecutionMode(SceneExecutionMode.DynamicChaining)
-                .AddScene(s => s.WithName("PremiumScene").WithDescription("Premium tier"));
+                .AddScene("PremiumScene", "Premium tier", s => { });
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -268,12 +268,12 @@ public class PlayFrameworkServiceTests : PlayFrameworkTestBase
 
         services.AddPlayFramework("tier-free", builder =>
         {
-            builder.AddScene(s => s.WithName("BasicSearch").WithDescription("Basic"));
+            builder.AddScene("BasicSearch", "Basic", s => { });
         });
 
         services.AddPlayFramework("tier-premium", builder =>
         {
-            builder.AddScene(s => s.WithName("AdvancedSearch").WithDescription("Advanced"));
+            builder.AddScene("AdvancedSearch", "Advanced", s => { });
         });
 
         services.AddScoped<UserSearchService>();
