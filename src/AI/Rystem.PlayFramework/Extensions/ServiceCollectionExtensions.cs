@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Rystem.PlayFramework.Mcp;
+using Rystem.PlayFramework.Services.Helpers;
 
 namespace Rystem.PlayFramework;
 
@@ -38,6 +39,11 @@ public static class ServiceCollectionExtensions
     {
         var builder = new PlayFrameworkBuilder(services, name);
         configure(builder);
+
+        // Register helper services (singleton, shared across all instances)
+        services.TryAddSingleton<IResponseHelper, ResponseHelper>();
+        services.TryAddSingleton<IStreamingHelper, StreamingHelper>();
+        services.TryAddSingleton<ISceneMatchingHelper, SceneMatchingHelper>();
 
         // Ensure all IFactory<T> types that SceneManager depends on are registered
         // This allows them to be injected even when the service itself is not registered

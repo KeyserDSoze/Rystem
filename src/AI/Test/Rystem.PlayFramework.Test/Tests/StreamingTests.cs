@@ -41,9 +41,8 @@ public class StreamingTests : PlayFrameworkTestBase
 
         var settings = new SceneRequestSettings
         {
-            ExecutionMode = SceneExecutionMode.DynamicChaining,
-            EnableStreaming = true, // Enable streaming
-            MaxDynamicScenes = 1 // Only execute one scene
+            ExecutionMode = SceneExecutionMode.Direct,
+            EnableStreaming = true // Enable streaming
         };
 
         // Act

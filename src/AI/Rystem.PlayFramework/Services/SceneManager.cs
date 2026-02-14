@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Mcp;
+using Rystem.PlayFramework.Services.Helpers;
 using Rystem.PlayFramework.Telemetry;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -28,6 +29,9 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private readonly IFactory<IRateLimiter>? _rateLimiterFactory;
     private readonly IFactory<IMemory>? _memoryFactory;
     private readonly IFactory<IMemoryStorage>? _memoryStorageFactory;
+    private readonly IResponseHelper _responseHelper;
+    private readonly IStreamingHelper _streamingHelper;
+    private readonly ISceneMatchingHelper _sceneMatchingHelper;
 
     // Resolved dependencies (set via SetFactoryName)
     private string? _factoryName;
@@ -57,6 +61,9 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         IFactory<ICacheService> cacheServiceFactory,
         IFactory<IJsonService> jsonServiceFactory,
         IFactory<IMcpServerManager> mcpServerManagerFactory,
+        IResponseHelper responseHelper,
+        IStreamingHelper streamingHelper,
+        ISceneMatchingHelper sceneMatchingHelper,
         IFactory<IRateLimiter>? rateLimiterFactory = null,
         IFactory<IMemory>? memoryFactory = null,
         IFactory<IMemoryStorage>? memoryStorageFactory = null)
@@ -73,6 +80,9 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _cacheServiceFactory = cacheServiceFactory;
         _jsonServiceFactory = jsonServiceFactory;
         _mcpServerManagerFactory = mcpServerManagerFactory;
+        _responseHelper = responseHelper;
+        _streamingHelper = streamingHelper;
+        _sceneMatchingHelper = sceneMatchingHelper;
         _rateLimiterFactory = rateLimiterFactory;
         _memoryFactory = memoryFactory;
         _memoryStorageFactory = memoryStorageFactory;
@@ -569,7 +579,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             yield return YieldStatus(AiResponseStatus.ExecutingScene, $"Executing step {step.StepNumber}: {step.SceneName}");
 
             // Execute scene for this step
-            var scene = FindSceneByFuzzyMatch(step.SceneName);
+            var scene = _sceneMatchingHelper.FindSceneByFuzzyMatch(step.SceneName, _sceneFactory);
             if (scene == null)
             {
                 yield return YieldAndTrack(context, new AiSceneResponse
@@ -671,7 +681,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                     });
 
                     // Execute the selected scene
-                    var scene = FindSceneByFuzzyMatch(selectedSceneName);
+                    var scene = _sceneMatchingHelper.FindSceneByFuzzyMatch(selectedSceneName, _sceneFactory);
                     if (scene != null)
                     {
                         await foreach (var sceneResponse in ExecuteSceneAsync(context, scene, settings, cancellationToken))
@@ -830,110 +840,52 @@ Use this context to provide personalized and coherent responses.";
         {
             iteration++;
 
-            // Optimistic Streaming: Always start with streaming, detect function calls progressively
-            var accumulatedText = new System.Text.StringBuilder();
-            var accumulatedFunctionCalls = new List<FunctionCallContent>();
-            var hasDetectedFunctionCall = false;
-            var streamedToUser = false;
+            ChatMessage? finalMessage = null;
+            string accumulatedText = string.Empty;
+            List<FunctionCallContent> accumulatedFunctionCalls = [];
+            bool streamedToUser = false;
             decimal? totalCost = null;
             int? totalInputTokens = null;
             int? totalOutputTokens = null;
             int? totalCachedInputTokens = null;
-            ChatMessage? finalMessage = null;
 
             // Use streaming when enabled, fallback to non-streaming otherwise
             if (settings.EnableStreaming)
             {
-                // NATIVE STREAMING - detect function calls on the fly
-                await foreach (var streamUpdateWithCost in context.ChatClientManager.GetStreamingResponseAsync(
+                // Use StreamingHelper for optimistic streaming
+                StreamingResult? lastResult = null;
+                await foreach (var result in _streamingHelper.ProcessOptimisticStreamAsync(
+                    context,
                     conversationMessages,
                     chatOptions,
+                    scene.Name,
                     cancellationToken))
                 {
-                    var chunk = streamUpdateWithCost.Update;
+                    lastResult = result;
 
-                    // Detect function calls in this chunk
-                    var chunkFunctionCalls = chunk.Contents?
-                        .OfType<FunctionCallContent>()
-                        .ToList() ?? [];
-
-                    if (chunkFunctionCalls.Any())
+                    // Stream to user if needed
+                    if (result.FinalMessage == null && result.StreamedToUser)
                     {
-                        // Function call detected! Stop visible streaming
-                        hasDetectedFunctionCall = true;
-                        accumulatedFunctionCalls.AddRange(chunkFunctionCalls);
-
-                        _logger.LogDebug("Function call detected during streaming in scene {SceneName}, switching to silent accumulation (Factory: {FactoryName})",
-                            scene.Name, _factoryName);
-                    }
-
-                    // Accumulate text content
-                    if (chunk.Text != null)
-                    {
-                        accumulatedText.Append(chunk.Text);
-                    }
-
-                    // Stream to user ONLY if no function calls detected yet
-                    if (!hasDetectedFunctionCall && chunk.Text != null)
-                    {
-                        streamedToUser = true;
-                        yield return new AiSceneResponse
-                        {
-                            Status = AiResponseStatus.Streaming,
-                            SceneName = scene.Name,
-                            StreamingChunk = chunk.Text,
-                            Message = accumulatedText.ToString(),
-                            IsStreamingComplete = false,
-                            TotalCost = context.TotalCost
-                        };
-                    }
-
-                    // Track usage and costs from ChatUpdateWithCost
-                    if (streamUpdateWithCost.InputTokens > 0)
-                    {
-                        totalInputTokens = (totalInputTokens ?? 0) + streamUpdateWithCost.InputTokens;
-                    }
-                    if (streamUpdateWithCost.OutputTokens > 0)
-                    {
-                        totalOutputTokens = (totalOutputTokens ?? 0) + streamUpdateWithCost.OutputTokens;
-                    }
-                    if (streamUpdateWithCost.CachedInputTokens > 0)
-                    {
-                        totalCachedInputTokens = (totalCachedInputTokens ?? 0) + streamUpdateWithCost.CachedInputTokens;
-                    }
-
-                    if (streamUpdateWithCost.EstimatedCost > 0)
-                    {
-                        totalCost = (totalCost ?? 0) + streamUpdateWithCost.EstimatedCost;
-                    }
-
-                    // Check if streaming is complete
-                    if (chunk.FinishReason != null)
-                    {
-                        // Build final message for conversation history
-                        var contents = new List<AIContent>();
-                        if (!string.IsNullOrEmpty(accumulatedText.ToString()))
-                        {
-                            contents.Add(new TextContent(accumulatedText.ToString()));
-                        }
-                        contents.AddRange(accumulatedFunctionCalls);
-
-                        finalMessage = new ChatMessage(ChatRole.Assistant, contents);
-                        break;
+                        yield return _responseHelper.CreateStreamingResponse(
+                            sceneName: scene.Name,
+                            streamingChunk: result.AccumulatedText,
+                            message: result.AccumulatedText,
+                            isStreamingComplete: false,
+                            totalCost: context.TotalCost);
                     }
                 }
 
-                // Handle case where streaming completed without final message
-                if (finalMessage == null)
+                // Extract final state
+                if (lastResult != null)
                 {
-                    var contents = new List<AIContent>();
-                    if (!string.IsNullOrEmpty(accumulatedText.ToString()))
-                    {
-                        contents.Add(new TextContent(accumulatedText.ToString()));
-                    }
-                    contents.AddRange(accumulatedFunctionCalls);
-
-                    finalMessage = new ChatMessage(ChatRole.Assistant, contents);
+                    finalMessage = lastResult.FinalMessage;
+                    accumulatedText = lastResult.AccumulatedText;
+                    accumulatedFunctionCalls = lastResult.FunctionCalls;
+                    streamedToUser = lastResult.StreamedToUser;
+                    totalCost = lastResult.TotalCost;
+                    totalInputTokens = lastResult.TotalInputTokens;
+                    totalOutputTokens = lastResult.TotalOutputTokens;
+                    totalCachedInputTokens = lastResult.TotalCachedInputTokens;
                 }
             }
             else
@@ -948,15 +900,14 @@ Use this context to provide personalized and coherent responses.";
                 
                 if (finalMessage != null)
                 {
-                    accumulatedText.Append(finalMessage.Text ?? string.Empty);
+                    accumulatedText = finalMessage.Text ?? string.Empty;
                     var functionCalls = finalMessage.Contents?
                         .OfType<FunctionCallContent>()
                         .ToList() ?? [];
                     
                     if (functionCalls.Any())
                     {
-                        hasDetectedFunctionCall = true;
-                        accumulatedFunctionCalls.AddRange(functionCalls);
+                        accumulatedFunctionCalls = functionCalls;
                     }
                 }
 
@@ -969,28 +920,23 @@ Use this context to provide personalized and coherent responses.";
             // Validate response
             if (finalMessage == null)
             {
-                var errorResponse = new AiSceneResponse
-                {
-                    Status = AiResponseStatus.Error,
-                    SceneName = scene.Name,
-                    Message = "No response from LLM",
-                    InputTokens = totalInputTokens,
-                    OutputTokens = totalOutputTokens,
-                    CachedInputTokens = totalCachedInputTokens,
-                    Cost = totalCost,
-                    TotalCost = context.AddCost(totalCost ?? 0)
-                };
-                yield return YieldAndTrack(context, errorResponse);
+                yield return _responseHelper.CreateErrorResponse(
+                    sceneName: scene.Name,
+                    message: "No response from LLM",
+                    errorMessage: null,
+                    context: context,
+                    inputTokens: totalInputTokens,
+                    outputTokens: totalOutputTokens,
+                    cachedInputTokens: totalCachedInputTokens,
+                    cost: totalCost);
 
                 if (settings.MaxBudget.HasValue && context.TotalCost > settings.MaxBudget.Value)
                 {
-                    yield return YieldAndTrack(context, new AiSceneResponse
-                    {
-                        Status = AiResponseStatus.BudgetExceeded,
-                        SceneName = scene.Name,
-                        Message = $"Budget limit of {settings.MaxBudget:F6} {_chatClientManager.Currency} exceeded. Total cost: {context.TotalCost:F6}",
-                        ErrorMessage = "Maximum budget reached"
-                    });
+                    yield return _responseHelper.CreateBudgetExceededResponse(
+                        sceneName: scene.Name,
+                        maxBudget: settings.MaxBudget.Value,
+                        totalCost: context.TotalCost,
+                        currency: _chatClientManager.Currency);
                 }
 
                 yield break;
@@ -1006,19 +952,16 @@ Use this context to provide personalized and coherent responses.";
                 if (settings.EnableStreaming && streamedToUser)
                 {
                     // Already streamed to user, just send final chunk with costs
-                    yield return YieldAndTrack(context, new AiSceneResponse
-                    {
-                        Status = AiResponseStatus.Running,
-                        SceneName = scene.Name,
-                        StreamingChunk = string.Empty,
-                        Message = accumulatedText.ToString(),
-                        IsStreamingComplete = true,
-                        InputTokens = totalInputTokens,
-                        OutputTokens = totalOutputTokens,
-                        CachedInputTokens = totalCachedInputTokens,
-                        Cost = totalCost,
-                        TotalCost = context.AddCost(totalCost ?? 0)
-                    });
+                    yield return _responseHelper.CreateFinalResponse(
+                        sceneName: scene.Name,
+                        message: accumulatedText,
+                        context: context,
+                        inputTokens: totalInputTokens,
+                        outputTokens: totalOutputTokens,
+                        cachedInputTokens: totalCachedInputTokens,
+                        cost: totalCost,
+                        streamingChunk: string.Empty,
+                        isStreamingComplete: true);
 
                     _logger.LogInformation("Native streaming completed for scene {SceneName} (Factory: {FactoryName})",
                         scene.Name, _factoryName);
@@ -1026,64 +969,51 @@ Use this context to provide personalized and coherent responses.";
                 else
                 {
                     // Non-streaming mode or no streaming happened
-                    var finalResponse = new AiSceneResponse
-                    {
-                        Status = AiResponseStatus.Running,
-                        SceneName = scene.Name,
-                        Message = accumulatedText.ToString(),
-                        InputTokens = totalInputTokens,
-                        OutputTokens = totalOutputTokens,
-                        CachedInputTokens = totalCachedInputTokens,
-                        Cost = totalCost,
-                        TotalCost = context.AddCost(totalCost ?? 0)
-                    };
-                    yield return YieldAndTrack(context, finalResponse);
+                    yield return _responseHelper.CreateFinalResponse(
+                        sceneName: scene.Name,
+                        message: accumulatedText,
+                        context: context,
+                        inputTokens: totalInputTokens,
+                        outputTokens: totalOutputTokens,
+                        cachedInputTokens: totalCachedInputTokens,
+                        cost: totalCost);
                 }
 
                 // Check budget
                 if (settings.MaxBudget.HasValue && context.TotalCost > settings.MaxBudget.Value)
                 {
-                    yield return YieldAndTrack(context, new AiSceneResponse
-                    {
-                        Status = AiResponseStatus.BudgetExceeded,
-                        SceneName = scene.Name,
-                        Message = $"Budget limit of {settings.MaxBudget:F6} {_chatClientManager.Currency} exceeded. Total cost: {context.TotalCost:F6}",
-                        ErrorMessage = "Maximum budget reached"
-                    });
+                    yield return _responseHelper.CreateBudgetExceededResponse(
+                        sceneName: scene.Name,
+                        maxBudget: settings.MaxBudget.Value,
+                        totalCost: context.TotalCost,
+                        currency: _chatClientManager.Currency);
                 }
 
                 yield break; // No function calls, we're done!
             }
 
             // Function calls detected - track costs and prepare for tool execution
-            var llmResponse = new AiSceneResponse
+            if (totalCost.HasValue)
             {
-                Status = AiResponseStatus.Running,
-                SceneName = scene.Name,
-                Message = $"LLM returned {accumulatedFunctionCalls.Count} function call(s)",
-                InputTokens = totalInputTokens,
-                OutputTokens = totalOutputTokens,
-                CachedInputTokens = totalCachedInputTokens,
-                Cost = totalCost,
-                TotalCost = context.AddCost(totalCost ?? 0)
-            };
-
-            // Only yield if there are costs to report
-            if (llmResponse.Cost.HasValue)
-            {
-                yield return YieldAndTrack(context, llmResponse);
+                yield return _responseHelper.CreateAndTrackResponse(
+                    context: context,
+                    status: AiResponseStatus.Running,
+                    sceneName: scene.Name,
+                    message: $"LLM returned {accumulatedFunctionCalls.Count} function call(s)",
+                    inputTokens: totalInputTokens,
+                    outputTokens: totalOutputTokens,
+                    cachedInputTokens: totalCachedInputTokens,
+                    cost: totalCost);
             }
 
             // Check budget before executing tools
             if (settings.MaxBudget.HasValue && context.TotalCost > settings.MaxBudget.Value)
             {
-                yield return YieldAndTrack(context, new AiSceneResponse
-                {
-                    Status = AiResponseStatus.BudgetExceeded,
-                    SceneName = scene.Name,
-                    Message = $"Budget limit of {settings.MaxBudget:F6} {_chatClientManager.Currency} exceeded. Total cost: {context.TotalCost:F6}",
-                    ErrorMessage = "Maximum budget reached"
-                });
+                yield return _responseHelper.CreateBudgetExceededResponse(
+                    sceneName: scene.Name,
+                    maxBudget: settings.MaxBudget.Value,
+                    totalCost: context.TotalCost,
+                    currency: _chatClientManager.Currency);
                 yield break;
             }
 
@@ -1107,11 +1037,12 @@ Use this context to provide personalized and coherent responses.";
                 var toolKey = $"{scene.Name}.{functionCall.Name}";
                 context.ExecutedTools.Add(toolKey);
 
-                // Execute tool - store responses before yielding
-                var statusResponse = YieldStatus(AiResponseStatus.FunctionRequest, $"Executing tool: {functionCall.Name}");
-                yield return statusResponse;
+                // Execute tool
+                yield return _responseHelper.CreateStatusResponse(
+                    status: AiResponseStatus.FunctionRequest,
+                    message: $"Executing tool: {functionCall.Name}");
 
-                AiSceneResponse resultResponse;
+                AiSceneResponse toolResponse;
                 try
                 {
                     // Serialize arguments to JSON using IJsonService
@@ -1127,13 +1058,12 @@ Use this context to provide personalized and coherent responses.";
                     };
                     conversationMessages.Add(new ChatMessage(ChatRole.Tool, [functionResult]));
 
-                    resultResponse = YieldAndTrack(context, new AiSceneResponse
-                    {
-                        Status = AiResponseStatus.FunctionCompleted,
-                        SceneName = scene.Name,
-                        Message = $"Tool {functionCall.Name} executed: {toolResult}",
-                        FunctionName = functionCall.Name
-                    });
+                    toolResponse = _responseHelper.CreateAndTrackResponse(
+                        context: context,
+                        status: AiResponseStatus.FunctionCompleted,
+                        sceneName: scene.Name,
+                        message: $"Tool {functionCall.Name} executed: {toolResult}",
+                        functionName: functionCall.Name);
                 }
                 catch (Exception ex)
                 {
@@ -1144,17 +1074,14 @@ Use this context to provide personalized and coherent responses.";
                     };
                     conversationMessages.Add(new ChatMessage(ChatRole.Tool, [errorResult]));
 
-                    resultResponse = YieldAndTrack(context, new AiSceneResponse
-                    {
-                        Status = AiResponseStatus.Error,
-                        SceneName = scene.Name,
-                        ErrorMessage = ex.Message,
-                        Message = $"Tool execution failed: {ex.Message}",
-                        FunctionName = functionCall.Name
-                    });
+                    toolResponse = _responseHelper.CreateErrorResponse(
+                        sceneName: scene.Name,
+                        message: $"Tool execution failed: {ex.Message}",
+                        errorMessage: ex.Message,
+                        context: context);
                 }
 
-                yield return resultResponse;
+                yield return toolResponse;
             }
 
             // Continue loop to get next LLM response after function results
@@ -1197,17 +1124,15 @@ Use this context to provide personalized and coherent responses.";
 
         if (settings.EnableStreaming)
         {
-            // Streaming mode
+            // Streaming mode - use StreamingHelper
             await foreach (var streamUpdateWithCost in context.ChatClientManager.GetStreamingResponseAsync(
                 new[] { finalPrompt },
                 cancellationToken: cancellationToken))
             {
-                await foreach (var streamResponse in ProcessStreamingChunkAsync(
+                await foreach (var streamResponse in _streamingHelper.ProcessChunkAsync(
                     streamUpdateWithCost.Update,
                     null, // No scene name for final response
-                    context,
-                    settings,
-                    cancellationToken))
+                    context))
                 {
                     yield return streamResponse;
                 }
@@ -1220,19 +1145,23 @@ Use this context to provide personalized and coherent responses.";
                 new[] { finalPrompt },
                 cancellationToken: cancellationToken);
 
-            var finalResponse = new AiSceneResponse
-            {
-                Status = AiResponseStatus.Running,
-                Message = responseWithCost.Response.Messages?.FirstOrDefault()?.Text,
-                InputTokens = responseWithCost.InputTokens,
-                OutputTokens = responseWithCost.OutputTokens,
-                CachedInputTokens = responseWithCost.CachedInputTokens,
-                Cost = responseWithCost.CalculatedCost,
-                TotalCost = context.AddCost(responseWithCost.CalculatedCost)
-            };
-            yield return YieldAndTrack(context, finalResponse);
+            yield return _responseHelper.CreateFinalResponse(
+                sceneName: null,
+                message: responseWithCost.Response.Messages?.FirstOrDefault()?.Text,
+                context: context,
+                inputTokens: responseWithCost.InputTokens,
+                outputTokens: responseWithCost.OutputTokens,
+                cachedInputTokens: responseWithCost.CachedInputTokens,
+                cost: responseWithCost.CalculatedCost);
 
             if (settings.MaxBudget.HasValue && context.TotalCost > settings.MaxBudget.Value)
+            {
+                yield return _responseHelper.CreateBudgetExceededResponse(
+                    sceneName: null,
+                    maxBudget: settings.MaxBudget.Value,
+                    totalCost: context.TotalCost,
+                    currency: _chatClientManager.Currency);
+            }
             {
                 yield return YieldAndTrack(context, new AiSceneResponse
                 {
@@ -1391,7 +1320,7 @@ Use this context to provide personalized and coherent responses.";
         if (functionCall != null)
         {
             var selectedSceneName = functionCall.Name;
-            return FindSceneByFuzzyMatch(selectedSceneName);
+            return _sceneMatchingHelper.FindSceneByFuzzyMatch(selectedSceneName, _sceneFactory);
         }
 
         return null;
@@ -1511,31 +1440,6 @@ Respond with 'YES' if you need more information from another scene, or 'NO' if y
         return builder.ToString();
     }
 
-    private IScene? FindSceneByFuzzyMatch(string requestedName)
-    {
-        // Normalize scene names for matching
-        var normalized = NormalizeSceneName(requestedName);
-
-        foreach (var sceneName in _sceneFactory.GetSceneNames())
-        {
-            if (NormalizeSceneName(sceneName) == normalized)
-            {
-                return _sceneFactory.Create(sceneName);
-            }
-        }
-
-        return null;
-    }
-
-    private static string NormalizeSceneName(string name)
-    {
-        return name.Replace("-", "")
-                  .Replace("_", "")
-                  .Replace(" ", "")
-                  .ToLowerInvariant()
-                  .Trim();
-    }
-
     private static AIFunction CreateSceneSelectionTool(IScene scene)
     {
         return AIFunctionFactory.Create(
@@ -1560,124 +1464,6 @@ Respond with 'YES' if you need more information from another scene, or 'NO' if y
         response.TotalCost = context.TotalCost;
         context.Responses.Add(response);
         return response;
-    }
-
-    /// <summary>
-    /// Streams a text response that's already been received (non-streaming fallback).
-    /// </summary>
-    private async IAsyncEnumerable<AiSceneResponse> StreamTextResponseAsync(
-        ChatMessage responseMessage,
-        ChatResponseWithCost responseWithCost,
-        string? sceneName,
-        SceneContext context,
-        SceneRequestSettings settings,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        var text = responseMessage.Text ?? string.Empty;
-        var accumulatedText = new System.Text.StringBuilder();
-
-        // Simulate streaming by splitting into words
-        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-        for (int i = 0; i < words.Length; i++)
-        {
-            var word = i == 0 ? words[i] : $" {words[i]}";
-            accumulatedText.Append(word);
-
-            var isLastChunk = i == words.Length - 1;
-
-            var streamResponse = new AiSceneResponse
-            {
-                Status = isLastChunk ? AiResponseStatus.Running : AiResponseStatus.Streaming,
-                SceneName = sceneName,
-                StreamingChunk = word,
-                Message = accumulatedText.ToString(),
-                IsStreamingComplete = isLastChunk
-            };
-
-            // Track costs only on the last chunk
-            if (isLastChunk)
-            {
-                streamResponse.InputTokens = responseWithCost.InputTokens;
-                streamResponse.OutputTokens = responseWithCost.OutputTokens;
-                streamResponse.CachedInputTokens = responseWithCost.CachedInputTokens;
-                streamResponse.Cost = responseWithCost.CalculatedCost;
-                streamResponse.TotalCost = context.AddCost(responseWithCost.CalculatedCost);
-                yield return YieldAndTrack(context, streamResponse);
-
-                if (settings.MaxBudget.HasValue && context.TotalCost > settings.MaxBudget.Value)
-                {
-                    yield return YieldAndTrack(context, new AiSceneResponse
-                    {
-                        Status = AiResponseStatus.BudgetExceeded,
-                        SceneName = sceneName,
-                        Message = $"Budget limit of {settings.MaxBudget:F6} {_chatClientManager.Currency} exceeded. Total cost: {context.TotalCost:F6}",
-                        ErrorMessage = "Maximum budget reached"
-                    });
-                }
-            }
-            else
-            {
-                streamResponse.TotalCost = context.TotalCost;
-                yield return streamResponse;
-            }
-
-            // Small delay to simulate streaming
-            await Task.Delay(5, cancellationToken);
-        }
-    }
-
-    /// <summary>
-    /// Processes streaming chunks from IChatClient.GetStreamingResponseAsync.
-    /// </summary>
-    private async IAsyncEnumerable<AiSceneResponse> ProcessStreamingChunkAsync(
-        ChatResponseUpdate streamChunk,
-        string? sceneName,
-        SceneContext context,
-        SceneRequestSettings settings,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        // Accumulate complete message (stored in context for tracking)
-        var contextKey = $"streaming_message_{sceneName ?? "final"}";
-        if (!context.Properties.TryGetValue(contextKey, out var accumulatedObj))
-        {
-            accumulatedObj = new System.Text.StringBuilder();
-            context.Properties[contextKey] = accumulatedObj;
-        }
-        var accumulated = (System.Text.StringBuilder)accumulatedObj;
-
-        // Get the text from this chunk
-        var chunkText = streamChunk.Text ?? string.Empty;
-        accumulated.Append(chunkText);
-
-        // Check if this is the final chunk (has completion reason)
-        var isComplete = streamChunk.FinishReason != null;
-
-        var streamResponse = new AiSceneResponse
-        {
-            Status = isComplete ? AiResponseStatus.Running : AiResponseStatus.Streaming,
-            SceneName = sceneName,
-            StreamingChunk = chunkText,
-            Message = accumulated.ToString(),
-            IsStreamingComplete = isComplete
-        };
-
-        // On the last chunk, try to estimate costs (usage may not be available in streaming)
-        if (isComplete)
-        {
-            streamResponse.TotalCost = context.TotalCost;
-            yield return YieldAndTrack(context, streamResponse);
-
-            // Clean up accumulated text
-            context.Properties.Remove(contextKey);
-        }
-        else
-        {
-            streamResponse.TotalCost = context.TotalCost;
-            yield return streamResponse;
-        }
-
-        await Task.CompletedTask; // Satisfy async requirement
     }
 
     /// <summary>
