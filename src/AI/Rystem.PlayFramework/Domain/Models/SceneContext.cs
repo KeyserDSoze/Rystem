@@ -13,9 +13,18 @@ public sealed class SceneContext
     public required IServiceProvider ServiceProvider { get; init; }
 
     /// <summary>
-    /// User's input message.
+    /// User's multi-modal input (text, images, audio, files).
     /// </summary>
-    public required string InputMessage { get; set; }
+    public required MultiModalInput Input { get; set; }
+
+    /// <summary>
+    /// User's input message (text part only, for backward compatibility).
+    /// </summary>
+    public string InputMessage
+    {
+        get => Input.Text ?? string.Empty;
+        set => Input = MultiModalInput.FromText(value);
+    }
 
     /// <summary>
     /// Request metadata for rate limiting, telemetry, and custom logic.

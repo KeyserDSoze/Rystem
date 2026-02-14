@@ -1,3 +1,4 @@
+using Microsoft.Extensions.AI;
 using Rystem.PlayFramework;
 
 namespace Rystem.PlayFramework.Services.Helpers;
@@ -37,7 +38,8 @@ internal sealed class ResponseHelper : IResponseHelper
         int? cachedInputTokens = null,
         decimal? cost = null,
         string? streamingChunk = null,
-        bool? isStreamingComplete = null)
+        bool? isStreamingComplete = null,
+        IEnumerable<AIContent>? contents = null)
     {
         var response = new AiSceneResponse
         {
@@ -48,7 +50,8 @@ internal sealed class ResponseHelper : IResponseHelper
             OutputTokens = outputTokens,
             CachedInputTokens = cachedInputTokens,
             Cost = cost,
-            TotalCost = context.AddCost(cost ?? 0)
+            TotalCost = context.AddCost(cost ?? 0),
+            Contents = contents
         };
 
         if (streamingChunk != null)
@@ -76,7 +79,8 @@ internal sealed class ResponseHelper : IResponseHelper
         int? inputTokens = null,
         int? outputTokens = null,
         int? cachedInputTokens = null,
-        decimal? cost = null)
+        decimal? cost = null,
+        IEnumerable<AIContent>? contents = null)
     {
         var response = new AiSceneResponse
         {
@@ -88,7 +92,8 @@ internal sealed class ResponseHelper : IResponseHelper
             OutputTokens = outputTokens,
             CachedInputTokens = cachedInputTokens,
             Cost = cost,
-            TotalCost = context.AddCost(cost ?? 0)
+            TotalCost = context.AddCost(cost ?? 0),
+            Contents = contents
         };
 
         // Track in context
@@ -140,7 +145,8 @@ internal sealed class ResponseHelper : IResponseHelper
         int? outputTokens = null,
         int? cachedInputTokens = null,
         decimal? cost = null,
-        string? functionName = null)
+        string? functionName = null,
+        IEnumerable<AIContent>? contents = null)
     {
         var response = new AiSceneResponse
         {
@@ -153,7 +159,8 @@ internal sealed class ResponseHelper : IResponseHelper
             CachedInputTokens = cachedInputTokens,
             Cost = cost,
             TotalCost = context.AddCost(cost ?? 0),
-            FunctionName = functionName
+            FunctionName = functionName,
+            Contents = contents
         };
 
         // Track in context

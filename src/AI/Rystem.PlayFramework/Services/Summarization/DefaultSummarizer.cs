@@ -41,10 +41,19 @@ internal sealed class DefaultSummarizer : ISummarizer
         List<AiSceneResponse> responses,
         CancellationToken cancellationToken = default)
     {
-        // Build conversation history
+        // Build conversation history (including multi-modal content info)
         var conversationText = string.Join("\n\n", responses
             .Where(r => !string.IsNullOrEmpty(r.Message))
-            .Select(r => $"[{r.Status}] {r.Message}"));
+            .Select(r =>
+            {
+                var text = $"[{r.Status}] {r.Message}";
+                var multiModalCount = r.Contents?.Count(c => c is DataContent or UriContent) ?? 0;
+                if (multiModalCount > 0)
+                {
+                    text += $" [+{multiModalCount} multi-modal content(s)]";
+                }
+                return text;
+            }));
 
         // Create summarization prompt
         var messages = new List<ChatMessage>

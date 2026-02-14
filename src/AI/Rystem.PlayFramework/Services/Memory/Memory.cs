@@ -72,9 +72,17 @@ Last Updated: {previousMemory.LastUpdated:yyyy-MM-dd HH:mm:ss} UTC";
                 previousMemory.ConversationCount, previousMemory.Summary?.Length ?? 0);
         }
 
-        // Add current conversation
+        // Add current conversation (including multi-modal content descriptions)
         var conversationText = string.Join("\n\n", conversationMessages.Select(m =>
-            $"{m.Role}: {m.Text ?? "[no text]"}"));
+        {
+            var text = $"{m.Role}: {m.Text ?? "[no text]"}";
+            var multiModalCount = m.Contents?.Count(c => c is DataContent or UriContent) ?? 0;
+            if (multiModalCount > 0)
+            {
+                text += $" [+{multiModalCount} multi-modal content(s)]";
+            }
+            return text;
+        }));
 
         promptMessages.Add(new ChatMessage(ChatRole.User, $@"Current conversation (starting message: ""{startingMessage}""):
 

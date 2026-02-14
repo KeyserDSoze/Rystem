@@ -1,0 +1,8 @@
+{
+  "name": "Multi-Modal Test",
+  "type": "sample",
+  "data": {
+    "value": 123,
+    "description": "Test JSON file for multi-modal support"
+  }
+}

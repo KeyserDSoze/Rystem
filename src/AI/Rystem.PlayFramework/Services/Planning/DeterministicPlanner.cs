@@ -46,6 +46,12 @@ internal sealed class DeterministicPlanner : IPlanner
         var response = await _chatClient.GetResponseAsync(messages, options, cancellationToken);
         var planJson = response.Messages?.FirstOrDefault()?.Text ?? "{}";
 
+        // Extract multi-modal contents from planning response
+        var planningMessage = response.Messages?.FirstOrDefault();
+        var planningContents = planningMessage?.Contents?
+            .Where(c => c is DataContent or UriContent)
+            .ToList();
+
         // Parse plan
         var plan = JsonSerializer.Deserialize<ExecutionPlanDto>(planJson, new JsonSerializerOptions
         {
@@ -66,6 +72,7 @@ internal sealed class DeterministicPlanner : IPlanner
         {
             NeedsExecution = plan.NeedsExecution,
             Reasoning = plan.Reasoning,
+            Contents = planningContents,
             Steps = plan.Steps?.Select(s => new PlanStep
             {
                 StepNumber = s.StepNumber,

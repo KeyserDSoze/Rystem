@@ -30,6 +30,7 @@ internal sealed class StreamingHelper : IStreamingHelper
     {
         var accumulatedText = new System.Text.StringBuilder();
         var accumulatedFunctionCalls = new List<FunctionCallContent>();
+        var accumulatedOtherContents = new List<AIContent>(); // For DataContent, UriContent, etc.
         var hasDetectedFunctionCall = false;
         var streamedToUser = false;
         decimal? totalCost = null;
@@ -57,6 +58,19 @@ internal sealed class StreamingHelper : IStreamingHelper
 
                 _logger.LogDebug("Function call detected during streaming in scene {SceneName}, switching to silent accumulation",
                     sceneName);
+            }
+
+            // Accumulate other multi-modal contents (DataContent, UriContent, etc.)
+            var otherContents = chunk.Contents?
+                .Where(c => c is not FunctionCallContent and not TextContent)
+                .ToList() ?? [];
+
+            if (otherContents.Any())
+            {
+                accumulatedOtherContents.AddRange(otherContents);
+                _logger.LogDebug("Multi-modal content detected in streaming chunk: {ContentCount} items ({ContentTypes})",
+                    otherContents.Count,
+                    string.Join(", ", otherContents.Select(c => c.GetType().Name)));
             }
 
             // Accumulate text content
@@ -110,6 +124,7 @@ internal sealed class StreamingHelper : IStreamingHelper
                     contents.Add(new TextContent(accumulatedText.ToString()));
                 }
                 contents.AddRange(accumulatedFunctionCalls);
+                contents.AddRange(accumulatedOtherContents); // Add multi-modal contents
 
                 yield return new StreamingResult
                 {
@@ -133,6 +148,7 @@ internal sealed class StreamingHelper : IStreamingHelper
             finalContents.Add(new TextContent(accumulatedText.ToString()));
         }
         finalContents.AddRange(accumulatedFunctionCalls);
+        finalContents.AddRange(accumulatedOtherContents); // Add multi-modal contents
 
         yield return new StreamingResult
         {

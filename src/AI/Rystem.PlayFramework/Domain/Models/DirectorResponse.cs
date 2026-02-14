@@ -1,4 +1,6 @@
-﻿namespace Rystem.PlayFramework;
+﻿using Microsoft.Extensions.AI;
+
+namespace Rystem.PlayFramework;
 
 /// <summary>
 /// Response from the director after scene execution.
@@ -19,6 +21,11 @@ public sealed class DirectorResponse
     /// Reasoning for the decision.
     /// </summary>
     public string? Reasoning { get; set; }
+
+    /// <summary>
+    /// Multi-modal contents from the director decision.
+    /// </summary>
+    public IEnumerable<AIContent>? Contents { get; set; }
 
     /// <summary>
     /// Specific scene to execute next (null = let AI choose).

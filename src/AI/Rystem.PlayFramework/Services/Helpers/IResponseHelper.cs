@@ -1,3 +1,4 @@
+using Microsoft.Extensions.AI;
 using Rystem.PlayFramework;
 
 namespace Rystem.PlayFramework.Services.Helpers;
@@ -30,7 +31,8 @@ internal interface IResponseHelper
         int? cachedInputTokens = null,
         decimal? cost = null,
         string? streamingChunk = null,
-        bool? isStreamingComplete = null);
+        bool? isStreamingComplete = null,
+        IEnumerable<AIContent>? contents = null);
 
     /// <summary>
     /// Creates an error response with tracking.
@@ -43,7 +45,8 @@ internal interface IResponseHelper
         int? inputTokens = null,
         int? outputTokens = null,
         int? cachedInputTokens = null,
-        decimal? cost = null);
+        decimal? cost = null,
+        IEnumerable<AIContent>? contents = null);
 
     /// <summary>
     /// Creates a budget exceeded response.
@@ -75,5 +78,6 @@ internal interface IResponseHelper
         int? outputTokens = null,
         int? cachedInputTokens = null,
         decimal? cost = null,
-        string? functionName = null);
+        string? functionName = null,
+        IEnumerable<AIContent>? contents = null);
 }

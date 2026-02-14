@@ -139,7 +139,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     }
 
     public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(
-        string message,
+        MultiModalInput input,
         Dictionary<string, object>? metadata = null,
         SceneRequestSettings? settings = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -154,11 +154,11 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         activity?.SetTag(PlayFrameworkActivitySource.Tags.FactoryName, _factoryName);
         activity?.SetTag(PlayFrameworkActivitySource.Tags.ServiceVersion, PlayFrameworkActivitySource.Version);
 
-        if (_settings.Telemetry.IncludeLlmPrompts)
+        if (_settings.Telemetry.IncludeLlmPrompts && input.Text != null)
         {
-            var truncatedMessage = message.Length > _settings.Telemetry.MaxAttributeLength
-                ? message[.._settings.Telemetry.MaxAttributeLength] + "..."
-                : message;
+            var truncatedMessage = input.Text.Length > _settings.Telemetry.MaxAttributeLength
+                ? input.Text[.._settings.Telemetry.MaxAttributeLength] + "..."
+                : input.Text;
             activity?.SetTag(PlayFrameworkActivitySource.Tags.UserMessage, truncatedMessage);
         }
 
@@ -182,7 +182,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         Exception? exception = null;
 
         // Execute without try-catch (yield return restriction)
-        await foreach (var response in ExecuteInternalAsync(message, metadata, settings, cancellationToken))
+        await foreach (var response in ExecuteInternalAsync(input, metadata, settings, cancellationToken))
         {
             // Track scene name from first real response
             if (response.Status != AiResponseStatus.Initializing && !string.IsNullOrEmpty(response.SceneName))
@@ -253,6 +253,16 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         }
     }
 
+    public IAsyncEnumerable<AiSceneResponse> ExecuteAsync(
+        string message,
+        Dictionary<string, object>? metadata = null,
+        SceneRequestSettings? settings = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        return ExecuteAsync(MultiModalInput.FromText(message), metadata, settings, cancellationToken);
+    }
+
     /// <summary>
     /// Builds rate limit key from metadata based on GroupByKeys configuration.
     /// Returns "global" if no grouping keys specified, uses "unknown" for missing metadata values.
@@ -291,7 +301,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     /// Internal implementation of ExecuteAsync (original logic without telemetry wrapper).
     /// </summary>
     private async IAsyncEnumerable<AiSceneResponse> ExecuteInternalAsync(
-        string message,
+        MultiModalInput input,
         Dictionary<string, object>? metadata,
         SceneRequestSettings? settings = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -301,7 +311,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         // Initialize
         yield return YieldStatus(AiResponseStatus.Initializing, "Initializing context");
 
-        var context = await InitializeContextAsync(message, metadata, settings, cancellationToken);
+        var context = await InitializeContextAsync(input, metadata, settings, cancellationToken);
 
         // Rate limiting check
         if (_rateLimiter != null && _settings.RateLimiting?.Enabled == true)
@@ -479,8 +489,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                 .Select(r => new ChatMessage(ChatRole.Assistant, r.Message ?? string.Empty))
                 .ToList();
 
-            // Add user's initial message
-            conversationMessages.Insert(0, new ChatMessage(ChatRole.User, message));
+            // Add user's initial message (multi-modal)
+            conversationMessages.Insert(0, context.Input.ToChatMessage(ChatRole.User));
 
             // Get previous memory from context
             var prevMemoryFromContext = context.Properties.TryGetValue("previous_memory", out var prevMem)
@@ -492,7 +502,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                 // Summarize and save
                 var updatedMemory = await _memory.SummarizeAsync(
                     prevMemoryFromContext,
-                    message,
+                    input.Text ?? string.Empty,
                     conversationMessages,
                     metadata,
                     settings,
@@ -515,7 +525,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     }
 
     private Task<SceneContext> InitializeContextAsync(
-        string message,
+        MultiModalInput input,
         Dictionary<string, object>? metadata,
         SceneRequestSettings settings,
         CancellationToken cancellationToken)
@@ -523,7 +533,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         var context = new SceneContext
         {
             ServiceProvider = _serviceProvider,
-            InputMessage = message,
+            Input = input,
             Metadata = metadata ?? new Dictionary<string, object>(),
             ChatClientManager = _chatClientManager,
             ConversationKey = settings.ConversationKey ?? Guid.NewGuid().ToString(),
@@ -662,8 +672,14 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             yield break;
         }
 
-        // Process function calls (scene selections)
+        // Process function calls (scene selections) and extract multi-modal contents
         var responseMessage = responseWithCost.Response.Messages?.FirstOrDefault();
+        
+        // Extract multi-modal contents (DataContent, UriContent) from LLM response
+        var multiModalContents = responseMessage?.Contents?
+            .Where(c => c is DataContent or UriContent)
+            .ToList();
+        
         if (responseMessage?.Contents != null)
         {
             foreach (var content in responseMessage.Contents)
@@ -677,7 +693,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                     {
                         Status = AiResponseStatus.Running,
                         Message = $"Selected scene: {selectedSceneName}",
-                        SceneName = selectedSceneName
+                        SceneName = selectedSceneName,
+                        Contents = multiModalContents
                     });
 
                     // Execute the selected scene
@@ -703,11 +720,16 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             }
         }
 
-        // Fallback: if no function call, return text response
+        // Fallback: if no function call, return text response with multi-modal contents
+        var fallbackContents = responseMessage?.Contents?
+            .Where(c => c is DataContent or UriContent)
+            .ToList();
+        
         yield return YieldAndTrack(context, new AiSceneResponse
         {
             Status = AiResponseStatus.Running,
-            Message = responseMessage?.Text ?? "No response from LLM"
+            Message = responseMessage?.Text ?? "No response from LLM",
+            Contents = fallbackContents
         });
     }
 
@@ -779,7 +801,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         // Build conversation messages
         var conversationMessages = new List<ChatMessage>
         {
-            new ChatMessage(ChatRole.User, context.InputMessage)
+            context.Input.ToChatMessage(ChatRole.User)
         };
 
         // Add main actor context if available
@@ -948,6 +970,11 @@ Use this context to provide personalized and coherent responses.";
             // Process based on what we detected
             if (accumulatedFunctionCalls.Count == 0)
             {
+                // Extract multi-modal contents from final message
+                var finalContents = finalMessage.Contents?
+                    .Where(c => c is DataContent or UriContent)
+                    .ToList();
+
                 // Pure text response - finalize streaming if enabled
                 if (settings.EnableStreaming && streamedToUser)
                 {
@@ -961,7 +988,8 @@ Use this context to provide personalized and coherent responses.";
                         cachedInputTokens: totalCachedInputTokens,
                         cost: totalCost,
                         streamingChunk: string.Empty,
-                        isStreamingComplete: true);
+                        isStreamingComplete: true,
+                        contents: finalContents);
 
                     _logger.LogInformation("Native streaming completed for scene {SceneName} (Factory: {FactoryName})",
                         scene.Name, _factoryName);
@@ -976,7 +1004,8 @@ Use this context to provide personalized and coherent responses.";
                         inputTokens: totalInputTokens,
                         outputTokens: totalOutputTokens,
                         cachedInputTokens: totalCachedInputTokens,
-                        cost: totalCost);
+                        cost: totalCost,
+                        contents: finalContents);
                 }
 
                 // Check budget
@@ -1052,10 +1081,25 @@ Use this context to provide personalized and coherent responses.";
                     var toolResult = await tool.ExecuteAsync(argsJson, context, cancellationToken);
 
                     // Send result back to LLM
-                    var functionResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
+                    var functionResult = new FunctionResultContent(functionCall.CallId, functionCall.Name);
+                    
+                    // Support multi-modal output from tools
+                    if (toolResult is AIContent aiContent)
                     {
-                        Result = toolResult
-                    };
+                        // Tool returned AIContent directly (DataContent, UriContent, etc.)
+                        functionResult.Result = aiContent;
+                    }
+                    else if (toolResult is IEnumerable<AIContent> aiContents)
+                    {
+                        // Tool returned list of AIContent
+                        functionResult.Result = aiContents;
+                    }
+                    else
+                    {
+                        // Tool returned string or other object - use as-is
+                        functionResult.Result = toolResult;
+                    }
+                    
                     conversationMessages.Add(new ChatMessage(ChatRole.Tool, [functionResult]));
 
                     toolResponse = _responseHelper.CreateAndTrackResponse(
@@ -1145,14 +1189,21 @@ Use this context to provide personalized and coherent responses.";
                 new[] { finalPrompt },
                 cancellationToken: cancellationToken);
 
+            // Extract multi-modal contents from LLM response
+            var finalResponseMessage = responseWithCost.Response.Messages?.FirstOrDefault();
+            var finalContents = finalResponseMessage?.Contents?
+                .Where(c => c is DataContent or UriContent)
+                .ToList();
+
             yield return _responseHelper.CreateFinalResponse(
                 sceneName: null,
-                message: responseWithCost.Response.Messages?.FirstOrDefault()?.Text,
+                message: finalResponseMessage?.Text,
                 context: context,
                 inputTokens: responseWithCost.InputTokens,
                 outputTokens: responseWithCost.OutputTokens,
                 cachedInputTokens: responseWithCost.CachedInputTokens,
-                cost: responseWithCost.CalculatedCost);
+                cost: responseWithCost.CalculatedCost,
+                contents: finalContents);
 
             if (settings.MaxBudget.HasValue && context.TotalCost > settings.MaxBudget.Value)
             {

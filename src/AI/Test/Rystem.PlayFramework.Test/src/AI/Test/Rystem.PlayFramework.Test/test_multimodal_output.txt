@@ -1,0 +1,2 @@
+MSBUILD : error MSB1009: Project file does not exist.
+Switch: src/AI/Test/Rystem.PlayFramework.Test/Rystem.PlayFramework.Test.csproj

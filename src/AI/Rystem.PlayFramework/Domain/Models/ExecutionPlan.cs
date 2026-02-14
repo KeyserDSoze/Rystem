@@ -1,4 +1,6 @@
-﻿namespace Rystem.PlayFramework;
+﻿using Microsoft.Extensions.AI;
+
+namespace Rystem.PlayFramework;
 
 /// <summary>
 /// Execution plan created by the planner.
@@ -14,6 +16,11 @@ public sealed class ExecutionPlan
     /// Reasoning behind the plan decision.
     /// </summary>
     public string? Reasoning { get; set; }
+
+    /// <summary>
+    /// Multi-modal contents from the planning response.
+    /// </summary>
+    public IEnumerable<AIContent>? Contents { get; set; }
 
     /// <summary>
     /// Ordered list of steps to execute.
@@ -65,4 +72,9 @@ public sealed class PlanStep
     /// Result of executing this step.
     /// </summary>
     public string? Result { get; set; }
+
+    /// <summary>
+    /// Multi-modal contents from the step execution.
+    /// </summary>
+    public IEnumerable<AIContent>? Contents { get; set; }
 }
