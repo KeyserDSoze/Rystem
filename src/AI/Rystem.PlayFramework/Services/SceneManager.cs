@@ -830,25 +830,155 @@ Use this context to provide personalized and coherent responses.";
         {
             iteration++;
 
-            // Call LLM
-            var responseWithCost = await context.ChatClientManager.GetResponseAsync(
-                conversationMessages,
-                chatOptions,
-                cancellationToken);
+            // Optimistic Streaming: Always start with streaming, detect function calls progressively
+            var accumulatedText = new System.Text.StringBuilder();
+            var accumulatedFunctionCalls = new List<FunctionCallContent>();
+            var hasDetectedFunctionCall = false;
+            var streamedToUser = false;
+            decimal? totalCost = null;
+            int? totalInputTokens = null;
+            int? totalOutputTokens = null;
+            int? totalCachedInputTokens = null;
+            ChatMessage? finalMessage = null;
 
-            var responseMessage = responseWithCost.Response.Messages?.FirstOrDefault();
-            if (responseMessage == null)
+            // Use streaming when enabled, fallback to non-streaming otherwise
+            if (settings.EnableStreaming)
+            {
+                // NATIVE STREAMING - detect function calls on the fly
+                await foreach (var streamUpdateWithCost in context.ChatClientManager.GetStreamingResponseAsync(
+                    conversationMessages,
+                    chatOptions,
+                    cancellationToken))
+                {
+                    var chunk = streamUpdateWithCost.Update;
+
+                    // Detect function calls in this chunk
+                    var chunkFunctionCalls = chunk.Contents?
+                        .OfType<FunctionCallContent>()
+                        .ToList() ?? [];
+
+                    if (chunkFunctionCalls.Any())
+                    {
+                        // Function call detected! Stop visible streaming
+                        hasDetectedFunctionCall = true;
+                        accumulatedFunctionCalls.AddRange(chunkFunctionCalls);
+
+                        _logger.LogDebug("Function call detected during streaming in scene {SceneName}, switching to silent accumulation (Factory: {FactoryName})",
+                            scene.Name, _factoryName);
+                    }
+
+                    // Accumulate text content
+                    if (chunk.Text != null)
+                    {
+                        accumulatedText.Append(chunk.Text);
+                    }
+
+                    // Stream to user ONLY if no function calls detected yet
+                    if (!hasDetectedFunctionCall && chunk.Text != null)
+                    {
+                        streamedToUser = true;
+                        yield return new AiSceneResponse
+                        {
+                            Status = AiResponseStatus.Streaming,
+                            SceneName = scene.Name,
+                            StreamingChunk = chunk.Text,
+                            Message = accumulatedText.ToString(),
+                            IsStreamingComplete = false,
+                            TotalCost = context.TotalCost
+                        };
+                    }
+
+                    // Track usage and costs from ChatUpdateWithCost
+                    if (streamUpdateWithCost.InputTokens > 0)
+                    {
+                        totalInputTokens = (totalInputTokens ?? 0) + streamUpdateWithCost.InputTokens;
+                    }
+                    if (streamUpdateWithCost.OutputTokens > 0)
+                    {
+                        totalOutputTokens = (totalOutputTokens ?? 0) + streamUpdateWithCost.OutputTokens;
+                    }
+                    if (streamUpdateWithCost.CachedInputTokens > 0)
+                    {
+                        totalCachedInputTokens = (totalCachedInputTokens ?? 0) + streamUpdateWithCost.CachedInputTokens;
+                    }
+
+                    if (streamUpdateWithCost.EstimatedCost > 0)
+                    {
+                        totalCost = (totalCost ?? 0) + streamUpdateWithCost.EstimatedCost;
+                    }
+
+                    // Check if streaming is complete
+                    if (chunk.FinishReason != null)
+                    {
+                        // Build final message for conversation history
+                        var contents = new List<AIContent>();
+                        if (!string.IsNullOrEmpty(accumulatedText.ToString()))
+                        {
+                            contents.Add(new TextContent(accumulatedText.ToString()));
+                        }
+                        contents.AddRange(accumulatedFunctionCalls);
+
+                        finalMessage = new ChatMessage(ChatRole.Assistant, contents);
+                        break;
+                    }
+                }
+
+                // Handle case where streaming completed without final message
+                if (finalMessage == null)
+                {
+                    var contents = new List<AIContent>();
+                    if (!string.IsNullOrEmpty(accumulatedText.ToString()))
+                    {
+                        contents.Add(new TextContent(accumulatedText.ToString()));
+                    }
+                    contents.AddRange(accumulatedFunctionCalls);
+
+                    finalMessage = new ChatMessage(ChatRole.Assistant, contents);
+                }
+            }
+            else
+            {
+                // NON-STREAMING MODE - fallback to complete response
+                var responseWithCost = await context.ChatClientManager.GetResponseAsync(
+                    conversationMessages,
+                    chatOptions,
+                    cancellationToken);
+
+                finalMessage = responseWithCost.Response.Messages?.FirstOrDefault();
+                
+                if (finalMessage != null)
+                {
+                    accumulatedText.Append(finalMessage.Text ?? string.Empty);
+                    var functionCalls = finalMessage.Contents?
+                        .OfType<FunctionCallContent>()
+                        .ToList() ?? [];
+                    
+                    if (functionCalls.Any())
+                    {
+                        hasDetectedFunctionCall = true;
+                        accumulatedFunctionCalls.AddRange(functionCalls);
+                    }
+                }
+
+                totalInputTokens = responseWithCost.InputTokens;
+                totalOutputTokens = responseWithCost.OutputTokens;
+                totalCachedInputTokens = responseWithCost.CachedInputTokens;
+                totalCost = responseWithCost.CalculatedCost;
+            }
+
+            // Validate response
+            if (finalMessage == null)
             {
                 var errorResponse = new AiSceneResponse
                 {
                     Status = AiResponseStatus.Error,
                     SceneName = scene.Name,
                     Message = "No response from LLM",
-                    InputTokens = responseWithCost.InputTokens,
-                    OutputTokens = responseWithCost.OutputTokens,
-                    CachedInputTokens = responseWithCost.CachedInputTokens,
-                    Cost = responseWithCost.CalculatedCost,
-                    TotalCost = context.AddCost(responseWithCost.CalculatedCost)
+                    InputTokens = totalInputTokens,
+                    OutputTokens = totalOutputTokens,
+                    CachedInputTokens = totalCachedInputTokens,
+                    Cost = totalCost,
+                    TotalCost = context.AddCost(totalCost ?? 0)
                 };
                 yield return YieldAndTrack(context, errorResponse);
 
@@ -866,73 +996,76 @@ Use this context to provide personalized and coherent responses.";
                 yield break;
             }
 
-            // Add assistant message to conversation
-            conversationMessages.Add(responseMessage);
+            // Add assistant message to conversation history
+            conversationMessages.Add(finalMessage);
 
-            // Check for function calls
-            var functionCalls = responseMessage.Contents?
-                .OfType<FunctionCallContent>()
-                .ToList() ?? [];
-
-            if (functionCalls.Count == 0)
+            // Process based on what we detected
+            if (accumulatedFunctionCalls.Count == 0)
             {
-                // No more function calls - check if streaming is enabled
-                if (settings.EnableStreaming)
+                // Pure text response - finalize streaming if enabled
+                if (settings.EnableStreaming && streamedToUser)
                 {
-                    // Stream the final text response
-                    await foreach (var streamResponse in StreamTextResponseAsync(
-                        responseMessage,
-                        responseWithCost,
-                        scene.Name,
-                        context,
-                        settings,
-                        cancellationToken))
+                    // Already streamed to user, just send final chunk with costs
+                    yield return YieldAndTrack(context, new AiSceneResponse
                     {
-                        yield return streamResponse;
-                    }
+                        Status = AiResponseStatus.Running,
+                        SceneName = scene.Name,
+                        StreamingChunk = string.Empty,
+                        Message = accumulatedText.ToString(),
+                        IsStreamingComplete = true,
+                        InputTokens = totalInputTokens,
+                        OutputTokens = totalOutputTokens,
+                        CachedInputTokens = totalCachedInputTokens,
+                        Cost = totalCost,
+                        TotalCost = context.AddCost(totalCost ?? 0)
+                    });
+
+                    _logger.LogInformation("Native streaming completed for scene {SceneName} (Factory: {FactoryName})",
+                        scene.Name, _factoryName);
                 }
                 else
                 {
-                    // Non-streaming: return complete response
+                    // Non-streaming mode or no streaming happened
                     var finalResponse = new AiSceneResponse
                     {
                         Status = AiResponseStatus.Running,
                         SceneName = scene.Name,
-                        Message = responseMessage.Text ?? string.Empty,
-                        InputTokens = responseWithCost.InputTokens,
-                        OutputTokens = responseWithCost.OutputTokens,
-                        CachedInputTokens = responseWithCost.CachedInputTokens,
-                        Cost = responseWithCost.CalculatedCost,
-                        TotalCost = context.AddCost(responseWithCost.CalculatedCost)
+                        Message = accumulatedText.ToString(),
+                        InputTokens = totalInputTokens,
+                        OutputTokens = totalOutputTokens,
+                        CachedInputTokens = totalCachedInputTokens,
+                        Cost = totalCost,
+                        TotalCost = context.AddCost(totalCost ?? 0)
                     };
                     yield return YieldAndTrack(context, finalResponse);
-
-                    if (settings.MaxBudget.HasValue && context.TotalCost > settings.MaxBudget.Value)
-                    {
-                        yield return YieldAndTrack(context, new AiSceneResponse
-                        {
-                            Status = AiResponseStatus.BudgetExceeded,
-                            SceneName = scene.Name,
-                            Message = $"Budget limit of {settings.MaxBudget:F6} {_chatClientManager.Currency} exceeded. Total cost: {context.TotalCost:F6}",
-                            ErrorMessage = "Maximum budget reached"
-                        });
-                    }
                 }
 
-                yield break;
+                // Check budget
+                if (settings.MaxBudget.HasValue && context.TotalCost > settings.MaxBudget.Value)
+                {
+                    yield return YieldAndTrack(context, new AiSceneResponse
+                    {
+                        Status = AiResponseStatus.BudgetExceeded,
+                        SceneName = scene.Name,
+                        Message = $"Budget limit of {settings.MaxBudget:F6} {_chatClientManager.Currency} exceeded. Total cost: {context.TotalCost:F6}",
+                        ErrorMessage = "Maximum budget reached"
+                    });
+                }
+
+                yield break; // No function calls, we're done!
             }
 
-            // Track costs for this LLM response (even if it contains function calls)
+            // Function calls detected - track costs and prepare for tool execution
             var llmResponse = new AiSceneResponse
             {
                 Status = AiResponseStatus.Running,
                 SceneName = scene.Name,
-                Message = $"LLM returned {functionCalls.Count} function call(s)",
-                InputTokens = responseWithCost.InputTokens,
-                OutputTokens = responseWithCost.OutputTokens,
-                CachedInputTokens = responseWithCost.CachedInputTokens,
-                Cost = responseWithCost.CalculatedCost,
-                TotalCost = context.AddCost(responseWithCost.CalculatedCost)
+                Message = $"LLM returned {accumulatedFunctionCalls.Count} function call(s)",
+                InputTokens = totalInputTokens,
+                OutputTokens = totalOutputTokens,
+                CachedInputTokens = totalCachedInputTokens,
+                Cost = totalCost,
+                TotalCost = context.AddCost(totalCost ?? 0)
             };
 
             // Only yield if there are costs to report
@@ -955,7 +1088,7 @@ Use this context to provide personalized and coherent responses.";
             }
 
             // Execute each function call
-            foreach (var functionCall in functionCalls)
+            foreach (var functionCall in accumulatedFunctionCalls)
             {
                 // Find the tool
                 var tool = sceneTools.FirstOrDefault(t => t.Name == functionCall.Name);

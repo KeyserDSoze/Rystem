@@ -246,6 +246,68 @@ public class StreamingTests : PlayFrameworkTestBase
             Assert.True(indexOfBudgetExceeded > 0, "Should have responses before budget exceeded");
         }
     }
+
+    /// <summary>
+    /// Tests optimistic streaming in Direct mode (no function calls).
+    /// </summary>
+    [Fact]
+    public async Task ExecuteAsync_WithOptimisticStreaming_DirectMode_StreamsNatively()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        services.AddPlayFramework(builder =>
+        {
+            builder
+                .AddScene("Storyteller", "Tell stories", sceneBuilder =>
+                {
+                    // No tools - pure text response
+                });
+        });
+
+        services.AddSingleton<IChatClient>(sp => new MockStreamingChatClient("Once upon a time there was a robot"));
+
+        var serviceProvider = services.BuildServiceProvider();
+        var sceneManager = serviceProvider.GetRequiredService<ISceneManager>();
+
+        var settings = new SceneRequestSettings
+        {
+            ExecutionMode = SceneExecutionMode.Direct, // Direct mode - uses optimistic streaming
+            EnableStreaming = true
+        };
+
+        // Act
+        var responses = new List<AiSceneResponse>();
+        await foreach (var response in sceneManager.ExecuteAsync("Tell me a story", null, settings))
+        {
+            responses.Add(response);
+        }
+
+        // Assert
+        var streamingResponses = responses.Where(r => r.Status == AiResponseStatus.Streaming).ToList();
+        Assert.NotEmpty(streamingResponses); // Should have streaming chunks
+
+        // Check that Message accumulates progressively
+        string? previousMessage = null;
+        foreach (var streamResponse in streamingResponses)
+        {
+            if (previousMessage != null)
+            {
+                // Each message should be longer or equal to previous (accumulating)
+                Assert.True(streamResponse.Message?.Length >= previousMessage.Length,
+                    $"Message should accumulate. Previous: '{previousMessage}', Current: '{streamResponse.Message}'");
+            }
+            previousMessage = streamResponse.Message;
+
+            // Each chunk should have StreamingChunk populated
+            Assert.NotNull(streamResponse.StreamingChunk);
+        }
+
+        // Final response should have IsStreamingComplete = true
+        var finalStreamResponse = responses.Last(r => r.IsStreamingComplete);
+        Assert.NotNull(finalStreamResponse);
+    }
 }
 
 /// <summary>
