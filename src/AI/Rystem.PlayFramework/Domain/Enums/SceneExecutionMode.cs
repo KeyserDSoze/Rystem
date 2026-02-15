@@ -23,5 +23,12 @@ public enum SceneExecutionMode
     /// LLM decides after each scene whether to continue.
     /// Suitable for exploratory workflows with unknown dependencies.
     /// </summary>
-    DynamicChaining = 2
+    DynamicChaining = 2,
+
+    /// <summary>
+    /// Scene mode: execute a specific scene by name, bypassing scene selection.
+    /// Requires SceneName to be set in SceneRequestSettings.
+    /// Useful for client interaction resumption or direct scene invocation.
+    /// </summary>
+    Scene = 3
 }

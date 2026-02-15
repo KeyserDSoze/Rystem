@@ -15,7 +15,7 @@
     <Description>Rystem.PlayFramework helps you to use concepts like multi agent and openai.</Description>
     <Copyright>2024</Copyright>
     <PackageIcon>rystem.png</PackageIcon>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!--<PackageReadmeFile>README.md</PackageReadmeFile>-->
     <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework</RepositoryUrl>
     <PackageId>Rystem.PlayFramework</PackageId>
     <Version>10.0.10-beta.1</Version>
@@ -50,6 +50,14 @@
   <ItemGroup>
     <Folder Include="Services\Logging\" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="rystem.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
     <Choose>
         <When Condition=" '$(Configuration)'=='Debug' ">
             <ItemGroup>

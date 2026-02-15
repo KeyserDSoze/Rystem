@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Rystem.PlayFramework.Mcp;
+using Rystem.PlayFramework.Services;
 using Rystem.PlayFramework.Services.Helpers;
 
 namespace Rystem.PlayFramework;
@@ -44,6 +45,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IResponseHelper, ResponseHelper>();
         services.TryAddSingleton<IStreamingHelper, StreamingHelper>();
         services.TryAddSingleton<ISceneMatchingHelper, SceneMatchingHelper>();
+        services.TryAddSingleton<IClientInteractionHandler, ClientInteractionHandler>();
 
         // Ensure all IFactory<T> types that SceneManager depends on are registered
         // This allows them to be injected even when the service itself is not registered

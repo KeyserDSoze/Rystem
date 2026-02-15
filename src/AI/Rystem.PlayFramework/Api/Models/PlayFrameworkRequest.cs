@@ -28,6 +28,18 @@ public sealed class PlayFrameworkRequest
     /// Request-specific settings (override defaults).
     /// </summary>
     public SceneRequestSettings? Settings { get; set; }
+
+    /// <summary>
+    /// Continuation token for resuming execution after client interaction.
+    /// When present with ClientInteractionResults, server loads state from cache.
+    /// </summary>
+    public string? ContinuationToken { get; set; }
+
+    /// <summary>
+    /// Results from client-side tool executions.
+    /// Used to resume execution after AwaitingClient status.
+    /// </summary>
+    public List<ClientInteractionResult>? ClientInteractionResults { get; set; }
 }
 
 /// <summary>

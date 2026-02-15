@@ -75,4 +75,23 @@ public sealed class SceneRequestSettings
     /// If not provided, a new GUID will be generated (resulting in no cache/memory reuse).
     /// </summary>
     public string? ConversationKey { get; set; }
+
+    /// <summary>
+    /// Continuation token for resuming execution after client interaction.
+    /// When present with ClientInteractionResults, server loads state from distributed cache.
+    /// </summary>
+    public string? ContinuationToken { get; set; }
+
+    /// <summary>
+    /// Name of the scene to execute directly (used with SceneExecutionMode.Scene).
+    /// Bypasses scene selection and executes the named scene directly.
+    /// Also set automatically when resuming from continuation token.
+    /// </summary>
+    public string? SceneName { get; set; }
+
+    /// <summary>
+    /// Results from client-side tool executions.
+    /// Used to resume execution after AwaitingClient status.
+    /// </summary>
+    public List<ClientInteractionResult>? ClientInteractionResults { get; set; }
 }

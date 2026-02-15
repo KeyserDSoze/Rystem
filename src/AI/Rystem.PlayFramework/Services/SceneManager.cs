@@ -1,7 +1,9 @@
 ﻿using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Mcp;
+using Rystem.PlayFramework.Services;
 using Rystem.PlayFramework.Services.Helpers;
 using Rystem.PlayFramework.Telemetry;
 using System.Diagnostics;
@@ -32,6 +34,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private readonly IResponseHelper _responseHelper;
     private readonly IStreamingHelper _streamingHelper;
     private readonly ISceneMatchingHelper _sceneMatchingHelper;
+    private readonly IDistributedCache? _distributedCache;
 
     // Resolved dependencies (set via SetFactoryName)
     private string? _factoryName;
@@ -39,6 +42,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private IChatClientManager _chatClientManager = null!;
     private PlayFrameworkSettings _settings = null!;
     private List<ActorConfiguration> _mainActors = null!;
+    private IClientInteractionHandler _clientInteractionHandler = null!;
     private IPlanner? _planner;
     private ISummarizer? _summarizer;
     private IDirector? _director;
@@ -66,7 +70,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         ISceneMatchingHelper sceneMatchingHelper,
         IFactory<IRateLimiter>? rateLimiterFactory = null,
         IFactory<IMemory>? memoryFactory = null,
-        IFactory<IMemoryStorage>? memoryStorageFactory = null)
+        IFactory<IMemoryStorage>? memoryStorageFactory = null,
+        IDistributedCache? distributedCache = null)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -83,6 +88,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _responseHelper = responseHelper;
         _streamingHelper = streamingHelper;
         _sceneMatchingHelper = sceneMatchingHelper;
+        _distributedCache = distributedCache;
         _rateLimiterFactory = rateLimiterFactory;
         _memoryFactory = memoryFactory;
         _memoryStorageFactory = memoryStorageFactory;
@@ -115,6 +121,10 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _director = _directorFactory.Create(name);
         _cacheService = _cacheServiceFactory.Create(name);
         _jsonService = _jsonServiceFactory.Create(name) ?? new DefaultJsonService();
+        
+        // Create client interaction handler with ILoggerFactory
+        var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
+        _clientInteractionHandler = new ClientInteractionHandler(loggerFactory.CreateLogger<ClientInteractionHandler>());
 
         // Resolve rate limiter if enabled
         _rateLimiter = _rateLimiterFactory?.Create(name);
@@ -259,8 +269,12 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         SceneRequestSettings? settings = null,
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(message);
-        return ExecuteAsync(MultiModalInput.FromText(message), metadata, settings, cancellationToken);
+        // Allow empty message when resuming from continuation token
+        if (string.IsNullOrEmpty(settings?.ContinuationToken))
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        }
+        return ExecuteAsync(MultiModalInput.FromText(message ?? ""), metadata, settings, cancellationToken);
     }
 
     /// <summary>
@@ -312,6 +326,76 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         yield return YieldStatus(AiResponseStatus.Initializing, "Initializing context");
 
         var context = await InitializeContextAsync(input, metadata, settings, cancellationToken);
+
+        // Restore from continuation token if resuming
+        if (!string.IsNullOrEmpty(settings.ContinuationToken) && _distributedCache != null)
+        {
+            yield return YieldStatus(AiResponseStatus.LoadingCache, "Restoring continuation state");
+
+            var continuationKey = $"continuation:{settings.ContinuationToken}";
+            var continuationBytes = await _distributedCache.GetAsync(continuationKey, cancellationToken);
+
+            if (continuationBytes == null)
+            {
+                _logger.LogError("Continuation token '{Token}' not found or expired", settings.ContinuationToken);
+
+                yield return YieldAndTrack(context, new AiSceneResponse
+                {
+                    Status = AiResponseStatus.Error,
+                    ErrorMessage = "Continuation token not found or expired. Please start a new conversation.",
+                    Message = "Session expired. Please start over."
+                });
+
+                yield break;
+            }
+
+            var continuationJson = System.Text.Encoding.UTF8.GetString(continuationBytes);
+            var continuation = _jsonService.Deserialize<SceneContinuation>(continuationJson);
+
+            if (continuation == null)
+            {
+                _logger.LogError("Failed to deserialize continuation token '{Token}'", settings.ContinuationToken);
+                yield return YieldAndTrack(context, new AiSceneResponse
+                {
+                    Status = AiResponseStatus.Error,
+                    ErrorMessage = "Invalid continuation state.",
+                    Message = "Session recovery failed. Please start over."
+                });
+                yield break;
+            }
+
+            _logger.LogInformation("Restoring continuation for interaction '{InteractionId}' from token '{Token}'",
+                continuation.PendingInteractionId, settings.ContinuationToken);
+
+            // Validate client interaction results
+            if (settings.ClientInteractionResults != null)
+            {
+                foreach (var result in settings.ClientInteractionResults)
+                {
+                    if (!_clientInteractionHandler.ValidateResult(result))
+                    {
+                        yield return YieldAndTrack(context, new AiSceneResponse
+                        {
+                            Status = AiResponseStatus.Error,
+                            ErrorMessage = $"Invalid client interaction result for '{result.InteractionId}': {result.Error}",
+                            Message = "Client interaction failed. Please try again."
+                        });
+
+                        yield break;
+                    }
+
+                    _logger.LogInformation("Received client interaction result for '{InteractionId}' with {Count} contents",
+                        result.InteractionId, result.Contents?.Count ?? 0);
+                }
+            }
+
+            // Delete continuation token from cache (single use)
+            await _distributedCache.RemoveAsync(continuationKey, cancellationToken);
+
+            // Route directly to the scene from continuation, bypassing scene selection
+            settings.ExecutionMode = SceneExecutionMode.Scene;
+            settings.SceneName = continuation.SceneName;
+        }
 
         // Rate limiting check
         if (_rateLimiter != null && _settings.RateLimiting?.Enabled == true)
@@ -465,6 +549,35 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             default:
                 // Direct execution (no planning)
                 await foreach (var response in RequestAsync(context, settings, cancellationToken))
+                {
+                    yield return response;
+                }
+                break;
+
+            case SceneExecutionMode.Scene:
+                // Direct scene execution by name (bypasses scene selection)
+                if (string.IsNullOrEmpty(settings.SceneName))
+                {
+                    yield return YieldAndTrack(context, new AiSceneResponse
+                    {
+                        Status = AiResponseStatus.Error,
+                        ErrorMessage = "Scene mode requested but SceneName is not set in SceneRequestSettings"
+                    });
+                    yield break;
+                }
+
+                var targetScene = _sceneFactory.Create(settings.SceneName);
+                if (targetScene == null)
+                {
+                    yield return YieldAndTrack(context, new AiSceneResponse
+                    {
+                        Status = AiResponseStatus.Error,
+                        ErrorMessage = $"Scene '{settings.SceneName}' not found"
+                    });
+                    yield break;
+                }
+
+                await foreach (var response in ExecuteSceneAsync(context, targetScene, settings, cancellationToken))
                 {
                     yield return response;
                 }
@@ -854,6 +967,57 @@ Use this context to provide personalized and coherent responses.";
         _logger.LogDebug("Scene {SceneName} executing with {SceneToolCount} scene tools + {McpToolCount} MCP tools (Factory: {FactoryName})",
             scene.Name, sceneToolsFunctions.Count, mcpTools.Count, _factoryName);
 
+        // If resuming from client interaction, inject the client results into conversation
+        if (settings.ClientInteractionResults != null && settings.ClientInteractionResults.Count > 0)
+        {
+            foreach (var clientResult in settings.ClientInteractionResults)
+            {
+                // Build FunctionResultContent from client result
+                string resultText;
+                if (!string.IsNullOrEmpty(clientResult.Error))
+                {
+                    resultText = $"Client tool error: {clientResult.Error}";
+                }
+                else if (clientResult.Contents != null && clientResult.Contents.Count > 0)
+                {
+                    // Convert client contents to descriptive text for the LLM
+                    var contentParts = new List<string>();
+                    foreach (var content in clientResult.Contents)
+                    {
+                        if (content is TextContent textContent)
+                        {
+                            contentParts.Add(textContent.Text ?? "");
+                        }
+                        else if (content is DataContent dataContent)
+                        {
+                            contentParts.Add($"[Binary data: {dataContent.MediaType ?? "unknown"}, {dataContent.Data.Length} bytes]");
+                        }
+                        else
+                        {
+                            contentParts.Add($"[Content: {content.GetType().Name}]");
+                        }
+                    }
+                    resultText = string.Join("\n", contentParts);
+                }
+                else
+                {
+                    resultText = "Client tool executed successfully (no data returned)";
+                }
+
+                // Add as a tool result message so the LLM sees the client tool's output
+                var functionResult = new FunctionResultContent(
+                    clientResult.InteractionId,
+                    clientResult.InteractionId)
+                {
+                    Result = resultText
+                };
+                conversationMessages.Add(new ChatMessage(ChatRole.Tool, [functionResult]));
+
+                _logger.LogInformation("Injected client interaction result for '{InteractionId}' into conversation (Factory: {FactoryName})",
+                    clientResult.InteractionId, _factoryName);
+            }
+        }
+
         // Tool calling loop - continue until LLM stops calling tools
         const int MaxToolCallIterations = 10;
         var iteration = 0;
@@ -1049,7 +1213,54 @@ Use this context to provide personalized and coherent responses.";
             // Execute each function call
             foreach (var functionCall in accumulatedFunctionCalls)
             {
-                // Find the tool
+                // Check if this is a client-side tool FIRST (before server tool lookup)
+                var clientRequest = scene.ClientInteractionDefinitions != null
+                    ? _clientInteractionHandler.CreateRequestIfClientTool(
+                        scene.ClientInteractionDefinitions,
+                        functionCall.Name,
+                        functionCall.Arguments?.ToDictionary(x => x.Key, x => x.Value))
+                    : null;
+
+                if (clientRequest != null && _distributedCache != null)
+                {
+                    // Generate continuation token for resuming later
+                    var continuationToken = Guid.NewGuid().ToString();
+
+                    // Save context to cache with continuation token
+                    var continuation = new SceneContinuation
+                    {
+                        ConversationKey = context.ConversationKey!,
+                        ContinuationToken = continuationToken,
+                        SceneName = scene.Name,
+                        Context = _jsonService.Serialize(context),
+                        PendingInteractionId = clientRequest.InteractionId,
+                        ExpiresAt = DateTime.UtcNow.Add(scene.CacheExpiration)
+                    };
+
+                    var continuationKey = $"continuation:{continuationToken}";
+                    var continuationJson = _jsonService.Serialize(continuation);
+                    var continuationBytes = System.Text.Encoding.UTF8.GetBytes(continuationJson);
+                    var cacheOptions = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = scene.CacheExpiration };
+                    await _distributedCache.SetAsync(continuationKey, continuationBytes, cacheOptions, cancellationToken);
+
+                    _logger.LogInformation("Client tool '{ToolName}' detected. Awaiting client execution with token '{Token}'",
+                        functionCall.Name, continuationToken);
+
+                    // Yield AwaitingClient status with request
+                    yield return new AiSceneResponse
+                    {
+                        Status = AiResponseStatus.AwaitingClient,
+                        ConversationKey = context.ConversationKey,
+                        ContinuationToken = continuationToken,
+                        ClientInteractionRequest = clientRequest,
+                        Message = $"Awaiting client execution of tool: {functionCall.Name}"
+                    };
+
+                    // Stop execution - client will resume with new POST
+                    yield break;
+                }
+
+                // Find the server-side tool
                 var tool = sceneTools.FirstOrDefault(t => t.Name == functionCall.Name);
                 if (tool == null)
                 {

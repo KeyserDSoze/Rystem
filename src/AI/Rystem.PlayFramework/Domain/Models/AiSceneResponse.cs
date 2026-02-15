@@ -79,6 +79,26 @@ public sealed class AiSceneResponse
     public decimal TotalCost { get; set; }
 
     /// <summary>
+    /// Conversation key for this execution.
+    /// Used to track and resume conversations.
+    /// </summary>
+    public string? ConversationKey { get; set; }
+
+    /// <summary>
+    /// Continuation token for resuming execution after client interaction.
+    /// Only present when Status is AwaitingClient.
+    /// Client must send this back with ClientInteractionResults to resume.
+    /// </summary>
+    public string? ContinuationToken { get; set; }
+
+    /// <summary>
+    /// Request for client-side tool execution.
+    /// Only present when Status is AwaitingClient.
+    /// Client must execute the tool and return result with continuation token.
+    /// </summary>
+    public ClientInteractionRequest? ClientInteractionRequest { get; set; }
+
+    /// <summary>
     /// Timestamp of this response.
     /// </summary>
     public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;

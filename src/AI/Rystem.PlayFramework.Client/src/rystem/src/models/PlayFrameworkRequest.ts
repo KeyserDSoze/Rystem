@@ -32,4 +32,26 @@ export interface PlayFrameworkRequest {
         maxTokens?: number;
         [key: string]: any;
     };
+
+    /**
+     * Continuation token for resuming execution after client interaction.
+     * Send this when client has executed tool and wants to resume.
+     */
+    continuationToken?: string;
+
+    /**
+     * Results from client-side tool executions.
+     * Required when resuming with continuationToken.
+     */
+    clientInteractionResults?: Array<{
+        interactionId: string;
+        contents: Array<{
+            type: "text" | "data";
+            text?: string;
+            data?: string; // Base64
+            mediaType?: string;
+        }>;
+        error?: string;
+        executedAt: string; // ISO 8601
+    }>;
 }

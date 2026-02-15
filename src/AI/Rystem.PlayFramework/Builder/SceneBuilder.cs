@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Rystem.PlayFramework.Mcp;
+using Rystem.PlayFramework.Configuration;
 
 namespace Rystem.PlayFramework;
 
@@ -55,6 +56,38 @@ public sealed class SceneBuilder
 
         return this;
     }
+
+    /// <summary>
+    /// Configures client-side tools that execute in browser/mobile app.
+    /// Client receives tool request, executes it, and returns result with continuation token.
+    /// Requires distributed cache configuration (in-memory or Redis).
+    /// </summary>
+    /// <param name="configure">Action to configure client interaction tools.</param>
+    public SceneBuilder OnClient(Action<ClientInteractionBuilder> configure)
+    {
+        var builder = new ClientInteractionBuilder();
+        configure(builder);
+
+        _config.ClientInteractionDefinitions = builder.Build();
+        _config.RequiresCache = true;
+
+        return this;
+    }
+
+    /// <summary>
+    /// Sets cache expiration time for continuation tokens.
+    /// Only relevant when OnClient() is used.
+    /// Default is 5 minutes.
+    /// </summary>
+    /// <param name="expiration">Time before continuation token expires in cache.</param>
+    public SceneBuilder WithCacheExpiration(TimeSpan expiration)
+    {
+        if (expiration <= TimeSpan.Zero)
+            throw new ArgumentException("Cache expiration must be positive", nameof(expiration));
+
+        _config.CacheExpiration = expiration;
+        return this;
+    }
 }
 
 /// <summary>
@@ -77,6 +110,22 @@ internal sealed class SceneConfiguration
     /// Scene-specific web search configurations (key = factory key or empty for default).
     /// </summary>
     public Dictionary<string, WebSearchSettings> WebSearchSettings { get; set; } = new();
+
+    /// <summary>
+    /// Client-side tool definitions registered via OnClient().
+    /// </summary>
+    internal IReadOnlyList<ClientInteractionDefinition>? ClientInteractionDefinitions { get; set; }
+
+    /// <summary>
+    /// Whether this scene requires cache (set to true when OnClient() is used).
+    /// </summary>
+    internal bool RequiresCache { get; set; }
+
+    /// <summary>
+    /// Cache expiration for continuation tokens.
+    /// Default is 5 minutes.
+    /// </summary>
+    internal TimeSpan CacheExpiration { get; set; } = TimeSpan.FromMinutes(5);
 }
 
 /// <summary>

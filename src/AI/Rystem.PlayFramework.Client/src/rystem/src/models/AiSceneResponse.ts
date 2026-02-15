@@ -1,7 +1,7 @@
 /**
  * Response status from PlayFramework execution.
  */
-export type AiResponseStatus = "Planning" | "Running" | "Error" | "Completed";
+export type AiResponseStatus = "Planning" | "Running" | "Error" | "Completed" | "AwaitingClient";
 
 /**
  * Single step response from PlayFramework (used in step-by-step streaming).
@@ -41,6 +41,30 @@ export interface AiSceneResponse {
      * Tool calls executed in this step.
      */
     toolCalls?: any[];
+
+    /**
+     * Conversation key for resuming execution.
+     */
+    conversationKey?: string;
+
+    /**
+     * Continuation token for resuming after client interaction.
+     * Present when status === "AwaitingClient".
+     */
+    continuationToken?: string;
+
+    /**
+     * Client interaction request when status === "AwaitingClient".
+     * Contains tool name, arguments, and schema for client execution.
+     */
+    clientInteractionRequest?: {
+        interactionId: string;
+        toolName: string;
+        description?: string;
+        arguments?: Record<string, any>;
+        argumentsSchema?: string;
+        timeoutSeconds: number;
+    };
 }
 
 /**

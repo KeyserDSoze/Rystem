@@ -1,4 +1,5 @@
-﻿using Rystem.PlayFramework.Mcp;
+﻿using Rystem.PlayFramework.Configuration;
+using Rystem.PlayFramework.Mcp;
 
 namespace Rystem.PlayFramework;
 
@@ -21,6 +22,18 @@ public interface IScene
     /// MCP server references configured for this scene.
     /// </summary>
     IReadOnlyList<McpServerReference> McpServerReferences { get; }
+
+    /// <summary>
+    /// Client-side tool definitions registered via OnClient().
+    /// Null if no client tools are configured.
+    /// </summary>
+    IReadOnlyList<ClientInteractionDefinition>? ClientInteractionDefinitions { get; }
+
+    /// <summary>
+    /// Cache expiration time for continuation tokens.
+    /// Only relevant when OnClient() is used.
+    /// </summary>
+    TimeSpan CacheExpiration { get; }
 
     /// <summary>
     /// Gets all tools available in this scene.

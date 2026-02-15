@@ -5,7 +5,7 @@
 /// </summary>
 internal sealed class SceneFactory : ISceneFactory
 {
-    private readonly List<SceneConfiguration> _configurations;
+    internal readonly List<SceneConfiguration> _configurations;
     private readonly IServiceProvider _serviceProvider;
     private readonly Dictionary<string, IScene> _cache = new(StringComparer.OrdinalIgnoreCase);
 
