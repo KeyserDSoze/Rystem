@@ -1,0 +1,32 @@
+{
+  "name": "rystem.playframework.client",
+  "version": "0.1.0",
+  "author": "Alessandro Rapiti <alessandro.rapiti44@gmail.com>",
+  "license": "MIT",
+  "description": "TypeScript client for Rystem PlayFramework HTTP API with step-by-step and token-level streaming support.",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "keywords": [
+    "rystem",
+    "playframework",
+    "ai",
+    "streaming",
+    "sse",
+    "typescript",
+    "client"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KeyserDSoze/Rystem.git"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.16",
+    "@types/react": "19.0.10",
+    "@types/react-dom": "19.0.4",
+    "@typescript-eslint/parser": "8.24.1",
+    "typescript": "5.7.3"
+  },
+  "files": [
+    "/lib"
+  ]
+}

@@ -4,6 +4,23 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <DebugSymbols>true</DebugSymbols>
+    <EmbedAllSources>true</EmbedAllSources>
+    <DebugType>portable</DebugType>
+    <Authors>Alessandro Rapiti</Authors>
+    <Company>Alessandro Rapiti</Company>
+    <Product>Rystem.PlayFramework</Product>
+    <Description>Rystem.PlayFramework helps you to use concepts like multi agent and openai.</Description>
+    <Copyright>2024</Copyright>
+    <PackageIcon>rystem.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework</RepositoryUrl>
+    <PackageId>Rystem.PlayFramework</PackageId>
+    <Version>10.0.10-beta.1</Version>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,6 +34,17 @@
     <PackageReference Include="OpenTelemetry" Version="1.10.0" />
     <PackageReference Include="OpenTelemetry.Api" Version="1.10.0" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.10.0" />
+  </ItemGroup>
+
+  <!-- ASP.NET Core framework (only loaded in ASP.NET Core apps, not in Unity/MAUI/WPF) -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!-- Exclude example files from compilation -->
+  <ItemGroup>
+    <Compile Remove="Api\AUTHORIZATION_USAGE_EXAMPLE.cs" />
+    <None Include="Api\AUTHORIZATION_USAGE_EXAMPLE.cs" />
   </ItemGroup>
 
   <ItemGroup>
