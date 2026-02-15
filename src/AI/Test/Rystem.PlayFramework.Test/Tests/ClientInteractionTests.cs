@@ -316,8 +316,8 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
         Assert.NotNull(awaitingClientResponse.ContinuationToken);
         var continuationToken = awaitingClientResponse.ContinuationToken!;
 
-        // Verify token exists in cache (note: stored with "continuation:" prefix)
-        var cacheKey = $"continuation:{continuationToken}";
+        // Verify token exists in cache (note: stored with "continuation:{factoryName}:" prefix)
+        var cacheKey = $"continuation:default:{continuationToken}";
         var cachedData = await cache.GetAsync(cacheKey);
         Assert.NotNull(cachedData);
 
@@ -380,6 +380,91 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
         var errorResponse = responses.FirstOrDefault(r => r.Status == AiResponseStatus.Error);
         Assert.NotNull(errorResponse);
         Assert.Contains("continuation", errorResponse.ErrorMessage ?? errorResponse.Message ?? "", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Tests resume with empty Contents and no Error (invalid result).
+    /// ValidateResult should return false, causing an Error response.
+    /// </summary>
+    [Fact]
+    public async Task ClientInteraction_EmptyContentsNoError_ShouldReturnError()
+    {
+        // Arrange
+        var sceneManager = ServiceProvider.GetRequiredService<ISceneManager>();
+
+        var settings = new SceneRequestSettings
+        {
+            ExecutionMode = SceneExecutionMode.Scene,
+            SceneName = "Photography"
+        };
+
+        // Phase 1: Get AwaitingClient
+        AiSceneResponse? awaitingClientResponse = null;
+        await foreach (var response in sceneManager.ExecuteAsync("Take a photo", metadata: null, settings))
+        {
+            if (response.Status == AiResponseStatus.AwaitingClient)
+            {
+                awaitingClientResponse = response;
+                break;
+            }
+        }
+
+        Assert.NotNull(awaitingClientResponse);
+        Assert.NotNull(awaitingClientResponse.ContinuationToken);
+
+        // Phase 2: Resume with empty contents and no error
+        var clientResult = new ClientInteractionResult
+        {
+            InteractionId = awaitingClientResponse.ClientInteractionRequest!.InteractionId,
+            Contents = new List<AIContent>(), // Empty — invalid
+            ExecutedAt = DateTime.UtcNow
+        };
+
+        var resumeSettings = new SceneRequestSettings
+        {
+            ContinuationToken = awaitingClientResponse.ContinuationToken,
+            ClientInteractionResults = new List<ClientInteractionResult> { clientResult }
+        };
+
+        var responses = new List<AiSceneResponse>();
+        await foreach (var response in sceneManager.ExecuteAsync("", metadata: null, resumeSettings))
+        {
+            responses.Add(response);
+        }
+
+        // Assert: ValidateResult returns false for empty contents → Error
+        Assert.NotEmpty(responses);
+        var errorResponse = responses.FirstOrDefault(r => r.Status == AiResponseStatus.Error);
+        Assert.NotNull(errorResponse);
+    }
+
+    /// <summary>
+    /// Tests SceneExecutionMode.Scene with null SceneName.
+    /// Should return an error, not throw.
+    /// </summary>
+    [Fact]
+    public async Task SceneMode_NullSceneName_ShouldReturnError()
+    {
+        // Arrange
+        var sceneManager = ServiceProvider.GetRequiredService<ISceneManager>();
+
+        var settings = new SceneRequestSettings
+        {
+            ExecutionMode = SceneExecutionMode.Scene,
+            SceneName = null // Missing!
+        };
+
+        // Act
+        var responses = new List<AiSceneResponse>();
+        await foreach (var response in sceneManager.ExecuteAsync("Hello", metadata: null, settings))
+        {
+            responses.Add(response);
+        }
+
+        // Assert
+        Assert.NotEmpty(responses);
+        var errorResponse = responses.FirstOrDefault(r => r.Status == AiResponseStatus.Error);
+        Assert.NotNull(errorResponse);
     }
 }
 

@@ -3,6 +3,7 @@ namespace Rystem.PlayFramework;
 /// <summary>
 /// Scene execution state saved in cache to resume after client interaction.
 /// Stored with ContinuationToken as key in distributed cache.
+/// Cache TTL is handled by DistributedCacheEntryOptions.
 /// </summary>
 internal sealed class SceneContinuation
 {
@@ -23,24 +24,19 @@ internal sealed class SceneContinuation
     public required string SceneName { get; init; }
 
     /// <summary>
-    /// Complete execution context serialized as JSON.
-    /// Restored when client resumes with continuation token.
-    /// </summary>
-    public required string Context { get; init; }
-
-    /// <summary>
     /// ID of the client interaction we're waiting for.
     /// </summary>
     public required string PendingInteractionId { get; init; }
 
     /// <summary>
-    /// When this continuation was created.
+    /// Original FunctionCallContent.CallId from the LLM response.
+    /// Required to build a correct FunctionResultContent on resume.
     /// </summary>
-    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
+    public required string OriginalCallId { get; init; }
 
     /// <summary>
-    /// When this continuation expires in cache.
-    /// If client doesn't resume before this, token is invalid.
+    /// Original FunctionCallContent.Name (tool name) from the LLM response.
+    /// Required to build a correct FunctionResultContent on resume.
     /// </summary>
-    public DateTimeOffset ExpiresAt { get; init; }
+    public required string OriginalToolName { get; init; }
 }

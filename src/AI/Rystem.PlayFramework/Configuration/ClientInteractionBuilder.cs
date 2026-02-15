@@ -40,7 +40,6 @@ public sealed class ClientInteractionBuilder
             ToolName = toolName,
             Description = description,
             TimeoutSeconds = timeoutSeconds,
-            ArgumentsType = typeof(T),
             ArgumentsSchema = jsonSchema
         });
 
@@ -70,9 +69,7 @@ public sealed class ClientInteractionBuilder
         {
             ToolName = toolName,
             Description = description,
-            TimeoutSeconds = timeoutSeconds,
-            ArgumentsType = null,
-            ArgumentsSchema = null
+            TimeoutSeconds = timeoutSeconds
         });
 
         return this;

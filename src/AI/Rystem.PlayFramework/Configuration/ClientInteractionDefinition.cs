@@ -22,12 +22,6 @@ public sealed class ClientInteractionDefinition
     public int TimeoutSeconds { get; init; }
 
     /// <summary>
-    /// CLR type of arguments (null for tools without arguments).
-    /// Used for validation and deserialization.
-    /// </summary>
-    public Type? ArgumentsType { get; init; }
-
-    /// <summary>
     /// JSON Schema of arguments (null for tools without arguments).
     /// Sent to LLM so it knows exact parameter structure.
     /// </summary>

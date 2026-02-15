@@ -34,6 +34,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private readonly IResponseHelper _responseHelper;
     private readonly IStreamingHelper _streamingHelper;
     private readonly ISceneMatchingHelper _sceneMatchingHelper;
+    private readonly IClientInteractionHandler _clientInteractionHandler;
     private readonly IDistributedCache? _distributedCache;
 
     // Resolved dependencies (set via SetFactoryName)
@@ -42,7 +43,6 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private IChatClientManager _chatClientManager = null!;
     private PlayFrameworkSettings _settings = null!;
     private List<ActorConfiguration> _mainActors = null!;
-    private IClientInteractionHandler _clientInteractionHandler = null!;
     private IPlanner? _planner;
     private ISummarizer? _summarizer;
     private IDirector? _director;
@@ -68,6 +68,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         IResponseHelper responseHelper,
         IStreamingHelper streamingHelper,
         ISceneMatchingHelper sceneMatchingHelper,
+        IClientInteractionHandler clientInteractionHandler,
         IFactory<IRateLimiter>? rateLimiterFactory = null,
         IFactory<IMemory>? memoryFactory = null,
         IFactory<IMemoryStorage>? memoryStorageFactory = null,
@@ -88,6 +89,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _responseHelper = responseHelper;
         _streamingHelper = streamingHelper;
         _sceneMatchingHelper = sceneMatchingHelper;
+        _clientInteractionHandler = clientInteractionHandler;
         _distributedCache = distributedCache;
         _rateLimiterFactory = rateLimiterFactory;
         _memoryFactory = memoryFactory;
@@ -121,10 +123,6 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _director = _directorFactory.Create(name);
         _cacheService = _cacheServiceFactory.Create(name);
         _jsonService = _jsonServiceFactory.Create(name) ?? new DefaultJsonService();
-        
-        // Create client interaction handler with ILoggerFactory
-        var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
-        _clientInteractionHandler = new ClientInteractionHandler(loggerFactory.CreateLogger<ClientInteractionHandler>());
 
         // Resolve rate limiter if enabled
         _rateLimiter = _rateLimiterFactory?.Create(name);
@@ -332,7 +330,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         {
             yield return YieldStatus(AiResponseStatus.LoadingCache, "Restoring continuation state");
 
-            var continuationKey = $"continuation:{settings.ContinuationToken}";
+            var continuationKey = $"continuation:{_factoryName}:{settings.ContinuationToken}";
             var continuationBytes = await _distributedCache.GetAsync(continuationKey, cancellationToken);
 
             if (continuationBytes == null)
@@ -395,6 +393,10 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             // Route directly to the scene from continuation, bypassing scene selection
             settings.ExecutionMode = SceneExecutionMode.Scene;
             settings.SceneName = continuation.SceneName;
+
+            // Store original call info for FunctionResultContent reconstruction
+            context.Properties["_continuation_callId"] = continuation.OriginalCallId;
+            context.Properties["_continuation_toolName"] = continuation.OriginalToolName;
         }
 
         // Rate limiting check
@@ -970,6 +972,10 @@ Use this context to provide personalized and coherent responses.";
         // If resuming from client interaction, inject the client results into conversation
         if (settings.ClientInteractionResults != null && settings.ClientInteractionResults.Count > 0)
         {
+            // Retrieve original FunctionCallContent info saved during continuation
+            var originalCallId = context.Properties.TryGetValue("_continuation_callId", out var cid) ? cid as string : null;
+            var originalToolName = context.Properties.TryGetValue("_continuation_toolName", out var tn) ? tn as string : null;
+
             foreach (var clientResult in settings.ClientInteractionResults)
             {
                 // Build FunctionResultContent from client result
@@ -1004,10 +1010,10 @@ Use this context to provide personalized and coherent responses.";
                     resultText = "Client tool executed successfully (no data returned)";
                 }
 
-                // Add as a tool result message so the LLM sees the client tool's output
+                // Use original callId/name from the LLM's FunctionCallContent for proper correlation
                 var functionResult = new FunctionResultContent(
-                    clientResult.InteractionId,
-                    clientResult.InteractionId)
+                    originalCallId ?? clientResult.InteractionId,
+                    originalToolName ?? clientResult.InteractionId)
                 {
                     Result = resultText
                 };
@@ -1221,23 +1227,38 @@ Use this context to provide personalized and coherent responses.";
                         functionCall.Arguments?.ToDictionary(x => x.Key, x => x.Value))
                     : null;
 
+                if (clientRequest != null && _distributedCache == null)
+                {
+                    // Client tool detected but no distributed cache — this is a configuration error
+                    _logger.LogError("Client tool '{ToolName}' detected in scene '{SceneName}' but IDistributedCache is not registered. " +
+                        "Add services.AddDistributedMemoryCache() or a Redis cache. The tool call will fail. (Factory: {FactoryName})",
+                        functionCall.Name, scene.Name, _factoryName);
+
+                    var errorResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
+                    {
+                        Result = $"Client tool '{functionCall.Name}' cannot execute: IDistributedCache is not configured on the server"
+                    };
+                    conversationMessages.Add(new ChatMessage(ChatRole.Tool, [errorResult]));
+                    continue;
+                }
+
                 if (clientRequest != null && _distributedCache != null)
                 {
                     // Generate continuation token for resuming later
                     var continuationToken = Guid.NewGuid().ToString();
 
-                    // Save context to cache with continuation token
+                    // Save minimal state to cache with continuation token
                     var continuation = new SceneContinuation
                     {
                         ConversationKey = context.ConversationKey!,
                         ContinuationToken = continuationToken,
                         SceneName = scene.Name,
-                        Context = _jsonService.Serialize(context),
                         PendingInteractionId = clientRequest.InteractionId,
-                        ExpiresAt = DateTime.UtcNow.Add(scene.CacheExpiration)
+                        OriginalCallId = functionCall.CallId,
+                        OriginalToolName = functionCall.Name
                     };
 
-                    var continuationKey = $"continuation:{continuationToken}";
+                    var continuationKey = $"continuation:{_factoryName}:{continuationToken}";
                     var continuationJson = _jsonService.Serialize(continuation);
                     var continuationBytes = System.Text.Encoding.UTF8.GetBytes(continuationJson);
                     var cacheOptions = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = scene.CacheExpiration };
