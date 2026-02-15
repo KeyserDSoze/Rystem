@@ -990,17 +990,17 @@ Use this context to provide personalized and coherent responses.";
                     var contentParts = new List<string>();
                     foreach (var content in clientResult.Contents)
                     {
-                        if (content is TextContent textContent)
+                        if (string.Equals(content.Type, "text", StringComparison.OrdinalIgnoreCase))
                         {
-                            contentParts.Add(textContent.Text ?? "");
+                            contentParts.Add(content.Text ?? "");
                         }
-                        else if (content is DataContent dataContent)
+                        else if (string.Equals(content.Type, "data", StringComparison.OrdinalIgnoreCase))
                         {
-                            contentParts.Add($"[Binary data: {dataContent.MediaType ?? "unknown"}, {dataContent.Data.Length} bytes]");
+                            contentParts.Add($"[Binary data: {content.MediaType ?? "unknown"}]");
                         }
                         else
                         {
-                            contentParts.Add($"[Content: {content.GetType().Name}]");
+                            contentParts.Add($"[Content: {content.Type}]");
                         }
                     }
                     resultText = string.Join("\n", contentParts);

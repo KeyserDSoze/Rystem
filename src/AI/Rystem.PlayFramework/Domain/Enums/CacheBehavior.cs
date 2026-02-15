@@ -1,8 +1,11 @@
-﻿namespace Rystem.PlayFramework;
+﻿using System.Text.Json.Serialization;
+
+namespace Rystem.PlayFramework;
 
 /// <summary>
 /// Defines cache behavior for scene executions.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum CacheBehavior
 {
     /// <summary>

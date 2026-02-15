@@ -2,20 +2,30 @@ import { PlayFrameworkClient } from "../engine/PlayFrameworkClient";
 import { PlayFrameworkServices } from "../servicecollection/PlayFrameworkServices";
 
 /**
- * React hook to get PlayFrameworkClient by factory name.
+ * Get a PlayFrameworkClient instance by optional factory name.
  * 
- * @param name - Factory name (must be configured via PlayFrameworkServices.configure).
+ * If `name` is provided, returns the client for that specific factory.
+ * If `name` is omitted, returns the default (first configured) client.
+ * 
+ * Framework-agnostic — works with React, Vue, Angular, Svelte, or plain TypeScript.
+ * 
+ * @param name - Optional factory name. Omit to use the default client.
  * @returns PlayFrameworkClient instance.
  * 
  * @example
- * ```tsx
- * const client = usePlayFramework("chat");
+ * ```ts
+ * // Use default (first configured) client
+ * const client = usePlayFramework();
  * 
- * for await (const step of client.executeStepByStep({ prompt: "Hello" })) {
+ * // Use a specific factory
+ * const chatClient = usePlayFramework("chat");
+ * 
+ * // Execute
+ * for await (const step of client.executeStepByStep({ message: "Hello" })) {
  *   console.log(step.message);
  * }
  * ```
  */
-export const usePlayFramework = (name: string): PlayFrameworkClient => {
-    return PlayFrameworkServices.getClient(name);
-};
+export function usePlayFramework(name?: string): PlayFrameworkClient {
+    return PlayFrameworkServices.resolve(name);
+}

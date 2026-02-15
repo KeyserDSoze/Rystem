@@ -1,8 +1,11 @@
-﻿namespace Rystem.PlayFramework;
+﻿using System.Text.Json.Serialization;
+
+namespace Rystem.PlayFramework;
 
 /// <summary>
 /// Represents the status of an AI scene response.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum AiResponseStatus
 {
     /// <summary>

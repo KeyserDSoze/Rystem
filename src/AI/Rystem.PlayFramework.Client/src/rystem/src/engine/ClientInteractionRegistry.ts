@@ -58,14 +58,21 @@ export class ClientInteractionRegistry {
             }
 
             // Execute tool with timeout
+            let timer: ReturnType<typeof setTimeout> | undefined;
             const timeoutPromise = new Promise<never>((_, reject) => {
-                setTimeout(() => {
+                timer = setTimeout(() => {
                     reject(new Error(`Tool execution timeout after ${request.timeoutSeconds}s`));
                 }, request.timeoutSeconds * 1000);
             });
 
             const executionPromise = tool(request.arguments);
-            const contents = await Promise.race([executionPromise, timeoutPromise]);
+
+            let contents: AIContent[];
+            try {
+                contents = await Promise.race([executionPromise, timeoutPromise]);
+            } finally {
+                if (timer !== undefined) clearTimeout(timer);
+            }
 
             return {
                 interactionId: request.interactionId,

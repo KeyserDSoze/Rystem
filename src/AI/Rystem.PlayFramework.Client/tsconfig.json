@@ -12,7 +12,7 @@
     "lib": [
       "dom",
       "dom.iterable",
-      "ES2024"
+      "ES2022"
     ],
     "module": "ES2022",
     "moduleResolution": "node",
@@ -22,7 +22,7 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
-    "target": "ES2024"
+    "target": "ES2022"
   },
   "include": [
     "src"

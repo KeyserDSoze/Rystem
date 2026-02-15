@@ -1,5 +1,5 @@
 import { PlayFrameworkRequest } from "../models/PlayFrameworkRequest";
-import { AiSceneResponse, SSEEvent } from "../models/AiSceneResponse";
+import { AiSceneResponse, SSEEvent, ErrorMarker } from "../models/AiSceneResponse";
 import { PlayFrameworkSettings } from "../servicecollection/PlayFrameworkSettings";
 import { ClientInteractionRegistry } from "./ClientInteractionRegistry";
 import { ClientInteractionResult } from "../models/ClientInteractionResult";
@@ -57,7 +57,35 @@ export class PlayFrameworkClient {
     }
 
     /**
-     * Internal SSE streaming implementation with continuation token support.
+     * Creates an AbortSignal combining user signal and timeout.
+     * Uses AbortController to combine signals for broad compatibility.
+     */
+    private createTimeoutSignal(signal?: AbortSignal): AbortSignal | undefined {
+        const hasTimeout = this.settings.timeout > 0;
+
+        if (signal && hasTimeout) {
+            // Combine user signal + timeout via AbortController
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(new DOMException('The operation was aborted due to timeout', 'TimeoutError')), this.settings.timeout);
+
+            signal.addEventListener('abort', () => {
+                clearTimeout(timer);
+                controller.abort(signal.reason);
+            }, { once: true });
+
+            // Clean up timer if our combined signal is aborted
+            controller.signal.addEventListener('abort', () => clearTimeout(timer), { once: true });
+
+            return controller.signal;
+        }
+        if (signal) return signal;
+        if (hasTimeout) return AbortSignal.timeout(this.settings.timeout);
+        return undefined;
+    }
+
+    /**
+     * Internal SSE streaming implementation with continuation token support
+     * and automatic reconnection on network failures.
      */
     private async *streamSSE(
         url: string,
@@ -66,9 +94,11 @@ export class PlayFrameworkClient {
     ): AsyncIterableIterator<AiSceneResponse> {
         let currentRequest = { ...request };
         let shouldContinue = true;
+        const effectiveSignal = this.createTimeoutSignal(signal);
 
         while (shouldContinue) {
             const headers = await this.settings.enrichHeaders(url, "POST", undefined, currentRequest);
+            let reconnectAttempts = 0;
 
             let shouldRetry = true;
             while (shouldRetry) {
@@ -77,7 +107,7 @@ export class PlayFrameworkClient {
                         method: "POST",
                         headers,
                         body: JSON.stringify(currentRequest),
-                        signal
+                        signal: effectiveSignal || undefined
                     });
 
                     if (!response.ok) {
@@ -87,6 +117,9 @@ export class PlayFrameworkClient {
                     if (!response.body) {
                         throw new Error("Response body is null");
                     }
+
+                    // Reset reconnect counter on successful connection
+                    reconnectAttempts = 0;
 
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
@@ -114,32 +147,34 @@ export class PlayFrameworkClient {
 
                                     if (!data) continue;
 
+                                    let event: SSEEvent;
                                     try {
-                                        const event: SSEEvent = JSON.parse(data);
-
-                                        // Check for completion/error markers
-                                        if (event.status === "completed") {
-                                            shouldContinue = false;
-                                            return; // End streaming
-                                        }
-
-                                        if (event.status === "error") {
-                                            shouldContinue = false;
-                                            throw new Error((event as any).errorMessage || "Unknown error");
-                                        }
-
-                                        // Check for AwaitingClient status
-                                        if (event.status === "AwaitingClient") {
-                                            awaitingClientResponse = event as AiSceneResponse;
-                                            yield awaitingClientResponse; // Yield to user
-                                            break; // Exit SSE loop to execute client tool
-                                        }
-
-                                        // Yield valid AiSceneResponse
-                                        yield event as AiSceneResponse;
-                                    } catch (parseError) {
-                                        console.error("Failed to parse SSE event:", data, parseError);
+                                        event = JSON.parse(data);
+                                    } catch {
+                                        console.error("Failed to parse SSE event:", data);
+                                        continue;
                                     }
+
+                                    // Check for completion/error markers
+                                    if (event.status === "completed") {
+                                        shouldContinue = false;
+                                        return; // End streaming
+                                    }
+
+                                    if (event.status === "error") {
+                                        shouldContinue = false;
+                                        throw new Error((event as ErrorMarker).errorMessage || "Unknown error");
+                                    }
+
+                                    // Check for AwaitingClient status
+                                    if (event.status === "AwaitingClient") {
+                                        awaitingClientResponse = event as AiSceneResponse;
+                                        yield awaitingClientResponse; // Yield to user
+                                        break; // Exit SSE loop to execute client tool
+                                    }
+
+                                    // Yield valid AiSceneResponse
+                                    yield event as AiSceneResponse;
                                 }
                             }
 
@@ -161,11 +196,16 @@ export class PlayFrameworkClient {
                         // Execute client tool
                         const result = await this.clientRegistry.execute(clientRequest);
 
-                        // Prepare new request with continuation token
+                        // Prepare new request with continuation token (inside settings for SceneManager)
                         currentRequest = {
                             ...currentRequest,
                             continuationToken: awaitingClientResponse.continuationToken,
-                            clientInteractionResults: [result]
+                            clientInteractionResults: [result],
+                            settings: {
+                                ...currentRequest.settings,
+                                continuationToken: awaitingClientResponse.continuationToken,
+                                clientInteractionResults: [result]
+                            }
                         };
 
                         // Continue loop to resume execution
@@ -174,6 +214,23 @@ export class PlayFrameworkClient {
                         shouldContinue = false; // Normal completion
                     }
                 } catch (error) {
+                    // Check if this is a network/connection error (not abort, not server error marker)
+                    const isAbort = error instanceof DOMException && error.name === "AbortError";
+                    const isServerError = error instanceof Error && (
+                        error.message.startsWith("HTTP ") || error.message === "Unknown error"
+                    );
+
+                    if (!isAbort && !isServerError && reconnectAttempts < this.settings.maxReconnectAttempts) {
+                        reconnectAttempts++;
+                        const delay = this.settings.reconnectBaseDelay * Math.pow(2, reconnectAttempts - 1);
+                        console.warn(
+                            `SSE connection lost. Reconnecting (attempt ${reconnectAttempts}/${this.settings.maxReconnectAttempts}) in ${delay}ms...`
+                        );
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue; // retry the fetch
+                    }
+
+                    // Delegate to error handlers for custom retry logic
                     shouldRetry = await this.settings.manageError(url, "POST", headers, currentRequest, error);
 
                     if (!shouldRetry) {
@@ -184,3 +241,4 @@ export class PlayFrameworkClient {
             }
         }
     }
+}

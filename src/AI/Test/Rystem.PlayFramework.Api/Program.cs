@@ -3,6 +3,7 @@ using Azure;
 using Rystem.PlayFramework;
 using Rystem.PlayFramework.Api;
 using Microsoft.Extensions.AI;
+using System.ComponentModel;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,9 @@ builder.Services.AddCors(options =>
               .AllowCredentials();
     });
 });
+
+// In-memory distributed cache (required for OnClient continuation tokens)
+builder.Services.AddDistributedMemoryCache();
 
 builder.Services.AddOpenApi();
 
@@ -55,6 +59,16 @@ builder.Services.AddPlayFramework(frameworkBuilder =>
                         .AddActor("Provide clear, concise, and accurate answers.")
                         .AddActor("Be friendly and engaging in conversation.")
                         .AddActor("If you don't know something, admit it honestly.");
+                })
+                .OnClient(clientBuilder =>
+                {
+                    clientBuilder
+                        .AddTool("getCurrentLocation",
+                            "Gets the user's current geographic location (latitude, longitude) from the browser. Use when the user asks about nearby places, weather, or anything location-dependent.",
+                            timeoutSeconds: 15)
+                        .AddTool<UserConfirmationArgs>("getUserConfirmation",
+                            "Asks the user for explicit confirmation before performing a sensitive or irreversible action. Use when the user requests something that needs a yes/no decision.",
+                            timeoutSeconds: 60);
                 });
         });
 });
@@ -215,4 +229,29 @@ public sealed class AzureOpenAIChatClientAdapter : IChatClient
     public object? GetService(Type serviceType, object? serviceKey = null) => null;
     
     public void Dispose() { }
+}
+
+/// <summary>
+/// Arguments model for the getUserConfirmation client tool.
+/// JSON Schema is auto-generated and sent to the LLM.
+/// </summary>
+public sealed class UserConfirmationArgs
+{
+    /// <summary>
+    /// The question to ask the user for confirmation.
+    /// </summary>
+    [Description("The question to present to the user, e.g. 'Do you want to proceed with deleting your account?'")]
+    public string Question { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Label for the confirm button (default: "Yes").
+    /// </summary>
+    [Description("Text for the confirm/accept button")]
+    public string ConfirmLabel { get; set; } = "Yes";
+
+    /// <summary>
+    /// Label for the cancel button (default: "No").
+    /// </summary>
+    [Description("Text for the cancel/reject button")]
+    public string CancelLabel { get; set; } = "No";
 }

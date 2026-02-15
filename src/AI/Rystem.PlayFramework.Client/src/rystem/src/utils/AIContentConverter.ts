@@ -187,11 +187,10 @@ export class AIContentConverter {
             // Wait for duration
             await new Promise((resolve) => setTimeout(resolve, durationMs));
 
-            mediaRecorder.stop();
-
-            // Wait for stop event
+            // Set onstop handler BEFORE calling stop to avoid race condition
             await new Promise<void>((resolve) => {
                 mediaRecorder.onstop = () => resolve();
+                mediaRecorder.stop();
             });
 
             const audioBlob = new Blob(chunks, { type: mimeType });

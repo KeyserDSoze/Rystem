@@ -64,6 +64,7 @@ public static class WebApplicationExtensions
 
                 // Build multi-modal input
                 var input = BuildMultiModalInput(request);
+                var mergedSettings = MergeRequestIntoSettings(request);
 
                 // Set response headers for SSE
                 httpContext.Response.Headers.Append("Content-Type", "text/event-stream");
@@ -71,7 +72,7 @@ public static class WebApplicationExtensions
                 httpContext.Response.Headers.Append("Connection", "keep-alive");
 
                 // Execute PlayFramework with step-by-step streaming
-                await foreach (var response in sceneManager.ExecuteAsync(input, metadata, request.Settings, cancellationToken))
+                await foreach (var response in sceneManager.ExecuteAsync(input, metadata, mergedSettings, cancellationToken))
                 {
                     // Serialize each step as SSE event
                     var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
@@ -127,6 +128,7 @@ public static class WebApplicationExtensions
 
                 // Build multi-modal input
                 var input = BuildMultiModalInput(request);
+                var mergedSettings = MergeRequestIntoSettings(request);
 
                 // Set response headers for SSE
                 httpContext.Response.Headers.Append("Content-Type", "text/event-stream");
@@ -134,7 +136,7 @@ public static class WebApplicationExtensions
                 httpContext.Response.Headers.Append("Connection", "keep-alive");
 
                 // Execute PlayFramework with streaming
-                await foreach (var response in sceneManager.ExecuteAsync(input, metadata, request.Settings, cancellationToken))
+                await foreach (var response in sceneManager.ExecuteAsync(input, metadata, mergedSettings, cancellationToken))
                 {
                     // Serialize response as SSE event
                     var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
@@ -224,6 +226,7 @@ public static class WebApplicationExtensions
                 var sceneManager = sceneManagerFactory.Create(factoryName);
                 var metadata = BuildMetadata(request.Metadata, httpContext, settings);
                 var input = BuildMultiModalInput(request);
+                var mergedSettings = MergeRequestIntoSettings(request);
 
                 // Set response headers for SSE
                 httpContext.Response.Headers.Append("Content-Type", "text/event-stream");
@@ -231,7 +234,7 @@ public static class WebApplicationExtensions
                 httpContext.Response.Headers.Append("Connection", "keep-alive");
 
                 // Execute PlayFramework with step-by-step streaming
-                await foreach (var response in sceneManager.ExecuteAsync(input, metadata, request.Settings, cancellationToken))
+                await foreach (var response in sceneManager.ExecuteAsync(input, metadata, mergedSettings, cancellationToken))
                 {
                     // Serialize each step as SSE event
                     var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
@@ -280,12 +283,13 @@ public static class WebApplicationExtensions
                 var sceneManager = sceneManagerFactory.Create(factoryName);
                 var metadata = BuildMetadata(request.Metadata, httpContext, settings);
                 var input = BuildMultiModalInput(request);
+                var mergedSettings = MergeRequestIntoSettings(request);
 
                 httpContext.Response.Headers.Append("Content-Type", "text/event-stream");
                 httpContext.Response.Headers.Append("Cache-Control", "no-cache");
                 httpContext.Response.Headers.Append("Connection", "keep-alive");
 
-                await foreach (var response in sceneManager.ExecuteAsync(input, metadata, request.Settings, cancellationToken))
+                await foreach (var response in sceneManager.ExecuteAsync(input, metadata, mergedSettings, cancellationToken))
                 {
                     var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
                     {
@@ -385,5 +389,29 @@ public static class WebApplicationExtensions
         }
 
         return metadata;
+    }
+
+    /// <summary>
+    /// Merges top-level ContinuationToken and ClientInteractionResults from PlayFrameworkRequest
+    /// into SceneRequestSettings so SceneManager can process them.
+    /// </summary>
+    private static SceneRequestSettings MergeRequestIntoSettings(PlayFrameworkRequest request)
+    {
+        var requestSettings = request.Settings ?? new SceneRequestSettings();
+
+        // Forward top-level continuation token (HTTP convenience) into settings if not already set
+        if (!string.IsNullOrEmpty(request.ContinuationToken) && string.IsNullOrEmpty(requestSettings.ContinuationToken))
+        {
+            requestSettings.ContinuationToken = request.ContinuationToken;
+        }
+
+        // Forward top-level client interaction results into settings if not already set
+        if (request.ClientInteractionResults != null && request.ClientInteractionResults.Count > 0
+            && (requestSettings.ClientInteractionResults == null || requestSettings.ClientInteractionResults.Count == 0))
+        {
+            requestSettings.ClientInteractionResults = request.ClientInteractionResults;
+        }
+
+        return requestSettings;
     }
 }

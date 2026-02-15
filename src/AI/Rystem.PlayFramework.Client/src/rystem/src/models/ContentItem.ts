@@ -1,5 +1,6 @@
 /**
  * Multi-modal content item for PlayFramework requests.
+ * Matches C# ContentItem contract.
  */
 export interface ContentItem {
     /**
@@ -15,7 +16,7 @@ export interface ContentItem {
     /**
      * Base64-encoded data (for type="image", "audio", "video", "file")
      */
-    base64Data?: string;
+    data?: string;
 
     /**
      * URI/URL (for type="image", "audio", "video", "file", "uri")
@@ -26,4 +27,9 @@ export interface ContentItem {
      * Media type (MIME type)
      */
     mediaType?: string;
+
+    /**
+     * Optional name/filename.
+     */
+    name?: string;
 }

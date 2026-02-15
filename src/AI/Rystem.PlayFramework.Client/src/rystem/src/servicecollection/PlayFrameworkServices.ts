@@ -10,33 +10,36 @@ export class PlayFrameworkServices {
 
     /**
      * Configure a PlayFramework client factory.
+     * Always returns a Promise for consistency (even if configure is sync).
      * 
      * @param name - Factory name (unique identifier).
      * @param baseUrl - Base API URL (e.g., "https://api.example.com/api/ai").
-     * @param configure - Optional configuration callback.
-     * @returns PlayFrameworkSettings instance for further configuration.
+     * @param configure - Optional configuration callback (sync or async).
+     * @returns Promise resolving to PlayFrameworkSettings instance.
      */
-    public static configure(
+    public static async configure(
         name: string,
         baseUrl: string,
         configure?: (settings: PlayFrameworkSettings) => void | Promise<void>
-    ): PlayFrameworkSettings {
+    ): Promise<PlayFrameworkSettings> {
         const settings = new PlayFrameworkSettings(name, baseUrl);
 
-        if (configure) {
-            const result = configure(settings);
-            if (result instanceof Promise) {
-                result.then(() => {
-                    this.settings.set(name, settings);
-                    this.clients.set(name, new PlayFrameworkClient(settings));
-                });
-                return settings;
+        try {
+            if (configure) {
+                await configure(settings);
             }
-        }
 
-        this.settings.set(name, settings);
-        this.clients.set(name, new PlayFrameworkClient(settings));
-        return settings;
+            this.settings.set(name, settings);
+            this.clients.set(name, new PlayFrameworkClient(settings));
+            return settings;
+        } catch (error) {
+            // Clean up partial state on failure
+            this.settings.delete(name);
+            this.clients.delete(name);
+            throw new Error(
+                `PlayFramework configuration failed for '${name}': ${error instanceof Error ? error.message : String(error)}`
+            );
+        }
     }
 
     /**
@@ -99,5 +102,30 @@ export class PlayFrameworkServices {
     public static clear(): void {
         this.clients.clear();
         this.settings.clear();
+    }
+
+    /**
+     * Get the default (first configured) client.
+     * Useful when only one factory is configured.
+     * 
+     * @returns PlayFrameworkClient instance.
+     * @throws Error if no factory is configured.
+     */
+    public static getDefaultClient(): PlayFrameworkClient {
+        const first = this.clients.values().next();
+        if (first.done) {
+            throw new Error("No PlayFramework client configured. Call PlayFrameworkServices.configure(name, baseUrl) first.");
+        }
+        return first.value;
+    }
+
+    /**
+     * Get client by optional name. If name is omitted, returns the default (first configured) client.
+     * 
+     * @param name - Optional factory name.
+     * @returns PlayFrameworkClient instance.
+     */
+    public static resolve(name?: string): PlayFrameworkClient {
+        return name ? this.getClient(name) : this.getDefaultClient();
     }
 }

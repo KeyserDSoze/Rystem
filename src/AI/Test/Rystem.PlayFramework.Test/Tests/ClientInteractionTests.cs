@@ -140,9 +140,9 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
         var clientResult = new ClientInteractionResult
         {
             InteractionId = awaitingClientResponse.ClientInteractionRequest.InteractionId,
-            Contents = new List<AIContent>
+            Contents = new List<ClientContentItem>
             {
-                new DataContent(fakePhotoBytes, "image/jpeg")
+                new ClientContentItem { Type = "data", Data = Convert.ToBase64String(fakePhotoBytes), MediaType = "image/jpeg" }
             },
             ExecutedAt = DateTime.UtcNow
         };
@@ -259,9 +259,9 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
         var clientResult = new ClientInteractionResult
         {
             InteractionId = awaitingClientResponse.ClientInteractionRequest.InteractionId,
-            Contents = new List<AIContent>
+            Contents = new List<ClientContentItem>
             {
-                new TextContent(locationJson)
+                new ClientContentItem { Type = "text", Text = locationJson }
             },
             ExecutedAt = DateTime.UtcNow
         };
@@ -325,7 +325,7 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
         var clientResult = new ClientInteractionResult
         {
             InteractionId = awaitingClientResponse.ClientInteractionRequest!.InteractionId,
-            Contents = new List<AIContent> { new DataContent(new byte[] { 0xFF, 0xD8 }, "image/jpeg") },
+            Contents = new List<ClientContentItem> { new ClientContentItem { Type = "data", Data = Convert.ToBase64String(new byte[] { 0xFF, 0xD8 }), MediaType = "image/jpeg" } },
             ExecutedAt = DateTime.UtcNow
         };
 
@@ -362,7 +362,7 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
                 new ClientInteractionResult
                 {
                     InteractionId = Guid.NewGuid().ToString(),
-                    Contents = new List<AIContent> { new TextContent("dummy") },
+                    Contents = new List<ClientContentItem> { new ClientContentItem { Type = "text", Text = "dummy" } },
                     ExecutedAt = DateTime.UtcNow
                 }
             }
@@ -416,7 +416,7 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
         var clientResult = new ClientInteractionResult
         {
             InteractionId = awaitingClientResponse.ClientInteractionRequest!.InteractionId,
-            Contents = new List<AIContent>(), // Empty — invalid
+            Contents = new List<ClientContentItem>(), // Empty — invalid
             ExecutedAt = DateTime.UtcNow
         };
 

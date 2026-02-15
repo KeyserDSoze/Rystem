@@ -23,6 +23,18 @@ export class PlayFrameworkSettings {
     timeout: number;
 
     /**
+     * Maximum number of SSE reconnection attempts on network failure (default: 3).
+     * Set to 0 to disable automatic reconnection.
+     */
+    maxReconnectAttempts: number;
+
+    /**
+     * Base delay in milliseconds between reconnection attempts (default: 1000ms).
+     * Uses exponential backoff: delay * 2^attempt.
+     */
+    reconnectBaseDelay: number;
+
+    /**
      * Header enrichers (e.g., add Authorization header dynamically).
      */
     private headersEnrichers: Array<(url: string, method: string, headers: HeadersInit, body: any) => Promise<HeadersInit>>;
@@ -39,6 +51,8 @@ export class PlayFrameworkSettings {
             "Content-Type": "application/json"
         };
         this.timeout = 60000; // 60 seconds
+        this.maxReconnectAttempts = 3;
+        this.reconnectBaseDelay = 1000;
         this.headersEnrichers = [];
         this.errorHandlers = [];
     }
@@ -68,34 +82,28 @@ export class PlayFrameworkSettings {
         const setHeaders = (currentHeaders: HeadersInit) => {
             if (currentHeaders instanceof Headers) {
                 currentHeaders.forEach((value, key) => {
-                    if (!requestHeaders.has(key)) {
-                        requestHeaders.set(key, value);
-                    }
+                    requestHeaders.set(key, value);
                 });
             } else if (Array.isArray(currentHeaders)) {
                 currentHeaders.forEach(([key, value]) => {
-                    if (!requestHeaders.has(key)) {
-                        requestHeaders.set(key, value);
-                    }
+                    requestHeaders.set(key, value);
                 });
             } else {
                 for (const [key, value] of Object.entries(currentHeaders)) {
-                    if (!requestHeaders.has(key)) {
-                        requestHeaders.set(key, value);
-                    }
+                    requestHeaders.set(key, value);
                 }
             }
         };
 
-        // Default headers
+        // Default headers (lowest priority)
         setHeaders(this.defaultHeaders);
 
-        // Provided headers
+        // Provided headers (override defaults)
         if (headers) {
             setHeaders(headers);
         }
 
-        // Enrichers
+        // Enrichers (highest priority)
         for (const enricher of this.headersEnrichers) {
             setHeaders(await enricher(url, method, requestHeaders, body));
         }

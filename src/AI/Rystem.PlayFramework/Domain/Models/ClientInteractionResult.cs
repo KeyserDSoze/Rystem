@@ -1,5 +1,3 @@
-using Microsoft.Extensions.AI;
-
 namespace Rystem.PlayFramework;
 
 /// <summary>
@@ -16,10 +14,10 @@ public sealed class ClientInteractionResult
 
     /// <summary>
     /// Multi-modal contents returned by client tool.
-    /// Uses native Microsoft.Extensions.AI types (DataContent, TextContent).
-    /// These are directly added to chat history for LLM processing.
+    /// Uses <see cref="ClientContentItem"/> for JSON deserialization compatibility.
+    /// Each item is converted to native AIContent via <see cref="ClientContentItem.ToAIContent"/>.
     /// </summary>
-    public IList<AIContent>? Contents { get; init; }
+    public List<ClientContentItem>? Contents { get; init; }
 
     /// <summary>
     /// Error message if client tool execution failed.

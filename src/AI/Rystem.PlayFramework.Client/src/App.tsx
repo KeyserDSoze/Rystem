@@ -1,157 +1,463 @@
-import React, { useState } from 'react';
-import { usePlayFramework, PlayFrameworkServices, PlayFrameworkRequest } from './rystem/src';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import {
+    PlayFrameworkServices,
+    PlayFrameworkClient,
+    AIContentConverter,
+    type PlayFrameworkRequest,
+    type AiSceneResponse,
+    type AiResponseStatus
+} from './rystem/src';
 import './App.css';
 
-// Configure PlayFramework client
-PlayFrameworkServices.configure("default", "https://localhost:5001/api/ai", settings => {
-    // Add Authorization header (example)
-    settings.addHeadersEnricher(async (url, method, headers, body) => {
-        return {
-            ...headers,
-            // "Authorization": `Bearer ${yourToken}`
-        };
-    });
+// ─── Types ───────────────────────────────────────────────────────────────
+
+interface ChatMessage {
+    role: 'user' | 'assistant' | 'system' | 'tool';
+    text: string;
+    status?: AiResponseStatus;
+    timestamp: Date;
+    toolName?: string;
+}
+
+type StreamMode = 'step' | 'token';
+type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+
+// ─── Configuration ───────────────────────────────────────────────────────
+
+const API_BASE = 'http://localhost:5158/api/ai';
+const FACTORY_NAME = 'default';
+
+// Configure PlayFramework client (runs once at module load)
+const clientReady = PlayFrameworkServices.configure(FACTORY_NAME, API_BASE, settings => {
+    settings.timeout = 120_000; // 2 min for long AI responses
+    settings.maxReconnectAttempts = 3;
+    settings.reconnectBaseDelay = 1000;
 });
 
+// ─── Client Tool Implementations ─────────────────────────────────────────
+
+function registerClientTools(client: PlayFrameworkClient) {
+    const registry = client.getClientRegistry();
+
+    // getCurrentLocation — uses browser Geolocation API
+    registry.register('getCurrentLocation', async () => {
+        const content = await AIContentConverter.fromGeolocation({ timeout: 10_000 });
+        return [content];
+    });
+
+    // getUserConfirmation — shows a browser confirm dialog
+    registry.register<{ question?: string; confirmLabel?: string; cancelLabel?: string }>(
+        'getUserConfirmation',
+        async (args) => {
+            const question = args?.question ?? 'Do you confirm?';
+            const confirmed = window.confirm(question);
+            return [AIContentConverter.fromText(confirmed ? 'confirmed' : 'denied')];
+        }
+    );
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────
+
+const statusColors: Partial<Record<AiResponseStatus, string>> = {
+    Initializing: '#888',
+    Planning: '#f0ad4e',
+    ExecutingScene: '#5bc0de',
+    FunctionRequest: '#d9534f',
+    FunctionCompleted: '#5cb85c',
+    Streaming: '#61dafb',
+    AwaitingClient: '#ff6b6b',
+    Completed: '#5cb85c',
+    Error: '#d9534f',
+    BudgetExceeded: '#f0ad4e',
+};
+
+function statusBadge(status?: AiResponseStatus) {
+    if (!status) return null;
+    const bg = statusColors[status] ?? '#888';
+    return (
+        <span style={{
+            display: 'inline-block',
+            fontSize: '11px',
+            padding: '2px 7px',
+            borderRadius: '4px',
+            backgroundColor: bg,
+            color: '#fff',
+            marginRight: '6px',
+            fontWeight: 600,
+            letterSpacing: '0.3px',
+        }}>
+            {status}
+        </span>
+    );
+}
+
+// ─── App Component ───────────────────────────────────────────────────────
+
 function App() {
-    const client = usePlayFramework("default");
-    const [messages, setMessages] = useState<string[]>([]);
-    const [prompt, setPrompt] = useState<string>("");
-    const [loading, setLoading] = useState<boolean>(false);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [input, setInput] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [mode, setMode] = useState<StreamMode>('step');
+    const [connection, setConnection] = useState<ConnectionStatus>('disconnected');
+    const [conversationKey, setConversationKey] = useState<string | undefined>();
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const clientRef = useRef<PlayFrameworkClient | null>(null);
 
-    const handleSendStepByStep = async () => {
-        if (!prompt.trim()) return;
+    // Initialize client
+    useEffect(() => {
+        clientReady.then(() => {
+            const client = PlayFrameworkServices.resolve(FACTORY_NAME);
+            registerClientTools(client);
+            clientRef.current = client;
+            setConnection('connected');
+        }).catch(err => {
+            console.error('Failed to configure PlayFramework:', err);
+            setConnection('error');
+        });
+    }, []);
 
+    // Auto-scroll
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
+    const addMessage = useCallback((msg: ChatMessage) => {
+        setMessages(prev => [...prev, msg]);
+    }, []);
+
+    const updateLastAssistant = useCallback((updater: (prev: ChatMessage) => ChatMessage) => {
+        setMessages(prev => {
+            const idx = prev.length - 1;
+            if (idx < 0 || prev[idx].role !== 'assistant') return prev;
+            const updated = [...prev];
+            updated[idx] = updater(updated[idx]);
+            return updated;
+        });
+    }, []);
+
+    // ── Send message ──────────────────────────────────────────────────
+
+    const handleSend = async () => {
+        const text = input.trim();
+        if (!text || loading || !clientRef.current) return;
+
+        setInput('');
         setLoading(true);
-        setMessages([]);
 
-        const newMessages: string[] = [];
+        // Add user message
+        addMessage({ role: 'user', text, timestamp: new Date() });
+
+        const request: PlayFrameworkRequest = {
+            message: text,
+            settings: {
+                conversationKey,
+                enableStreaming: mode === 'token',
+            }
+        };
+
+        const client = clientRef.current;
 
         try {
-            const request: PlayFrameworkRequest = {
-                prompt: prompt,
-                sceneName: "Chat"
-            };
+            setConnection('connecting');
 
-            // Step-by-step streaming
-            for await (const step of client.executeStepByStep(request)) {
-                if (step.message) {
-                    newMessages.push(`[${step.status}] ${step.message}`);
-                    setMessages([...newMessages]);
+            if (mode === 'step') {
+                // Step-by-step streaming
+                addMessage({ role: 'assistant', text: '', timestamp: new Date() });
+
+                for await (const step of client.executeStepByStep(request)) {
+                    handleStep(step);
+                }
+            } else {
+                // Token-level streaming
+                addMessage({ role: 'assistant', text: '', timestamp: new Date() });
+
+                for await (const chunk of client.executeTokenStreaming(request)) {
+                    handleStep(chunk);
                 }
             }
-        } catch (error) {
-            console.error("Error:", error);
-            setMessages([...newMessages, `❌ Error: ${error}`]);
+
+            setConnection('connected');
+        } catch (error: any) {
+            console.error('Execution error:', error);
+            addMessage({
+                role: 'system',
+                text: `Error: ${error.message ?? error}`,
+                status: 'Error',
+                timestamp: new Date()
+            });
+            setConnection('error');
         } finally {
             setLoading(false);
+            inputRef.current?.focus();
         }
     };
 
-    const handleSendTokenStreaming = async () => {
-        if (!prompt.trim()) return;
+    // ── Process a single SSE step/chunk ───────────────────────────────
 
-        setLoading(true);
-        setMessages([]);
+    const handleStep = (step: AiSceneResponse) => {
+        // Track conversation key
+        if (step.conversationKey) {
+            setConversationKey(step.conversationKey);
+        }
 
-        let fullText = "";
+        // AwaitingClient — add a tool message
+        if (step.status === 'AwaitingClient' && step.clientInteractionRequest) {
+            addMessage({
+                role: 'tool',
+                text: `Executing client tool: ${step.clientInteractionRequest.toolName}...`,
+                status: 'AwaitingClient',
+                toolName: step.clientInteractionRequest.toolName,
+                timestamp: new Date()
+            });
+            return;
+        }
 
-        try {
-            const request: PlayFrameworkRequest = {
-                prompt: prompt,
-                sceneName: "Chat"
-            };
+        // Streaming chunk — append to last assistant message
+        if (step.streamingChunk) {
+            updateLastAssistant(prev => ({
+                ...prev,
+                text: prev.text + step.streamingChunk,
+                status: step.status,
+            }));
+            return;
+        }
 
-            // Token-level streaming
-            for await (const chunk of client.executeTokenStreaming(request)) {
-                if (chunk.message) {
-                    fullText += chunk.message;
-                    setMessages([fullText]);
-                }
-            }
-        } catch (error) {
-            console.error("Error:", error);
-            setMessages([fullText, `❌ Error: ${error}`]);
-        } finally {
-            setLoading(false);
+        // Regular step with message — append to last assistant
+        if (step.message) {
+            updateLastAssistant(prev => ({
+                ...prev,
+                text: prev.text
+                    ? prev.text + '\n' + `[${step.status}] ${step.message}`
+                    : `[${step.status}] ${step.message}`,
+                status: step.status,
+            }));
+        }
+
+        // FunctionRequest/Completed — show as system info
+        if (step.status === 'FunctionRequest' || step.status === 'FunctionCompleted') {
+            const label = step.status === 'FunctionRequest' ? 'Calling' : 'Completed';
+            addMessage({
+                role: 'system',
+                text: `${label}: ${step.functionName ?? 'unknown'}`,
+                status: step.status,
+                timestamp: new Date()
+            });
         }
     };
+
+    // ── Key handler ───────────────────────────────────────────────────
+
+    const handleKey = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    };
+
+    // ── Clear chat ────────────────────────────────────────────────────
+
+    const handleClear = () => {
+        setMessages([]);
+        setConversationKey(undefined);
+    };
+
+    // ── Render ────────────────────────────────────────────────────────
 
     return (
-        <div className="App">
-            <header className="App-header">
-                <h1>Rystem PlayFramework Client - Test App</h1>
-
-                <div style={{ marginBottom: '20px', width: '80%' }}>
-                    <input
-                        type="text"
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="Enter your prompt..."
-                        style={{
-                            width: '100%',
-                            padding: '10px',
-                            fontSize: '16px',
-                            borderRadius: '5px',
-                            border: '1px solid #ccc'
-                        }}
-                        disabled={loading}
-                    />
+        <div className="App" style={{ height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
+            {/* Header */}
+            <header style={{
+                padding: '12px 20px',
+                backgroundColor: '#282c34',
+                borderBottom: '1px solid #3a3a3a',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexShrink: 0,
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <h1 style={{ margin: 0, fontSize: '18px', color: '#61dafb' }}>
+                        PlayFramework Test Chat
+                    </h1>
+                    <span style={{
+                        fontSize: '11px',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        backgroundColor: connection === 'connected' ? '#2d5a2d' : connection === 'error' ? '#5a2d2d' : '#4a4a2d',
+                        color: connection === 'connected' ? '#5cb85c' : connection === 'error' ? '#d9534f' : '#f0ad4e',
+                    }}>
+                        {connection}
+                    </span>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                    <button
-                        onClick={handleSendStepByStep}
-                        disabled={loading}
-                        style={{
-                            padding: '10px 20px',
-                            fontSize: '16px',
-                            borderRadius: '5px',
-                            border: 'none',
-                            backgroundColor: '#61dafb',
-                            color: '#282c34',
-                            cursor: loading ? 'not-allowed' : 'pointer'
-                        }}
-                    >
-                        {loading ? "Loading..." : "Send (Step-by-Step)"}
-                    </button>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {/* Mode toggle */}
+                    <div style={{
+                        display: 'flex',
+                        borderRadius: '6px',
+                        overflow: 'hidden',
+                        border: '1px solid #444',
+                    }}>
+                        <button
+                            onClick={() => setMode('step')}
+                            style={{
+                                padding: '5px 12px',
+                                fontSize: '12px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                backgroundColor: mode === 'step' ? '#61dafb' : '#333',
+                                color: mode === 'step' ? '#1e1e1e' : '#aaa',
+                                fontWeight: mode === 'step' ? 700 : 400,
+                            }}
+                        >
+                            Step-by-Step
+                        </button>
+                        <button
+                            onClick={() => setMode('token')}
+                            style={{
+                                padding: '5px 12px',
+                                fontSize: '12px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                backgroundColor: mode === 'token' ? '#ff6b6b' : '#333',
+                                color: mode === 'token' ? '#fff' : '#aaa',
+                                fontWeight: mode === 'token' ? 700 : 400,
+                            }}
+                        >
+                            Token Streaming
+                        </button>
+                    </div>
 
-                    <button
-                        onClick={handleSendTokenStreaming}
-                        disabled={loading}
-                        style={{
-                            padding: '10px 20px',
-                            fontSize: '16px',
-                            borderRadius: '5px',
-                            border: 'none',
-                            backgroundColor: '#ff6b6b',
-                            color: 'white',
-                            cursor: loading ? 'not-allowed' : 'pointer'
-                        }}
-                    >
-                        {loading ? "Loading..." : "Send (Token Streaming)"}
+                    <button onClick={handleClear} style={{
+                        padding: '5px 12px',
+                        fontSize: '12px',
+                        borderRadius: '6px',
+                        border: '1px solid #555',
+                        backgroundColor: 'transparent',
+                        color: '#aaa',
+                        cursor: 'pointer',
+                    }}>
+                        Clear
                     </button>
-                </div>
-
-                <div style={{
-                    width: '80%',
-                    maxHeight: '400px',
-                    overflowY: 'auto',
-                    backgroundColor: '#1e1e1e',
-                    padding: '20px',
-                    borderRadius: '10px',
-                    textAlign: 'left'
-                }}>
-                    {messages.length === 0 && !loading && (
-                        <p style={{ color: '#666' }}>No messages yet. Enter a prompt and click Send.</p>
-                    )}
-                    {messages.map((msg, i) => (
-                        <div key={i} style={{ marginBottom: '10px', color: '#61dafb' }}>
-                            {msg}
-                        </div>
-                    ))}
                 </div>
             </header>
+
+            {/* Messages */}
+            <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: '16px 20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+            }}>
+                {messages.length === 0 && (
+                    <div style={{ textAlign: 'center', color: '#555', marginTop: '40px', fontSize: '14px' }}>
+                        <p>Send a message to start chatting.</p>
+                        <p style={{ fontSize: '12px', color: '#444' }}>
+                            Try: "Where am I right now?" (triggers <code>getCurrentLocation</code>)
+                            <br />
+                            or: "Delete my account" (triggers <code>getUserConfirmation</code>)
+                        </p>
+                    </div>
+                )}
+
+                {messages.map((msg, i) => (
+                    <div
+                        key={i}
+                        style={{
+                            alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                            maxWidth: msg.role === 'system' || msg.role === 'tool' ? '100%' : '75%',
+                            padding: msg.role === 'system' || msg.role === 'tool' ? '4px 10px' : '10px 14px',
+                            borderRadius: '10px',
+                            backgroundColor:
+                                msg.role === 'user' ? '#2d5a8a'
+                                : msg.role === 'assistant' ? '#2d2d2d'
+                                : msg.role === 'tool' ? '#3d2d1d'
+                                : 'transparent',
+                            color:
+                                msg.role === 'user' ? '#e8f0fe'
+                                : msg.role === 'system' ? '#777'
+                                : msg.role === 'tool' ? '#f0ad4e'
+                                : '#ddd',
+                            fontSize: msg.role === 'system' || msg.role === 'tool' ? '12px' : '14px',
+                            fontStyle: msg.role === 'system' ? 'italic' : 'normal',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                            lineHeight: 1.5,
+                        }}
+                    >
+                        {msg.role !== 'user' && statusBadge(msg.status)}
+                        {msg.text || (msg.role === 'assistant' && loading ? '...' : '')}
+                    </div>
+                ))}
+                <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input bar */}
+            <div style={{
+                padding: '12px 20px',
+                backgroundColor: '#282c34',
+                borderTop: '1px solid #3a3a3a',
+                display: 'flex',
+                gap: '10px',
+                alignItems: 'center',
+                flexShrink: 0,
+            }}>
+                <input
+                    ref={inputRef}
+                    type="text"
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={handleKey}
+                    placeholder={loading ? 'Waiting for response...' : 'Type a message...'}
+                    disabled={loading || connection === 'error'}
+                    autoFocus
+                    style={{
+                        flex: 1,
+                        padding: '10px 14px',
+                        fontSize: '14px',
+                        borderRadius: '8px',
+                        border: '1px solid #444',
+                        backgroundColor: '#1e1e1e',
+                        color: '#eee',
+                        outline: 'none',
+                    }}
+                />
+                <button
+                    onClick={handleSend}
+                    disabled={loading || !input.trim() || connection === 'error'}
+                    style={{
+                        padding: '10px 20px',
+                        fontSize: '14px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        backgroundColor: loading ? '#444' : '#61dafb',
+                        color: loading ? '#888' : '#1e1e1e',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        fontWeight: 600,
+                    }}
+                >
+                    {loading ? 'Sending...' : 'Send'}
+                </button>
+            </div>
+
+            {/* Footer info */}
+            <div style={{
+                padding: '4px 20px 8px',
+                backgroundColor: '#282c34',
+                fontSize: '11px',
+                color: '#555',
+                display: 'flex',
+                justifyContent: 'space-between',
+            }}>
+                <span>API: {API_BASE}/{FACTORY_NAME}</span>
+                <span>
+                    Mode: {mode === 'step' ? 'Step-by-Step' : 'Token Streaming'}
+                    {conversationKey && ` | Conv: ${conversationKey.substring(0, 8)}...`}
+                </span>
+            </div>
         </div>
     );
 }

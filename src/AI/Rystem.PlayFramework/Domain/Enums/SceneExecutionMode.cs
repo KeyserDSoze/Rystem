@@ -1,8 +1,11 @@
-﻿namespace Rystem.PlayFramework;
+﻿using System.Text.Json.Serialization;
+
+namespace Rystem.PlayFramework;
 
 /// <summary>
 /// Defines how scenes are selected and executed.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum SceneExecutionMode
 {
     /// <summary>
