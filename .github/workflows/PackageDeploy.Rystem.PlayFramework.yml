@@ -4,7 +4,7 @@ on:
     branches:
       - master
     paths:
-      - src/PlayFramework/Rystem.PlayFramework/Rystem.PlayFramework.csproj
+      - src/AI/Rystem.PlayFramework/Rystem.PlayFramework.csproj
       - reload.txt
 jobs:
   publish:
@@ -17,5 +17,5 @@ jobs:
         uses: KeyserDSoze/DefaultAction/pushing_nuget_with_symbols@v1.0.1
         with:
           dotnet-version: ${{ secrets.NET_VERSION }}
-          path: src/PlayFramework/Rystem.PlayFramework/Rystem.PlayFramework.csproj
+          path: src/AI/Rystem.PlayFramework/Rystem.PlayFramework.csproj
           api-key: ${{ secrets.NUGET_API_KEY }}

@@ -1,0 +1,30 @@
+name: PlayFramework.Client.Typescript.Npm
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - src/AI/Rystem.PlayFramework.Client/src/rystem/package.json
+      - reload.txt
+jobs:
+  publish:
+    name: build, pack & publish
+    runs-on: ubuntu-latest
+    environment: Rystem.Nuget
+    defaults:
+        run:
+            working-directory: "src/AI/Rystem.PlayFramework.Client/src/rystem"
+    
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '24.x'
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm install -g typescript
+      - run: tsc --build --clean
+      - run: npm install
+      - run: tsc
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

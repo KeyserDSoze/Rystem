@@ -133,6 +133,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Workflows", "Workflows", "{
 		.github\workflows\PackageDeploy.Rystem.Content.Infrastructure.M365.Sharepoint.yml = .github\workflows\PackageDeploy.Rystem.Content.Infrastructure.M365.Sharepoint.yml
 		.github\workflows\PackageDeploy.Rystem.DependencyInjection.yml = .github\workflows\PackageDeploy.Rystem.DependencyInjection.yml
 		.github\workflows\PackageDeploy.Rystem.PlayFramework.yml = .github\workflows\PackageDeploy.Rystem.PlayFramework.yml
+		.github\workflows\PackageDeploy.Rystem.PlayFramework.Client.Typescript.yml = .github\workflows\PackageDeploy.Rystem.PlayFramework.Client.Typescript.yml
 		.github\workflows\PackageDeploy.Rystem.Queue.yml = .github\workflows\PackageDeploy.Rystem.Queue.yml
 		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Abstractions.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Abstractions.yml
 		.github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer.yml = .github\workflows\PackageDeploy.Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer.yml
