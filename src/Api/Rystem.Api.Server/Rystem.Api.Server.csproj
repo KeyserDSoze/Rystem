@@ -26,8 +26,8 @@
 	</PropertyGroup>
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
-        <PackageReference Include="Scalar.AspNetCore" Version="2.12.36" />
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.2" />
+        <PackageReference Include="Scalar.AspNetCore" Version="2.12.40" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.3" />
     </ItemGroup>
     <Choose>
         <When Condition=" '$(Configuration)'=='Debug' ">
