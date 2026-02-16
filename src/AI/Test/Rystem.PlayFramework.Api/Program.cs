@@ -1,9 +1,10 @@
-using Azure.AI.OpenAI;
+﻿using Azure.AI.OpenAI;
 using Azure;
 using Rystem.PlayFramework;
 using Rystem.PlayFramework.Api;
 using Microsoft.Extensions.AI;
 using System.ComponentModel;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,15 +13,14 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "http://localhost:5174")
+        policy.AllowAnyOrigin()
               .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+              .AllowAnyMethod();
     });
 });
 
 // In-memory distributed cache (required for OnClient continuation tokens)
-builder.Services.AddDistributedMemoryCache();
+builder.Services.AddMemoryCache();
 
 builder.Services.AddOpenApi();
 
@@ -31,7 +31,7 @@ var azureOpenAIDeployment = builder.Configuration["AzureOpenAI:Deployment"] ?? "
 
 if (!string.IsNullOrEmpty(azureOpenAIEndpoint) && !string.IsNullOrEmpty(azureOpenAIKey))
 {
-    builder.Services.AddSingleton<IChatClient>(_ => 
+    builder.Services.AddSingleton<IChatClient>(_ =>
         new AzureOpenAIChatClientAdapter(azureOpenAIEndpoint, azureOpenAIKey, azureOpenAIDeployment));
 }
 else
@@ -41,16 +41,17 @@ else
 }
 
 // Configure PlayFramework with Chat scene
-builder.Services.AddPlayFramework(frameworkBuilder =>
+builder.Services.AddPlayFramework("default", frameworkBuilder =>
 {
     frameworkBuilder
         .Configure(settings =>
         {
             settings.Planning.Enabled = true;
             settings.Summarization.Enabled = false;
+            settings.Cache.Enabled = true;
         })
         .AddMainActor("You are a helpful AI assistant. You help users with their questions and tasks in a friendly and professional manner.")
-        .AddScene("Chat", "General conversation and question answering", sceneBuilder =>
+        .AddScene("General Requests", "Use this scene for every request. General conversation and question answering. ", sceneBuilder =>
         {
             sceneBuilder
                 .WithActors(actorBuilder =>
@@ -79,6 +80,12 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options.Servers = [new ScalarServer("http://localhost:5158", "Local Development")];
+        options.Title = "PlayFramework API";
+        options.Theme = ScalarTheme.BluePlanet;
+    });
 }
 
 app.UseCors();
@@ -87,7 +94,7 @@ app.UseHttpsRedirection();
 // Map PlayFramework HTTP endpoints
 // POST /api/ai/{factoryName} - Step-by-step streaming (each PlayFramework step)
 // POST /api/ai/{factoryName}/streaming - Token-level streaming (each text chunk)
-app.MapPlayFramework(settings =>
+app.MapPlayFramework("default", settings =>
 {
     settings.BasePath = "/api/ai";
     settings.RequireAuthentication = false; // Set to true for production
@@ -105,20 +112,20 @@ public class MockChatClient : IChatClient
     public ChatClientMetadata Metadata => new("MockChatClient", null, "mock-model");
 
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
-        IEnumerable<ChatMessage> messages, 
-        ChatOptions? options = null, 
+        IEnumerable<ChatMessage> messages,
+        ChatOptions? options = null,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await Task.Delay(500, cancellationToken);
-        
-        var words = new[] 
-        { 
-            "Hello! ", "I'm ", "a ", "mock ", "AI ", "assistant. ", 
-            "I ", "can ", "help ", "you ", "test ", "the ", "PlayFramework ", 
-            "API. ", "Configure ", "Azure ", "OpenAI ", "credentials ", "for ", 
+
+        var words = new[]
+        {
+            "Hello! ", "I'm ", "a ", "mock ", "AI ", "assistant. ",
+            "I ", "can ", "help ", "you ", "test ", "the ", "PlayFramework ",
+            "API. ", "Configure ", "Azure ", "OpenAI ", "credentials ", "for ",
             "real ", "AI ", "responses!"
         };
-        
+
         foreach (var word in words)
         {
             await Task.Delay(50, cancellationToken);
@@ -126,16 +133,16 @@ public class MockChatClient : IChatClient
         }
     }
 
-    public async Task< ChatResponse> GetResponseAsync(
-        IEnumerable<ChatMessage> messages, 
-        ChatOptions? options = null, 
+    public async Task<ChatResponse> GetResponseAsync(
+        IEnumerable<ChatMessage> messages,
+        ChatOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         await Task.Delay(500, cancellationToken);
-        
+
         return new ChatResponse(
         [
-            new ChatMessage(ChatRole.Assistant, 
+            new ChatMessage(ChatRole.Assistant,
                 "Hello! I'm a mock AI assistant. I can help you test the PlayFramework API. Configure Azure OpenAI credentials for real AI responses!")
         ])
         {
@@ -144,7 +151,7 @@ public class MockChatClient : IChatClient
     }
 
     public object? GetService(Type serviceType, object? serviceKey = null) => null;
-    
+
     public void Dispose() { }
 }
 
@@ -187,7 +194,7 @@ public sealed class AzureOpenAIChatClientAdapter : IChatClient
         }
 
         var response = await _chatClient.CompleteChatAsync(openAiMessages, cancellationToken: cancellationToken);
-        
+
         var responseMessages = new List<ChatMessage>
         {
             new ChatMessage(ChatRole.Assistant, response.Value.Content[0].Text)
@@ -227,7 +234,7 @@ public sealed class AzureOpenAIChatClientAdapter : IChatClient
     }
 
     public object? GetService(Type serviceType, object? serviceKey = null) => null;
-    
+
     public void Dispose() { }
 }
 

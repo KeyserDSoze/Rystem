@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Mcp;
@@ -8,6 +7,7 @@ using Rystem.PlayFramework.Services.Helpers;
 using Rystem.PlayFramework.Telemetry;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 
 namespace Rystem.PlayFramework;
 
@@ -25,17 +25,17 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private readonly IFactory<IPlanner> _plannerFactory;
     private readonly IFactory<ISummarizer> _summarizerFactory;
     private readonly IFactory<IDirector> _directorFactory;
-    private readonly IFactory<ICacheService> _cacheServiceFactory;
     private readonly IFactory<IJsonService> _jsonServiceFactory;
     private readonly IFactory<IMcpServerManager> _mcpServerManagerFactory;
     private readonly IFactory<IRateLimiter>? _rateLimiterFactory;
     private readonly IFactory<IMemory>? _memoryFactory;
+    private readonly IFactory<IContext>? _contextFactory;
     private readonly IFactory<IMemoryStorage>? _memoryStorageFactory;
+    private readonly IPlayFrameworkCache _playFrameworkCache;
     private readonly IResponseHelper _responseHelper;
     private readonly IStreamingHelper _streamingHelper;
     private readonly ISceneMatchingHelper _sceneMatchingHelper;
     private readonly IClientInteractionHandler _clientInteractionHandler;
-    private readonly IDistributedCache? _distributedCache;
 
     // Resolved dependencies (set via SetFactoryName)
     private string? _factoryName;
@@ -46,11 +46,11 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private IPlanner? _planner;
     private ISummarizer? _summarizer;
     private IDirector? _director;
-    private ICacheService? _cacheService;
     private IJsonService _jsonService = null!;
     private IRateLimiter? _rateLimiter;
     private IMemory? _memory;
     private IMemoryStorage? _memoryStorage;
+    private IContext? _context;
 
     public SceneManager(
         IServiceProvider serviceProvider,
@@ -62,9 +62,9 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         IFactory<IPlanner> plannerFactory,
         IFactory<ISummarizer> summarizerFactory,
         IFactory<IDirector> directorFactory,
-        IFactory<ICacheService> cacheServiceFactory,
         IFactory<IJsonService> jsonServiceFactory,
         IFactory<IMcpServerManager> mcpServerManagerFactory,
+        IPlayFrameworkCache playFrameworkCache,
         IResponseHelper responseHelper,
         IStreamingHelper streamingHelper,
         ISceneMatchingHelper sceneMatchingHelper,
@@ -72,7 +72,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         IFactory<IRateLimiter>? rateLimiterFactory = null,
         IFactory<IMemory>? memoryFactory = null,
         IFactory<IMemoryStorage>? memoryStorageFactory = null,
-        IDistributedCache? distributedCache = null)
+        IFactory<IContext>? contextFactory = null)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -81,16 +81,16 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _settingsFactory = settingsFactory;
         _mainActorsFactory = mainActorsFactory;
         _plannerFactory = plannerFactory;
+        _contextFactory = contextFactory;
         _summarizerFactory = summarizerFactory;
         _directorFactory = directorFactory;
-        _cacheServiceFactory = cacheServiceFactory;
         _jsonServiceFactory = jsonServiceFactory;
         _mcpServerManagerFactory = mcpServerManagerFactory;
+        _playFrameworkCache = playFrameworkCache;
         _responseHelper = responseHelper;
         _streamingHelper = streamingHelper;
         _sceneMatchingHelper = sceneMatchingHelper;
         _clientInteractionHandler = clientInteractionHandler;
-        _distributedCache = distributedCache;
         _rateLimiterFactory = rateLimiterFactory;
         _memoryFactory = memoryFactory;
         _memoryStorageFactory = memoryStorageFactory;
@@ -106,13 +106,13 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _logger.LogTrace("SceneFactory resolved: {SceneFactoryType} (Factory: {FactoryName})", _sceneFactory.GetType().Name, _factoryName);
 
         // Get ChatClientManager from factory
-        _chatClientManager = _chatClientManagerFactory.Create(name) 
+        _chatClientManager = _chatClientManagerFactory.Create(name)
             ?? throw new InvalidOperationException($"ChatClientManager not found for factory key: {name}. Make sure IChatClientManager is registered.");
 
         _logger.LogTrace("ChatClientManager resolved: {ChatClientManagerType} (Factory: {FactoryName})", _chatClientManager.GetType().Name, _factoryName);
 
         _settings = _settingsFactory.Create(name) ?? new PlayFrameworkSettings();
-        _logger.LogDebug("Settings loaded - ExecutionMode: {ExecutionMode}, Planning: {PlanningEnabled}, Cache: {CacheEnabled}, FallbackMode: {FallbackMode} (Factory: {FactoryName})", 
+        _logger.LogDebug("Settings loaded - ExecutionMode: {ExecutionMode}, Planning: {PlanningEnabled}, Cache: {CacheEnabled}, FallbackMode: {FallbackMode} (Factory: {FactoryName})",
             _settings.DefaultExecutionMode, _settings.Planning.Enabled, _settings.Cache.Enabled, _settings.FallbackMode, _factoryName);
 
         _mainActors = _mainActorsFactory.Create(name) ?? [];
@@ -121,14 +121,13 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _planner = _plannerFactory.Create(name);
         _summarizer = _summarizerFactory.Create(name);
         _director = _directorFactory.Create(name);
-        _cacheService = _cacheServiceFactory.Create(name);
         _jsonService = _jsonServiceFactory.Create(name) ?? new DefaultJsonService();
 
         // Resolve rate limiter if enabled
         _rateLimiter = _rateLimiterFactory?.Create(name);
         if (_rateLimiter != null)
         {
-            _logger.LogDebug("Rate limiter enabled with strategy: {Strategy} (Factory: {FactoryName})", 
+            _logger.LogDebug("Rate limiter enabled with strategy: {Strategy} (Factory: {FactoryName})",
                 _settings.RateLimiting?.Strategy, _factoryName);
         }
 
@@ -142,8 +141,10 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         }
 
         var availableScenes = _sceneFactory.GetSceneNames().Count();
-        _logger.LogInformation("SceneManager initialized successfully - Scenes: {SceneCount}, ChatClients: {ChatClientCount}, FallbackMode: {FallbackMode}, Planner: {HasPlanner}, Summarizer: {HasSummarizer}, Director: {HasDirector}, Cache: {HasCache}, RateLimit: {HasRateLimit}, Memory: {HasMemory} (Factory: {FactoryName})", 
-            availableScenes, _settings.ChatClientNames?.Count ?? 1, _settings.FallbackMode, _planner != null, _summarizer != null, _director != null, _cacheService != null, _rateLimiter != null, _memory != null, _factoryName);
+        _logger.LogInformation("SceneManager initialized successfully - Scenes: {SceneCount}, ChatClients: {ChatClientCount}, FallbackMode: {FallbackMode}, Planner: {HasPlanner}, Summarizer: {HasSummarizer}, Director: {HasDirector}, Cache: {CacheEnabled}, RateLimit: {HasRateLimit}, Memory: {HasMemory} (Factory: {FactoryName})",
+            availableScenes, _settings.ChatClientNames?.Count ?? 1, _settings.FallbackMode, _planner != null, _summarizer != null, _director != null, _settings.Cache.Enabled, _rateLimiter != null, _memory != null, _factoryName);
+
+        _context = _contextFactory?.Create(name);
     }
 
     public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(
@@ -267,8 +268,11 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         SceneRequestSettings? settings = null,
         CancellationToken cancellationToken = default)
     {
-        // Allow empty message when resuming from continuation token
-        if (string.IsNullOrEmpty(settings?.ContinuationToken))
+        // Allow empty message when resuming from client interaction (has ConversationKey + ClientInteractionResults)
+        var isResumingFromClientInteraction = !string.IsNullOrEmpty(settings?.ConversationKey)
+            && settings?.ClientInteractionResults is { Count: > 0 };
+
+        if (!isResumingFromClientInteraction)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(message);
         }
@@ -325,78 +329,43 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
 
         var context = await InitializeContextAsync(input, metadata, settings, cancellationToken);
 
-        // Restore from continuation token if resuming
-        if (!string.IsNullOrEmpty(settings.ContinuationToken) && _distributedCache != null)
+        // Load from cache (includes conversation history and continuation state in Properties)
+        if (_settings.Cache.Enabled && context.ConversationKey != null)
         {
-            yield return YieldStatus(AiResponseStatus.LoadingCache, "Restoring continuation state");
+            yield return YieldStatus(AiResponseStatus.LoadingCache, "Loading from cache");
+            await _playFrameworkCache.LoadAsync(context, cancellationToken);
+        }
 
-            var continuationKey = $"continuation:{_factoryName}:{settings.ContinuationToken}";
-            var continuationBytes = await _distributedCache.GetAsync(continuationKey, cancellationToken);
+        // Check if resuming from client interaction (ConversationKey + ClientInteractionResults)
+        var isResumingFromClientInteraction = settings.ClientInteractionResults is { Count: > 0 }
+            && context.Properties.ContainsKey("_continuation_sceneName");
 
-            if (continuationBytes == null)
-            {
-                _logger.LogError("Continuation token '{Token}' not found or expired", settings.ContinuationToken);
-
-                yield return YieldAndTrack(context, new AiSceneResponse
-                {
-                    Status = AiResponseStatus.Error,
-                    ErrorMessage = "Continuation token not found or expired. Please start a new conversation.",
-                    Message = "Session expired. Please start over."
-                });
-
-                yield break;
-            }
-
-            var continuationJson = System.Text.Encoding.UTF8.GetString(continuationBytes);
-            var continuation = _jsonService.Deserialize<SceneContinuation>(continuationJson);
-
-            if (continuation == null)
-            {
-                _logger.LogError("Failed to deserialize continuation token '{Token}'", settings.ContinuationToken);
-                yield return YieldAndTrack(context, new AiSceneResponse
-                {
-                    Status = AiResponseStatus.Error,
-                    ErrorMessage = "Invalid continuation state.",
-                    Message = "Session recovery failed. Please start over."
-                });
-                yield break;
-            }
-
-            _logger.LogInformation("Restoring continuation for interaction '{InteractionId}' from token '{Token}'",
-                continuation.PendingInteractionId, settings.ContinuationToken);
+        if (isResumingFromClientInteraction)
+        {
+            _logger.LogInformation("Resuming from client interaction for conversation '{ConversationKey}'", context.ConversationKey);
 
             // Validate client interaction results
-            if (settings.ClientInteractionResults != null)
+            foreach (var result in settings.ClientInteractionResults!)
             {
-                foreach (var result in settings.ClientInteractionResults)
+                if (!_clientInteractionHandler.ValidateResult(result))
                 {
-                    if (!_clientInteractionHandler.ValidateResult(result))
+                    yield return YieldAndTrack(context, new AiSceneResponse
                     {
-                        yield return YieldAndTrack(context, new AiSceneResponse
-                        {
-                            Status = AiResponseStatus.Error,
-                            ErrorMessage = $"Invalid client interaction result for '{result.InteractionId}': {result.Error}",
-                            Message = "Client interaction failed. Please try again."
-                        });
+                        Status = AiResponseStatus.Error,
+                        ErrorMessage = $"Invalid client interaction result for '{result.InteractionId}': {result.Error}",
+                        Message = "Client interaction failed. Please try again."
+                    });
 
-                        yield break;
-                    }
-
-                    _logger.LogInformation("Received client interaction result for '{InteractionId}' with {Count} contents",
-                        result.InteractionId, result.Contents?.Count ?? 0);
+                    yield break;
                 }
-            }
 
-            // Delete continuation token from cache (single use)
-            await _distributedCache.RemoveAsync(continuationKey, cancellationToken);
+                _logger.LogInformation("Received client interaction result for '{InteractionId}' with {Count} contents",
+                    result.InteractionId, result.Contents?.Count ?? 0);
+            }
 
             // Route directly to the scene from continuation, bypassing scene selection
             settings.ExecutionMode = SceneExecutionMode.Scene;
-            settings.SceneName = continuation.SceneName;
-
-            // Store original call info for FunctionResultContent reconstruction
-            context.Properties["_continuation_callId"] = continuation.OriginalCallId;
-            context.Properties["_continuation_toolName"] = continuation.OriginalToolName;
+            settings.SceneName = context.GetProperty<string>("_continuation_sceneName");
         }
 
         // Rate limiting check
@@ -453,8 +422,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                     "Previous memory loaded for conversation '{Key}': {ConversationCount} conversations, summary length: {Length} (Factory: {FactoryName})",
                     context.ConversationKey, previousMemory.ConversationCount, previousMemory.Summary?.Length ?? 0, _factoryName);
 
-                // Add memory context to the beginning of conversation
-                context.Properties["previous_memory"] = previousMemory;
+                // Add memory context to conversation (after InitialContext, before user message)
+                context.AddMemoryContext(previousMemory);
             }
             else
             {
@@ -463,39 +432,27 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             }
         }
 
-        // Load from cache if available
-        if (settings.CacheBehavior != CacheBehavior.Avoidable && _cacheService != null && context.ConversationKey != null)
+        // Check if summarization needed for loaded data
+        if (_settings.Cache.Enabled && context.ConversationKey != null)
         {
-            yield return YieldStatus(AiResponseStatus.LoadingCache, "Loading from cache");
-
-            var cached = await _cacheService.GetAsync(context.ConversationKey, cancellationToken);
-            if (cached != null)
+            var messagesToResume = context.ConversationHistory.Where(m => m.ShouldResume).ToList();
+            if (_summarizer != null && messagesToResume.Count > _settings.Summarization.ResponseCountThreshold)
             {
-                // Check if summarization needed for cached data
-                if (_summarizer != null && _summarizer.ShouldSummarize(cached))
-                {
-                    yield return YieldStatus(AiResponseStatus.Summarizing, "Summarizing cached conversation");
+                yield return YieldStatus(AiResponseStatus.Summarizing, "Summarizing cached conversation");
 
-                    var summary = await _summarizer.SummarizeAsync(cached, cancellationToken);
-                    context.ConversationSummary = summary;
+                // Convert TrackedMessages to responses for summarizer
+                var responsesForSummary = messagesToResume
+                    .Select(m => new AiSceneResponse { Message = m.Message.Text })
+                    .ToList();
 
-                    // Store summary in context to include in future messages
-                    context.Properties["conversation_summary"] = summary;
-                }
-                else
-                {
-                    // Replay cached messages
-                    foreach (var cachedResponse in cached)
-                    {
-                        context.Responses.Add(cachedResponse);
-                    }
-                }
+                var summary = await _summarizer.SummarizeAsync(responsesForSummary, cancellationToken);
+
+                // Apply summary to context (marks resumable as summarized, adds summary)
+                context.ApplySummary(summary);
             }
         }
 
-        // Execute main actors
-        yield return YieldStatus(AiResponseStatus.ExecutingMainActors, "Executing main actors");
-        await ExecuteMainActorsAsync(context, cancellationToken);
+        // Main actors already executed in InitializeContextAsync
 
         // Determine execution mode (request setting overrides default)
         var executionMode = settings.ExecutionMode ?? _settings.DefaultExecutionMode;
@@ -587,10 +544,10 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         }
 
         // Save to cache
-        if (settings.CacheBehavior != CacheBehavior.Avoidable && _cacheService != null && context.ConversationKey != null)
+        if (settings.CacheBehavior != CacheBehavior.Avoidable && _settings.Cache.Enabled && context.ConversationKey != null)
         {
             yield return YieldStatus(AiResponseStatus.SavingCache, "Saving to cache");
-            await _cacheService.SetAsync(context.ConversationKey, context.Responses, settings.CacheBehavior, cancellationToken);
+            await _playFrameworkCache.SaveAsync(context, cancellationToken);
         }
 
         // Save updated memory if enabled
@@ -598,27 +555,18 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         {
             yield return YieldStatus(AiResponseStatus.SavingCache, "Saving conversation memory");
 
-            // Collect all conversation messages from responses
-            var conversationMessages = context.Responses
-                .Where(r => !string.IsNullOrWhiteSpace(r.Message))
-                .Select(r => new ChatMessage(ChatRole.Assistant, r.Message ?? string.Empty))
+            // Get messages for memory
+            var memoryMessages = context.GetMessagesForMemory()
+                .Select(m => m.Message)
                 .ToList();
-
-            // Add user's initial message (multi-modal)
-            conversationMessages.Insert(0, context.Input.ToChatMessage(ChatRole.User));
-
-            // Get previous memory from context
-            var prevMemoryFromContext = context.Properties.TryGetValue("previous_memory", out var prevMem)
-                ? prevMem as ConversationMemory
-                : null;
 
             try
             {
                 // Summarize and save
                 var updatedMemory = await _memory.SummarizeAsync(
-                    prevMemoryFromContext,
+                    null, // Previous memory already incorporated in conversation
                     input.Text ?? string.Empty,
-                    conversationMessages,
+                    memoryMessages,
                     metadata,
                     settings,
                     _chatClientManager,
@@ -639,7 +587,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         yield return YieldStatus(AiResponseStatus.Completed, "Execution completed", context.TotalCost);
     }
 
-    private Task<SceneContext> InitializeContextAsync(
+    private async Task<SceneContext> InitializeContextAsync(
         MultiModalInput input,
         Dictionary<string, object>? metadata,
         SceneRequestSettings settings,
@@ -655,11 +603,15 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             CacheBehavior = settings.CacheBehavior
         };
 
-        return Task.FromResult(context);
-    }
+        // Get context result from IContext service (e.g., user info from JWT, system info)
+        object? contextResult = null;
+        if (_context != null)
+        {
+            contextResult = await _context.RetrieveAsync(context, settings, cancellationToken);
+        }
 
-    private async Task ExecuteMainActorsAsync(SceneContext context, CancellationToken cancellationToken)
-    {
+        // Execute main actors and collect their outputs
+        var mainActorOutputs = new List<string>();
         foreach (var actorConfig in _mainActors)
         {
             var actor = ActorFactory.Create(actorConfig, _serviceProvider);
@@ -667,13 +619,20 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
 
             if (!string.IsNullOrWhiteSpace(response.Message))
             {
-                // Store actor message in context
-                context.Properties[$"main_actor_{_mainActors.IndexOf(actorConfig)}"] = response.Message;
-
-                // Track for planner
-                context.MainActorContext.Add(response.Message);
+                mainActorOutputs.Add(response.Message);
             }
         }
+
+        // Build the initial context system message (Context + MainActors combined)
+        context.BuildInitialContext(contextResult, mainActorOutputs);
+
+        // Add the user's input message to conversation history
+        context.AddUserMessage(input);
+
+        _logger.LogDebug("Context initialized with {MainActorCount} main actors, context result: {HasContext} (Factory: {FactoryName})",
+            mainActorOutputs.Count, contextResult != null, _factoryName);
+
+        return context;
     }
 
     private async IAsyncEnumerable<AiSceneResponse> ExecutePlanAsync(
@@ -742,9 +701,6 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         SceneRequestSettings settings,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        // Add user message
-        var userMessage = new ChatMessage(ChatRole.User, context.InputMessage);
-
         // Get all scenes as tools for selection
         var sceneTools = _sceneFactory.GetSceneNames()
             .Select(name => _sceneFactory.Create(name))
@@ -754,12 +710,12 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         // Configure chat with scene selection tools
         var chatOptions = new ChatOptions
         {
-            Tools = sceneTools.Cast<AITool>().ToList()
+            Tools = [.. sceneTools.Cast<AITool>()]
         };
 
-        // Call LLM for scene selection
+        // Call LLM with full conversation history
         var responseWithCost = await context.ChatClientManager.GetResponseAsync(
-            new[] { userMessage },
+            context.GetMessagesForLLM(),
             chatOptions,
             cancellationToken);
 
@@ -789,12 +745,12 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
 
         // Process function calls (scene selections) and extract multi-modal contents
         var responseMessage = responseWithCost.Response.Messages?.FirstOrDefault();
-        
+
         // Extract multi-modal contents (DataContent, UriContent) from LLM response
         var multiModalContents = responseMessage?.Contents?
             .Where(c => c is DataContent or UriContent)
             .ToList();
-        
+
         if (responseMessage?.Contents != null)
         {
             foreach (var content in responseMessage.Contents)
@@ -839,7 +795,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         var fallbackContents = responseMessage?.Contents?
             .Where(c => c is DataContent or UriContent)
             .ToList();
-        
+
         yield return YieldAndTrack(context, new AiSceneResponse
         {
             Status = AiResponseStatus.Running,
@@ -913,41 +869,10 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         var sceneTools = scene.GetTools().ToList();
         var sceneToolsFunctions = sceneTools.Select(t => t.ToAIFunction()).ToList();
 
-        // Build conversation messages
-        var conversationMessages = new List<ChatMessage>
-        {
-            context.Input.ToChatMessage(ChatRole.User)
-        };
+        // Get conversation messages from context (already includes InitialContext, memory, user message)
+        var conversationMessages = context.GetMessagesForLLM();
 
-        // Add main actor context if available
-        if (context.MainActorContext.Count > 0)
-        {
-            var mainActorText = string.Join("\n\n", context.MainActorContext);
-            conversationMessages.Add(new ChatMessage(ChatRole.System, mainActorText));
-        }
-
-        // Add previous memory context if available
-        if (context.Properties.TryGetValue("previous_memory", out var previousMemoryObj) &&
-            previousMemoryObj is ConversationMemory previousMemory)
-        {
-            var memoryContext = $@"Previous conversation context (Conversation #{previousMemory.ConversationCount}):
-
-Summary: {previousMemory.Summary}
-
-Important Facts:
-{System.Text.Json.JsonSerializer.Serialize(previousMemory.ImportantFacts, new System.Text.Json.JsonSerializerOptions { WriteIndented = true })}
-
-Last Updated: {previousMemory.LastUpdated:yyyy-MM-dd HH:mm:ss} UTC
-
-Use this context to provide personalized and coherent responses.";
-
-            conversationMessages.Insert(0, new ChatMessage(ChatRole.System, memoryContext));
-
-            _logger.LogDebug("Added previous memory to conversation (ConversationCount: {Count}, SummaryLength: {Length}, Factory: {FactoryName})",
-                previousMemory.ConversationCount, previousMemory.Summary?.Length ?? 0, _factoryName);
-        }
-
-        // Add MCP system messages (resources and prompts)
+        // Add MCP system messages (resources and prompts) if any
         if (mcpSystemMessages.Count > 0)
         {
             var combinedMcpMessage = string.Join("\n\n---\n\n", mcpSystemMessages);
@@ -1017,7 +942,7 @@ Use this context to provide personalized and coherent responses.";
                 {
                     Result = resultText
                 };
-                conversationMessages.Add(new ChatMessage(ChatRole.Tool, [functionResult]));
+                context.AddToolMessage(new ChatMessage(ChatRole.Tool, [functionResult]));
 
                 _logger.LogInformation("Injected client interaction result for '{InteractionId}' into conversation (Factory: {FactoryName})",
                     clientResult.InteractionId, _factoryName);
@@ -1040,6 +965,14 @@ Use this context to provide personalized and coherent responses.";
             int? totalInputTokens = null;
             int? totalOutputTokens = null;
             int? totalCachedInputTokens = null;
+
+            // Rebuild messages from context each iteration (includes newly added assistant/tool messages)
+            conversationMessages = context.GetMessagesForLLM();
+            if (mcpSystemMessages.Count > 0)
+            {
+                var combinedMcpMessage = string.Join("\n\n---\n\n", mcpSystemMessages);
+                conversationMessages.Add(new ChatMessage(ChatRole.System, combinedMcpMessage));
+            }
 
             // Use streaming when enabled, fallback to non-streaming otherwise
             if (settings.EnableStreaming)
@@ -1089,14 +1022,14 @@ Use this context to provide personalized and coherent responses.";
                     cancellationToken);
 
                 finalMessage = responseWithCost.Response.Messages?.FirstOrDefault();
-                
+
                 if (finalMessage != null)
                 {
                     accumulatedText = finalMessage.Text ?? string.Empty;
                     var functionCalls = finalMessage.Contents?
                         .OfType<FunctionCallContent>()
                         .ToList() ?? [];
-                    
+
                     if (functionCalls.Any())
                     {
                         accumulatedFunctionCalls = functionCalls;
@@ -1134,8 +1067,8 @@ Use this context to provide personalized and coherent responses.";
                 yield break;
             }
 
-            // Add assistant message to conversation history
-            conversationMessages.Add(finalMessage);
+            // Add assistant message to conversation history (persists for cache/memory)
+            context.AddAssistantMessage(finalMessage);
 
             // Process based on what we detected
             if (accumulatedFunctionCalls.Count == 0)
@@ -1227,57 +1160,30 @@ Use this context to provide personalized and coherent responses.";
                         functionCall.Arguments?.ToDictionary(x => x.Key, x => x.Value))
                     : null;
 
-                if (clientRequest != null && _distributedCache == null)
+                if (clientRequest != null)
                 {
-                    // Client tool detected but no distributed cache — this is a configuration error
-                    _logger.LogError("Client tool '{ToolName}' detected in scene '{SceneName}' but IDistributedCache is not registered. " +
-                        "Add services.AddDistributedMemoryCache() or a Redis cache. The tool call will fail. (Factory: {FactoryName})",
-                        functionCall.Name, scene.Name, _factoryName);
+                    // Save continuation info in context.Properties (will be cached)
+                    context.SetProperty("_continuation_sceneName", scene.Name);
+                    context.SetProperty("_continuation_interactionId", clientRequest.InteractionId);
+                    context.SetProperty("_continuation_callId", functionCall.CallId);
+                    context.SetProperty("_continuation_toolName", functionCall.Name);
 
-                    var errorResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
-                    {
-                        Result = $"Client tool '{functionCall.Name}' cannot execute: IDistributedCache is not configured on the server"
-                    };
-                    conversationMessages.Add(new ChatMessage(ChatRole.Tool, [errorResult]));
-                    continue;
-                }
+                    // Save to cache before returning
+                    await _playFrameworkCache.SaveAsync(context, cancellationToken);
 
-                if (clientRequest != null && _distributedCache != null)
-                {
-                    // Generate continuation token for resuming later
-                    var continuationToken = Guid.NewGuid().ToString();
+                    _logger.LogInformation("Client tool '{ToolName}' detected. Awaiting client execution for conversation '{ConversationKey}'",
+                        functionCall.Name, context.ConversationKey);
 
-                    // Save minimal state to cache with continuation token
-                    var continuation = new SceneContinuation
-                    {
-                        ConversationKey = context.ConversationKey!,
-                        ContinuationToken = continuationToken,
-                        SceneName = scene.Name,
-                        PendingInteractionId = clientRequest.InteractionId,
-                        OriginalCallId = functionCall.CallId,
-                        OriginalToolName = functionCall.Name
-                    };
-
-                    var continuationKey = $"continuation:{_factoryName}:{continuationToken}";
-                    var continuationJson = _jsonService.Serialize(continuation);
-                    var continuationBytes = System.Text.Encoding.UTF8.GetBytes(continuationJson);
-                    var cacheOptions = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = scene.CacheExpiration };
-                    await _distributedCache.SetAsync(continuationKey, continuationBytes, cacheOptions, cancellationToken);
-
-                    _logger.LogInformation("Client tool '{ToolName}' detected. Awaiting client execution with token '{Token}'",
-                        functionCall.Name, continuationToken);
-
-                    // Yield AwaitingClient status with request
+                    // Yield AwaitingClient status with request - client uses ConversationKey to resume
                     yield return new AiSceneResponse
                     {
                         Status = AiResponseStatus.AwaitingClient,
                         ConversationKey = context.ConversationKey,
-                        ContinuationToken = continuationToken,
                         ClientInteractionRequest = clientRequest,
                         Message = $"Awaiting client execution of tool: {functionCall.Name}"
                     };
 
-                    // Stop execution - client will resume with new POST
+                    // Stop execution - client will resume with new POST using ConversationKey + ClientInteractionResults
                     yield break;
                 }
 
@@ -1290,7 +1196,7 @@ Use this context to provide personalized and coherent responses.";
                     {
                         Result = $"Tool '{functionCall.Name}' not found"
                     };
-                    conversationMessages.Add(new ChatMessage(ChatRole.Tool, [errorResult]));
+                    context.AddToolMessage(new ChatMessage(ChatRole.Tool, [errorResult]));
                     continue;
                 }
 
@@ -1314,7 +1220,7 @@ Use this context to provide personalized and coherent responses.";
 
                     // Send result back to LLM
                     var functionResult = new FunctionResultContent(functionCall.CallId, functionCall.Name);
-                    
+
                     // Support multi-modal output from tools
                     if (toolResult is AIContent aiContent)
                     {
@@ -1331,8 +1237,8 @@ Use this context to provide personalized and coherent responses.";
                         // Tool returned string or other object - use as-is
                         functionResult.Result = toolResult;
                     }
-                    
-                    conversationMessages.Add(new ChatMessage(ChatRole.Tool, [functionResult]));
+
+                    context.AddToolMessage(new ChatMessage(ChatRole.Tool, [functionResult]));
 
                     toolResponse = _responseHelper.CreateAndTrackResponse(
                         context: context,
@@ -1348,7 +1254,7 @@ Use this context to provide personalized and coherent responses.";
                     {
                         Result = $"Error executing tool: {ex.Message}"
                     };
-                    conversationMessages.Add(new ChatMessage(ChatRole.Tool, [errorResult]));
+                    context.AddToolMessage(new ChatMessage(ChatRole.Tool, [errorResult]));
 
                     toolResponse = _responseHelper.CreateErrorResponse(
                         sceneName: scene.Name,
@@ -1779,69 +1685,5 @@ Respond with 'YES' if you need more information from another scene, or 'NO' if y
             },
             mcpTool.Name,
             mcpTool.Description);
-    }
-
-    private void ThrowChatClientNotFoundException(AnyOf<string?, Enum>? name)
-    {
-        var factoryKeyDisplay = string.IsNullOrEmpty(name?.ToString()) || name?.ToString() == "default"
-            ? "default (empty key)"
-            : $"'{name}'";
-
-        var errorMessage = $$"""
-            No IChatClient registered for factory key {{factoryKeyDisplay}}.
-
-            🔧 How to fix:
-
-            1️⃣ Register IChatClient as singleton (simplest):
-
-               services.AddSingleton<IChatClient>(sp =>
-               {
-                   return new AzureOpenAIClient(endpoint, apiKey, modelName);
-               });
-
-            2️⃣ Register with factory pattern (for multiple models):
-
-               services.AddFactory<IChatClient, AzureOpenAIClient>(name: "gpt4");
-               services.AddFactory<IChatClient, OllamaClient>(name: "llama");
-
-            3️⃣ Example with Azure OpenAI:
-
-               using Microsoft.Extensions.AI;
-               using Azure.AI.OpenAI;
-
-               services.AddSingleton<IChatClient>(sp =>
-               {
-                   var client = new AzureOpenAIClient(
-                       new Uri("https://your-resource.openai.azure.com"),
-                       new AzureKeyCredential("your-api-key"));
-
-                   return client.AsChatClient("gpt-4o");
-               });
-
-            4️⃣ Example with Ollama (local):
-
-               services.AddSingleton<IChatClient>(sp =>
-               {
-                   var client = new HttpClient 
-                   { 
-                       BaseAddress = new Uri("http://localhost:11434") 
-                   };
-                   return new OllamaChatClient(client, "llama3.1");
-               });
-
-            5️⃣ Example with OpenAI (cloud):
-
-               services.AddSingleton<IChatClient>(sp =>
-               {
-                   var client = new OpenAI.OpenAIClient("your-openai-api-key");
-                   return client.AsChatClient("gpt-4o");
-               });
-
-            📖 Documentation: https://learn.microsoft.com/dotnet/ai/get-started
-            """;
-
-        _logger.LogError("IChatClient with factory key {FactoryKey} not registered", name);
-
-        throw new InvalidOperationException(errorMessage);
     }
 }

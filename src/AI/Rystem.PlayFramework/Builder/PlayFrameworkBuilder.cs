@@ -287,6 +287,14 @@ public sealed class PlayFrameworkBuilder
         HasCustomSummarizer = true;
         return this;
     }
+    /// <summary>
+    /// Uses a custom summarizer.
+    /// </summary>
+    public PlayFrameworkBuilder AddContext<TContext>() where TContext : class, IContext
+    {
+        Services.AddFactory<IContext, TContext>(Name, ServiceLifetime.Transient);
+        return this;
+    }
 
     /// <summary>
     /// Uses a custom director.

@@ -1,6 +1,9 @@
 ﻿using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Mcp;
 using Rystem.PlayFramework.Services;
 using Rystem.PlayFramework.Services.Helpers;
@@ -61,10 +64,26 @@ public static class ServiceCollectionExtensions
         services.AddEngineFactory<IPlanner>();
         services.AddEngineFactory<ISummarizer>();
         services.AddEngineFactory<IDirector>();
-        services.AddEngineFactory<ICacheService>();
+        services.AddEngineFactory<IPlayFrameworkCache>();
         services.AddEngineFactory<IJsonService>();
         services.AddEngineFactory<IMcpServerManager>();  // Add MCP server manager factory
         services.AddEngineFactory<IRateLimiter>();  // Add rate limiter factory (optional, but DI needs it registered)
+
+        // Register PlayFrameworkCache as transient with factory pattern (supports named instances)
+        if (!builder.HasCustomCache)
+        {
+            services.AddFactory<IPlayFrameworkCache>((sp, _) =>
+            {
+                var settingsFactory = sp.GetRequiredService<IFactory<PlayFrameworkSettings>>();
+                var jsonServiceFactory = sp.GetRequiredService<IFactory<IJsonService>>();
+                return new PlayFrameworkCache(
+                    settingsFactory.Create(name) ?? new PlayFrameworkSettings(),
+                    jsonServiceFactory.Create(name) ?? new DefaultJsonService(),
+                    sp.GetRequiredService<ILogger<PlayFrameworkCache>>(),
+                    sp.GetService<IDistributedCache>(),
+                    sp.GetService<IMemoryCache>());
+            }, name, ServiceLifetime.Transient);
+        }
 
         // Register SceneManager with factory pattern
         services.AddFactory<ISceneManager, SceneManager>(name, ServiceLifetime.Transient);
@@ -146,12 +165,6 @@ public static class ServiceCollectionExtensions
         if (!builder.HasCustomDirector && builder.Settings.Director.Enabled)
         {
             services.AddFactory<IDirector, MainDirector>(name, ServiceLifetime.Transient);
-        }
-
-        // Register default cache service if not customized and cache is enabled
-        if (!builder.HasCustomCache && builder.Settings.Cache.Enabled)
-        {
-            services.AddFactory<ICacheService, CacheService>(name, ServiceLifetime.Transient);
         }
 
         // Register default JSON service if not customized

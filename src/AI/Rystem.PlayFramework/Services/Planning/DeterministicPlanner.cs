@@ -106,7 +106,7 @@ internal sealed class DeterministicPlanner : IPlanner
         var promptData = new
         {
             user_request = context.InputMessage,
-            current_context = context.MainActorContext,
+            conversation_history = context.ConversationHistory.Select(m => new { role = m.Message.Role.Value, label = m.Label }),
             available_scenes = availableScenes
         };
 
@@ -118,10 +118,10 @@ internal sealed class DeterministicPlanner : IPlanner
 
     private static string GetPlanningSystemPrompt()
     {
-        return @"You are an execution planner. Analyze the user request and current context to determine if execution is needed.
+        return @"You are an execution planner. Analyze the user request and conversation history to determine if execution is needed.
 
 RULES:
-1. Check current_context FIRST - data may already be available
+1. Check conversation_history FIRST - data may already be available
 2. If data is in context, return needs_execution=false with reasoning
 3. If execution needed, create a logical step-by-step plan
 4. Use EXACT scene names from available_scenes

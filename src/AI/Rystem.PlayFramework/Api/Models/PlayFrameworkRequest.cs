@@ -1,4 +1,4 @@
-using Microsoft.Extensions.AI;
+﻿using Microsoft.Extensions.AI;
 
 namespace Rystem.PlayFramework.Api.Models;
 
@@ -30,10 +30,10 @@ public sealed class PlayFrameworkRequest
     public SceneRequestSettings? Settings { get; set; }
 
     /// <summary>
-    /// Continuation token for resuming execution after client interaction.
-    /// When present with ClientInteractionResults, server loads state from cache.
+    /// Conversation key for resuming execution after client interaction.
+    /// When present with ClientInteractionResults, server loads continuation state from cache.
     /// </summary>
-    public string? ContinuationToken { get; set; }
+    public string? ConversationKey { get; set; }
 
     /// <summary>
     /// Results from client-side tool executions.

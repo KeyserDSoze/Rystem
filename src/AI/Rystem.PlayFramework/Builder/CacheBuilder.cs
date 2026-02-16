@@ -1,7 +1,4 @@
-﻿using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace Rystem.PlayFramework;
 
@@ -40,9 +37,9 @@ public sealed class CacheBuilder
     /// <summary>
     /// Uses custom cache implementation.
     /// </summary>
-    public CacheBuilder WithCustomCache<TCache>() where TCache : class, ICacheService
+    public CacheBuilder WithCustomCache<TCache>() where TCache : class, IPlayFrameworkCache
     {
-        _parent.Services.AddScoped<ICacheService, TCache>();
+        _parent.Services.AddFactory<IPlayFrameworkCache, TCache>(_parent.Name, ServiceLifetime.Transient);
         _parent.HasCustomCache = true;
         return this;
     }

@@ -1,9 +1,12 @@
 ﻿using Microsoft.Extensions.AI;
+using System.Text;
+using System.Text.Json;
 
 namespace Rystem.PlayFramework;
 
 /// <summary>
 /// Holds all state for a single request execution.
+/// ConversationHistory is the single source of truth for all messages.
 /// </summary>
 public sealed class SceneContext
 {
@@ -18,61 +21,24 @@ public sealed class SceneContext
     public required MultiModalInput Input { get; set; }
 
     /// <summary>
-    /// User's input message (text part only, for backward compatibility).
+    /// User's input message (text part only).
     /// </summary>
-    public string InputMessage
-    {
-        get => Input.Text ?? string.Empty;
-        set => Input = MultiModalInput.FromText(value);
-    }
+    public string InputMessage => Input.Text ?? string.Empty;
 
     /// <summary>
-    /// Request metadata for rate limiting, telemetry, and custom logic.
-    /// Examples: userId, tenantId, sessionId, region, priority, apiKey, etc.
+    /// Request metadata (userId, tenantId, sessionId, etc.).
     /// </summary>
     public Dictionary<string, object> Metadata { get; init; } = new();
 
     /// <summary>
-    /// Chat client manager with built-in retry, fallback, and cost calculation.
+    /// Chat client manager with retry, fallback, and cost calculation.
     /// </summary>
     public required IChatClientManager ChatClientManager { get; set; }
 
     /// <summary>
-    /// All responses generated during execution.
+    /// All responses generated during execution (for backward compatibility).
     /// </summary>
     public List<AiSceneResponse> Responses { get; init; } = [];
-
-    /// <summary>
-    /// Tracks which scenes and tools have been executed (for loop prevention).
-    /// Key: scene name, Value: set of executed tools with arguments.
-    /// </summary>
-    public Dictionary<string, HashSet<SceneRequestContext>> ExecutedScenes { get; init; } = new(StringComparer.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// Set of executed tool keys (scene.tool.args) for quick lookup.
-    /// </summary>
-    public HashSet<string> ExecutedTools { get; init; } = new(StringComparer.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// Accumulated results from each scene execution (for dynamic chaining).
-    /// Key: scene name, Value: accumulated text response from scene.
-    /// </summary>
-    public Dictionary<string, string> SceneResults { get; init; } = new(StringComparer.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// Ordered list of scene names as they were executed (for dynamic chaining tracking).
-    /// </summary>
-    public List<string> ExecutedSceneOrder { get; init; } = [];
-
-    /// <summary>
-    /// Conversation summary from previous summarization.
-    /// </summary>
-    public string? ConversationSummary { get; set; }
-
-    /// <summary>
-    /// Context output from main actors (passed to planner).
-    /// </summary>
-    public List<string> MainActorContext { get; init; } = [];
 
     /// <summary>
     /// Current execution plan (if planning is enabled).
@@ -100,12 +66,202 @@ public sealed class SceneContext
     public Dictionary<object, object> Properties { get; init; } = [];
 
     /// <summary>
-    /// Checks if a tool has been executed with specific arguments.
+    /// Tracks executed scenes and tools (for loop prevention and chaining).
     /// </summary>
-    public bool HasExecutedTool(string sceneName, string toolName, string? args)
+    public Dictionary<string, HashSet<SceneRequestContext>> ExecutedScenes { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Executed tool keys for quick lookup.
+    /// </summary>
+    public HashSet<string> ExecutedTools { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Scene results for dynamic chaining.
+    /// </summary>
+    public Dictionary<string, string> SceneResults { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Ordered list of executed scene names.
+    /// </summary>
+    public List<string> ExecutedSceneOrder { get; init; } = [];
+
+    #region Conversation History - Single Source of Truth
+
+    /// <summary>
+    /// Complete conversation history with business metadata.
+    /// Messages with Message flag are sent to LLM.
+    /// </summary>
+    public List<TrackedMessage> ConversationHistory { get; init; } = [];
+
+    /// <summary>
+    /// Builds the initial system message (Context + MainActors).
+    /// This message always has Message flag and is never removed.
+    /// </summary>
+    public void BuildInitialContext(object? contextResult, IEnumerable<string> mainActorOutputs)
     {
-        var key = $"{sceneName}.{toolName}.{args ?? "null"}";
-        return ExecutedTools.Contains(key);
+        var builder = new StringBuilder();
+
+        // Context result as JSON
+        if (contextResult != null)
+        {
+            builder.AppendLine("[Request Context]");
+            builder.AppendLine(JsonSerializer.Serialize(contextResult, new JsonSerializerOptions { WriteIndented = true }));
+            builder.AppendLine();
+        }
+
+        // MainActors as bullet points
+        var actors = mainActorOutputs.Where(a => !string.IsNullOrWhiteSpace(a)).ToList();
+        if (actors.Count > 0)
+        {
+            builder.AppendLine("[System Instructions]");
+            foreach (var actor in actors)
+            {
+                builder.AppendLine($"- {actor}");
+            }
+        }
+
+        var content = builder.ToString().Trim();
+        if (!string.IsNullOrEmpty(content))
+        {
+            // Always insert at beginning (or replace if exists)
+            if (ConversationHistory.Count > 0 && ConversationHistory[0].Label == "InitialContext")
+            {
+                ConversationHistory[0] = TrackedMessage.CreateInitialContext(content);
+            }
+            else
+            {
+                ConversationHistory.Insert(0, TrackedMessage.CreateInitialContext(content));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Adds user message to conversation.
+    /// </summary>
+    public void AddUserMessage(MultiModalInput input)
+        => ConversationHistory.Add(TrackedMessage.CreateUserMessage(input.ToChatMessage(ChatRole.User)));
+
+    /// <summary>
+    /// Adds user message to conversation.
+    /// </summary>
+    public void AddUserMessage(string message)
+        => ConversationHistory.Add(TrackedMessage.CreateUserMessage(message));
+
+    /// <summary>
+    /// Adds assistant message to conversation.
+    /// </summary>
+    public void AddAssistantMessage(ChatMessage message)
+        => ConversationHistory.Add(TrackedMessage.CreateAssistantMessage(message));
+
+    /// <summary>
+    /// Adds assistant message to conversation.
+    /// </summary>
+    public void AddAssistantMessage(string message)
+        => ConversationHistory.Add(TrackedMessage.CreateAssistantMessage(message));
+
+    /// <summary>
+    /// Adds tool result to conversation.
+    /// </summary>
+    public void AddToolMessage(ChatMessage message)
+        => ConversationHistory.Add(TrackedMessage.CreateToolMessage(message));
+
+    /// <summary>
+    /// Adds memory context (from storage).
+    /// </summary>
+    public void AddMemoryContext(string memoryContent)
+    {
+        // Insert after InitialContext (index 1)
+        var insertIndex = ConversationHistory.Count > 0 && ConversationHistory[0].Label == "InitialContext" ? 1 : 0;
+        ConversationHistory.Insert(insertIndex, TrackedMessage.CreateMemoryContext(memoryContent));
+    }
+
+    /// <summary>
+    /// Adds memory context from ConversationMemory object.
+    /// </summary>
+    public void AddMemoryContext(ConversationMemory memory)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine($"[Previous conversation memory - Conversation #{memory.ConversationCount}]");
+        builder.AppendLine();
+        builder.AppendLine($"Summary: {memory.Summary}");
+        builder.AppendLine();
+
+        if (memory.ImportantFacts.Count > 0)
+        {
+            builder.AppendLine("Important Facts:");
+            builder.AppendLine(JsonSerializer.Serialize(memory.ImportantFacts, new JsonSerializerOptions { WriteIndented = true }));
+        }
+
+        builder.AppendLine();
+        builder.AppendLine($"Last Updated: {memory.LastUpdated:yyyy-MM-dd HH:mm:ss} UTC");
+
+        AddMemoryContext(builder.ToString());
+    }
+
+    /// <summary>
+    /// Gets messages for LLM request (only those with Message flag).
+    /// </summary>
+    public List<ChatMessage> GetMessagesForLLM()
+        => ConversationHistory.Where(m => m.IsActiveMessage).Select(m => m.Message).ToList();
+
+    /// <summary>
+    /// Gets messages for cache (excludes InitialContext - regenerated each request).
+    /// </summary>
+    public List<TrackedMessage> GetMessagesForCache()
+        => ConversationHistory.Where(m => m.ShouldCache && m.Label != "InitialContext").ToList();
+
+    /// <summary>
+    /// Gets messages for memory storage.
+    /// </summary>
+    public List<TrackedMessage> GetMessagesForMemory()
+        => ConversationHistory.Where(m => m.ShouldSaveToMemory).ToList();
+
+    /// <summary>
+    /// Gets messages for summarization.
+    /// </summary>
+    public List<TrackedMessage> GetMessagesForResume()
+        => ConversationHistory.Where(m => m.ShouldResume).ToList();
+
+    /// <summary>
+    /// Applies summary: marks resumable messages as summarized and adds summary message.
+    /// Summarized messages lose Message flag so they're no longer sent to LLM.
+    /// </summary>
+    public void ApplySummary(string summary)
+    {
+        // Mark all resumable messages as summarized (removes Message flag)
+        foreach (var message in ConversationHistory.Where(m => m.ShouldResume))
+        {
+            message.MarkAsSummarized();
+        }
+
+        // Add summary message (has Message flag, will be sent to LLM)
+        ConversationHistory.Add(TrackedMessage.CreateSummaryMessage(summary));
+    }
+
+    /// <summary>
+    /// Restores conversation from cache.
+    /// </summary>
+    public void RestoreFromCache(IEnumerable<TrackedMessage> cachedMessages)
+    {
+        // Keep InitialContext if present
+        var initialContext = ConversationHistory.FirstOrDefault(m => m.Label == "InitialContext");
+        ConversationHistory.Clear();
+
+        if (initialContext != null)
+            ConversationHistory.Add(initialContext);
+
+        ConversationHistory.AddRange(cachedMessages);
+    }
+
+    #endregion
+
+    /// <summary>
+    /// Adds cost to total.
+    /// </summary>
+    public decimal AddCost(decimal cost)
+    {
+        TotalCost += cost;
+        return TotalCost;
     }
 
     /// <summary>
@@ -117,39 +273,20 @@ public sealed class SceneContext
         ExecutedTools.Add(key);
 
         if (!ExecutedScenes.ContainsKey(sceneName))
-        {
             ExecutedScenes[sceneName] = [];
-        }
 
-        ExecutedScenes[sceneName].Add(new SceneRequestContext
-        {
-            ToolName = toolName,
-            Arguments = args
-        });
+        ExecutedScenes[sceneName].Add(new SceneRequestContext { ToolName = toolName, Arguments = args });
     }
 
     /// <summary>
-    /// Adds cost to total and returns updated total.
+    /// Gets a property by key.
     /// </summary>
-    public decimal AddCost(decimal cost)
-    {
-        TotalCost += cost;
-        return TotalCost;
-    }
+    public T? GetProperty<T>(object key)
+        => Properties.TryGetValue(key, out var value) ? (T?)value : default;
 
     /// <summary>
-    /// Gets a property value by key.
-    /// </summary>
-    public T? GetProperty<T>(object key) where T : class
-    {
-        return Properties.TryGetValue(key, out var value) ? value as T : null;
-    }
-
-    /// <summary>
-    /// Sets a property value.
+    /// Sets a property.
     /// </summary>
     public void SetProperty(object key, object value)
-    {
-        Properties[key] = value;
-    }
+        => Properties[key] = value;
 }

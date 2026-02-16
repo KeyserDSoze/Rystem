@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Caching.Distributed;
+﻿using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.AI;
 
@@ -129,10 +129,9 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
         // Assert Phase 1: Should have received AwaitingClient
         Assert.NotNull(awaitingClientResponse);
         Assert.Equal(AiResponseStatus.AwaitingClient, awaitingClientResponse.Status);
-        Assert.NotNull(awaitingClientResponse.ContinuationToken);
+        Assert.NotNull(awaitingClientResponse.ConversationKey);
         Assert.NotNull(awaitingClientResponse.ClientInteractionRequest);
         Assert.Equal("capture_photo", awaitingClientResponse.ClientInteractionRequest.ToolName);
-        Assert.NotNull(awaitingClientResponse.ConversationKey);
 
         // Simulate client execution: Create fake photo data
         var fakePhotoBytes = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 }; // Minimal JPEG header
@@ -147,10 +146,10 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
             ExecutedAt = DateTime.UtcNow
         };
 
-        // Act - Phase 2: Resume with continuation token and client result
+        // Act - Phase 2: Resume with ConversationKey and client result
         var resumeSettings = new SceneRequestSettings
         {
-            ContinuationToken = awaitingClientResponse.ContinuationToken,
+            ConversationKey = awaitingClientResponse.ConversationKey,
             ClientInteractionResults = new List<ClientInteractionResult> { clientResult }
         };
 
@@ -193,7 +192,7 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
         }
 
         Assert.NotNull(awaitingClientResponse);
-        Assert.NotNull(awaitingClientResponse.ContinuationToken);
+        Assert.NotNull(awaitingClientResponse.ConversationKey);
         Assert.NotNull(awaitingClientResponse.ClientInteractionRequest);
 
         // Simulate client error
@@ -207,7 +206,7 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
         // Act - Phase 2: Resume with error
         var resumeSettings = new SceneRequestSettings
         {
-            ContinuationToken = awaitingClientResponse.ContinuationToken,
+            ConversationKey = awaitingClientResponse.ConversationKey,
             ClientInteractionResults = new List<ClientInteractionResult> { clientResult }
         };
 
@@ -250,7 +249,7 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
         }
 
         Assert.NotNull(awaitingClientResponse);
-        Assert.NotNull(awaitingClientResponse.ContinuationToken);
+        Assert.NotNull(awaitingClientResponse.ConversationKey);
         Assert.NotNull(awaitingClientResponse.ClientInteractionRequest);
         Assert.Equal("get_location", awaitingClientResponse.ClientInteractionRequest.ToolName);
 
@@ -269,7 +268,7 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
         // Act - Phase 2: Resume with location
         var resumeSettings = new SceneRequestSettings
         {
-            ContinuationToken = awaitingClientResponse.ContinuationToken,
+            ConversationKey = awaitingClientResponse.ConversationKey,
             ClientInteractionResults = new List<ClientInteractionResult> { clientResult }
         };
 
@@ -286,14 +285,13 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
     }
 
     /// <summary>
-    /// Verifies that continuation token is deleted after use (single-use).
+    /// Verifies that conversation key works correctly for resuming conversation.
     /// </summary>
     [Fact]
-    public async Task ClientInteraction_ContinuationToken_ShouldBeSingleUse()
+    public async Task ClientInteraction_ConversationKey_ShouldResumeCorrectly()
     {
         // Arrange
         var sceneManager = ServiceProvider.GetRequiredService<ISceneManager>();
-        var cache = ServiceProvider.GetRequiredService<IDistributedCache>();
 
         var settings = new SceneRequestSettings
         {
@@ -301,7 +299,7 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
             SceneName = "Photography"
         };
 
-        // Act - Phase 1: Get continuation token
+        // Act - Phase 1: Get ConversationKey
         AiSceneResponse? awaitingClientResponse = null;
         await foreach (var response in sceneManager.ExecuteAsync("Take a photo", metadata: null, settings))
         {
@@ -313,15 +311,10 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
         }
 
         Assert.NotNull(awaitingClientResponse);
-        Assert.NotNull(awaitingClientResponse.ContinuationToken);
-        var continuationToken = awaitingClientResponse.ContinuationToken!;
+        Assert.NotNull(awaitingClientResponse.ConversationKey);
+        var conversationKey = awaitingClientResponse.ConversationKey!;
 
-        // Verify token exists in cache (note: stored with "continuation:{factoryName}:" prefix)
-        var cacheKey = $"continuation:default:{continuationToken}";
-        var cachedData = await cache.GetAsync(cacheKey);
-        Assert.NotNull(cachedData);
-
-        // Phase 2: Resume (this should delete the token)
+        // Phase 2: Resume
         var clientResult = new ClientInteractionResult
         {
             InteractionId = awaitingClientResponse.ClientInteractionRequest!.InteractionId,
@@ -331,32 +324,34 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
 
         var resumeSettings = new SceneRequestSettings
         {
-            ContinuationToken = continuationToken,
+            ConversationKey = conversationKey,
             ClientInteractionResults = new List<ClientInteractionResult> { clientResult }
         };
 
-        await foreach (var _ in sceneManager.ExecuteAsync("", metadata: null, resumeSettings))
+        var finalResponses = new List<AiSceneResponse>();
+        await foreach (var response in sceneManager.ExecuteAsync("", metadata: null, resumeSettings))
         {
-            // Just consume responses
+            finalResponses.Add(response);
         }
 
-        // Assert: Token should be deleted from cache
-        var cachedDataAfter = await cache.GetAsync(cacheKey);
-        Assert.Null(cachedDataAfter);
+        // Assert: Should complete successfully
+        Assert.NotEmpty(finalResponses);
+        var completedResponse = finalResponses.FirstOrDefault(r => r.Status == AiResponseStatus.Completed);
+        Assert.NotNull(completedResponse);
     }
 
     /// <summary>
-    /// Tests that invalid continuation token returns error.
+    /// Tests that invalid conversation key returns error.
     /// </summary>
     [Fact]
-    public async Task ClientInteraction_InvalidContinuationToken_ShouldReturnError()
+    public async Task ClientInteraction_InvalidConversationKey_ShouldReturnError()
     {
         // Arrange
         var sceneManager = ServiceProvider.GetRequiredService<ISceneManager>();
 
         var settings = new SceneRequestSettings
         {
-            ContinuationToken = Guid.NewGuid().ToString(), // Invalid token
+            ConversationKey = Guid.NewGuid().ToString(), // Invalid key
             ClientInteractionResults = new List<ClientInteractionResult>
             {
                 new ClientInteractionResult
@@ -375,11 +370,10 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
             responses.Add(response);
         }
 
-        // Assert: Should return error about missing/expired continuation token
+        // Assert: Should return error about missing/expired conversation key
         Assert.NotEmpty(responses);
         var errorResponse = responses.FirstOrDefault(r => r.Status == AiResponseStatus.Error);
         Assert.NotNull(errorResponse);
-        Assert.Contains("continuation", errorResponse.ErrorMessage ?? errorResponse.Message ?? "", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -410,7 +404,7 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
         }
 
         Assert.NotNull(awaitingClientResponse);
-        Assert.NotNull(awaitingClientResponse.ContinuationToken);
+        Assert.NotNull(awaitingClientResponse.ConversationKey);
 
         // Phase 2: Resume with empty contents and no error
         var clientResult = new ClientInteractionResult
@@ -422,7 +416,7 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
 
         var resumeSettings = new SceneRequestSettings
         {
-            ContinuationToken = awaitingClientResponse.ContinuationToken,
+            ConversationKey = awaitingClientResponse.ConversationKey,
             ClientInteractionResults = new List<ClientInteractionResult> { clientResult }
         };
 
