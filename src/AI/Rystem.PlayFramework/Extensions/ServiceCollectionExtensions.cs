@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Mcp;
 using Rystem.PlayFramework.Services;
+using Rystem.PlayFramework.Services.ExecutionModes;
 using Rystem.PlayFramework.Services.Helpers;
 
 namespace Rystem.PlayFramework;
@@ -95,6 +96,9 @@ public static class ServiceCollectionExtensions
             var scenes = scenesFactory.Create(name) ?? [];
             return new SceneFactory(scenes, sp);
         }, name, ServiceLifetime.Transient);
+
+        // Register Execution Mode infrastructure
+        RegisterExecutionModeHandlers(services, name);
 
         // Register settings with factory pattern (Singleton) - using instance overload
         services.AddFactory(builder.Settings, name, ServiceLifetime.Singleton);
@@ -225,4 +229,170 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// Registers all execution mode handlers with factory pattern.
+    /// Each SceneExecutionMode enum value maps to a specific handler implementation.
+    /// </summary>
+    private static void RegisterExecutionModeHandlers(
+        IServiceCollection services,
+        AnyOf<string?, Enum>? name)
+    {
+        services.AddFactory<ExecutionModeHandlerDependencies>(name, ServiceLifetime.Transient);
+        // Register shared dependencies
+        services.AddFactory<ExecutionModeHandlerDependencies>((sp, factoryNameObj) =>
+        {
+            // Convert object to AnyOf<string?, Enum>?
+            AnyOf<string?, Enum>? factoryName = factoryNameObj switch
+            {
+                null => null,
+                string s => s,
+                Enum e => e,
+                _ => null
+            };
+
+            var settingsFactory = sp.GetRequiredService<IFactory<PlayFrameworkSettings>>();
+            var sceneFactoryFactory = sp.GetRequiredService<IFactory<ISceneFactory>>();
+            var responseHelper = sp.GetRequiredService<IResponseHelper>();
+            var streamingHelper = sp.GetRequiredService<IStreamingHelper>();
+            var sceneMatchingHelper = sp.GetRequiredService<ISceneMatchingHelper>();
+            var playFrameworkCacheFactory = sp.GetRequiredService<IFactory<IPlayFrameworkCache>>();
+            var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+
+            return new ExecutionModeHandlerDependencies
+            {
+                SceneFactory = sceneFactoryFactory.Create(factoryName) 
+                    ?? throw new InvalidOperationException($"SceneFactory not found for factory: {factoryName}"),
+                ResponseHelper = responseHelper,
+                StreamingHelper = streamingHelper,
+                SceneMatchingHelper = sceneMatchingHelper,
+                Settings = settingsFactory.Create(factoryName) ?? new PlayFrameworkSettings(),
+                Logger = loggerFactory.CreateLogger<SceneManager>(),
+                FactoryName = factoryName?.ToString() ?? "default"
+            };
+        }, name, ServiceLifetime.Transient);
+
+        // Register SceneExecutor (shared by all handlers)
+        services.AddFactory<ISceneExecutor>((sp, factoryNameObj) =>
+        {
+            // Convert object to AnyOf<string?, Enum>?
+            AnyOf<string?, Enum>? factoryName = factoryNameObj switch
+            {
+                null => null,
+                string s => s,
+                Enum e => e,
+                _ => null
+            };
+
+            var dependencies = sp.GetRequiredService<IFactory<ExecutionModeHandlerDependencies>>()
+                .Create(factoryName)
+                ?? throw new InvalidOperationException($"ExecutionModeHandlerDependencies not found for factory: {factoryName}");
+
+            var mcpServerManagerFactory = sp.GetRequiredService<IFactory<IMcpServerManager>>();
+            var jsonServiceFactory = sp.GetRequiredService<IFactory<IJsonService>>();
+            var clientInteractionHandler = sp.GetRequiredService<IClientInteractionHandler>();
+
+            return new SceneExecutor(
+                dependencies,
+                mcpServerManagerFactory,
+                jsonServiceFactory,
+                clientInteractionHandler,
+                factoryName?.ToString() ?? "default");
+        }, name, ServiceLifetime.Transient);
+
+        // Register FinalResponseGenerator (shared by Planning and DynamicChaining)
+        services.AddFactory<FinalResponseGenerator>((sp, factoryNameObj) =>
+        {
+            // Convert object to AnyOf<string?, Enum>?
+            AnyOf<string?, Enum>? factoryName = factoryNameObj switch
+            {
+                null => null,
+                string s => s,
+                Enum e => e,
+                _ => null
+            };
+
+            var dependencies = sp.GetRequiredService<IFactory<ExecutionModeHandlerDependencies>>()
+                .Create(factoryName)
+                ?? throw new InvalidOperationException($"ExecutionModeHandlerDependencies not found for factory: {factoryName}");
+
+            return new FinalResponseGenerator(dependencies);
+        }, name, ServiceLifetime.Transient);
+
+        // Register execution mode handlers with enum keys
+        // Direct mode
+        services.AddFactory<IExecutionModeHandler>((sp, _) =>
+        {
+            var dependencies = sp.GetRequiredService<IFactory<ExecutionModeHandlerDependencies>>()
+                .Create(name)
+                ?? throw new InvalidOperationException($"ExecutionModeHandlerDependencies not found for factory: {name}");
+
+            var sceneExecutor = sp.GetRequiredService<IFactory<ISceneExecutor>>()
+                .Create(name)
+                ?? throw new InvalidOperationException($"SceneExecutor not found for factory: {name}");
+
+            return new DirectExecutionHandler(dependencies, sceneExecutor);
+        }, SceneExecutionMode.Direct, ServiceLifetime.Transient);
+
+        // Scene mode
+        services.AddFactory<IExecutionModeHandler>((sp, _) =>
+        {
+            var dependencies = sp.GetRequiredService<IFactory<ExecutionModeHandlerDependencies>>()
+                .Create(name)
+                ?? throw new InvalidOperationException($"ExecutionModeHandlerDependencies not found for factory: {name}");
+
+            var sceneExecutor = sp.GetRequiredService<IFactory<ISceneExecutor>>()
+                .Create(name)
+                ?? throw new InvalidOperationException($"SceneExecutor not found for factory: {name}");
+
+            return new SceneExecutionHandler(dependencies, sceneExecutor);
+        }, SceneExecutionMode.Scene, ServiceLifetime.Transient);
+
+        // Planning mode
+        services.AddFactory<IExecutionModeHandler>((sp, _) =>
+        {
+            var dependencies = sp.GetRequiredService<IFactory<ExecutionModeHandlerDependencies>>()
+                .Create(name)
+                ?? throw new InvalidOperationException($"ExecutionModeHandlerDependencies not found for factory: {name}");
+
+            var sceneExecutor = sp.GetRequiredService<IFactory<ISceneExecutor>>()
+                .Create(name)
+                ?? throw new InvalidOperationException($"SceneExecutor not found for factory: {name}");
+
+            var finalResponseGenerator = sp.GetRequiredService<IFactory<FinalResponseGenerator>>()
+                .Create(name)
+                ?? throw new InvalidOperationException($"FinalResponseGenerator not found for factory: {name}");
+
+            var plannerFactory = sp.GetRequiredService<IFactory<IPlanner>>();
+            var planner = plannerFactory.Create(name);
+
+            return new PlanningExecutionHandler(dependencies, sceneExecutor, finalResponseGenerator, planner);
+        }, SceneExecutionMode.Planning, ServiceLifetime.Transient);
+
+        // DynamicChaining mode
+        services.AddFactory<IExecutionModeHandler>((sp, _) =>
+        {
+            var dependencies = sp.GetRequiredService<IFactory<ExecutionModeHandlerDependencies>>()
+                .Create(name)
+                ?? throw new InvalidOperationException($"ExecutionModeHandlerDependencies not found for factory: {name}");
+
+            var sceneExecutor = sp.GetRequiredService<IFactory<ISceneExecutor>>()
+                .Create(name)
+                ?? throw new InvalidOperationException($"SceneExecutor not found for factory: {name}");
+
+            var finalResponseGenerator = sp.GetRequiredService<IFactory<FinalResponseGenerator>>()
+                .Create(name)
+                ?? throw new InvalidOperationException($"FinalResponseGenerator not found for factory: {name}");
+
+            return new DynamicChainingExecutionHandler(
+                dependencies, 
+                sceneExecutor, 
+                finalResponseGenerator,
+                name?.ToString() ?? "default");
+        }, SceneExecutionMode.DynamicChaining, ServiceLifetime.Transient);
+
+        // Register engine factory for IExecutionModeHandler to allow resolution by enum
+        services.AddEngineFactory<IExecutionModeHandler>();
+    }
 }
+

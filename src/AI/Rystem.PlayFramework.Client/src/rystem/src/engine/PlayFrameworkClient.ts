@@ -158,11 +158,13 @@ export class PlayFrameworkClient {
                                     // Check for completion/error markers
                                     if (event.status === "completed") {
                                         shouldContinue = false;
+                                        shouldRetry = false; // Don't retry, stream closed successfully
                                         return; // End streaming
                                     }
 
                                     if (event.status === "error") {
                                         shouldContinue = false;
+                                        shouldRetry = false; // Don't retry on error
                                         throw new Error((event as ErrorMarker).errorMessage || "Unknown error");
                                     }
 
@@ -170,7 +172,8 @@ export class PlayFrameworkClient {
                                     if (event.status === "AwaitingClient") {
                                         awaitingClientResponse = event as AiSceneResponse;
                                         yield awaitingClientResponse; // Yield to user
-                                        break; // Exit SSE loop to execute client tool
+                                        // Don't break - continue reading until "completed" to properly close stream
+                                        continue; // Skip the second yield below to avoid duplication
                                     }
 
                                     // Yield valid AiSceneResponse
@@ -178,10 +181,8 @@ export class PlayFrameworkClient {
                                 }
                             }
 
-                            // Break out of read loop if AwaitingClient
-                            if (awaitingClientResponse) {
-                                break;
-                            }
+                            // Continue reading stream until "completed" event - don't exit early
+                            // even if AwaitingClient was received (stream must close properly)
                         }
                     } finally {
                         reader.releaseLock();
@@ -189,8 +190,8 @@ export class PlayFrameworkClient {
 
                     shouldRetry = false; // Success, no retry
 
-                    // Handle client interaction if AwaitingClient
-                    if (awaitingClientResponse?.clientInteractionRequest) {
+                    // Handle client interaction if AwaitingClient (and stream wasn't closed by completed/error)
+                    if (shouldContinue && awaitingClientResponse?.clientInteractionRequest) {
                         const clientRequest = awaitingClientResponse.clientInteractionRequest;
 
                         // Execute client tool
@@ -206,7 +207,7 @@ export class PlayFrameworkClient {
                         // Continue loop to resume execution
                         shouldContinue = true;
                     } else {
-                        shouldContinue = false; // Normal completion
+                        shouldContinue = false; // Normal completion or already closed by completed/error
                     }
                 } catch (error) {
                     // Check if this is a network/connection error (not abort, not server error marker)

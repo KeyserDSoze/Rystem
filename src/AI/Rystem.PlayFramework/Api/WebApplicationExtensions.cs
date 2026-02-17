@@ -92,6 +92,11 @@ public static class WebApplicationExtensions
             // Get factory from closure or route parameter
             var routeFactory = httpContext.GetRouteValue("factoryName")?.ToString();
             var targetFactory = factoryName ?? routeFactory ?? "default";
+
+            // Force enableStreaming for token-level streaming
+            request.Settings ??= new SceneRequestSettings();
+            request.Settings.EnableStreaming = true;
+
             await ExecutePlayFrameworkAsync(targetFactory, request, sceneManagerFactory, logger, httpContext, settings, cancellationToken);
         })
         .WithName(streamingEndpointName)
@@ -145,9 +150,7 @@ public static class WebApplicationExtensions
                 await httpContext.Response.Body.FlushAsync(cancellationToken);
             }
 
-            // Send completion marker
-            await httpContext.Response.WriteAsync("data: {\"status\":\"completed\"}\n\n", cancellationToken);
-            await httpContext.Response.Body.FlushAsync(cancellationToken);
+            // No need to send explicit completion marker - SceneManager always sends Completed as final event
         }
         catch (Exception ex)
         {

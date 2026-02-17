@@ -1,4 +1,4 @@
-using Microsoft.Extensions.AI;
+﻿using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework;
 using System.Runtime.CompilerServices;
@@ -86,6 +86,7 @@ internal sealed class StreamingHelper : IStreamingHelper
                 yield return new StreamingResult
                 {
                     AccumulatedText = accumulatedText.ToString(),
+                    StreamChunk = chunk.Text, // Current chunk only
                     FunctionCalls = [],
                     StreamedToUser = true,
                     TotalCost = context.TotalCost,

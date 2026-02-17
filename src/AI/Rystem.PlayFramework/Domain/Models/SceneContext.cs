@@ -19,7 +19,12 @@ public sealed class SceneContext
     /// User's multi-modal input (text, images, audio, files).
     /// </summary>
     public required MultiModalInput Input { get; set; }
-
+    /// <summary>
+    /// Gets or sets the current phase of execution for the process.
+    /// </summary>
+    /// <remarks>The execution phase indicates the current state of the process, which can affect the behavior
+    /// of subsequent operations.</remarks>
+    public ExecutionPhase ExecutionPhase { get; set; }
     /// <summary>
     /// User's input message (text part only).
     /// </summary>

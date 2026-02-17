@@ -186,5 +186,10 @@ public enum ExecutionPhase
     /// <summary>
     /// Execution completed successfully.
     /// </summary>
-    Completed
+    Completed,
+
+    /// <summary>
+    /// Break the execution for any reason.
+    /// </summary>
+    Break
 }
