@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Rystem.PlayFramework.Test.Infrastructure;
 
 namespace Rystem.PlayFramework.Test.Tests;
@@ -31,11 +31,7 @@ public class RagIntegrationTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .Configure(settings =>
-                {
-                    settings.Planning.Enabled = false;
-                    settings.Summarization.Enabled = false;
-                })
+                
                 // Configure global RAG with default cost settings
                 .WithRag(settings =>
                 {

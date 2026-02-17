@@ -22,11 +22,6 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .Configure(settings =>
-                {
-                    settings.Planning.Enabled = false;
-                    settings.Summarization.Enabled = false;
-                })
                 .AddMainActor("You are a helpful assistant that can request client-side data.")
                 .AddScene("Photography", "Capture photos from client device", sceneBuilder =>
                 {

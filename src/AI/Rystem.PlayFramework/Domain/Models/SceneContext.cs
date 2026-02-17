@@ -199,28 +199,42 @@ public sealed class SceneContext
     }
 
     /// <summary>
+    /// Adds a scene actor's output to conversation.
+    /// Included in LLM requests and cache.
+    /// </summary>
+    public void AddSceneActorMessage(string sceneName, string actorName, string content)
+        => ConversationHistory.Add(TrackedMessage.CreateSceneActorMessage(sceneName, actorName, content));
+
+    /// <summary>
+    /// Adds MCP context (resources/prompts) to conversation.
+    /// Included in LLM requests and cache.
+    /// </summary>
+    public void AddMcpContextMessage(string sceneName, string content)
+        => ConversationHistory.Add(TrackedMessage.CreateMcpContextMessage(sceneName, content));
+
+    /// <summary>
     /// Gets messages for LLM request (only those with Message flag).
     /// </summary>
     public List<ChatMessage> GetMessagesForLLM()
-        => ConversationHistory.Where(m => m.IsActiveMessage).Select(m => m.Message).ToList();
+        => [.. ConversationHistory.Where(m => m.IsActiveMessage).Select(m => m.Message)];
 
     /// <summary>
-    /// Gets messages for cache (excludes InitialContext - regenerated each request).
+    /// Gets messages for cache (includes InitialContext so it can be reused).
     /// </summary>
     public List<TrackedMessage> GetMessagesForCache()
-        => ConversationHistory.Where(m => m.ShouldCache && m.Label != "InitialContext").ToList();
+        => [.. ConversationHistory.Where(m => m.ShouldCache)];
 
     /// <summary>
     /// Gets messages for memory storage.
     /// </summary>
     public List<TrackedMessage> GetMessagesForMemory()
-        => ConversationHistory.Where(m => m.ShouldSaveToMemory).ToList();
+        => [.. ConversationHistory.Where(m => m.ShouldSaveToMemory)];
 
     /// <summary>
     /// Gets messages for summarization.
     /// </summary>
     public List<TrackedMessage> GetMessagesForResume()
-        => ConversationHistory.Where(m => m.ShouldResume).ToList();
+        => [.. ConversationHistory.Where(m => m.ShouldResume)];
 
     /// <summary>
     /// Applies summary: marks resumable messages as summarized and adds summary message.
@@ -240,16 +254,11 @@ public sealed class SceneContext
 
     /// <summary>
     /// Restores conversation from cache.
+    /// Replaces current conversation history with cached messages (including InitialContext).
     /// </summary>
     public void RestoreFromCache(IEnumerable<TrackedMessage> cachedMessages)
     {
-        // Keep InitialContext if present
-        var initialContext = ConversationHistory.FirstOrDefault(m => m.Label == "InitialContext");
         ConversationHistory.Clear();
-
-        if (initialContext != null)
-            ConversationHistory.Add(initialContext);
-
         ConversationHistory.AddRange(cachedMessages);
     }
 
@@ -289,4 +298,45 @@ public sealed class SceneContext
     /// </summary>
     public void SetProperty(object key, object value)
         => Properties[key] = value;
+
+    /// <summary>
+    /// Execution state restored from cache (if resuming).
+    /// </summary>
+    public ExecutionState? RestoredExecutionState { get; private set; }
+
+    /// <summary>
+    /// Whether this context was restored from cache.
+    /// </summary>
+    public bool IsResuming => RestoredExecutionState != null;
+
+    /// <summary>
+    /// Creates current execution state for saving.
+    /// </summary>
+    public ExecutionState CreateExecutionState(ExecutionPhase phase, string? currentSceneName = null)
+        => ExecutionState.FromContext(this, phase, currentSceneName);
+
+    /// <summary>
+    /// Restores execution state from cache.
+    /// Applies the state and adds a checkpoint message for the LLM.
+    /// </summary>
+    public void RestoreExecutionState(ExecutionState state)
+    {
+        state.ApplyToContext(this);
+        RestoredExecutionState = state;
+
+        // Add checkpoint message to inform LLM about previous execution
+        // Insert after InitialContext and MemoryContext
+        var insertIndex = ConversationHistory.Count;
+        for (int i = 0; i < ConversationHistory.Count; i++)
+        {
+            var label = ConversationHistory[i].Label;
+            if (label != "InitialContext" && label != "MemoryContext")
+            {
+                insertIndex = i;
+                break;
+            }
+        }
+
+        ConversationHistory.Insert(insertIndex, TrackedMessage.CreateExecutionCheckpoint(state));
+    }
 }

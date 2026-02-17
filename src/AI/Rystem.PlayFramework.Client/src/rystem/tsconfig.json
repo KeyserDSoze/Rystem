@@ -4,6 +4,8 @@
     "module": "CommonJS",
     "lib": [ "ES2024", "DOM" ],
     "declaration": true,
+    "declarationMap": true,
+    "composite": true,
     "outDir": "./lib",
     "rootDir": "./src",
     "strict": true,

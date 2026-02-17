@@ -27,5 +27,9 @@
     "noImplicitThis": true
   },
   "include": ["src"],
-  "references": [{ "path": "./src/rystem/tsconfig.json" }]
+  "exclude": ["node_modules", "dist"],
+  "references": [
+    { "path": "./src/rystem/tsconfig.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
 }

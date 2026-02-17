@@ -36,6 +36,14 @@ public sealed class TokenCostSettings
     /// Value: TokenCostSettings for that model
     /// </summary>
     public Dictionary<string, ModelCostSettings> ModelCosts { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Client-specific cost overrides.
+    /// Key: client name (e.g., "gpt4o-east", "claude-fallback")
+    /// Value: Cost settings for that client
+    /// Use this when different clients (regions, contracts) have different pricing.
+    /// </summary>
+    public Dictionary<string, ClientCostSettings> ClientCosts { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>
@@ -60,6 +68,33 @@ public sealed class ModelCostSettings
 
     /// <summary>
     /// Cost per 1,000 cached input tokens.
+    /// </summary>
+    public decimal CachedInputTokenCostPer1K { get; set; }
+}
+
+/// <summary>
+/// Cost settings for a specific client (DI registered chat client).
+/// Use this when different Azure regions or providers have different pricing.
+/// </summary>
+public sealed class ClientCostSettings
+{
+    /// <summary>
+    /// Client name as registered in DI (e.g., "gpt4o-east", "gpt4o-west", "claude-fallback").
+    /// </summary>
+    public required string ClientName { get; init; }
+
+    /// <summary>
+    /// Cost per 1,000 input tokens for this client.
+    /// </summary>
+    public decimal InputTokenCostPer1K { get; set; }
+
+    /// <summary>
+    /// Cost per 1,000 output tokens for this client.
+    /// </summary>
+    public decimal OutputTokenCostPer1K { get; set; }
+
+    /// <summary>
+    /// Cost per 1,000 cached input tokens for this client.
     /// </summary>
     public decimal CachedInputTokenCostPer1K { get; set; }
 }
@@ -93,6 +128,11 @@ public sealed class TokenUsage
     /// Model used for this request.
     /// </summary>
     public string? ModelId { get; set; }
+
+    /// <summary>
+    /// Client name that handled this request (for per-client cost tracking).
+    /// </summary>
+    public string? ClientName { get; set; }
 }
 
 /// <summary>
@@ -129,6 +169,11 @@ public sealed class CostCalculation
     /// Model used for calculation.
     /// </summary>
     public string? ModelId { get; set; }
+
+    /// <summary>
+    /// Client name that handled this request.
+    /// </summary>
+    public string? ClientName { get; set; }
 
     /// <summary>
     /// Token usage that generated this cost.

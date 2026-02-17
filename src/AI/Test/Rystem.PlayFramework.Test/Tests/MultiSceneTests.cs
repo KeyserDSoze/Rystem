@@ -19,15 +19,9 @@ public sealed class MultiSceneTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .WithPlanning()
-                .WithSummarization(settings =>
+                .WithPlanning(settings =>
                 {
-                    settings.CharacterThreshold = 20_000;
-                })
-                .Configure(settings =>
-                {
-                    settings.Planning.Enabled = true; // Enable planning for multi-scene
-                    settings.Summarization.Enabled = false;
+                    settings.MaxRecursionDepth = 5;
                 })
                 .AddMainActor(@"You are an intelligent assistant that can:
 - Perform mathematical calculations

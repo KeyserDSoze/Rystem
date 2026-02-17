@@ -25,15 +25,6 @@ public sealed class InteractiveMultiSceneDemo : PlayFrameworkTestBase
         {
             builder
                 .WithPlanning()
-                .WithSummarization(settings =>
-                {
-                    settings.CharacterThreshold = 20_000;
-                })
-                .Configure(settings =>
-                {
-                    settings.Planning.Enabled = true;
-                    settings.Summarization.Enabled = false;
-                })
                 .AddMainActor(@"You are an expert AI assistant with access to multiple specialized tools.
 
 Available capabilities:

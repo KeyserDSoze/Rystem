@@ -40,6 +40,55 @@ public sealed class PlayFrameworkRequest
     /// Used to resume execution after AwaitingClient status.
     /// </summary>
     public List<ClientInteractionResult>? ClientInteractionResults { get; set; }
+
+    /// <summary>
+    /// Converts this request to MultiModalInput for SceneManager execution.
+    /// </summary>
+    public MultiModalInput ToMultiModalInput()
+    {
+        // Simple text message
+        if (Contents == null || Contents.Count == 0)
+        {
+            return MultiModalInput.FromText(Message ?? string.Empty);
+        }
+
+        // Multi-modal input
+        var input = new MultiModalInput
+        {
+            Text = Message
+        };
+
+        foreach (var contentItem in Contents)
+        {
+            input.Contents.Add(contentItem.ToAIContent());
+        }
+
+        return input;
+    }
+
+    /// <summary>
+    /// Merges top-level ConversationKey and ClientInteractionResults into Settings.
+    /// Returns merged settings for SceneManager execution.
+    /// </summary>
+    public SceneRequestSettings GetMergedSettings()
+    {
+        var requestSettings = Settings ?? new SceneRequestSettings();
+
+        // Forward top-level conversation key into settings if not already set
+        if (!string.IsNullOrEmpty(ConversationKey) && string.IsNullOrEmpty(requestSettings.ConversationKey))
+        {
+            requestSettings.ConversationKey = ConversationKey;
+        }
+
+        // Forward top-level client interaction results into settings if not already set
+        if (ClientInteractionResults != null && ClientInteractionResults.Count > 0
+            && (requestSettings.ClientInteractionResults == null || requestSettings.ClientInteractionResults.Count == 0))
+        {
+            requestSettings.ClientInteractionResults = ClientInteractionResults;
+        }
+
+        return requestSettings;
+    }
 }
 
 /// <summary>
@@ -82,7 +131,7 @@ public sealed class ContentItem
     /// </summary>
     internal AIContent ToAIContent()
     {
-        return Type.ToLowerInvariant() switch
+        AIContent content = Type.ToLowerInvariant() switch
         {
             "text" => new TextContent(Text ?? string.Empty),
             "image" or "audio" or "video" or "file" => new DataContent(
@@ -91,5 +140,14 @@ public sealed class ContentItem
             "uri" => new UriContent(new Uri(Uri ?? "about:blank"), MediaType),
             _ => throw new InvalidOperationException($"Unsupported content type: {Type}")
         };
+
+        // Preserve name/filename in AdditionalProperties
+        if (!string.IsNullOrEmpty(Name))
+        {
+            content.AdditionalProperties ??= [];
+            content.AdditionalProperties["name"] = Name;
+        }
+
+        return content;
     }
 }

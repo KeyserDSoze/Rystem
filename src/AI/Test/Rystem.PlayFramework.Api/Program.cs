@@ -44,11 +44,23 @@ else
 builder.Services.AddPlayFramework("default", frameworkBuilder =>
 {
     frameworkBuilder
-        .Configure(settings =>
+        .AddCache(cacheBuilder =>
         {
-            settings.Planning.Enabled = true;
-            settings.Summarization.Enabled = false;
-            settings.Cache.Enabled = true;
+            cacheBuilder
+                .WithMemory()
+                .WithExpiration(TimeSpan.FromMinutes(30));
+        })
+        .WithPlanning(planningSettings =>
+        {
+            planningSettings.MaxRecursionDepth = 5;
+        })
+        .WithRetry(maxAttempts: 3, baseDelaySeconds: 1.0)
+        .WithTelemetry(telemetryBuilder =>
+        {
+            telemetryBuilder.EnableMetrics = true;
+            telemetryBuilder.TraceSummarization = true;
+            telemetryBuilder.TraceDirector = true;
+            telemetryBuilder.TraceLlmCalls = true;
         })
         .AddMainActor("You are a helpful AI assistant. You help users with their questions and tasks in a friendly and professional manner.")
         .AddScene("General Requests", "Use this scene for every request. General conversation and question answering. ", sceneBuilder =>

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Rystem.PlayFramework.Telemetry;
 
 namespace Rystem.PlayFramework;
 
@@ -87,15 +88,6 @@ public sealed class PlayFrameworkBuilder
     }
 
     /// <summary>
-    /// Configures all settings.
-    /// </summary>
-    public PlayFrameworkBuilder Configure(Action<PlayFrameworkSettings> configure)
-    {
-        configure(Settings);
-        return this;
-    }
-
-    /// <summary>
     /// Internal method for configuring settings (used by extension methods).
     /// </summary>
     internal PlayFrameworkBuilder ConfigureSettings(Action<PlayFrameworkSettings> configure)
@@ -103,6 +95,59 @@ public sealed class PlayFrameworkBuilder
         configure(Settings);
         return this;
     }
+
+    #region Load Balancing & Retry
+
+    /// <summary>
+    /// Configures primary chat client pool for load balancing.
+    /// </summary>
+    /// <param name="clientNames">Named chat clients to use (must be registered with AddKeyedSingleton or AddFactory)</param>
+    /// <param name="mode">Load balancing mode (default: RoundRobin)</param>
+    public PlayFrameworkBuilder WithChatClients(IEnumerable<string> clientNames, LoadBalancingMode mode = LoadBalancingMode.RoundRobin)
+    {
+        Settings.ChatClientNames = clientNames.ToList();
+        Settings.LoadBalancingMode = mode;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures fallback chat client chain (used when all primary clients fail).
+    /// </summary>
+    /// <param name="clientNames">Fallback client names in order of preference</param>
+    /// <param name="mode">Fallback mode (default: Sequential)</param>
+    public PlayFrameworkBuilder WithFallbackClients(IEnumerable<string> clientNames, FallbackMode mode = FallbackMode.Sequential)
+    {
+        Settings.FallbackChatClientNames = clientNames.ToList();
+        Settings.FallbackMode = mode;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures retry behavior for transient errors.
+    /// </summary>
+    /// <param name="maxAttempts">Maximum retry attempts per client (default: 3)</param>
+    /// <param name="baseDelaySeconds">Base delay for exponential backoff (default: 1.0)</param>
+    public PlayFrameworkBuilder WithRetry(int maxAttempts = 3, double baseDelaySeconds = 1.0)
+    {
+        Settings.MaxRetryAttempts = maxAttempts;
+        Settings.RetryBaseDelaySeconds = baseDelaySeconds;
+        return this;
+    }
+
+    #endregion
+
+    #region Telemetry
+
+    /// <summary>
+    /// Configures telemetry settings.
+    /// </summary>
+    public PlayFrameworkBuilder WithTelemetry(Action<TelemetrySettings> configure)
+    {
+        configure(Settings.Telemetry);
+        return this;
+    }
+
+    #endregion
 
     /// <summary>
     /// Sets the default execution mode for all requests.
@@ -240,6 +285,31 @@ public sealed class PlayFrameworkBuilder
         Settings.CostTracking.ModelCosts[modelId] = new ModelCostSettings
         {
             ModelId = modelId,
+            InputTokenCostPer1K = inputCostPer1K,
+            OutputTokenCostPer1K = outputCostPer1K,
+            CachedInputTokenCostPer1K = cachedInputCostPer1K ?? (inputCostPer1K * 0.1m)
+        };
+        return this;
+    }
+
+    /// <summary>
+    /// Adds client-specific cost configuration for per-client cost tracking.
+    /// Use this when different Azure regions or contracts have different pricing.
+    /// Client costs take priority over model costs.
+    /// </summary>
+    /// <param name="clientName">Client name as registered in DI (e.g., "gpt4o-east", "gpt4o-west", "claude-fallback")</param>
+    /// <param name="inputCostPer1K">Cost per 1,000 input tokens for this client</param>
+    /// <param name="outputCostPer1K">Cost per 1,000 output tokens for this client</param>
+    /// <param name="cachedInputCostPer1K">Cost per 1,000 cached input tokens (optional)</param>
+    public PlayFrameworkBuilder WithClientCosts(
+        string clientName,
+        decimal inputCostPer1K,
+        decimal outputCostPer1K,
+        decimal? cachedInputCostPer1K = null)
+    {
+        Settings.CostTracking.ClientCosts[clientName] = new ClientCostSettings
+        {
+            ClientName = clientName,
             InputTokenCostPer1K = inputCostPer1K,
             OutputTokenCostPer1K = outputCostPer1K,
             CachedInputTokenCostPer1K = cachedInputCostPer1K ?? (inputCostPer1K * 0.1m)

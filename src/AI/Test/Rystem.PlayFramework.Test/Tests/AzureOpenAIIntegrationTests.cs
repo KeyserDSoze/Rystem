@@ -25,11 +25,6 @@ public sealed class AzureOpenAIIntegrationTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .Configure(settings =>
-                {
-                    settings.Planning.Enabled = false; // Start simple
-                    settings.Summarization.Enabled = false;
-                })
                 .AddMainActor("You are a helpful math assistant. When asked to perform calculations, use the available calculator tools.")
                 .AddCache(cache => cache.WithMemory())
                 .AddScene("Calculator", "Use this scene to perform mathematical calculations. Available operations: add, subtract, multiply, divide.", sceneBuilder =>

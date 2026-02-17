@@ -196,16 +196,11 @@ export class PlayFrameworkClient {
                         // Execute client tool
                         const result = await this.clientRegistry.execute(clientRequest);
 
-                        // Prepare new request with continuation token (inside settings for SceneManager)
+                        // Prepare new request with client interaction results
+                        // The server uses conversationKey + cache to restore context
                         currentRequest = {
                             ...currentRequest,
-                            continuationToken: awaitingClientResponse.continuationToken,
-                            clientInteractionResults: [result],
-                            settings: {
-                                ...currentRequest.settings,
-                                continuationToken: awaitingClientResponse.continuationToken,
-                                clientInteractionResults: [result]
-                            }
+                            clientInteractionResults: [result]
                         };
 
                         // Continue loop to resume execution

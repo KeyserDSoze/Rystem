@@ -45,6 +45,27 @@ public sealed class CacheBuilder
     }
 
     /// <summary>
+    /// Sets the default cache expiration duration.
+    /// This is a server-side setting and cannot be overridden by clients.
+    /// </summary>
+    /// <param name="expiration">Cache expiration duration.</param>
+    public CacheBuilder WithExpiration(TimeSpan expiration)
+    {
+        _parent.Settings.Cache.DefaultExpirationSeconds = (int)expiration.TotalSeconds;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the cache key prefix.
+    /// </summary>
+    /// <param name="prefix">Key prefix for all cache entries.</param>
+    public CacheBuilder WithKeyPrefix(string prefix)
+    {
+        _parent.Settings.Cache.KeyPrefix = prefix;
+        return this;
+    }
+
+    /// <summary>
     /// Configures cache settings.
     /// </summary>
     public CacheBuilder Configure(Action<CacheSettings> configure)

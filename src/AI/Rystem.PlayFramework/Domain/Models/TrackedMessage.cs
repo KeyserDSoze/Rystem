@@ -5,6 +5,24 @@ namespace Rystem.PlayFramework;
 /// <summary>
 /// Flags indicating message behavior and storage.
 /// </summary>
+/// <remarks>
+/// Message types and their flags:
+/// <list type="table">
+///     <listheader>
+///         <term>Type</term>
+///         <description>Message | Cache | Memory | Resume</description>
+///     </listheader>
+///     <item><term>InitialContext</term><description>✓ | ✓ | ✗ | ✗ (cached for reuse)</description></item>
+///     <item><term>MemoryContext</term><description>✓ | ✗ | ✗ | ✗ (loaded from storage)</description></item>
+///     <item><term>ExecutionCheckpoint</term><description>✓ | ✗ | ✗ | ✗ (derived from cached state)</description></item>
+///     <item><term>SceneActor</term><description>✓ | ✓ | ✗ | ✗ (scene-specific context)</description></item>
+///     <item><term>McpContext</term><description>✓ | ✓ | ✗ | ✗ (scene-specific context)</description></item>
+///     <item><term>User</term><description>✓ | ✓ | ✓ | ✓</description></item>
+///     <item><term>Assistant</term><description>✓ | ✓ | ✓ | ✓</description></item>
+///     <item><term>Tool</term><description>✓ | ✓ | ✗ | ✓</description></item>
+///     <item><term>Summary</term><description>✓ | ✓ | ✗ | ✗ (replaces summarized messages)</description></item>
+/// </list>
+/// </remarks>
 [Flags]
 public enum MessageBusinessType
 {
@@ -58,12 +76,12 @@ public sealed class TrackedMessage
 
     /// <summary>
     /// Creates the initial context system message (Context + MainActors).
-    /// Always has Message flag (never removed). Not cached/memorized (regenerated each request).
+    /// Always has Message flag (never removed). Cached so it can be reused across requests.
     /// </summary>
     public static TrackedMessage CreateInitialContext(string content)
         => new()
         {
-            BusinessType = MessageBusinessType.Message, // Always in requests, never removed
+            BusinessType = MessageBusinessType.Message | MessageBusinessType.Cache, // Cached for reuse
             Message = new ChatMessage(ChatRole.System, content),
             Label = "InitialContext"
         };
@@ -139,6 +157,87 @@ public sealed class TrackedMessage
             Message = new ChatMessage(ChatRole.System, memoryContent),
             Label = "MemoryContext"
         };
+
+    /// <summary>
+    /// Creates a scene actor system message.
+    /// Included in requests and cache. Not in memory (scene-specific context).
+    /// </summary>
+    public static TrackedMessage CreateSceneActorMessage(string sceneName, string actorName, string content)
+        => new()
+        {
+            BusinessType = MessageBusinessType.Message | MessageBusinessType.Cache,
+            Message = new ChatMessage(ChatRole.System, $"[Scene: {sceneName} - Actor: {actorName}]\n{content}"),
+            Label = $"SceneActor:{sceneName}:{actorName}"
+        };
+
+    /// <summary>
+    /// Creates an MCP context system message (resources/prompts from MCP server).
+    /// Included in requests and cache. Not in memory (scene-specific context).
+    /// </summary>
+    public static TrackedMessage CreateMcpContextMessage(string sceneName, string content)
+        => new()
+        {
+            BusinessType = MessageBusinessType.Message | MessageBusinessType.Cache,
+            Message = new ChatMessage(ChatRole.System, content),
+            Label = $"McpContext:{sceneName}"
+        };
+
+    /// <summary>
+    /// Creates an execution checkpoint message that summarizes previous execution state.
+    /// This helps the LLM understand what has already been done when resuming.
+    /// Included in requests only (not cached - it's derived from cached state).
+    /// </summary>
+    public static TrackedMessage CreateExecutionCheckpoint(ExecutionState state)
+    {
+        var builder = new System.Text.StringBuilder();
+        builder.AppendLine("[Execution Checkpoint - Resuming from previous session]");
+        builder.AppendLine();
+
+        if (state.ExecutedSceneOrder.Count > 0)
+        {
+            builder.AppendLine($"Previously executed scenes ({state.ExecutedSceneOrder.Count}):");
+            foreach (var sceneName in state.ExecutedSceneOrder)
+            {
+                builder.AppendLine($"  ✓ {sceneName}");
+
+                // Add tool details if available
+                if (state.ExecutedScenes.TryGetValue(sceneName, out var tools) && tools.Count > 0)
+                {
+                    foreach (var tool in tools)
+                    {
+                        builder.AppendLine($"      - Tool: {tool.ToolName}");
+                    }
+                }
+
+                // Add result preview if available
+                if (state.SceneResults.TryGetValue(sceneName, out var result) && !string.IsNullOrWhiteSpace(result))
+                {
+                    var preview = result.Length > 150 ? result[..150] + "..." : result;
+                    builder.AppendLine($"      Result: {preview}");
+                }
+            }
+            builder.AppendLine();
+        }
+
+        if (!string.IsNullOrEmpty(state.CurrentSceneName) && state.Phase == ExecutionPhase.ExecutingScene)
+        {
+            builder.AppendLine($"Currently executing scene: {state.CurrentSceneName}");
+            builder.AppendLine();
+        }
+
+        builder.AppendLine($"Execution phase: {state.Phase}");
+        builder.AppendLine($"Accumulated cost: {state.AccumulatedCost:F6}");
+        builder.AppendLine($"State saved at: {state.SavedAt:yyyy-MM-dd HH:mm:ss} UTC");
+        builder.AppendLine();
+        builder.AppendLine("Continue from where we left off. Do not repeat already completed actions.");
+
+        return new()
+        {
+            BusinessType = MessageBusinessType.Message, // Only sent to LLM, not cached (derived from state)
+            Message = new ChatMessage(ChatRole.System, builder.ToString()),
+            Label = "ExecutionCheckpoint"
+        };
+    }
 
     /// <summary>
     /// Is this message included in LLM requests?

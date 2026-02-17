@@ -44,12 +44,12 @@ internal sealed class Scene : IScene
         foreach (var actor in _actors)
         {
             var response = await actor.PlayAsync(context, cancellationToken);
-            
+
             if (!string.IsNullOrWhiteSpace(response.Message))
             {
-                // Add system message - will be included in subsequent calls
-                // Note: IChatClient is stateless, messages must be managed externally
-                context.Properties[$"actor_message_{actor.GetType().Name}"] = response.Message;
+                // Add scene actor message to conversation history
+                // This will be included in LLM requests and cached
+                context.AddSceneActorMessage(Name, actor.GetType().Name, response.Message);
             }
         }
     }

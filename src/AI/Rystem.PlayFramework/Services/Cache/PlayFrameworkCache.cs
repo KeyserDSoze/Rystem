@@ -5,8 +5,25 @@ using Microsoft.Extensions.Logging;
 namespace Rystem.PlayFramework;
 
 /// <summary>
+/// Data structure for caching both messages and execution state.
+/// </summary>
+internal sealed class CachedConversation
+{
+    /// <summary>
+    /// Cached messages.
+    /// </summary>
+    public List<CachedMessage> Messages { get; set; } = [];
+
+    /// <summary>
+    /// Execution state (scenes executed, tools used, etc.).
+    /// </summary>
+    public ExecutionState? ExecutionState { get; set; }
+}
+
+/// <summary>
 /// Unified cache service for PlayFramework conversations.
 /// Uses IDistributedCache if available, falls back to IMemoryCache.
+/// Saves both conversation messages and execution state.
 /// </summary>
 internal sealed class PlayFrameworkCache : IPlayFrameworkCache
 {
@@ -32,25 +49,38 @@ internal sealed class PlayFrameworkCache : IPlayFrameworkCache
 
     public async Task SaveAsync(SceneContext context, CancellationToken cancellationToken = default)
     {
+        await SaveAsync(context, ExecutionPhase.Completed, null, cancellationToken);
+    }
+
+    public async Task SaveAsync(SceneContext context, ExecutionPhase phase, string? currentSceneName, CancellationToken cancellationToken = default)
+    {
         if (string.IsNullOrEmpty(context.ConversationKey))
             return;
 
         var messagesToCache = context.GetMessagesForCache();
-        if (messagesToCache.Count == 0)
-            return;
 
-        var cacheKey = $"conversation:{context.ConversationKey}";
+        // Create cached conversation with both messages and state
+        var cachedConversation = new CachedConversation
+        {
+            Messages = messagesToCache.Select(CachedMessage.FromTrackedMessage).ToList(),
+            ExecutionState = context.CreateExecutionState(phase, currentSceneName)
+        };
+
+        var cacheKey = BuildCacheKey(context.ConversationKey);
         var expiration = _settings.Cache.CacheExpiration;
 
         if (_distributedCache != null)
         {
-            var json = _jsonService.Serialize(messagesToCache);
+            var json = _jsonService.Serialize(cachedConversation);
             var bytes = System.Text.Encoding.UTF8.GetBytes(json);
             var options = new DistributedCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = expiration
             };
             await _distributedCache.SetAsync(cacheKey, bytes, options, cancellationToken);
+
+            _logger.LogDebug("Saved {Count} messages + execution state (phase: {Phase}) to distributed cache for conversation '{Key}'",
+                messagesToCache.Count, phase, context.ConversationKey);
         }
         else if (_memoryCache != null)
         {
@@ -58,11 +88,12 @@ internal sealed class PlayFrameworkCache : IPlayFrameworkCache
             {
                 AbsoluteExpirationRelativeToNow = expiration
             };
-            _memoryCache.Set(cacheKey, messagesToCache, options);
-        }
+            // For memory cache, store directly
+            _memoryCache.Set(cacheKey, cachedConversation, options);
 
-        _logger.LogDebug("Saved {Count} messages to cache for conversation '{Key}'",
-            messagesToCache.Count, context.ConversationKey);
+            _logger.LogDebug("Saved {Count} messages + execution state (phase: {Phase}) to memory cache for conversation '{Key}'",
+                messagesToCache.Count, phase, context.ConversationKey);
+        }
     }
 
     public async Task LoadAsync(SceneContext context, CancellationToken cancellationToken = default)
@@ -70,8 +101,8 @@ internal sealed class PlayFrameworkCache : IPlayFrameworkCache
         if (string.IsNullOrEmpty(context.ConversationKey))
             return;
 
-        var cacheKey = $"conversation:{context.ConversationKey}";
-        List<TrackedMessage>? cachedMessages = null;
+        var cacheKey = BuildCacheKey(context.ConversationKey);
+        CachedConversation? cachedConversation = null;
 
         if (_distributedCache != null)
         {
@@ -79,19 +110,53 @@ internal sealed class PlayFrameworkCache : IPlayFrameworkCache
             if (bytes != null)
             {
                 var json = System.Text.Encoding.UTF8.GetString(bytes);
-                cachedMessages = _jsonService.Deserialize<List<TrackedMessage>>(json);
+                cachedConversation = _jsonService.Deserialize<CachedConversation>(json);
             }
         }
         else if (_memoryCache != null)
         {
-            _memoryCache.TryGetValue(cacheKey, out cachedMessages);
+            _memoryCache.TryGetValue(cacheKey, out cachedConversation);
         }
 
-        if (cachedMessages != null && cachedMessages.Count > 0)
+        if (cachedConversation == null)
         {
-            context.RestoreFromCache(cachedMessages);
-            _logger.LogDebug("Loaded {Count} messages from cache for conversation '{Key}'",
-                cachedMessages.Count, context.ConversationKey);
+            _logger.LogDebug("No cached conversation found for key '{Key}'", context.ConversationKey);
+            return;
         }
+
+        // Restore messages
+        if (cachedConversation.Messages.Count > 0)
+        {
+            var trackedMessages = cachedConversation.Messages
+                .Select(c => c.ToTrackedMessage())
+                .ToList();
+
+            context.RestoreFromCache(trackedMessages);
+
+            _logger.LogDebug("Loaded {Count} messages from cache for conversation '{Key}'",
+                trackedMessages.Count, context.ConversationKey);
+        }
+
+        // Restore execution state
+        if (cachedConversation.ExecutionState != null)
+        {
+            context.RestoreExecutionState(cachedConversation.ExecutionState);
+
+            _logger.LogInformation(
+                "Restored execution state for conversation '{Key}' - Phase: {Phase}, Scenes: {SceneCount}, Tools: {ToolCount}, Cost: {Cost:F6}",
+                context.ConversationKey,
+                cachedConversation.ExecutionState.Phase,
+                cachedConversation.ExecutionState.ExecutedSceneOrder.Count,
+                cachedConversation.ExecutionState.ExecutedTools.Count,
+                cachedConversation.ExecutionState.AccumulatedCost);
+        }
+    }
+
+    private string BuildCacheKey(string conversationKey)
+    {
+        var prefix = _settings.Cache.KeyPrefix;
+        return string.IsNullOrEmpty(prefix)
+            ? $"conversation:{conversationKey}"
+            : $"{prefix}:conversation:{conversationKey}";
     }
 }

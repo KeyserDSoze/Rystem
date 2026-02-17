@@ -32,18 +32,9 @@ public sealed class AdvancedIntegrationTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .WithPlanning()
-                .WithSummarization(settings =>
+                .WithPlanning(settings =>
                 {
-                    settings.CharacterThreshold = 10_000; // Lower threshold for testing
-                    settings.ResponseCountThreshold = 30;
-                })
-                .Configure(settings =>
-                {
-                    settings.Planning.Enabled = true;
-                    settings.Planning.MaxRecursionDepth = 3;
-                    settings.Summarization.Enabled = false; // Enable manually in specific tests
-                    settings.Cache.Enabled = false; // Enable manually in specific tests
+                    settings.MaxRecursionDepth = 3;
                 })
                 .AddMainActor(@"You are an expert business intelligence AI assistant.
 

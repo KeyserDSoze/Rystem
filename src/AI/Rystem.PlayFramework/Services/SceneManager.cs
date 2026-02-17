@@ -7,7 +7,7 @@ using Rystem.PlayFramework.Services.Helpers;
 using Rystem.PlayFramework.Telemetry;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Text.Json.Serialization;
+using System.Text.Json;
 
 namespace Rystem.PlayFramework;
 
@@ -327,14 +327,45 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         // Initialize
         yield return YieldStatus(AiResponseStatus.Initializing, "Initializing context");
 
-        var context = await InitializeContextAsync(input, metadata, settings, cancellationToken);
+        // Create minimal context with just ConversationKey
+        var context = new SceneContext
+        {
+            ServiceProvider = _serviceProvider,
+            Input = input,
+            Metadata = metadata ?? new Dictionary<string, object>(),
+            ChatClientManager = _chatClientManager,
+            ConversationKey = settings.ConversationKey ?? Guid.NewGuid().ToString(),
+            CacheBehavior = settings.CacheBehavior
+        };
 
-        // Load from cache (includes conversation history and continuation state in Properties)
+        // Load from cache (includes conversation history, execution state, and continuation data)
+        bool isResuming = false;
         if (_settings.Cache.Enabled && context.ConversationKey != null)
         {
             yield return YieldStatus(AiResponseStatus.LoadingCache, "Loading from cache");
             await _playFrameworkCache.LoadAsync(context, cancellationToken);
+
+            if (context.IsResuming)
+            {
+                isResuming = true;
+                _logger.LogInformation(
+                    "Resuming conversation '{ConversationKey}' from phase {Phase} - Scenes: {SceneCount}, Tools: {ToolCount}",
+                    context.ConversationKey,
+                    context.RestoredExecutionState!.Phase,
+                    context.ExecutedSceneOrder.Count,
+                    context.ExecutedTools.Count);
+            }
         }
+
+        // Initialize context only if NOT resuming from cache
+        if (!isResuming)
+        {
+            yield return YieldStatus(AiResponseStatus.Initializing, "Building initial context");
+            await InitializeNewContextAsync(context, cancellationToken);
+        }
+
+        // Always add the new user message (whether new or resuming)
+        context.AddUserMessage(input);
 
         // Check if resuming from client interaction (ConversationKey + ClientInteractionResults)
         var isResumingFromClientInteraction = settings.ClientInteractionResults is { Count: > 0 }
@@ -543,11 +574,11 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                 break;
         }
 
-        // Save to cache
+        // Save to cache with Completed phase
         if (settings.CacheBehavior != CacheBehavior.Avoidable && _settings.Cache.Enabled && context.ConversationKey != null)
         {
             yield return YieldStatus(AiResponseStatus.SavingCache, "Saving to cache");
-            await _playFrameworkCache.SaveAsync(context, cancellationToken);
+            await _playFrameworkCache.SaveAsync(context, ExecutionPhase.Completed, null, cancellationToken);
         }
 
         // Save updated memory if enabled
@@ -587,26 +618,19 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         yield return YieldStatus(AiResponseStatus.Completed, "Execution completed", context.TotalCost);
     }
 
-    private async Task<SceneContext> InitializeContextAsync(
-        MultiModalInput input,
-        Dictionary<string, object>? metadata,
-        SceneRequestSettings settings,
+    /// <summary>
+    /// Initializes a new context with IContext service and MainActors.
+    /// Only called for brand new conversations (not when resuming from cache).
+    /// </summary>
+    private async Task InitializeNewContextAsync(
+        SceneContext context,
         CancellationToken cancellationToken)
     {
-        var context = new SceneContext
-        {
-            ServiceProvider = _serviceProvider,
-            Input = input,
-            Metadata = metadata ?? new Dictionary<string, object>(),
-            ChatClientManager = _chatClientManager,
-            ConversationKey = settings.ConversationKey ?? Guid.NewGuid().ToString(),
-            CacheBehavior = settings.CacheBehavior
-        };
-
         // Get context result from IContext service (e.g., user info from JWT, system info)
         object? contextResult = null;
         if (_context != null)
         {
+            var settings = new SceneRequestSettings { ConversationKey = context.ConversationKey };
             contextResult = await _context.RetrieveAsync(context, settings, cancellationToken);
         }
 
@@ -626,13 +650,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         // Build the initial context system message (Context + MainActors combined)
         context.BuildInitialContext(contextResult, mainActorOutputs);
 
-        // Add the user's input message to conversation history
-        context.AddUserMessage(input);
-
-        _logger.LogDebug("Context initialized with {MainActorCount} main actors, context result: {HasContext} (Factory: {FactoryName})",
+        _logger.LogDebug("New context initialized with {MainActorCount} main actors, context result: {HasContext} (Factory: {FactoryName})",
             mainActorOutputs.Count, contextResult != null, _factoryName);
-
-        return context;
     }
 
     private async IAsyncEnumerable<AiSceneResponse> ExecutePlanAsync(
@@ -720,16 +739,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             cancellationToken);
 
         // Track costs for scene selection
-        var selectionResponse = new AiSceneResponse
-        {
-            Status = AiResponseStatus.Running,
-            Message = "Scene selection",
-            InputTokens = responseWithCost.InputTokens,
-            OutputTokens = responseWithCost.OutputTokens,
-            CachedInputTokens = responseWithCost.CachedInputTokens,
-            Cost = responseWithCost.CalculatedCost,
-            TotalCost = context.AddCost(responseWithCost.CalculatedCost)
-        };
+        context.AddCost(responseWithCost.CalculatedCost);
 
         // Check budget limit
         if (settings.MaxBudget.HasValue && context.TotalCost > settings.MaxBudget.Value)
@@ -745,6 +755,12 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
 
         // Process function calls (scene selections) and extract multi-modal contents
         var responseMessage = responseWithCost.Response.Messages?.FirstOrDefault();
+
+        // Save assistant response to conversation history for tracking
+        if (responseMessage != null)
+        {
+            context.AddAssistantMessage(responseMessage);
+        }
 
         // Extract multi-modal contents (DataContent, UriContent) from LLM response
         var multiModalContents = responseMessage?.Contents?
@@ -812,6 +828,22 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     {
         yield return YieldStatus(AiResponseStatus.Running, $"Entering scene: {scene.Name}");
 
+        // Track this scene as being executed
+        if (!context.ExecutedScenes.ContainsKey(scene.Name))
+        {
+            context.ExecutedScenes[scene.Name] = [];
+        }
+        if (!context.ExecutedSceneOrder.Contains(scene.Name))
+        {
+            context.ExecutedSceneOrder.Add(scene.Name);
+        }
+
+        // Save checkpoint when entering scene (allows resume if interrupted)
+        if (_settings.Cache.Enabled && context.ConversationKey != null)
+        {
+            await _playFrameworkCache.SaveAsync(context, ExecutionPhase.ExecutingScene, scene.Name, cancellationToken);
+        }
+
         // Execute scene actors
         await scene.ExecuteActorsAsync(context, cancellationToken);
 
@@ -869,16 +901,13 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         var sceneTools = scene.GetTools().ToList();
         var sceneToolsFunctions = sceneTools.Select(t => t.ToAIFunction()).ToList();
 
-        // Get conversation messages from context (already includes InitialContext, memory, user message)
-        var conversationMessages = context.GetMessagesForLLM();
-
-        // Add MCP system messages (resources and prompts) if any
+        // Add MCP system messages (resources and prompts) to ConversationHistory for tracking/caching
         if (mcpSystemMessages.Count > 0)
         {
             var combinedMcpMessage = string.Join("\n\n---\n\n", mcpSystemMessages);
-            conversationMessages.Add(new ChatMessage(ChatRole.System, combinedMcpMessage));
+            context.AddMcpContextMessage(scene.Name, combinedMcpMessage);
 
-            _logger.LogDebug("Added MCP system message to conversation (Total length: {MessageLength} chars, Factory: {FactoryName})",
+            _logger.LogDebug("Added MCP context message to conversation history (Total length: {MessageLength} chars, Factory: {FactoryName})",
                 combinedMcpMessage.Length, _factoryName);
         }
 
@@ -966,13 +995,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             int? totalOutputTokens = null;
             int? totalCachedInputTokens = null;
 
-            // Rebuild messages from context each iteration (includes newly added assistant/tool messages)
-            conversationMessages = context.GetMessagesForLLM();
-            if (mcpSystemMessages.Count > 0)
-            {
-                var combinedMcpMessage = string.Join("\n\n---\n\n", mcpSystemMessages);
-                conversationMessages.Add(new ChatMessage(ChatRole.System, combinedMcpMessage));
-            }
+            // Rebuild messages from context each iteration (includes newly added assistant/tool/mcp messages)
+            var conversationMessages = context.GetMessagesForLLM();
 
             // Use streaming when enabled, fallback to non-streaming otherwise
             if (settings.EnableStreaming)
@@ -1121,6 +1145,12 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                         currency: _chatClientManager.Currency);
                 }
 
+                // Save checkpoint when scene completes successfully
+                if (_settings.Cache.Enabled && context.ConversationKey != null)
+                {
+                    await _playFrameworkCache.SaveAsync(context, ExecutionPhase.SceneCompleted, scene.Name, cancellationToken);
+                }
+
                 yield break; // No function calls, we're done!
             }
 
@@ -1168,8 +1198,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                     context.SetProperty("_continuation_callId", functionCall.CallId);
                     context.SetProperty("_continuation_toolName", functionCall.Name);
 
-                    // Save to cache before returning
-                    await _playFrameworkCache.SaveAsync(context, cancellationToken);
+                    // Save to cache before returning (with AwaitingClient phase)
+                    await _playFrameworkCache.SaveAsync(context, ExecutionPhase.AwaitingClient, scene.Name, cancellationToken);
 
                     _logger.LogInformation("Client tool '{ToolName}' detected. Awaiting client execution for conversation '{ConversationKey}'",
                         functionCall.Name, context.ConversationKey);
@@ -1327,8 +1357,13 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                 new[] { finalPrompt },
                 cancellationToken: cancellationToken);
 
-            // Extract multi-modal contents from LLM response
+            // Extract multi-modal contents from LLM response and save to conversation history
             var finalResponseMessage = responseWithCost.Response.Messages?.FirstOrDefault();
+            if (finalResponseMessage != null)
+            {
+                context.AddAssistantMessage(finalResponseMessage);
+            }
+
             var finalContents = finalResponseMessage?.Contents?
                 .Where(c => c is DataContent or UriContent)
                 .ToList();
@@ -1350,14 +1385,6 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                     maxBudget: settings.MaxBudget.Value,
                     totalCost: context.TotalCost,
                     currency: _chatClientManager.Currency);
-            }
-            {
-                yield return YieldAndTrack(context, new AiSceneResponse
-                {
-                    Status = AiResponseStatus.BudgetExceeded,
-                    Message = $"Budget limit of {settings.MaxBudget:F6} {_chatClientManager.Currency} exceeded. Total cost: {context.TotalCost:F6}",
-                    ErrorMessage = "Maximum budget reached"
-                });
             }
         }
     }
@@ -1491,19 +1518,15 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             cancellationToken);
 
         // Track costs
-        var selectionResponse = new AiSceneResponse
-        {
-            Status = AiResponseStatus.Running,
-            Message = "Scene selection for chaining",
-            InputTokens = responseWithCost.InputTokens,
-            OutputTokens = responseWithCost.OutputTokens,
-            CachedInputTokens = responseWithCost.CachedInputTokens,
-            Cost = responseWithCost.CalculatedCost,
-            TotalCost = context.AddCost(responseWithCost.CalculatedCost)
-        };
+        context.AddCost(responseWithCost.CalculatedCost);
 
-        // Extract function call
+        // Extract function call and save to conversation history
         var responseMessage = responseWithCost.Response.Messages?.FirstOrDefault();
+        if (responseMessage != null)
+        {
+            context.AddAssistantMessage(responseMessage);
+        }
+
         var functionCall = responseMessage?.Contents?.OfType<FunctionCallContent>().FirstOrDefault();
 
         if (functionCall != null)
@@ -1541,27 +1564,66 @@ Execution so far:
 Available scenes for further execution:
 {string.Join("\n", remainingScenes.Select(s => $"- {s}"))}
 
-Do you need to execute another scene to complete the user's request?
-Respond with 'YES' if you need more information from another scene, or 'NO' if you have enough information to provide a complete answer.";
+Decide if you need to execute another scene to complete the user's request.
+Use the decideContinuation tool to indicate your decision.";
 
-        var responseWithCost = await context.ChatClientManager.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, prompt) },
-            cancellationToken: cancellationToken);
+        // Create a forced tool for the continuation decision
+        // Parameters are inferred from the lambda: shouldContinue (bool), reasoning (string)
+        var continuationTool = AIFunctionFactory.Create(
+            ([System.ComponentModel.Description("Set to true if more scenes are needed to complete the user's request, false if you have enough information.")] bool shouldContinue,
+             [System.ComponentModel.Description("Brief explanation of why you made this decision.")] string? reasoning) => shouldContinue,
+            "decideContinuation",
+            "Decide whether to continue executing more scenes or stop and generate the final response.");
 
-        // Track costs
-        var continueResponse = new AiSceneResponse
+        var chatOptions = new ChatOptions
         {
-            Status = AiResponseStatus.Running,
-            Message = "Continuation decision",
-            InputTokens = responseWithCost.InputTokens,
-            OutputTokens = responseWithCost.OutputTokens,
-            CachedInputTokens = responseWithCost.CachedInputTokens,
-            Cost = responseWithCost.CalculatedCost,
-            TotalCost = context.AddCost(responseWithCost.CalculatedCost)
+            Tools = [continuationTool],
+            ToolMode = ChatToolMode.RequireAny // Force the LLM to call the tool
         };
 
-        var responseText = responseWithCost.Response.Messages?.FirstOrDefault()?.Text?.Trim().ToUpperInvariant() ?? "";
-        return responseText.Contains("YES");
+        var responseWithCost = await context.ChatClientManager.GetResponseAsync(
+            [new ChatMessage(ChatRole.User, prompt)],
+            chatOptions,
+            cancellationToken);
+
+        // Track costs
+        context.AddCost(responseWithCost.CalculatedCost);
+
+        // Extract the boolean from the function call and save to conversation history
+        var responseMessage = responseWithCost.Response.Messages?.FirstOrDefault();
+        if (responseMessage != null)
+        {
+            context.AddAssistantMessage(responseMessage);
+        }
+
+        var functionCall = responseMessage?.Contents?.OfType<FunctionCallContent>().FirstOrDefault();
+
+        if (functionCall?.Arguments != null &&
+            functionCall.Arguments.TryGetValue("shouldContinue", out var shouldContinueValue))
+        {
+            // Handle various formats the LLM might return
+            if (shouldContinueValue is bool boolValue)
+            {
+                return boolValue;
+            }
+            if (shouldContinueValue is JsonElement jsonElement)
+            {
+                if (jsonElement.ValueKind == JsonValueKind.True) return true;
+                if (jsonElement.ValueKind == JsonValueKind.False) return false;
+                if (jsonElement.ValueKind == JsonValueKind.String)
+                {
+                    return bool.TryParse(jsonElement.GetString(), out var parsed) && parsed;
+                }
+            }
+            if (shouldContinueValue is string strValue)
+            {
+                return bool.TryParse(strValue, out var parsed) && parsed;
+            }
+        }
+
+        // Fallback: if tool wasn't called properly, default to false (stop chaining)
+        _logger.LogWarning("Failed to extract continuation decision from LLM response. Defaulting to stop chaining. (Factory: {FactoryName})", _factoryName);
+        return false;
     }
 
     private string BuildChainingContext(SceneContext context)

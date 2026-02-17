@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Api.Models;
 using System.Text.Json;
-using Stopwatch = System.Diagnostics.Stopwatch;
 
 namespace Rystem.PlayFramework.Api;
 
@@ -123,9 +122,9 @@ public static class WebApplicationExtensions
             // Extract metadata from HTTP context
             var metadata = BuildMetadata(request.Metadata, httpContext, settings);
 
-            // Build multi-modal input
-            var input = BuildMultiModalInput(request);
-            var mergedSettings = MergeRequestIntoSettings(request);
+            // Convert request to MultiModalInput and merge settings
+            var input = request.ToMultiModalInput();
+            var mergedSettings = request.GetMergedSettings();
 
             // Set response headers for SSE
             httpContext.Response.Headers.Append("Content-Type", "text/event-stream");
@@ -164,28 +163,6 @@ public static class WebApplicationExtensions
             await httpContext.Response.WriteAsync($"data: {errorJson}\n\n", cancellationToken);
             await httpContext.Response.Body.FlushAsync(cancellationToken);
         }
-    }
-
-    private static MultiModalInput BuildMultiModalInput(PlayFrameworkRequest request)
-    {
-        // Simple text message
-        if (request.Contents == null || request.Contents.Count == 0)
-        {
-            return MultiModalInput.FromText(request.Message ?? string.Empty);
-        }
-
-        // Multi-modal input
-        var input = new MultiModalInput
-        {
-            Text = request.Message
-        };
-
-        foreach (var contentItem in request.Contents)
-        {
-            input.Contents.Add(contentItem.ToAIContent());
-        }
-
-        return input;
     }
 
     private static Dictionary<string, object> BuildMetadata(
@@ -230,29 +207,5 @@ public static class WebApplicationExtensions
         }
 
         return metadata;
-    }
-
-    /// <summary>
-    /// Merges top-level ConversationKey and ClientInteractionResults from PlayFrameworkRequest
-    /// into SceneRequestSettings so SceneManager can process them.
-    /// </summary>
-    private static SceneRequestSettings MergeRequestIntoSettings(PlayFrameworkRequest request)
-    {
-        var requestSettings = request.Settings ?? new SceneRequestSettings();
-
-        // Forward top-level conversation key (HTTP convenience) into settings if not already set
-        if (!string.IsNullOrEmpty(request.ConversationKey) && string.IsNullOrEmpty(requestSettings.ConversationKey))
-        {
-            requestSettings.ConversationKey = request.ConversationKey;
-        }
-
-        // Forward top-level client interaction results into settings if not already set
-        if (request.ClientInteractionResults != null && request.ClientInteractionResults.Count > 0
-            && (requestSettings.ClientInteractionResults == null || requestSettings.ClientInteractionResults.Count == 0))
-        {
-            requestSettings.ClientInteractionResults = request.ClientInteractionResults;
-        }
-
-        return requestSettings;
     }
 }

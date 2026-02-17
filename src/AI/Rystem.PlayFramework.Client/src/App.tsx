@@ -6,7 +6,7 @@ import {
     type PlayFrameworkRequest,
     type AiSceneResponse,
     type AiResponseStatus
-} from './rystem/src';
+} from './rystem/src/index';
 import './App.css';
 
 // ─── Types ───────────────────────────────────────────────────────────────
@@ -148,10 +148,16 @@ function App() {
         // Add user message
         addMessage({ role: 'user', text, timestamp: new Date() });
 
+        // Generate conversationKey if not already set (first request)
+        const key = conversationKey ?? crypto.randomUUID();
+        if (!conversationKey) {
+            setConversationKey(key);
+        }
+
         const request: PlayFrameworkRequest = {
             message: text,
+            conversationKey: key,
             settings: {
-                conversationKey,
                 enableStreaming: mode === 'token',
             }
         };
