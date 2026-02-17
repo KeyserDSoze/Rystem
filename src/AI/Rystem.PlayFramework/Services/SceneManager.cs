@@ -598,8 +598,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             yield break;
         }
 
-        // Execute using the handler
-        await foreach (var response in handler.ExecuteAsync(context, settings, cancellationToken))
+        // Execute using the handler, passing the factory name
+        await foreach (var response in handler.ExecuteAsync(_factoryName, context, settings, cancellationToken))
         {
             yield return response;
         }

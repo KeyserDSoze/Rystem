@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using Microsoft.Extensions.DependencyInjection;
+using System.Runtime.CompilerServices;
 
 namespace Rystem.PlayFramework.Services.ExecutionModes;
 
@@ -7,22 +8,30 @@ namespace Rystem.PlayFramework.Services.ExecutionModes;
 /// </summary>
 internal sealed class SceneExecutionHandler : IExecutionModeHandler
 {
-    private readonly ExecutionModeHandlerDependencies _dependencies;
-    private readonly ISceneExecutor _sceneExecutor;
+    private readonly IFactory<ExecutionModeHandlerDependencies> _dependenciesFactory;
+    private readonly IFactory<ISceneExecutor> _sceneExecutorFactory;
 
     public SceneExecutionHandler(
-        ExecutionModeHandlerDependencies dependencies,
-        ISceneExecutor sceneExecutor)
+        IFactory<ExecutionModeHandlerDependencies> dependenciesFactory,
+        IFactory<ISceneExecutor> sceneExecutorFactory)
     {
-        _dependencies = dependencies;
-        _sceneExecutor = sceneExecutor;
+        _dependenciesFactory = dependenciesFactory;
+        _sceneExecutorFactory = sceneExecutorFactory;
     }
 
     public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(
+        AnyOf<string?, Enum>? factoryName,
         SceneContext context,
         SceneRequestSettings settings,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        // Resolve dependencies from factory
+        var dependencies = _dependenciesFactory.Create(factoryName)
+            ?? throw new InvalidOperationException($"ExecutionModeHandlerDependencies not found for factory: {factoryName}");
+
+        var sceneExecutor = _sceneExecutorFactory.Create(factoryName)
+            ?? throw new InvalidOperationException($"SceneExecutor not found for factory: {factoryName}");
+
         // Direct scene execution by name (bypasses scene selection)
         if (string.IsNullOrEmpty(settings.SceneName))
         {
@@ -35,7 +44,7 @@ internal sealed class SceneExecutionHandler : IExecutionModeHandler
             yield break;
         }
 
-        var targetScene = _dependencies.SceneFactory.Create(settings.SceneName);
+        var targetScene = dependencies.SceneFactory.Create(settings.SceneName);
         if (targetScene == null)
         {
             yield return YieldAndTrack(context, new AiSceneResponse
@@ -47,7 +56,7 @@ internal sealed class SceneExecutionHandler : IExecutionModeHandler
             yield break;
         }
 
-        await foreach (var response in _sceneExecutor.ExecuteSceneAsync(context, targetScene, settings, cancellationToken))
+        await foreach (var response in sceneExecutor.ExecuteSceneAsync(context, targetScene, settings, cancellationToken))
         {
             yield return response;
         }

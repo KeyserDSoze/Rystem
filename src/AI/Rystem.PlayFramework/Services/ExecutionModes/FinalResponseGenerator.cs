@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 using System.Runtime.CompilerServices;
 
 namespace Rystem.PlayFramework.Services.ExecutionModes;
@@ -6,13 +7,21 @@ namespace Rystem.PlayFramework.Services.ExecutionModes;
 /// <summary>
 /// Generates final response after plan execution or dynamic chaining.
 /// </summary>
-internal sealed class FinalResponseGenerator
+internal sealed class FinalResponseGenerator : IFactoryName
 {
-    private readonly ExecutionModeHandlerDependencies _dependencies;
+    private readonly IServiceProvider _serviceProvider;
+    private ExecutionModeHandlerDependencies _dependencies = null!;
 
-    public FinalResponseGenerator(ExecutionModeHandlerDependencies dependencies)
+    public FinalResponseGenerator(IServiceProvider serviceProvider)
     {
-        _dependencies = dependencies;
+        _serviceProvider = serviceProvider;
+    }
+
+    public void SetFactoryName(AnyOf<string?, Enum>? name)
+    {
+        var dependenciesFactory = _serviceProvider.GetRequiredService<IFactory<ExecutionModeHandlerDependencies>>();
+        _dependencies = dependenciesFactory.Create(name)
+            ?? throw new InvalidOperationException($"ExecutionModeHandlerDependencies not found for factory: {name}");
     }
 
     public async IAsyncEnumerable<AiSceneResponse> GenerateAsync(

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -11,28 +12,37 @@ namespace Rystem.PlayFramework.Services.ExecutionModes;
 /// </summary>
 internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
 {
-    private readonly ExecutionModeHandlerDependencies _dependencies;
-    private readonly ISceneExecutor _sceneExecutor;
-    private readonly FinalResponseGenerator _finalResponseGenerator;
-    private readonly string _factoryName;
+    private readonly IFactory<ExecutionModeHandlerDependencies> _dependenciesFactory;
+    private readonly IFactory<ISceneExecutor> _sceneExecutorFactory;
+    private readonly IFactory<FinalResponseGenerator> _finalResponseGeneratorFactory;
 
     public DynamicChainingExecutionHandler(
-        ExecutionModeHandlerDependencies dependencies,
-        ISceneExecutor sceneExecutor,
-        FinalResponseGenerator finalResponseGenerator,
-        string factoryName)
+        IFactory<ExecutionModeHandlerDependencies> dependenciesFactory,
+        IFactory<ISceneExecutor> sceneExecutorFactory,
+        IFactory<FinalResponseGenerator> finalResponseGeneratorFactory)
     {
-        _dependencies = dependencies;
-        _sceneExecutor = sceneExecutor;
-        _finalResponseGenerator = finalResponseGenerator;
-        _factoryName = factoryName;
+        _dependenciesFactory = dependenciesFactory;
+        _sceneExecutorFactory = sceneExecutorFactory;
+        _finalResponseGeneratorFactory = finalResponseGeneratorFactory;
     }
 
     public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(
+        AnyOf<string?, Enum>? factoryName,
         SceneContext context,
         SceneRequestSettings settings,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        // Resolve dependencies from factory
+        var dependencies = _dependenciesFactory.Create(factoryName)
+            ?? throw new InvalidOperationException($"ExecutionModeHandlerDependencies not found for factory: {factoryName}");
+
+        var sceneExecutor = _sceneExecutorFactory.Create(factoryName)
+            ?? throw new InvalidOperationException($"SceneExecutor not found for factory: {factoryName}");
+
+        var finalResponseGenerator = _finalResponseGeneratorFactory.Create(factoryName)
+            ?? throw new InvalidOperationException($"FinalResponseGenerator not found for factory: {factoryName}");
+
+        var factoryNameString = factoryName?.ToString() ?? "default";
         yield return YieldStatus(AiResponseStatus.Running, "Starting dynamic scene chaining");
 
         var sceneExecutionCount = 0;
@@ -40,9 +50,9 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
         while (sceneExecutionCount < settings.MaxDynamicScenes)
         {
             // Get available scenes (exclude already executed ones)
-            var availableScenes = _dependencies.SceneFactory.GetSceneNames()
+            var availableScenes = dependencies.SceneFactory.GetSceneNames()
                 .Where(name => !context.ExecutedScenes.ContainsKey(name))
-                .Select(name => _dependencies.SceneFactory.Create(name))
+                .Select(name => dependencies.SceneFactory.Create(name))
                 .ToList();
 
             if (availableScenes.Count == 0)
@@ -54,7 +64,7 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
             // Select next scene to execute
             yield return YieldStatus(AiResponseStatus.Running, $"Selecting scene {sceneExecutionCount + 1}/{settings.MaxDynamicScenes}");
 
-            var selectedScene = await SelectSceneForChainingAsync(context, availableScenes, settings, cancellationToken);
+            var selectedScene = await SelectSceneForChainingAsync(dependencies, context, availableScenes, settings, cancellationToken);
             if (selectedScene == null)
             {
                 yield return YieldStatus(AiResponseStatus.Running, "No suitable scene found, ending chain");
@@ -70,7 +80,7 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
 
             // Execute the selected scene
             var sceneResultBuilder = new StringBuilder();
-            await foreach (var response in _sceneExecutor.ExecuteSceneAsync(context, selectedScene, settings, cancellationToken))
+            await foreach (var response in sceneExecutor.ExecuteSceneAsync(context, selectedScene, settings, cancellationToken))
             {
                 // Accumulate scene results
                 if (response.Status == AiResponseStatus.Running && !string.IsNullOrWhiteSpace(response.Message))
@@ -100,7 +110,7 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
             {
                 yield return YieldStatus(AiResponseStatus.Running, "Evaluating if more scenes are needed");
 
-                var shouldContinue = await AskContinueToNextSceneAsync(context, settings, cancellationToken);
+                var shouldContinue = await AskContinueToNextSceneAsync(dependencies, factoryNameString, context, settings, cancellationToken);
                 if (!shouldContinue)
                 {
                     yield return YieldStatus(AiResponseStatus.Running, "Scene chain complete - generating final response");
@@ -115,13 +125,14 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
         }
 
         // Generate final response using all accumulated scene results
-        await foreach (var response in _finalResponseGenerator.GenerateAsync(context, settings, cancellationToken))
+        await foreach (var response in finalResponseGenerator.GenerateAsync(context, settings, cancellationToken))
         {
             yield return response;
         }
     }
 
     private async Task<IScene?> SelectSceneForChainingAsync(
+        ExecutionModeHandlerDependencies dependencies,
         SceneContext context,
         List<IScene> availableScenes,
         SceneRequestSettings settings,
@@ -172,13 +183,15 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
         if (functionCall != null)
         {
             var selectedSceneName = functionCall.Name;
-            return _dependencies.SceneMatchingHelper.FindSceneByFuzzyMatch(selectedSceneName, _dependencies.SceneFactory);
+            return dependencies.SceneMatchingHelper.FindSceneByFuzzyMatch(selectedSceneName, dependencies.SceneFactory);
         }
 
         return null;
     }
 
     private async Task<bool> AskContinueToNextSceneAsync(
+        ExecutionModeHandlerDependencies dependencies,
+        string factoryNameString,
         SceneContext context,
         SceneRequestSettings settings,
         CancellationToken cancellationToken)
@@ -187,7 +200,7 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
         var executionSummary = BuildExecutionSummary(context);
 
         // Get remaining available scenes
-        var remainingScenes = _dependencies.SceneFactory.GetSceneNames()
+        var remainingScenes = dependencies.SceneFactory.GetSceneNames()
             .Where(name => !context.ExecutedScenes.ContainsKey(name))
             .ToList();
 
@@ -261,7 +274,7 @@ Use the decideContinuation tool to indicate your decision.";
         }
 
         // Fallback: if tool wasn't called properly, default to false (stop chaining)
-        _dependencies.Logger.LogWarning("Failed to extract continuation decision from LLM response. Defaulting to stop chaining. (Factory: {FactoryName})", _factoryName);
+        dependencies.Logger.LogWarning("Failed to extract continuation decision from LLM response. Defaulting to stop chaining. (Factory: {FactoryName})", factoryNameString);
         return false;
     }
 

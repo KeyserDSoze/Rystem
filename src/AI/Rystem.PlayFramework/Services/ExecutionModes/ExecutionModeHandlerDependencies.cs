@@ -9,16 +9,39 @@ namespace Rystem.PlayFramework.Services.ExecutionModes;
 /// </summary>
 internal sealed class ExecutionModeHandlerDependencies : IFactoryName
 {
-    public required ISceneFactory SceneFactory { get; init; }
-    public required IResponseHelper ResponseHelper { get; init; }
-    public required IStreamingHelper StreamingHelper { get; init; }
-    public required ISceneMatchingHelper SceneMatchingHelper { get; init; }
-    public required PlayFrameworkSettings Settings { get; init; }
-    public required ILogger Logger { get; init; }
-    public required string FactoryName { get; init; }
+    private readonly IServiceProvider _serviceProvider;
+
+    public ISceneFactory SceneFactory { get; private set; } = null!;
+    public IResponseHelper ResponseHelper { get; private set; } = null!;
+    public IStreamingHelper StreamingHelper { get; private set; } = null!;
+    public ISceneMatchingHelper SceneMatchingHelper { get; private set; } = null!;
+    public IPlayFrameworkCache PlayFrameworkCache { get; private set; } = null!;
+    public PlayFrameworkSettings Settings { get; private set; } = null!;
+    public ILogger Logger { get; private set; } = null!;
+    public string FactoryName { get; private set; } = "default";
+
+    public ExecutionModeHandlerDependencies(IServiceProvider serviceProvider)
+    {
+        _serviceProvider = serviceProvider;
+    }
 
     public void SetFactoryName(AnyOf<string?, Enum>? name)
     {
-        throw new NotImplementedException();
+        FactoryName = name?.ToString() ?? "default";
+
+        var settingsFactory = _serviceProvider.GetRequiredService<IFactory<PlayFrameworkSettings>>();
+        var sceneFactoryFactory = _serviceProvider.GetRequiredService<IFactory<ISceneFactory>>();
+        var playFrameworkCacheFactory = _serviceProvider.GetRequiredService<IFactory<IPlayFrameworkCache>>();
+        var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
+
+        SceneFactory = sceneFactoryFactory.Create(name) 
+            ?? throw new InvalidOperationException($"SceneFactory not found for factory: {name}");
+        ResponseHelper = _serviceProvider.GetRequiredService<IResponseHelper>();
+        StreamingHelper = _serviceProvider.GetRequiredService<IStreamingHelper>();
+        SceneMatchingHelper = _serviceProvider.GetRequiredService<ISceneMatchingHelper>();
+        PlayFrameworkCache = playFrameworkCacheFactory.Create(name)
+            ?? throw new InvalidOperationException($"PlayFrameworkCache not found for factory: {name}");
+        Settings = settingsFactory.Create(name) ?? new PlayFrameworkSettings();
+        Logger = loggerFactory.CreateLogger<SceneManager>();
     }
 }

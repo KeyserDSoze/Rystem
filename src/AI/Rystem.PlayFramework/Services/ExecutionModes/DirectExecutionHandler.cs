@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Services.Helpers;
 using System.Runtime.CompilerServices;
@@ -10,25 +11,32 @@ namespace Rystem.PlayFramework.Services.ExecutionModes;
 /// </summary>
 internal sealed class DirectExecutionHandler : IExecutionModeHandler
 {
-    private readonly ExecutionModeHandlerDependencies _dependencies;
-    private readonly ISceneExecutor _sceneExecutor;
+    private readonly IFactory<ExecutionModeHandlerDependencies> _dependenciesFactory;
+    private readonly IFactory<ISceneExecutor> _sceneExecutorFactory;
 
     public DirectExecutionHandler(
-        ExecutionModeHandlerDependencies dependencies,
-        ISceneExecutor sceneExecutor)
+        IFactory<ExecutionModeHandlerDependencies> dependenciesFactory,
+        IFactory<ISceneExecutor> sceneExecutorFactory)
     {
-        _dependencies = dependencies;
-        _sceneExecutor = sceneExecutor;
+        _dependenciesFactory = dependenciesFactory;
+        _sceneExecutorFactory = sceneExecutorFactory;
     }
 
     public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(
+        AnyOf<string?, Enum>? factoryName,
         SceneContext context,
         SceneRequestSettings settings,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        // Resolve dependencies from factory
+        var dependencies = _dependenciesFactory.Create(factoryName)
+            ?? throw new InvalidOperationException($"ExecutionModeHandlerDependencies not found for factory: {factoryName}");
+
+        var sceneExecutor = _sceneExecutorFactory.Create(factoryName)
+            ?? throw new InvalidOperationException($"SceneExecutor not found for factory: {factoryName}");
         // Get all scenes as tools for selection
-        var sceneTools = _dependencies.SceneFactory.GetSceneNames()
-            .Select(name => _dependencies.SceneFactory.Create(name))
+        var sceneTools = dependencies.SceneFactory.GetSceneNames()
+            .Select(name => dependencies.SceneFactory.Create(name))
             .Select(scene => SceneSelectionToolFactory.CreateSceneSelectionTool(scene))
             .ToList();
 
@@ -52,7 +60,7 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
         {
             // Use StreamingHelper for optimistic streaming
             StreamingResult? lastResult = null;
-            await foreach (var result in _dependencies.StreamingHelper.ProcessOptimisticStreamAsync(
+            await foreach (var result in dependencies.StreamingHelper.ProcessOptimisticStreamAsync(
                 context,
                 context.GetMessagesForLLM(),
                 chatOptions,
@@ -64,7 +72,7 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
                 // Stream to user if needed (text response with no function calls detected yet)
                 if (result.FinalMessage == null && result.StreamedToUser)
                 {
-                    yield return _dependencies.ResponseHelper.CreateStreamingResponse(
+                    yield return dependencies.ResponseHelper.CreateStreamingResponse(
                         sceneName: null,
                         streamingChunk: result.StreamChunk ?? string.Empty,
                         message: result.AccumulatedText,
@@ -162,10 +170,10 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
                 });
 
                 // Execute the selected scene
-                var scene = _dependencies.SceneMatchingHelper.FindSceneByFuzzyMatch(selectedSceneName, _dependencies.SceneFactory);
+                var scene = dependencies.SceneMatchingHelper.FindSceneByFuzzyMatch(selectedSceneName, dependencies.SceneFactory);
                 if (scene != null)
                 {
-                    await foreach (var sceneResponse in _sceneExecutor.ExecuteSceneAsync(context, scene, settings, cancellationToken))
+                    await foreach (var sceneResponse in sceneExecutor.ExecuteSceneAsync(context, scene, settings, cancellationToken))
                     {
                         yield return sceneResponse;
                     }
@@ -189,7 +197,7 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
         // If streaming was enabled and already streamed, send final chunk
         if (settings.EnableStreaming && streamedToUser)
         {
-            yield return _dependencies.ResponseHelper.CreateFinalResponse(
+            yield return dependencies.ResponseHelper.CreateFinalResponse(
                 sceneName: null,
                 message: accumulatedText,
                 context: context,

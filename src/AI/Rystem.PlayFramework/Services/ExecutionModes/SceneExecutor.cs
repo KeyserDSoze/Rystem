@@ -13,30 +13,36 @@ namespace Rystem.PlayFramework.Services.ExecutionModes;
 /// </summary>
 internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
 {
-    private readonly ExecutionModeHandlerDependencies _dependencies;
+    private readonly IServiceProvider _serviceProvider;
     private readonly IFactory<IMcpServerManager> _mcpServerManagerFactory;
     private readonly IFactory<IJsonService> _jsonServiceFactory;
     private readonly IClientInteractionHandler _clientInteractionHandler;
-    private IJsonService _jsonService;
-    private IMcpServerManager _mcpServerManager;
-    private AnyOf<string, Enum> _factoryName;
+
+    private ExecutionModeHandlerDependencies _dependencies = null!;
+    private string _factoryName = "default";
+    private IJsonService _jsonService = null!;
 
     public SceneExecutor(
-        ExecutionModeHandlerDependencies dependencies,
+        IServiceProvider serviceProvider,
         IFactory<IMcpServerManager> mcpServerManagerFactory,
         IFactory<IJsonService> jsonServiceFactory,
         IClientInteractionHandler clientInteractionHandler)
     {
-        _dependencies = dependencies;
+        _serviceProvider = serviceProvider;
         _mcpServerManagerFactory = mcpServerManagerFactory;
         _jsonServiceFactory = jsonServiceFactory;
         _clientInteractionHandler = clientInteractionHandler;
     }
+
     public void SetFactoryName(AnyOf<string?, Enum>? name)
     {
-        _factoryName = name;
-        _jsonService = _jsonServiceFactory.Create(name);
-        _mcpServerManager = _mcpServerManagerFactory.Create(name);
+        _factoryName = name?.ToString() ?? "default";
+
+        var dependenciesFactory = _serviceProvider.GetRequiredService<IFactory<ExecutionModeHandlerDependencies>>();
+        _dependencies = dependenciesFactory.Create(name)
+            ?? throw new InvalidOperationException($"ExecutionModeHandlerDependencies not found for factory: {name}");
+
+        _jsonService = _jsonServiceFactory.Create(name) ?? new DefaultJsonService();
     }
     public async IAsyncEnumerable<AiSceneResponse> ExecuteSceneAsync(
         SceneContext context,
