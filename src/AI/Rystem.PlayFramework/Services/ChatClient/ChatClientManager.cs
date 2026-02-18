@@ -166,6 +166,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         // Try load balancing pool first
+        var enteredInSomething = false;
         if (_settings.ChatClientNames?.Count > 0)
         {
             var orderedClients = GetLoadBalancedOrder(_settings.ChatClientNames, _settings.LoadBalancingMode);
@@ -179,6 +180,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
 
                 await foreach (var update in TryStreamFromClientAsync(clientName, chatMessages, options, cancellationToken))
                 {
+                    enteredInSomething = true;
                     if (update.IsError)
                     {
                         lastError = new Exception(update.ErrorMessage);
@@ -217,6 +219,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
 
                 await foreach (var update in TryStreamFromClientAsync(clientName, chatMessages, options, cancellationToken))
                 {
+                    enteredInSomething = true;
                     if (update.IsError)
                     {
                         lastError = new Exception(update.ErrorMessage);
@@ -249,6 +252,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
 
             await foreach (var update in directClient.GetStreamingResponseAsync(chatMessages, options, cancellationToken))
             {
+                enteredInSomething = true;
                 var isComplete = update.FinishReason != null;
                 yield return new ChatUpdateWithCost
                 {
@@ -263,8 +267,8 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
                 }
             }
         }
-
-        throw new InvalidOperationException("All streaming clients (load balancing + fallback + direct) failed");
+        if (!enteredInSomething)
+            throw new InvalidOperationException("All streaming clients (load balancing + fallback + direct) failed");
     }
 
     /// <summary>
