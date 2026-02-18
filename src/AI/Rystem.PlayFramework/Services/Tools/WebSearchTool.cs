@@ -42,7 +42,7 @@ internal sealed class WebSearchTool : ISceneTool
         "Search the web for current information, news, articles, and resources. " +
         "Use this when you need real-time or external information not available in the knowledge base.";
 
-    public AIFunction ToAIFunction()
+    public AITool ToAITool()
     {
         // Create a simple function that accepts a search query
         return AIFunctionFactory.Create(

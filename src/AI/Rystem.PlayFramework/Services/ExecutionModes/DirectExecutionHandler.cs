@@ -1,8 +1,7 @@
-﻿using Microsoft.Extensions.AI;
+﻿using System.Runtime.CompilerServices;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Services.Helpers;
-using System.Runtime.CompilerServices;
 
 namespace Rystem.PlayFramework.Services.ExecutionModes;
 
@@ -43,7 +42,7 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
         // Configure chat with scene selection tools
         var chatOptions = new ChatOptions
         {
-            Tools = [.. sceneTools.Cast<AITool>()]
+            Tools = [.. sceneTools]
         };
 
         ChatMessage? finalMessage = null;

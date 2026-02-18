@@ -23,7 +23,7 @@ internal sealed class ServiceMethodTool : ISceneTool
     public string Name => _config.ToolName;
     public string Description => _config.Description;
 
-    public AIFunction ToAIFunction()
+    public AITool ToAITool()
     {
         // Build parameter schema from method parameters
         var parameters = _config.Method.GetParameters();

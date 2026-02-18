@@ -118,7 +118,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
 
         // Get scene tools
         var sceneTools = scene.GetTools().ToList();
-        var sceneToolsFunctions = sceneTools.Select(t => t.ToAIFunction()).ToList();
+        var sceneToolsFunctions = sceneTools.Select(t => t.ToAITool()).ToList();
 
         // Add MCP system messages (resources and prompts) to ConversationHistory for tracking/caching
         if (mcpSystemMessages.Count > 0)
@@ -131,8 +131,8 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
         }
 
         // Combine scene tools and MCP tools
-        var allTools = sceneToolsFunctions.Cast<AITool>().ToList();
-        allTools.AddRange(mcpTools.Cast<AITool>());
+        var allTools = new List<AITool>(sceneToolsFunctions);
+        allTools.AddRange(mcpTools);
 
         var chatOptions = new ChatOptions
         {

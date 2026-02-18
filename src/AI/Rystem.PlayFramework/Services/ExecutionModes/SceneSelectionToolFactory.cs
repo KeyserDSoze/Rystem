@@ -7,10 +7,10 @@ namespace Rystem.PlayFramework.Services.ExecutionModes;
 /// </summary>
 internal static class SceneSelectionToolFactory
 {
-    public static AIFunction CreateSceneSelectionTool(IScene scene)
+    public static AITool CreateSceneSelectionTool(IScene scene)
     {
         return AIFunctionFactory.Create(
-            (string input) => scene.Name,
+            () => scene.Name,
             scene.Name,
             scene.Description);
     }

@@ -88,6 +88,17 @@ public sealed class SceneBuilder
         _config.CacheExpiration = expiration;
         return this;
     }
+
+    /// <summary>
+    /// Automatically generates scene description from available tools.
+    /// If a manual description exists, the tool list is appended to it.
+    /// Example: "Handles customer support. Available tools: SendEmail, CreateTicket"
+    /// </summary>
+    public SceneBuilder WithDescriptionFromTools()
+    {
+        _config.AutoGenerateToolDescription = true;
+        return this;
+    }
 }
 
 /// <summary>
@@ -126,6 +137,12 @@ internal sealed class SceneConfiguration
     /// Default is 5 minutes.
     /// </summary>
     internal TimeSpan CacheExpiration { get; set; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Whether to automatically generate tool descriptions and append them to the scene description.
+    /// Set via WithDescriptionFromTools().
+    /// </summary>
+    internal bool AutoGenerateToolDescription { get; set; }
 }
 
 /// <summary>

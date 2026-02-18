@@ -148,7 +148,7 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
 
         var chatOptions = new ChatOptions
         {
-            Tools = sceneTools.Cast<AITool>().ToList()
+            Tools = sceneTools
         };
 
         // Build prompt

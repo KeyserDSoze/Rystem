@@ -18,9 +18,9 @@ public interface ISceneTool
     string Description { get; }
 
     /// <summary>
-    /// Converts this tool to an AIFunction for Microsoft.Extensions.AI.
+    /// Converts this tool to an AITool for Microsoft.Extensions.AI.
     /// </summary>
-    AIFunction ToAIFunction();
+    AITool ToAITool();
 
     /// <summary>
     /// Executes the tool with given arguments.
