@@ -162,11 +162,23 @@ public sealed class TrackedMessage
     /// Creates a scene actor system message.
     /// Included in requests and cache. Not in memory (scene-specific context).
     /// </summary>
+    public static TrackedMessage CreateSystemMessage(string content)
+        => new()
+        {
+            BusinessType = MessageBusinessType.Message,
+            Message = new ChatMessage(ChatRole.System, content),
+            Label = $"System"
+        };
+
+    /// <summary>
+    /// Creates a scene actor system message.
+    /// Included in requests and cache. Not in memory (scene-specific context).
+    /// </summary>
     public static TrackedMessage CreateSceneActorMessage(string sceneName, string actorName, string content)
         => new()
         {
             BusinessType = MessageBusinessType.Message | MessageBusinessType.Cache,
-            Message = new ChatMessage(ChatRole.System, $"[Scene: {sceneName} - Actor: {actorName}]\n{content}"),
+            Message = new ChatMessage(ChatRole.System, content), // Clean content without decorations
             Label = $"SceneActor:{sceneName}:{actorName}"
         };
 

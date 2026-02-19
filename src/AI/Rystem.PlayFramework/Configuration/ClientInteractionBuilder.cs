@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Schema;
 using System.Text.Json.Serialization.Metadata;
+using Rystem.PlayFramework.Helpers;
 
 namespace Rystem.PlayFramework.Configuration;
 
@@ -45,7 +46,7 @@ public sealed class ClientInteractionBuilder
 
         _definitions.Add(new ClientInteractionDefinition
         {
-            ToolName = toolName,
+            ToolName = ToolNameNormalizer.Normalize(toolName),
             Description = description,
             TimeoutSeconds = timeoutSeconds,
             ArgumentsSchema = jsonSchema
@@ -75,7 +76,7 @@ public sealed class ClientInteractionBuilder
 
         _definitions.Add(new ClientInteractionDefinition
         {
-            ToolName = toolName,
+            ToolName = ToolNameNormalizer.Normalize(toolName),
             Description = description,
             TimeoutSeconds = timeoutSeconds
         });

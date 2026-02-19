@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using System.Reflection;
+using Rystem.PlayFramework.Helpers;
 
 namespace Rystem.PlayFramework;
 
@@ -32,7 +33,7 @@ public sealed class ServiceToolBuilder<TService> where TService : class
         {
             ServiceType = typeof(TService),
             Method = methodInfo,
-            ToolName = toolName,
+            ToolName = ToolNameNormalizer.Normalize(toolName),
             Description = description
         });
 

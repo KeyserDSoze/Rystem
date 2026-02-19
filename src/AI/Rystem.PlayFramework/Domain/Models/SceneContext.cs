@@ -202,7 +202,12 @@ public sealed class SceneContext
 
         AddMemoryContext(builder.ToString());
     }
-
+    /// <summary>
+    /// Add a system message with no cache, memory or somethingelse configured.
+    /// </summary>
+    /// <param name="content"></param>
+    public void AddSystemMessage(string content)
+        => ConversationHistory.Add(TrackedMessage.CreateSystemMessage(content));
     /// <summary>
     /// Adds a scene actor's output to conversation.
     /// Included in LLM requests and cache.

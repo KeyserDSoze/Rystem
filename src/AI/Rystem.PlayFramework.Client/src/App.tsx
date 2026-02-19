@@ -59,16 +59,16 @@ function registerClientTools(client: PlayFrameworkClient) {
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
 const statusColors: Partial<Record<AiResponseStatus, string>> = {
-    Initializing: '#888',
-    Planning: '#f0ad4e',
-    ExecutingScene: '#5bc0de',
-    FunctionRequest: '#d9534f',
-    FunctionCompleted: '#5cb85c',
-    Streaming: '#61dafb',
-    AwaitingClient: '#ff6b6b',
-    Completed: '#5cb85c',
-    Error: '#d9534f',
-    BudgetExceeded: '#f0ad4e',
+    initializing: '#888',
+    planning: '#f0ad4e',
+    executingScene: '#5bc0de',
+    functionRequest: '#d9534f',
+    functionCompleted: '#5cb85c',
+    streaming: '#61dafb',
+    awaitingClient: '#ff6b6b',
+    completed: '#5cb85c',
+    error: '#d9534f',
+    budgetExceeded: '#f0ad4e',
 };
 
 function statusBadge(status?: AiResponseStatus) {
@@ -189,7 +189,7 @@ function App() {
             addMessage({
                 role: 'system',
                 text: `Error: ${error.message ?? error}`,
-                status: 'Error',
+                status: 'error',
                 timestamp: new Date()
             });
             setConnection('error');
@@ -208,11 +208,11 @@ function App() {
         }
 
         // AwaitingClient — add a tool message
-        if (step.status === 'AwaitingClient' && step.clientInteractionRequest) {
+        if (step.status === 'awaitingClient' && step.clientInteractionRequest) {
             addMessage({
                 role: 'tool',
                 text: `Executing client tool: ${step.clientInteractionRequest.toolName}...`,
-                status: 'AwaitingClient',
+                status: 'awaitingClient',
                 toolName: step.clientInteractionRequest.toolName,
                 timestamp: new Date()
             });
@@ -229,20 +229,38 @@ function App() {
             return;
         }
 
-        // Regular step with message — append to last assistant
+        // Regular step with message — append to last assistant OR create new if needed
         if (step.message) {
-            updateLastAssistant(prev => ({
-                ...prev,
-                text: prev.text
-                    ? prev.text + '\n' + `[${step.status}] ${step.message}`
-                    : `[${step.status}] ${step.message}`,
-                status: step.status,
-            }));
+            setMessages(prev => {
+                const lastIdx = prev.length - 1;
+                const lastMsg = prev[lastIdx];
+
+                // If last message is assistant, update it
+                if (lastMsg && lastMsg.role === 'assistant') {
+                    const updated = [...prev];
+                    updated[lastIdx] = {
+                        ...lastMsg,
+                        text: lastMsg.text
+                            ? lastMsg.text + '\n' + `[${step.status}] ${step.message}`
+                            : `[${step.status}] ${step.message}`,
+                        status: step.status,
+                    };
+                    return updated;
+                }
+
+                // Otherwise, create new assistant message (e.g., after tool/system message)
+                return [...prev, {
+                    role: 'assistant',
+                    text: `[${step.status}] ${step.message}`,
+                    status: step.status,
+                    timestamp: new Date()
+                }];
+            });
         }
 
         // FunctionRequest/Completed — show as system info
-        if (step.status === 'FunctionRequest' || step.status === 'FunctionCompleted') {
-            const label = step.status === 'FunctionRequest' ? 'Calling' : 'Completed';
+        if (step.status === 'functionRequest' || step.status === 'functionCompleted') {
+            const label = step.status === 'functionRequest' ? 'Calling' : 'Completed';
             addMessage({
                 role: 'system',
                 text: `${label}: ${step.functionName ?? 'unknown'}`,

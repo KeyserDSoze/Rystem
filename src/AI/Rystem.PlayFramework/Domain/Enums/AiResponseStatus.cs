@@ -79,6 +79,11 @@ public enum AiResponseStatus
     SavingCache,
 
     /// <summary>
+    /// Saving to memory.
+    /// </summary>
+    SavingMemory,
+
+    /// <summary>
     /// Waiting for client to execute tool and return result.
     /// Server has saved state in cache with continuation token.
     /// </summary>

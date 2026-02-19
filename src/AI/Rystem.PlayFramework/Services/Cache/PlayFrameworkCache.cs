@@ -49,11 +49,6 @@ internal sealed class PlayFrameworkCache : IPlayFrameworkCache
 
     public async Task SaveAsync(SceneContext context, CancellationToken cancellationToken = default)
     {
-        await SaveAsync(context, ExecutionPhase.Completed, null, cancellationToken);
-    }
-
-    public async Task SaveAsync(SceneContext context, ExecutionPhase phase, string? currentSceneName, CancellationToken cancellationToken = default)
-    {
         if (string.IsNullOrEmpty(context.ConversationKey))
             return;
 
@@ -63,7 +58,7 @@ internal sealed class PlayFrameworkCache : IPlayFrameworkCache
         var cachedConversation = new CachedConversation
         {
             Messages = messagesToCache.Select(CachedMessage.FromTrackedMessage).ToList(),
-            ExecutionState = context.CreateExecutionState(phase, currentSceneName)
+            ExecutionState = context.CreateExecutionState(context.ExecutionPhase)
         };
 
         var cacheKey = BuildCacheKey(context.ConversationKey);
@@ -80,7 +75,7 @@ internal sealed class PlayFrameworkCache : IPlayFrameworkCache
             await _distributedCache.SetAsync(cacheKey, bytes, options, cancellationToken);
 
             _logger.LogDebug("Saved {Count} messages + execution state (phase: {Phase}) to distributed cache for conversation '{Key}'",
-                messagesToCache.Count, phase, context.ConversationKey);
+                messagesToCache.Count, context.ExecutionPhase, context.ConversationKey);
         }
         else if (_memoryCache != null)
         {
@@ -92,7 +87,7 @@ internal sealed class PlayFrameworkCache : IPlayFrameworkCache
             _memoryCache.Set(cacheKey, cachedConversation, options);
 
             _logger.LogDebug("Saved {Count} messages + execution state (phase: {Phase}) to memory cache for conversation '{Key}'",
-                messagesToCache.Count, phase, context.ConversationKey);
+                messagesToCache.Count, context.ExecutionPhase, context.ConversationKey);
         }
     }
 

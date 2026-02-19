@@ -172,6 +172,16 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
                 var scene = dependencies.SceneMatchingHelper.FindSceneByFuzzyMatch(selectedSceneName, dependencies.SceneFactory);
                 if (scene != null)
                 {
+                    // ✅ CRITICAL: Add tool result to conversation BEFORE entering scene
+                    // OpenAI requires: assistant message with tool_calls → tool message with result
+                    var toolResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
+                    {
+                        Result = $"Scene '{scene.Name}' loaded successfully. Available tools: {string.Join(", ", scene.GetTools().Select(t => t.Name))}"
+                    };
+
+                    var toolMessage = new ChatMessage(ChatRole.Tool, [toolResult]);
+                    context.AddToolMessage(toolMessage);
+
                     await foreach (var sceneResponse in sceneExecutor.ExecuteSceneAsync(context, scene, settings, cancellationToken))
                     {
                         yield return sceneResponse;
@@ -181,6 +191,15 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
                 }
                 else
                 {
+                    // ✅ Also add tool result for error case
+                    var toolResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
+                    {
+                        Result = $"Error: Scene '{selectedSceneName}' not found"
+                    };
+
+                    var toolMessage = new ChatMessage(ChatRole.Tool, [toolResult]);
+                    context.AddToolMessage(toolMessage);
+
                     yield return YieldAndTrack(context, new AiSceneResponse
                     {
                         Status = AiResponseStatus.Error,
@@ -193,12 +212,12 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
         }
 
         // Fallback: if no function call, return text response with multi-modal contents
-        // If streaming was enabled and already streamed, send final chunk
+        // If streaming was enabled and already streamed, send only completion marker (no message duplication)
         if (settings.EnableStreaming && streamedToUser)
         {
             yield return dependencies.ResponseHelper.CreateFinalResponse(
                 sceneName: null,
-                message: accumulatedText,
+                message: string.Empty, // ✅ Empty - text already streamed
                 context: context,
                 inputTokens: totalInputTokens,
                 outputTokens: totalOutputTokens,

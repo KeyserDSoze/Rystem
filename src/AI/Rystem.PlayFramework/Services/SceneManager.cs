@@ -235,6 +235,13 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             CacheBehavior = settings.CacheBehavior
         };
 
+        //        context.AddSystemMessage(@"""You are a helpful AI assistant.
+        //IMPORTANT RULES:
+        //- You MUST use the available scenes to handle user requests
+        //- Select the appropriate scene based on the user's question
+        //- Each scene provides specific tools and capabilities
+        //- Do NOT respond directly - always select a scene first""");
+
         await foreach (var initizializeResponse in InitializePlayFrameworkAsync(context, settings, cancellationToken))
         {
             Tracking(initizializeResponse);
@@ -363,6 +370,10 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             }
         }
 
+        // Check if resuming from client interaction (ConversationKey + ClientInteractionResults)
+        var isResumingFromClientInteraction = settings.ClientInteractionResults is { Count: > 0 }
+            && context.Properties.ContainsKey("_continuation_sceneName");
+
         // Initialize context only if NOT resuming from cache
         if (!isResuming)
         {
@@ -370,12 +381,12 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             await InitializeNewContextAsync(context, cancellationToken);
         }
 
-        // Always add the new user message (whether new or resuming)
-        context.AddUserMessage(context.Input);
-
-        // Check if resuming from client interaction (ConversationKey + ClientInteractionResults)
-        var isResumingFromClientInteraction = settings.ClientInteractionResults is { Count: > 0 }
-            && context.Properties.ContainsKey("_continuation_sceneName");
+        // Add user message only if NOT resuming from client interaction
+        // (when resuming, conversation history from cache already contains the user message)
+        if (!isResumingFromClientInteraction)
+        {
+            context.AddUserMessage(context.Input);
+        }
 
         if (isResumingFromClientInteraction)
         {
@@ -502,13 +513,13 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         if (settings.CacheBehavior != CacheBehavior.Avoidable && _settings.Cache.Enabled && context.ConversationKey != null)
         {
             yield return YieldStatus(AiResponseStatus.SavingCache, "Saving to cache");
-            await _playFrameworkCache.SaveAsync(context, ExecutionPhase.Completed, null, cancellationToken);
+            await _playFrameworkCache.SaveAsync(context, cancellationToken);
         }
 
         // Save updated memory if enabled
         if (_memory != null && _memoryStorage != null && _settings.Memory?.Enabled == true && context.ConversationKey != null)
         {
-            yield return YieldStatus(AiResponseStatus.SavingCache, "Saving conversation memory");
+            yield return YieldStatus(AiResponseStatus.SavingMemory, "Saving conversation memory");
 
             // Get messages for memory
             var memoryMessages = context.GetMessagesForMemory()
@@ -604,7 +615,12 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             yield return response;
         }
 
-        yield return YieldStatus(AiResponseStatus.Completed, "Execution completed", context.TotalCost);
+        // Only send Completed if NOT waiting for client interaction
+        // When AwaitingClient, the stream will close and client will resume with new request
+        if (context.ExecutionPhase != ExecutionPhase.AwaitingClient)
+        {
+            yield return YieldStatus(AiResponseStatus.Completed, "Execution completed", context.TotalCost);
+        }
     }
     private AiSceneResponse YieldStatus(AiResponseStatus status, string? message = null, decimal? cost = null)
     {

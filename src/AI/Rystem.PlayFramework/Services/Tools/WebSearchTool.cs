@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Rystem.PlayFramework.Helpers;
 using Rystem.PlayFramework.Telemetry;
 using System.Diagnostics;
 using System.Text.Json;
@@ -47,7 +48,7 @@ internal sealed class WebSearchTool : ISceneTool
         // Create a simple function that accepts a search query
         return AIFunctionFactory.Create(
             (string query) => ExecuteAsync(query, default!, default),
-            name: Name,
+            name: ToolNameNormalizer.Normalize(Name),
             description: Description);
     }
 

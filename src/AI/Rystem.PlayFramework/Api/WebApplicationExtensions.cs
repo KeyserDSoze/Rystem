@@ -14,6 +14,12 @@ namespace Rystem.PlayFramework.Api;
 /// </summary>
 public static class WebApplicationExtensions
 {
+    private static readonly JsonSerializerOptions s_jsonSerializerOptions = new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false,
+        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+    };
     /// <summary>
     /// Maps PlayFramework endpoints.
     /// - If factoryName is null: Creates generic endpoints accepting factoryName in route (/{factoryName}, /{factoryName}/streaming)
@@ -139,12 +145,8 @@ public static class WebApplicationExtensions
             // Execute PlayFramework with streaming
             await foreach (var response in sceneManager.ExecuteAsync(input, metadata, mergedSettings, cancellationToken))
             {
-                // Serialize response as SSE event
-                var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    WriteIndented = false
-                });
+                // Serialize response as SSE event with camelCase for properties and enums
+                var json = JsonSerializer.Serialize(response, s_jsonSerializerOptions);
 
                 await httpContext.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
                 await httpContext.Response.Body.FlushAsync(cancellationToken);
@@ -156,12 +158,12 @@ public static class WebApplicationExtensions
         {
             logger.LogError(ex, "PlayFramework execution failed for factory '{FactoryName}'", factoryName);
 
-            // Send error event
+            // Send error event with camelCase
             var errorJson = JsonSerializer.Serialize(new
             {
                 status = "error",
                 errorMessage = ex.Message
-            }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            }, s_jsonSerializerOptions);
 
             await httpContext.Response.WriteAsync($"data: {errorJson}\n\n", cancellationToken);
             await httpContext.Response.Body.FlushAsync(cancellationToken);

@@ -1,5 +1,6 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Configuration;
+using Rystem.PlayFramework.Helpers;
 
 namespace Rystem.PlayFramework.Services;
 
@@ -26,8 +27,11 @@ internal sealed class ClientInteractionHandler : IClientInteractionHandler
         if (clientInteractionDefinitions == null || !clientInteractionDefinitions.Any())
             return null;
 
+        // Normalize the incoming tool name from LLM for matching
+        var normalizedToolName = ToolNameNormalizer.Normalize(toolName);
+
         var definition = clientInteractionDefinitions
-            .FirstOrDefault(d => d.ToolName.Equals(toolName, StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(d => d.ToolName.Equals(normalizedToolName, StringComparison.OrdinalIgnoreCase));
 
         if (definition == null)
             return null;

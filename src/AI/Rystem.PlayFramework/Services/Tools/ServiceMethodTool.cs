@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.AI;
+using Rystem.PlayFramework.Helpers;
 using Rystem.PlayFramework.Telemetry;
 using System.Diagnostics;
 using System.Reflection;
@@ -26,7 +27,6 @@ internal sealed class ServiceMethodTool : ISceneTool
     public AITool ToAITool()
     {
         // Build parameter schema from method parameters
-        var parameters = _config.Method.GetParameters();
         var schema = AIFunctionFactory.Create(
             _config.Method,
             Name,

@@ -2,6 +2,7 @@
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Rystem.PlayFramework.Helpers;
 using Rystem.PlayFramework.Mcp;
 using Rystem.PlayFramework.Services.Helpers;
 
@@ -63,8 +64,17 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
         }
 
         context.ExecutionPhase = ExecutionPhase.ExecutingScene;
-        // Execute scene actors
-        await scene.ExecuteActorsAsync(context, cancellationToken);
+
+        // Check if resuming from client interaction
+        var isResumingFromClientInteraction = settings.ClientInteractionResults != null && settings.ClientInteractionResults.Count > 0
+            && context.Properties.ContainsKey("_continuation_sceneName");
+
+        // Execute scene actors only if NOT resuming from client interaction
+        // (when resuming, actors were already executed and saved in cache)
+        if (!isResumingFromClientInteraction)
+        {
+            await scene.ExecuteActorsAsync(context, cancellationToken);
+        }
 
         // Load MCP tools, resources, and prompts
         var mcpTools = new List<AIFunction>();
@@ -326,10 +336,10 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                 // Pure text response - finalize streaming if enabled
                 if (settings.EnableStreaming && streamedToUser)
                 {
-                    // Already streamed to user, just send final chunk with costs
+                    // Already streamed to user, just send completion marker (no message duplication)
                     yield return _dependencies.ResponseHelper.CreateFinalResponse(
                         sceneName: scene.Name,
-                        message: accumulatedText,
+                        message: string.Empty, // ✅ Empty - text already streamed
                         context: context,
                         inputTokens: totalInputTokens,
                         outputTokens: totalOutputTokens,
@@ -436,8 +446,9 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                     yield break;
                 }
 
-                // Find the server-side tool
-                var tool = sceneTools.FirstOrDefault(t => t.Name == functionCall.Name);
+                // Find the server-side tool (normalize function call name for comparison)
+                var normalizedFunctionName = ToolNameNormalizer.Normalize(functionCall.Name);
+                var tool = sceneTools.FirstOrDefault(t => t.Name == normalizedFunctionName);
                 if (tool == null)
                 {
                     // Tool not found - send error result
@@ -570,7 +581,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                     return $"Error executing MCP tool: {ex.Message}";
                 }
             },
-            mcpTool.Name,
+            ToolNameNormalizer.Normalize(mcpTool.Name),
             mcpTool.Description);
     }
 

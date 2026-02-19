@@ -19,10 +19,19 @@ internal sealed class Scene : IScene
         _config = config;
         _serviceProvider = serviceProvider;
 
-        // Create tools
-        _tools = _config.ServiceTools
+        // Create tools from service methods
+        var serviceTools = _config.ServiceTools
             .Select(st => (ISceneTool)new ServiceMethodTool(st, serviceProvider))
             .ToList();
+
+        // Create tools from client interactions (OnClient)
+        var clientTools = _config.ClientInteractionDefinitions
+            ?.Select(def => (ISceneTool)new ClientInteractionTool(def))
+            .ToList() ?? [];
+
+        // Combine all tools
+        _tools = new List<ISceneTool>(serviceTools);
+        _tools.AddRange(clientTools);
 
         // Create actors
         _actors = _config.Actors
@@ -72,16 +81,24 @@ internal sealed class Scene : IScene
 
     public async Task ExecuteActorsAsync(SceneContext context, CancellationToken cancellationToken = default)
     {
+        var actorMessages = new List<string>();
+
+        // Collect all actor messages
         foreach (var actor in _actors)
         {
             var response = await actor.PlayAsync(context, cancellationToken);
 
             if (!string.IsNullOrWhiteSpace(response.Message))
             {
-                // Add scene actor message to conversation history
-                // This will be included in LLM requests and cached
-                context.AddSceneActorMessage(Name, actor.GetType().Name, response.Message);
+                actorMessages.Add(response.Message);
             }
+        }
+
+        // Combine all actor messages into a single system message with bullet points
+        if (actorMessages.Count > 0)
+        {
+            var combinedMessage = string.Join("\n", actorMessages.Select(msg => $"- {msg}"));
+            context.AddSceneActorMessage(Name, "Combined", combinedMessage);
         }
     }
 }
