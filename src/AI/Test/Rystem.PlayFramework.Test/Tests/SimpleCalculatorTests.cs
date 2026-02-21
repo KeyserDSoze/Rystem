@@ -55,13 +55,13 @@ public sealed class SimpleCalculatorTests : PlayFrameworkTestBase
         var sceneFactory = ServiceProvider.GetRequiredService<ISceneFactory>();
 
         // Act
-        var scene = sceneFactory.Create("Calculator");
+        var scene = sceneFactory.TryGetScene("Calculator");
 
         // Assert
         Assert.NotNull(scene);
         Assert.Equal("Calculator", scene.Name);
-        Assert.NotEmpty(scene.GetTools());
-        Assert.Equal(4, scene.GetTools().Count()); // add, subtract, multiply, divide
+        Assert.NotEmpty(scene.Tools);
+        Assert.Equal(4, scene.Tools.Count); // add, subtract, multiply, divide
     }
 
     [Fact]

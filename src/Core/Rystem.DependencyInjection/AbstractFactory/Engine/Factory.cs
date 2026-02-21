@@ -52,18 +52,19 @@
                     {
                         if (service is IServiceForFactory factoryService && !factoryService.FactoryNameAlreadySetup)
                         {
-                            factoryService.SetFactoryName(nameAsString);
                             factoryService.FactoryNameAlreadySetup = true;
+                            factoryService.SetFactoryName(nameAsString);
                         }
                         if (service is IFactoryName serviceWithName && !serviceWithName.FactoryNameAlreadySetup)
                         {
-                            serviceWithName.SetFactoryName(name);
                             serviceWithName.FactoryNameAlreadySetup = true;
+                            serviceWithName.SetFactoryName(name);
                         }
                         if (service is IDecoratorService<TService> decoratorService && decoration >= 0)
                             decoratorService.SetDecoratedServices(Create(name, decoration - 1, enumerate)!);
                         if (service is IServiceWithFactoryWithOptions serviceWithCustomOptions && !serviceWithCustomOptions.OptionsAlreadySetup)
                         {
+                            serviceWithCustomOptions.OptionsAlreadySetup = true;
                             var optionsName = nameAsString.GetOptionsName<TService>();
                             var options = _serviceProvider.GetKeyedService<IFactoryOptions>(optionsName.GetFactoryName<IFactoryOptions>());
                             if (options != null)
@@ -72,7 +73,6 @@
                                 if (map.OptionsSetter.TryGetValue(optionsName, out var optionsSetter))
                                     optionsSetter.Invoke(serviceWithCustomOptions, options);
                             }
-                            serviceWithCustomOptions.OptionsAlreadySetup = true;
                         }
                         yield return service;
                     }
