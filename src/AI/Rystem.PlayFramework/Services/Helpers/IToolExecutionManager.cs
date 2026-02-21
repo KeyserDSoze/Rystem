@@ -60,33 +60,6 @@ public interface IToolExecutionManager
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets sanitized messages from context ready for LLM request.
-    /// - Ensures every assistant message with tool_calls has corresponding tool responses
-    /// - Deduplicates tool calls (same name+args but different CallIds)
-    /// - Groups tool responses correctly
-    /// - Removes orphaned tool responses
-    /// - Skips sanitization if ExecutionPhase is AwaitingClient
-    /// </summary>
-    /// <param name="context">Scene context with ConversationHistory</param>
-    /// <returns>Sanitized messages ready for LLM API</returns>
-    List<ChatMessage> GetMessagesForLLM(SceneContext context);
-
-    /// <summary>
-    /// Validates that the conversation is in a valid state for LLM.
-    /// Returns validation errors if any issues found.
-    /// </summary>
-    /// <param name="context">Scene context to validate</param>
-    /// <returns>List of validation errors (empty if valid)</returns>
-    List<string> Validate(SceneContext context);
-
-    /// <summary>
-    /// Checks if there are pending tool calls without responses.
-    /// </summary>
-    /// <param name="context">Scene context to check</param>
-    /// <returns>List of pending tool_call_ids that need responses</returns>
-    List<string> GetPendingToolCallIds(SceneContext context);
-
-    /// <summary>
     /// Deduplicates tool calls in a ChatResponse (for non-streaming).
     /// OpenAI sometimes returns duplicate tool_calls with different CallIds.
     /// </summary>

@@ -49,7 +49,7 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         // Deduplicate first
-        var deduplicatedCalls = DeduplicateToolCallsInternal(functionCalls);
+        var deduplicatedCalls = DeduplicateToolCalls(functionCalls);
         if (deduplicatedCalls.Count != functionCalls.Count)
         {
             _logger.LogInformation("🔧 Deduplicated {Removed} tool calls ({Original} → {New})",
@@ -335,319 +335,6 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
 
     #endregion
 
-    #region Sanitization
-
-    /// <inheritdoc />
-    public List<ChatMessage> GetMessagesForLLM(SceneContext context)
-    {
-        // Get active messages from context
-        var messages = context.ConversationHistory
-            .Where(m => m.IsActiveMessage)
-            .Select(m => m.Message)
-            .ToList();
-
-        _logger.LogDebug("📋 GetMessagesForLLM: ExecutionPhase={Phase}, MessageCount={Count}",
-            context.ExecutionPhase, messages.Count);
-
-        // Skip sanitization if we're awaiting client response
-        // In this state, tool_calls are intentionally incomplete (waiting for client execution)
-        if (context.ExecutionPhase == ExecutionPhase.AwaitingClient)
-        {
-            _logger.LogDebug("⏭️ Skipping sanitization (AwaitingClient phase)");
-            return messages;
-        }
-
-        return SanitizeMessages(messages);
-    }
-
-    /// <summary>
-    /// Core sanitization logic - can be reused.
-    /// </summary>
-    private List<ChatMessage> SanitizeMessages(List<ChatMessage> messages)
-    {
-        // Track which tool_call_ids have been responded to
-        var allToolCallIds = new HashSet<string>();
-        var respondedToolCallIds = new HashSet<string>();
-
-        // First pass: identify all tool_calls and their responses
-        foreach (var message in messages)
-        {
-            if (message.Role == ChatRole.Assistant)
-            {
-                var toolCalls = message.Contents?
-                    .OfType<FunctionCallContent>()
-                    .ToList() ?? [];
-
-                foreach (var tc in toolCalls)
-                {
-                    if (!string.IsNullOrEmpty(tc.CallId))
-                    {
-                        allToolCallIds.Add(tc.CallId);
-                    }
-                }
-            }
-            else if (message.Role == ChatRole.Tool)
-            {
-                var toolResults = message.Contents?
-                    .OfType<FunctionResultContent>()
-                    .ToList() ?? [];
-
-                foreach (var tr in toolResults)
-                {
-                    if (!string.IsNullOrEmpty(tr.CallId))
-                    {
-                        respondedToolCallIds.Add(tr.CallId);
-                    }
-                }
-            }
-        }
-
-        // Identify missing responses
-        var missingResponses = allToolCallIds.Except(respondedToolCallIds).ToList();
-        if (missingResponses.Count > 0)
-        {
-            _logger.LogWarning("⚠️ Found {Count} tool_calls without responses: [{CallIds}]",
-                missingResponses.Count, string.Join(", ", missingResponses));
-        }
-
-        // Second pass: build sanitized message list
-        var result = new List<ChatMessage>();
-        var currentPendingCallIds = new HashSet<string>();
-
-        foreach (var message in messages)
-        {
-            if (message.Role == ChatRole.Assistant)
-            {
-                var toolCalls = message.Contents?
-                    .OfType<FunctionCallContent>()
-                    .ToList() ?? [];
-
-                if (toolCalls.Count > 0)
-                {
-                    // Deduplicate tool calls within this message
-                    var deduplicatedToolCalls = DeduplicateToolCallsInternal(toolCalls);
-
-                    if (deduplicatedToolCalls.Count != toolCalls.Count)
-                    {
-                        _logger.LogInformation("🔧 Deduplicated {Removed} duplicate tool calls in assistant message",
-                            toolCalls.Count - deduplicatedToolCalls.Count);
-                    }
-
-                    // Filter out calls that don't have responses (will cause errors)
-                    var validToolCalls = deduplicatedToolCalls
-                        .Where(tc => string.IsNullOrEmpty(tc.CallId) || respondedToolCallIds.Contains(tc.CallId))
-                        .ToList();
-
-                    var removedCalls = deduplicatedToolCalls.Count - validToolCalls.Count;
-                    if (removedCalls > 0)
-                    {
-                        _logger.LogWarning("🔧 Removed {Count} tool_calls without responses from assistant message",
-                            removedCalls);
-                    }
-
-                    if (validToolCalls.Count > 0)
-                    {
-                        // Rebuild message with only valid tool calls
-                        var otherContents = message.Contents?
-                            .Where(c => c is not FunctionCallContent)
-                            .ToList() ?? [];
-
-                        var newContents = new List<AIContent>(otherContents);
-                        newContents.AddRange(validToolCalls);
-
-                        result.Add(new ChatMessage(message.Role, newContents));
-
-                        // Track these as pending (need tool responses after)
-                        foreach (var tc in validToolCalls)
-                        {
-                            if (!string.IsNullOrEmpty(tc.CallId))
-                            {
-                                currentPendingCallIds.Add(tc.CallId);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // All tool calls were invalid - keep only text content if any
-                        var textOnlyContents = message.Contents?
-                            .Where(c => c is not FunctionCallContent)
-                            .ToList() ?? [];
-
-                        if (textOnlyContents.Count > 0)
-                        {
-                            result.Add(new ChatMessage(message.Role, textOnlyContents));
-                        }
-                        // Skip message entirely if it only had invalid tool calls
-                    }
-                }
-                else
-                {
-                    // No tool calls, keep as-is
-                    result.Add(message);
-                }
-            }
-            else if (message.Role == ChatRole.Tool)
-            {
-                var toolResults = message.Contents?
-                    .OfType<FunctionResultContent>()
-                    .ToList() ?? [];
-
-                // Only keep results that match pending calls
-                var validResults = toolResults
-                    .Where(tr => string.IsNullOrEmpty(tr.CallId) ||
-                                 currentPendingCallIds.Contains(tr.CallId))
-                    .ToList();
-
-                if (validResults.Count > 0)
-                {
-                    // Mark these calls as responded
-                    foreach (var vr in validResults)
-                    {
-                        if (!string.IsNullOrEmpty(vr.CallId))
-                        {
-                            currentPendingCallIds.Remove(vr.CallId);
-                        }
-                    }
-
-                    // If original message had other content, preserve it
-                    var otherContents = message.Contents?
-                        .Where(c => c is not FunctionResultContent)
-                        .ToList() ?? [];
-
-                    var newContents = new List<AIContent>(otherContents);
-                    newContents.AddRange(validResults);
-
-                    result.Add(new ChatMessage(message.Role, newContents));
-                }
-                else
-                {
-                    _logger.LogDebug("🔧 Removed orphaned tool response message (no matching tool_calls)");
-                }
-            }
-            else
-            {
-                // System, User, etc. - keep as-is
-                result.Add(message);
-            }
-        }
-
-        // Log final state
-        if (result.Count != messages.Count)
-        {
-            _logger.LogInformation("🔧 Sanitized conversation: {Original} → {Sanitized} messages",
-                messages.Count, result.Count);
-        }
-
-        return result;
-    }
-
-    /// <inheritdoc />
-    public List<string> Validate(SceneContext context)
-    {
-        var messages = context.ConversationHistory
-            .Where(m => m.IsActiveMessage)
-            .Select(m => m.Message)
-            .ToList();
-
-        var errors = new List<string>();
-        var pendingToolCallIds = new HashSet<string>();
-
-        for (int i = 0; i < messages.Count; i++)
-        {
-            var message = messages[i];
-
-            if (message.Role == ChatRole.Assistant)
-            {
-                var toolCalls = message.Contents?
-                    .OfType<FunctionCallContent>()
-                    .ToList() ?? [];
-
-                foreach (var tc in toolCalls)
-                {
-                    if (!string.IsNullOrEmpty(tc.CallId))
-                    {
-                        pendingToolCallIds.Add(tc.CallId);
-                    }
-                }
-            }
-            else if (message.Role == ChatRole.Tool)
-            {
-                var toolResults = message.Contents?
-                    .OfType<FunctionResultContent>()
-                    .ToList() ?? [];
-
-                foreach (var tr in toolResults)
-                {
-                    if (!string.IsNullOrEmpty(tr.CallId))
-                    {
-                        if (!pendingToolCallIds.Contains(tr.CallId))
-                        {
-                            errors.Add($"Tool response at index {i} references unknown tool_call_id: {tr.CallId}");
-                        }
-                        pendingToolCallIds.Remove(tr.CallId);
-                    }
-                }
-            }
-        }
-
-        // Check for unanswered tool calls (skip if awaiting client)
-        if (context.ExecutionPhase != ExecutionPhase.AwaitingClient)
-        {
-            foreach (var pendingId in pendingToolCallIds)
-            {
-                errors.Add($"Tool call '{pendingId}' has no corresponding tool response");
-            }
-        }
-
-        return errors;
-    }
-
-    /// <inheritdoc />
-    public List<string> GetPendingToolCallIds(SceneContext context)
-    {
-        var messages = context.ConversationHistory
-            .Where(m => m.IsActiveMessage)
-            .Select(m => m.Message);
-
-        var pendingToolCallIds = new HashSet<string>();
-
-        foreach (var message in messages)
-        {
-            if (message.Role == ChatRole.Assistant)
-            {
-                var toolCalls = message.Contents?
-                    .OfType<FunctionCallContent>()
-                    .ToList() ?? [];
-
-                foreach (var tc in toolCalls)
-                {
-                    if (!string.IsNullOrEmpty(tc.CallId))
-                    {
-                        pendingToolCallIds.Add(tc.CallId);
-                    }
-                }
-            }
-            else if (message.Role == ChatRole.Tool)
-            {
-                var toolResults = message.Contents?
-                    .OfType<FunctionResultContent>()
-                    .ToList() ?? [];
-
-                foreach (var tr in toolResults)
-                {
-                    if (!string.IsNullOrEmpty(tr.CallId))
-                    {
-                        pendingToolCallIds.Remove(tr.CallId);
-                    }
-                }
-            }
-        }
-
-        return [.. pendingToolCallIds];
-    }
-
-    #endregion
-
     #region Deduplication
 
     /// <inheritdoc />
@@ -656,51 +343,20 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
         if (response.Messages == null || response.Messages.Count == 0)
             return response;
 
-        var modified = false;
-        var newMessages = new List<ChatMessage>();
-
         foreach (var message in response.Messages)
         {
-            var toolCalls = message.Contents?
-                .OfType<FunctionCallContent>()
-                .ToList() ?? [];
-
-            if (toolCalls.Count > 1)
+            if (message.Contents != null)
             {
-                var deduplicated = DeduplicateToolCallsInternal(toolCalls);
-
-                if (deduplicated.Count != toolCalls.Count)
+                message.Contents.RemoveWhere(x => x is TextContent text && string.IsNullOrWhiteSpace(text.Text));
+                message.Contents = [.. message.Contents.GroupBy(x =>
                 {
-                    modified = true;
-                    _logger.LogInformation("🔧 Deduplicated {Removed} tool calls in ChatResponse ({Original} → {New})",
-                        toolCalls.Count - deduplicated.Count, toolCalls.Count, deduplicated.Count);
-
-                    // Rebuild message with deduplicated tool calls
-                    var otherContents = message.Contents?
-                        .Where(c => c is not FunctionCallContent)
-                        .ToList() ?? [];
-
-                    var newContents = new List<AIContent>(otherContents);
-                    newContents.AddRange(deduplicated);
-
-                    newMessages.Add(new ChatMessage(message.Role, newContents));
-                    continue;
-                }
+                    if (x is FunctionCallContent functionCall)
+                    {
+                        return GetToolCallKey(functionCall);
+                    }
+                    return string.Empty;
+                }).Select(x => x.First())];
             }
-
-            newMessages.Add(message);
-        }
-
-        if (modified)
-        {
-            return new ChatResponse(newMessages)
-            {
-                FinishReason = response.FinishReason,
-                ModelId = response.ModelId,
-                CreatedAt = response.CreatedAt,
-                ResponseId = response.ResponseId,
-                Usage = response.Usage
-            };
         }
 
         return response;
@@ -708,37 +364,7 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
 
     /// <inheritdoc />
     public List<FunctionCallContent> DeduplicateToolCalls(List<FunctionCallContent> toolCalls)
-    {
-        return DeduplicateToolCallsInternal(toolCalls);
-    }
-
-    /// <summary>
-    /// Internal deduplication logic.
-    /// OpenAI sometimes returns duplicate tool_calls with different CallIds but same name+args.
-    /// Keep only the first occurrence.
-    /// </summary>
-    private List<FunctionCallContent> DeduplicateToolCallsInternal(List<FunctionCallContent> toolCalls)
-    {
-        var seen = new HashSet<string>();
-        var result = new List<FunctionCallContent>();
-
-        foreach (var tc in toolCalls)
-        {
-            var key = GetToolCallKey(tc);
-
-            if (seen.Add(key))
-            {
-                result.Add(tc);
-            }
-            else
-            {
-                _logger.LogDebug("🔧 Removed duplicate tool call: {Name} (CallId: {CallId})",
-                    tc.Name, tc.CallId);
-            }
-        }
-
-        return result;
-    }
+        => [.. toolCalls.GroupBy(GetToolCallKey).Select(x => x.First())];
 
     /// <summary>
     /// Creates a unique key for a tool call based on name + serialized arguments.

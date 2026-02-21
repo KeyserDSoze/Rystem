@@ -27,7 +27,7 @@ public interface IChatClientManager
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A ChatResponseWithCost containing the response and calculated costs.</returns>
     Task<ChatResponseWithCost> GetResponseAsync(
-        IEnumerable<ChatMessage> chatMessages,
+        List<ChatMessage> chatMessages,
         ChatOptions? options = null,
         CancellationToken cancellationToken = default);
 
@@ -40,7 +40,7 @@ public interface IChatClientManager
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>An async stream of ChatUpdateWithCost containing streaming updates and cost estimates.</returns>
     IAsyncEnumerable<ChatUpdateWithCost> GetStreamingResponseAsync(
-        IEnumerable<ChatMessage> chatMessages,
+        List<ChatMessage> chatMessages,
         ChatOptions? options = null,
         CancellationToken cancellationToken = default);
 }

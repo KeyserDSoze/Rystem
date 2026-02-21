@@ -182,7 +182,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
             int? totalCachedInputTokens = null;
 
             // Rebuild messages from context each iteration - using centralized sanitization
-            var conversationMessages = _toolExecutionManager.GetMessagesForLLM(context);
+            var conversationMessages = context.GetMessagesForLLM();
 
             // Use streaming when enabled, fallback to non-streaming otherwise
             if (settings.EnableStreaming)

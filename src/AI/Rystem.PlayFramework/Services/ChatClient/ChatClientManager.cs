@@ -82,11 +82,10 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
     #region Main API Methods
 
     public async Task<ChatResponseWithCost> GetResponseAsync(
-        IEnumerable<ChatMessage> chatMessages,
+        List<ChatMessage> chatMessages,
         ChatOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        var messageList = chatMessages as IList<ChatMessage> ?? chatMessages.ToList();
         Exception? lastException = null;
 
         await foreach (var clientInfo in GetClientsToTryAsync(cancellationToken))
@@ -96,7 +95,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
                 _logger.LogDebug("🎯 Trying {Phase} client: {Client} (Attempt {Attempt}/{MaxAttempts})",
                     clientInfo.Phase, clientInfo.ClientName, clientInfo.Attempt, clientInfo.MaxAttempts);
 
-                var response = await clientInfo.Client.GetResponseAsync(messageList, options, cancellationToken);
+                var response = await clientInfo.Client.GetResponseAsync(chatMessages, options, cancellationToken);
 
                 // Centralized deduplication using ToolExecutionManager
                 response = _toolExecutionManager.DeduplicateToolCalls(response);
@@ -148,11 +147,10 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
     }
 
     public async IAsyncEnumerable<ChatUpdateWithCost> GetStreamingResponseAsync(
-        IEnumerable<ChatMessage> chatMessages,
+        List<ChatMessage> chatMessages,
         ChatOptions? options = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var messageList = chatMessages as IList<ChatMessage> ?? chatMessages.ToList();
         var anyClientWorked = false;
 
         await foreach (var clientInfo in GetClientsToTryAsync(cancellationToken))
@@ -165,7 +163,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
                 clientInfo.Client,
                 clientInfo.ClientName,
                 clientInfo.CostSettings,
-                messageList,
+                chatMessages,
                 options,
                 cancellationToken))
             {

@@ -486,7 +486,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         // Check if summarization needed for loaded data
         if (_settings.Cache.Enabled && context.ConversationKey != null)
         {
-            var messagesToResume = context.ConversationHistory.Where(m => m.ShouldResume).ToList();
+            var messagesToResume = context.GetMessagesForResume();
             if (_summarizer != null && messagesToResume.Count > _settings.Summarization.ResponseCountThreshold)
             {
                 yield return YieldStatus(AiResponseStatus.Summarizing, "Summarizing cached conversation");

@@ -13,37 +13,37 @@ public sealed class CalculatorService : ICalculatorService
         _logger = logger;
     }
 
-    public double Add(double a, double b)
+    public double Add(double augend, double addend)
     {
-        var result = a + b;
-        _logger.LogInformation("Add: {A} + {B} = {Result}", a, b, result);
+        var result = augend + addend;
+        _logger.LogInformation("Add: {Augend} + {Addend} = {Result}", augend, addend, result);
         return result;
     }
 
-    public double Subtract(double a, double b)
+    public double Subtract(double minuend, double subtrahend)
     {
-        var result = a - b;
-        _logger.LogInformation("Subtract: {A} - {B} = {Result}", a, b, result);
+        var result = minuend - subtrahend;
+        _logger.LogInformation("Subtract: {Minuend} - {Subtrahend} = {Result}", minuend, subtrahend, result);
         return result;
     }
 
-    public double Multiply(double a, double b)
+    public double Multiply(double multiplicand, double multiplier)
     {
-        var result = a * b;
-        _logger.LogInformation("Multiply: {A} × {B} = {Result}", a, b, result);
+        var result = multiplicand * multiplier;
+        _logger.LogInformation("Multiply: {Multiplicand} × {Multiplier} = {Result}", multiplicand, multiplier, result);
         return result;
     }
 
-    public double Divide(double a, double b)
+    public double Divide(double dividend, double divisor)
     {
-        if (b == 0)
+        if (divisor == 0)
         {
-            _logger.LogWarning("Attempted division by zero: {A} / 0", a);
+            _logger.LogWarning("Attempted division by zero: {Dividend} / 0", dividend);
             throw new DivideByZeroException("Cannot divide by zero");
         }
 
-        var result = a / b;
-        _logger.LogInformation("Divide: {A} ÷ {B} = {Result}", a, b, result);
+        var result = dividend / divisor;
+        _logger.LogInformation("Divide: {Dividend} ÷ {Divisor} = {Result}", dividend, divisor, result);
         return result;
     }
 }

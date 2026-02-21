@@ -9,33 +9,33 @@ public interface ICalculatorService
     /// <summary>
     /// Adds two numbers together.
     /// </summary>
-    /// <param name="a">First number</param>
-    /// <param name="b">Second number</param>
-    /// <returns>Sum of a and b</returns>
-    double Add(double a, double b);
+    /// <param name="augend">First addend</param>
+    /// <param name="addend">Second addend</param>
+    /// <returns>Sum of augend and addend</returns>
+    double Add(double augend, double addend);
 
     /// <summary>
     /// Subtracts the second number from the first.
     /// </summary>
-    /// <param name="a">Number to subtract from</param>
-    /// <param name="b">Number to subtract</param>
-    /// <returns>Difference (a - b)</returns>
-    double Subtract(double a, double b);
+    /// <param name="minuend">Number to subtract from</param>
+    /// <param name="subtrahend">Number to subtract</param>
+    /// <returns>Difference (minuend - subtrahend)</returns>
+    double Subtract(double minuend, double subtrahend);
 
     /// <summary>
     /// Multiplies two numbers together.
     /// </summary>
-    /// <param name="a">First number</param>
-    /// <param name="b">Second number</param>
-    /// <returns>Product of a and b</returns>
-    double Multiply(double a, double b);
+    /// <param name="multiplicand">Number to be multiplied</param>
+    /// <param name="multiplier">Number to multiply by</param>
+    /// <returns>Product of multiplicand and multiplier</returns>
+    double Multiply(double multiplicand, double multiplier);
 
     /// <summary>
     /// Divides the first number by the second.
     /// </summary>
-    /// <param name="a">Dividend (number to be divided)</param>
-    /// <param name="b">Divisor (number to divide by)</param>
-    /// <returns>Quotient (a / b)</returns>
-    /// <exception cref="DivideByZeroException">Thrown when b is zero</exception>
-    double Divide(double a, double b);
+    /// <param name="dividend">Dividend (number to be divided)</param>
+    /// <param name="divisor">Divisor (number to divide by)</param>
+    /// <returns>Quotient (dividend / divisor)</returns>
+    /// <exception cref="DivideByZeroException">Thrown when divisor is zero</exception>
+    double Divide(double dividend, double divisor);
 }

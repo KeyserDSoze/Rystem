@@ -157,19 +157,32 @@ public sealed class SceneContext
     /// Adds assistant message to conversation.
     /// </summary>
     public void AddAssistantMessage(ChatMessage message)
-        => ConversationHistory.Add(TrackedMessage.CreateAssistantMessage(message));
-
-    /// <summary>
-    /// Adds assistant message to conversation.
-    /// </summary>
-    public void AddAssistantMessage(string message)
-        => ConversationHistory.Add(TrackedMessage.CreateAssistantMessage(message));
+    {
+        var noFunctionContent = message.Contents.Where(x => x is not FunctionCallContent).ToList();
+        if (noFunctionContent.Count > 0)
+        {
+            ConversationHistory.Add(TrackedMessage.CreateAssistantMessage(new ChatMessage(ChatRole.Assistant, noFunctionContent)));
+        }
+        foreach (var content in message.Contents.Where(x => x is FunctionCallContent))
+        {
+            ConversationHistory.Add(TrackedMessage.CreateAssistantMessage(new ChatMessage(ChatRole.Assistant, [content])));
+        }
+    }
 
     /// <summary>
     /// Adds tool result to conversation.
     /// </summary>
     public void AddToolMessage(ChatMessage message)
-        => ConversationHistory.Add(TrackedMessage.CreateToolMessage(message));
+    {
+        foreach (var content in message.Contents)
+        {
+            if (content is FunctionResultContent functionContent)
+            {
+                var index = ConversationHistory.FindIndex(x => x.Message.Contents.Any(t => t is FunctionCallContent functionCallContent && functionCallContent.CallId == functionContent.CallId));
+                ConversationHistory.Insert(index + 1, TrackedMessage.CreateToolMessage(new ChatMessage(ChatRole.Tool, [content])));
+            }
+        }
+    }
 
     /// <summary>
     /// Adds memory context (from storage).
@@ -389,7 +402,7 @@ public sealed class SceneContext
         {
             message.MarkAsSummarized();
         }
-
+        AddUserMessage(InputMessage);
         // Add summary message (has Message flag, will be sent to LLM)
         ConversationHistory.Add(TrackedMessage.CreateSummaryMessage(summary));
     }
