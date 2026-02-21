@@ -5,7 +5,8 @@ import {
     AIContentConverter,
     type PlayFrameworkRequest,
     type AiSceneResponse,
-    type AiResponseStatus
+    type AiResponseStatus,
+    type SceneExecutionMode
 } from './rystem/src/index';
 import './App.css';
 
@@ -21,6 +22,7 @@ interface ChatMessage {
 
 type StreamMode = 'step' | 'token';
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+type ExecutionModeOption = SceneExecutionMode;
 
 // ─── Configuration ───────────────────────────────────────────────────────
 
@@ -98,6 +100,7 @@ function App() {
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [mode, setMode] = useState<StreamMode>('step');
+    const [executionMode, setExecutionMode] = useState<ExecutionModeOption>('Direct');
     const [connection, setConnection] = useState<ConnectionStatus>('disconnected');
     const [conversationKey, setConversationKey] = useState<string | undefined>();
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -158,6 +161,7 @@ function App() {
             message: text,
             conversationKey: key,
             settings: {
+                executionMode,
                 enableStreaming: mode === 'token',
             }
         };
@@ -302,6 +306,8 @@ function App() {
     const handleClear = () => {
         setMessages([]);
         setConversationKey(undefined);
+        setLoading(false);
+        setConnection(clientRef.current ? 'connected' : 'disconnected');
     };
 
     // ── Render ────────────────────────────────────────────────────────
@@ -370,6 +376,26 @@ function App() {
                             Token Streaming
                         </button>
                     </div>
+
+                    {/* Execution mode */}
+                    <select
+                        value={executionMode}
+                        onChange={e => setExecutionMode(e.target.value as ExecutionModeOption)}
+                        style={{
+                            padding: '5px 8px',
+                            fontSize: '12px',
+                            borderRadius: '6px',
+                            border: '1px solid #444',
+                            backgroundColor: '#1e1e1e',
+                            color: '#aaa',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        <option value="Direct">Direct</option>
+                        <option value="Planning">Planning</option>
+                        <option value="DynamicChaining">DynamicChaining</option>
+                        <option value="Scene">Scene</option>
+                    </select>
 
                     <button onClick={handleClear} style={{
                         padding: '5px 12px',

@@ -14,8 +14,8 @@
             .CreateSon()
             .AddProject("Rystem.DependencyInjection.Web", "Rystem.Concurrency", "Rystem.RepositoryFramework.Abstractions", "Rystem.Content.Abstractions", "RepositoryFramework.Tools.TypescriptGenerator", "Rystem.Api", "Rystem.Authentication.Social.Abstractions")
             .CreateSon()
-            .AddProject("Rystem.BackgroundJob", "Rystem.Concurrency.Redis", "Rystem.Test.XUnit", "Rystem.PlayFramework",
-                        "Rystem.RepositoryFramework.Api.Client", "Rystem.RepositoryFramework.Api.Server",
+            .AddProject("Rystem.BackgroundJob", "Rystem.Concurrency.Redis", "Rystem.Test.XUnit", /*"Rystem.PlayFramework",*/
+                        "Rystem.RepositoryFramework.Api.Client",
                         "Rystem.RepositoryFramework.Infrastructure.InMemory", "Rystem.RepositoryFramework.MigrationTools",
                         "Rystem.RepositoryFramework.Cache", "Rystem.RepositoryFramework.Infrastructure.Azure.Cosmos.Sql",
                         "Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob", "Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Table",

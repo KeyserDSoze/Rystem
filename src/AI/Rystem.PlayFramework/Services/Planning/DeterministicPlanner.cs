@@ -9,16 +9,16 @@ namespace Rystem.PlayFramework;
 /// </summary>
 internal sealed class DeterministicPlanner : IPlanner
 {
-    private readonly IChatClient _chatClient;
+    private readonly IChatClientManager _chatClientManager;
     private readonly ISceneFactory _sceneFactory;
     private readonly PlayFrameworkSettings _settings;
 
     public DeterministicPlanner(
-        IChatClient chatClient,
+        IChatClientManager chatClientManager,
         ISceneFactory sceneFactory,
         PlayFrameworkSettings settings)
     {
-        _chatClient = chatClient;
+        _chatClientManager = chatClientManager;
         _sceneFactory = sceneFactory;
         _settings = settings;
     }
@@ -37,24 +37,52 @@ internal sealed class DeterministicPlanner : IPlanner
             new(ChatRole.User, planningPrompt)
         };
 
-        // Get plan from LLM
+        // Create forced tool for ExecutionPlanDto
+        var planningTool = AIFunctionFactory.Create(
+            (ExecutionPlanDto plan) => plan,
+            name: "create_execution_plan",
+            description: "Creates a structured execution plan based on the user request and available scenes.",
+            JsonHelper.JsonSerializerOptions);
+
+        // Get plan from LLM using forced tool
         var options = new ChatOptions
         {
-            ResponseFormat = ChatResponseFormat.Json,
+            Tools = [planningTool],
+            ToolMode = ChatToolMode.RequireAny,
             Temperature = 0.1f // Low temperature for consistent planning
         };
 
-        var response = await _chatClient.GetResponseAsync(messages, options, cancellationToken);
-        var planJson = response.Messages?.FirstOrDefault()?.Text ?? "{}";
+        var responseWithCost = await _chatClientManager.GetResponseAsync(messages, options, cancellationToken);
 
         // Extract multi-modal contents from planning response
-        var planningMessage = response.Messages?.FirstOrDefault();
+        var planningMessage = responseWithCost.Response.Messages?.FirstOrDefault();
         var planningContents = planningMessage?.Contents?
             .Where(c => c is DataContent or UriContent)
             .ToList();
 
-        // Parse plan
-        var plan = JsonSerializer.Deserialize<ExecutionPlanDto>(planJson, JsonHelper.JsonSerializerOptions);
+        // Extract plan from tool call
+        var toolCall = planningMessage?.Contents?.OfType<FunctionCallContent>().FirstOrDefault();
+        if (toolCall == null)
+        {
+            return new ExecutionPlan
+            {
+                NeedsExecution = false,
+                Reasoning = "Failed to get execution plan from LLM"
+            };
+        }
+
+        ExecutionPlanDto? plan = null;
+        try
+        {
+            plan = new ExecutionPlanDto(
+                (bool)toolCall.Arguments["needs_execution"],
+                toolCall.Arguments["reasoning"].ToString(),
+                JsonSerializer.Deserialize<List<PlanStepDto>>(toolCall.Arguments["steps"].ToString(), JsonHelper.JsonSerializerOptions));
+        }
+        catch (Exception ex)
+        {
+            var q = ex.ToString();
+        }
 
         if (plan == null)
         {
@@ -112,42 +140,27 @@ internal sealed class DeterministicPlanner : IPlanner
 
 RULES:
 1. Check conversation_history FIRST - data may already be available
-2. If data is in context, return needs_execution=false with reasoning
+2. If data is in context, set needs_execution=false with reasoning
 3. If execution needed, create a logical step-by-step plan
 4. Use EXACT scene names from available_scenes
 5. Specify which tools should be called in each step
 6. Indicate dependencies between steps
 
-OUTPUT FORMAT (JSON):
-{
-  ""needs_execution"": true/false,
-  ""reasoning"": ""explanation"",
-  ""steps"": [
-    {
-      ""step_number"": 1,
-      ""scene_name"": ""exact scene name"",
-      ""purpose"": ""what this step accomplishes"",
-      ""expected_tools"": [""tool1"", ""tool2""],
-      ""depends_on_step"": null or step number
-    }
-  ]
-}";
+USE THE create_execution_plan TOOL to return your structured plan.";
     }
 
-    // DTO for JSON deserialization
-    private sealed class ExecutionPlanDto
-    {
-        public bool NeedsExecution { get; set; }
-        public string? Reasoning { get; set; }
-        public List<PlanStepDto>? Steps { get; set; }
-    }
+    // DTO for tool-based structured output
+    private sealed record ExecutionPlanDto(
+        bool NeedsExecution,
+        string? Reasoning,
+        List<PlanStepDto>? Steps
+    );
 
-    private sealed class PlanStepDto
-    {
-        public int StepNumber { get; set; }
-        public string SceneName { get; set; } = string.Empty;
-        public string? Purpose { get; set; }
-        public List<string>? ExpectedTools { get; set; }
-        public int? DependsOnStep { get; set; }
-    }
+    private sealed record PlanStepDto(
+        int StepNumber,
+        string SceneName,
+        string? Purpose,
+        List<string>? ExpectedTools,
+        int? DependsOnStep
+    );
 }
