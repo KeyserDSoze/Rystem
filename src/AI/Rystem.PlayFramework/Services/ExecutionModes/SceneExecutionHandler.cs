@@ -44,7 +44,7 @@ internal sealed class SceneExecutionHandler : IExecutionModeHandler
             yield break;
         }
 
-        var targetScene = dependencies.SceneFactory.Create(settings.SceneName);
+        var targetScene = dependencies.SceneFactory.Scenes.FirstOrDefault(x => x.Name == settings.SceneName);
         if (targetScene == null)
         {
             yield return YieldAndTrack(context, new AiSceneResponse

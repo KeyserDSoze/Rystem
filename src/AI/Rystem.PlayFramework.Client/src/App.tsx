@@ -219,13 +219,31 @@ function App() {
             return;
         }
 
-        // Streaming chunk — append to last assistant message
+        // Streaming chunk — append to last assistant message OR create new if needed
         if (step.streamingChunk) {
-            updateLastAssistant(prev => ({
-                ...prev,
-                text: prev.text + step.streamingChunk,
-                status: step.status,
-            }));
+            setMessages(prev => {
+                const lastIdx = prev.length - 1;
+                const lastMsg = prev[lastIdx];
+
+                // If last message is assistant, append chunk
+                if (lastMsg && lastMsg.role === 'assistant') {
+                    const updated = [...prev];
+                    updated[lastIdx] = {
+                        ...lastMsg,
+                        text: lastMsg.text + step.streamingChunk,
+                        status: step.status,
+                    };
+                    return updated;
+                }
+
+                // Otherwise, create new assistant message for streaming
+                return [...prev, {
+                    role: 'assistant',
+                    text: step.streamingChunk ?? '',
+                    status: step.status,
+                    timestamp: new Date()
+                }];
+            });
             return;
         }
 

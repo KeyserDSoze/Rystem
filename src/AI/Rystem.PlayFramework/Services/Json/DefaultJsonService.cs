@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using Rystem.PlayFramework.Helpers;
 
 namespace Rystem.PlayFramework;
 
@@ -9,19 +10,9 @@ internal sealed class DefaultJsonService : IJsonService
 {
     private readonly JsonSerializerOptions _options;
 
-    public DefaultJsonService()
+    public DefaultJsonService(JsonSerializerOptions? options = null)
     {
-        _options = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false
-        };
-    }
-
-    public DefaultJsonService(JsonSerializerOptions options)
-    {
-        _options = options;
+        _options = options ?? JsonHelper.JsonSerializerOptions;
     }
 
     public string Serialize<T>(T value)

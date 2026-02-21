@@ -1,9 +1,7 @@
-﻿using Microsoft.Extensions.AI;
-using Rystem.PlayFramework.Helpers;
-using Rystem.PlayFramework.Telemetry;
-using System.Diagnostics;
-using System.Reflection;
+﻿using System.Reflection;
 using System.Text.Json;
+using Microsoft.Extensions.AI;
+using Rystem.PlayFramework.Helpers;
 
 namespace Rystem.PlayFramework;
 
@@ -13,73 +11,89 @@ namespace Rystem.PlayFramework;
 internal sealed class ServiceMethodTool : ISceneTool
 {
     private readonly ServiceToolConfiguration _config;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly bool _isGenericAsync;
+    private readonly bool _withoutReturn;
 
-    public ServiceMethodTool(ServiceToolConfiguration config, IServiceProvider serviceProvider)
+    public ServiceMethodTool(ServiceToolConfiguration config)
     {
         _config = config;
-        _serviceProvider = serviceProvider;
+        Name = _config.ToolName;
+        Description = _config.Description;
+        var target = new LazyServiceTarget(_config.ServiceType);
+        var aiFunction = AIFunctionFactory.Create(
+            _config.Method,
+            target,
+            Name,
+            Description,
+            JsonHelper.JsonSerializerOptions);
+        ToolDescription = aiFunction;
+        //var schema = AIJsonUtilities.CreateFunctionJsonSchema(_config.Method, Name, Description, JsonHelper.JsonSerializerOptions);
+        //ToolDescription = AIFunctionFactory.CreateDeclaration(Name, Description, schema, null);
+        _withoutReturn = _config.Method.ReturnType == typeof(void) || _config.Method.ReturnType == typeof(Task) || _config.Method.ReturnType == typeof(ValueTask);
+        _isGenericAsync = _config.Method.ReturnType.IsGenericType &&
+            (_config.Method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)
+            || _config.Method.ReturnType.GetGenericTypeDefinition() == typeof(ValueTask<>));
     }
 
-    public string Name => _config.ToolName;
-    public string Description => _config.Description;
+    public string Name { get; }
+    public string Description { get; }
+    public AITool ToolDescription { get; }
 
-    public AITool ToAITool()
+    /// <summary>
+    /// Lazy service resolver that provides the service instance when accessed
+    /// </summary>
+    private sealed class LazyServiceTarget
     {
-        // Build parameter schema from method parameters
-        var schema = AIFunctionFactory.Create(
-            _config.Method,
-            Name,
-            Description);
+        private readonly Type _serviceType;
 
-        return schema;
+        public LazyServiceTarget(Type serviceType)
+        {
+            _serviceType = serviceType;
+        }
+
+        // This will be called by reflection when AIFunctionFactory tries to get the target
+        // But it won't actually be used because we override ExecuteAsync
     }
 
     public async Task<object?> ExecuteAsync(
         string arguments,
         SceneContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         // Get service instance
-        var service = _serviceProvider.GetService(_config.ServiceType);
-        if (service == null)
-        {
-            throw new InvalidOperationException($"Service {_config.ServiceType.Name} not registered");
-        }
+        var service = context.ServiceProvider.GetService(_config.ServiceType) ?? throw new InvalidOperationException($"Service {_config.ServiceType.Name} not registered");
 
         // Deserialize arguments
         var parameters = _config.Method.GetParameters();
-        var args = DeserializeArguments(arguments, parameters);
+        var args = DeserializeArguments(arguments, parameters, cancellationToken);
 
-        // Invoke method
         var result = _config.Method.Invoke(service, args);
-
-        // Handle async methods
         if (result is Task task)
-        {
             await task;
-            
-            // Get result from Task<T>
-            var resultProperty = task.GetType().GetProperty("Result");
-            return resultProperty?.GetValue(task);
+        else if (result is ValueTask valueTask)
+            await valueTask;
+        if (_withoutReturn)
+            return default!;
+        else if (result is not null)
+        {
+            var response = _isGenericAsync ? ((dynamic)result!).Result : result;
+            if (response is not null)
+                return response;
+            else
+                return default!;
         }
-
-        return result;
+        else
+            return default!;
     }
 
-    private static object?[] DeserializeArguments(string argumentsJson, ParameterInfo[] parameters)
+    private static object?[] DeserializeArguments(string argumentsJson, ParameterInfo[] parameters, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(argumentsJson) || argumentsJson == "{}")
         {
-            return parameters.Length == 0 ? Array.Empty<object>() : new object?[parameters.Length];
+            return parameters.Length == 0 ? [] : new object?[parameters.Length];
         }
 
-        var jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        };
-
-        var argsDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(argumentsJson, jsonOptions);
+        var argsDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(argumentsJson, JsonHelper.JsonSerializerOptions);
         if (argsDict == null)
         {
             return new object?[parameters.Length];
@@ -87,13 +101,17 @@ internal sealed class ServiceMethodTool : ISceneTool
 
         var args = new object?[parameters.Length];
 
-        for (int i = 0; i < parameters.Length; i++)
+        for (var i = 0; i < parameters.Length; i++)
         {
             var param = parameters[i];
 
-            if (argsDict.TryGetValue(param.Name!, out var value))
+            if (param.ParameterType == typeof(CancellationToken))
             {
-                args[i] = JsonSerializer.Deserialize(value.GetRawText(), param.ParameterType, jsonOptions);
+                args[i] = cancellationToken;
+            }
+            else if (argsDict.TryGetValue(param.Name!, out var value))
+            {
+                args[i] = JsonSerializer.Deserialize(value.GetRawText(), param.ParameterType, JsonHelper.JsonSerializerOptions);
             }
             else if (param.HasDefaultValue)
             {

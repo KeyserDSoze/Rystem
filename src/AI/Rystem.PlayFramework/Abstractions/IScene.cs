@@ -1,4 +1,5 @@
-﻿using Rystem.PlayFramework.Configuration;
+﻿using Microsoft.Extensions.AI;
+using Rystem.PlayFramework.Configuration;
 using Rystem.PlayFramework.Mcp;
 
 namespace Rystem.PlayFramework;
@@ -12,12 +13,30 @@ public interface IScene
     /// Scene name.
     /// </summary>
     string Name { get; }
-
     /// <summary>
     /// Scene description for AI selection.
     /// </summary>
     string Description { get; }
-
+    /// <summary>
+    /// Ai function for IChatClient
+    /// </summary>
+    AIFunction AiFunction { get; }
+    /// <summary>
+    /// Gets all AI tools available in this scene.
+    /// </summary>
+    List<AITool> AiTools { get; }
+    /// <summary>
+    /// Get Ai Tool description.
+    /// </summary>
+    AITool AiTool { get; }
+    /// <summary>
+    /// Gets all tools available in this scene.
+    /// </summary>
+    List<ISceneTool> Tools { get; }
+    /// <summary>
+    /// Gets all actors in this scene.
+    /// </summary>
+    List<IActor> Actors { get; }
     /// <summary>
     /// MCP server references configured for this scene.
     /// </summary>
@@ -34,21 +53,10 @@ public interface IScene
     /// Only relevant when OnClient() is used.
     /// </summary>
     TimeSpan CacheExpiration { get; }
-
-    /// <summary>
-    /// Gets all tools available in this scene.
-    /// </summary>
-    IEnumerable<ISceneTool> GetTools();
-
-    /// <summary>
-    /// Gets all actors in this scene.
-    /// </summary>
-    IEnumerable<IActor> GetActors();
-
     /// <summary>
     /// Executes all actors and adds their context to the chat client.
     /// </summary>
     Task ExecuteActorsAsync(
         SceneContext context,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }

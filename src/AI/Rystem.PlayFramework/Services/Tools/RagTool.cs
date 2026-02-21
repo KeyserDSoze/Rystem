@@ -43,6 +43,8 @@ internal sealed class RagTool : ISceneTool
         "Search for relevant information from the knowledge base to answer user questions. " +
         "Use this tool when you need factual information, documentation, or context to provide accurate answers.";
 
+    public AITool ToolDescription => throw new NotImplementedException();
+
     public AITool ToAITool()
     {
         // Create a simple function that accepts a search query

@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.AI;
+﻿using System.Text.Json;
+using Microsoft.Extensions.AI;
 
 namespace Rystem.PlayFramework;
 
@@ -17,16 +18,12 @@ public interface ISceneTool
     /// </summary>
     string Description { get; }
 
-    /// <summary>
-    /// Converts this tool to an AITool for Microsoft.Extensions.AI.
-    /// </summary>
-    AITool ToAITool();
-
+    AITool ToolDescription { get; }
     /// <summary>
     /// Executes the tool with given arguments.
     /// </summary>
     Task<object?> ExecuteAsync(
         string arguments,
         SceneContext context,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 }

@@ -83,7 +83,7 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
     public void SceneFactory_ShouldCreateSceneWithClientTools()
     {
         var sceneFactory = ServiceProvider.GetRequiredService<ISceneFactory>();
-        var scene = sceneFactory.Create("Photography");
+        var scene = sceneFactory.Scenes.First(x => x.Name == "Photography");
 
         Assert.NotNull(scene);
         Assert.Equal("Photography", scene.Name);

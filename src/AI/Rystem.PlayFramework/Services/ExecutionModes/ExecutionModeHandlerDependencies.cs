@@ -14,7 +14,6 @@ internal sealed class ExecutionModeHandlerDependencies : IFactoryName
     public ISceneFactory SceneFactory { get; private set; } = null!;
     public IResponseHelper ResponseHelper { get; private set; } = null!;
     public IStreamingHelper StreamingHelper { get; private set; } = null!;
-    public ISceneMatchingHelper SceneMatchingHelper { get; private set; } = null!;
     public IPlayFrameworkCache PlayFrameworkCache { get; private set; } = null!;
     public PlayFrameworkSettings Settings { get; private set; } = null!;
     public ILogger Logger { get; private set; } = null!;
@@ -38,7 +37,6 @@ internal sealed class ExecutionModeHandlerDependencies : IFactoryName
             ?? throw new InvalidOperationException($"SceneFactory not found for factory: {name}");
         ResponseHelper = _serviceProvider.GetRequiredService<IResponseHelper>();
         StreamingHelper = _serviceProvider.GetRequiredService<IStreamingHelper>();
-        SceneMatchingHelper = _serviceProvider.GetRequiredService<ISceneMatchingHelper>();
         PlayFrameworkCache = playFrameworkCacheFactory.Create(name)
             ?? throw new InvalidOperationException($"PlayFrameworkCache not found for factory: {name}");
         Settings = settingsFactory.Create(name) ?? new PlayFrameworkSettings();

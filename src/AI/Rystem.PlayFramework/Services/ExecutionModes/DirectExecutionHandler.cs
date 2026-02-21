@@ -33,16 +33,11 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
 
         var sceneExecutor = _sceneExecutorFactory.Create(factoryName)
             ?? throw new InvalidOperationException($"SceneExecutor not found for factory: {factoryName}");
-        // Get all scenes as tools for selection
-        var sceneTools = dependencies.SceneFactory.GetSceneNames()
-            .Select(name => dependencies.SceneFactory.Create(name))
-            .Select(scene => SceneSelectionToolFactory.CreateSceneSelectionTool(scene))
-            .ToList();
 
         // Configure chat with scene selection tools
         var chatOptions = new ChatOptions
         {
-            Tools = [.. sceneTools]
+            Tools = [.. dependencies.SceneFactory.ScenesAsAiTool]
         };
 
         ChatMessage? finalMessage = null;
@@ -169,14 +164,14 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
                 });
 
                 // Execute the selected scene
-                var scene = dependencies.SceneMatchingHelper.FindSceneByFuzzyMatch(selectedSceneName, dependencies.SceneFactory);
+                var scene = dependencies.SceneFactory.TryGetScene(selectedSceneName);
                 if (scene != null)
                 {
                     // ✅ CRITICAL: Add tool result to conversation BEFORE entering scene
                     // OpenAI requires: assistant message with tool_calls → tool message with result
                     var toolResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
                     {
-                        Result = $"Scene '{scene.Name}' loaded successfully. Available tools: {string.Join(", ", scene.GetTools().Select(t => t.Name))}"
+                        Result = $"Scene '{scene.Name}' loaded successfully. Available tools: {string.Join(", ", scene.Tools.Select(t => t.Name))}"
                     };
 
                     var toolMessage = new ChatMessage(ChatRole.Tool, [toolResult]);

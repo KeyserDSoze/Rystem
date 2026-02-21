@@ -13,13 +13,6 @@ public sealed class ClientInteractionBuilder
 {
     private readonly List<ClientInteractionDefinition> _definitions = [];
 
-    private static readonly JsonSerializerOptions s_jsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = true,
-        TypeInfoResolver = new DefaultJsonTypeInfoResolver()
-    };
-
     /// <summary>
     /// Registers a tool with strongly-typed arguments.
     /// JSON Schema is automatically generated from type T using System.Text.Json.Schema.
@@ -41,15 +34,12 @@ public sealed class ClientInteractionBuilder
         if (timeoutSeconds <= 0)
             throw new ArgumentException("Timeout must be positive", nameof(timeoutSeconds));
 
-        var schemaNode = JsonSchemaExporter.GetJsonSchemaAsNode(s_jsonOptions, typeof(T));
-        var jsonSchema = schemaNode.ToJsonString(s_jsonOptions);
-
         _definitions.Add(new ClientInteractionDefinition
         {
             ToolName = ToolNameNormalizer.Normalize(toolName),
             Description = description,
             TimeoutSeconds = timeoutSeconds,
-            ArgumentsSchema = jsonSchema
+            ArgumentType = typeof(T),
         });
 
         return this;
@@ -84,6 +74,37 @@ public sealed class ClientInteractionBuilder
         return this;
     }
 
+    /// <summary>
+    /// Registers a simple tool without arguments.
+    /// Use this for tools that don't need parameters (e.g., "PlaySound", "Vibrate").
+    /// </summary>
+    /// <param name="toolName">Unique tool name</param>
+    /// <param name="jsonSchema">Json schema for input</param>
+    /// <param name="description">Human-readable description</param>
+    /// <param name="timeoutSeconds">Maximum execution time</param>
+    /// <returns>Builder for fluent configuration</returns>
+    public ClientInteractionBuilder AddTool(
+        string toolName,
+        string jsonSchema,
+        string? description = null,
+        int timeoutSeconds = 30)
+    {
+        if (string.IsNullOrWhiteSpace(toolName))
+            throw new ArgumentException("Tool name cannot be empty", nameof(toolName));
+
+        if (timeoutSeconds <= 0)
+            throw new ArgumentException("Timeout must be positive", nameof(timeoutSeconds));
+
+        _definitions.Add(new ClientInteractionDefinition
+        {
+            ToolName = ToolNameNormalizer.Normalize(toolName),
+            Description = description,
+            TimeoutSeconds = timeoutSeconds,
+            JsonSchema = jsonSchema
+        });
+
+        return this;
+    }
     /// <summary>
     /// Builds the final list of client interaction definitions.
     /// Called internally by SceneBuilder.

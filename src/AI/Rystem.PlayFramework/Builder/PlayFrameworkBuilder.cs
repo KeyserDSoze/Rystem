@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Rystem.PlayFramework.Helpers;
 using Rystem.PlayFramework.Telemetry;
 
 namespace Rystem.PlayFramework;
@@ -325,9 +326,9 @@ public sealed class PlayFrameworkBuilder
     /// <param name="configure">Action to configure actors, tools, and other scene settings (required, use empty lambda if no configuration needed)</param>
     public PlayFrameworkBuilder AddScene(string name, string description, Action<SceneBuilder> configure)
     {
-        var sceneConfig = new SceneConfiguration 
-        { 
-            Name = name,
+        var sceneConfig = new SceneConfiguration
+        {
+            Name = ToolNameNormalizer.Normalize(name),
             Description = description
         };
 

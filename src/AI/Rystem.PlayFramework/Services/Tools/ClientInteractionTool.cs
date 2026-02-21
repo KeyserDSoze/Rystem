@@ -1,8 +1,7 @@
-﻿using Microsoft.Extensions.AI;
+﻿using System.Text.Json;
+using Microsoft.Extensions.AI;
 using Rystem.PlayFramework.Configuration;
 using Rystem.PlayFramework.Helpers;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 
 namespace Rystem.PlayFramework;
 
@@ -18,48 +17,31 @@ internal sealed class ClientInteractionTool : ISceneTool
     public ClientInteractionTool(ClientInteractionDefinition definition)
     {
         _definition = definition;
-    }
-
-    public string Name => _definition.ToolName;
-
-    public string Description => _definition.Description ?? $"Client-side tool: {_definition.ToolName}";
-
-    public AITool ToAITool()
-    {
-        // If there's a JSON schema, use it to create the function with proper parameters
-        if (!string.IsNullOrWhiteSpace(_definition.ArgumentsSchema))
+        Name = _definition.ToolName;
+        Description = _definition.Description ?? $"Client-side tool: {_definition.ToolName}";
+        if (!string.IsNullOrWhiteSpace(_definition.JsonSchema))
         {
-            // Parse the JSON schema to extract parameter information
-            var schemaNode = JsonNode.Parse(_definition.ArgumentsSchema);
-
-            // Create AIFunction with schema-based metadata
-            // The LLM will see this tool with its proper argument structure
-            string ClientToolStub(Dictionary<string, object?> args)
-            {
-                throw new InvalidOperationException(
-                    $"Client tool '{Name}' should not be executed on server. This is handled by ClientInteractionHandler.");
-            }
-
-            return AIFunctionFactory.Create(
-                ClientToolStub,
-                name: Name,
-                description: Description);
+            var parameters = JsonDocument
+                        .Parse(_definition.JsonSchema)
+                        .RootElement;
+            ToolDescription = AIFunctionFactory.CreateDeclaration(Name, Description, parameters, null);
+        }
+        else if (definition.ArgumentType != null)
+        {
+            var schema = AIJsonUtilities.CreateJsonSchema(definition.ArgumentType, Description, false, null, JsonHelper.JsonSerializerOptions);
+            ToolDescription = AIFunctionFactory.CreateDeclaration(Name, Description, schema, null);
         }
         else
         {
-            // No arguments - simple tool
-            string ClientToolStubNoArgs()
-            {
-                throw new InvalidOperationException(
-                    $"Client tool '{Name}' should not be executed on server. This is handled by ClientInteractionHandler.");
-            }
-
-            return AIFunctionFactory.Create(
-                ClientToolStubNoArgs,
-                name: Name,
-                description: Description);
+            ToolDescription = null!;
         }
     }
+
+    public string Name { get; }
+
+    public string Description { get; }
+
+    public AITool ToolDescription { get; }
 
     /// <summary>
     /// This method should never be called - client tools are intercepted by SceneExecutor.

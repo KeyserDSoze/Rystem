@@ -104,6 +104,9 @@ public sealed class ExecutionState
     /// </summary>
     public void ApplyToContext(SceneContext context)
     {
+        // Restore execution phase (critical for sanitization logic)
+        context.ExecutionPhase = Phase;
+
         // Restore executed scenes
         context.ExecutedSceneOrder.Clear();
         context.ExecutedSceneOrder.AddRange(ExecutedSceneOrder);

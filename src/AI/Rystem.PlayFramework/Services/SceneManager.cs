@@ -91,13 +91,13 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _logger.LogDebug("Initializing SceneManager for factory: {FactoryName}", _factoryName);
 
         _sceneFactory = _sceneFactoryFactory.Create(name) ?? throw new InvalidOperationException($"SceneFactory not found for name: {name}");
-        _logger.LogTrace("SceneFactory resolved: {SceneFactoryType} (Factory: {FactoryName})", _sceneFactory.GetType().Name, _factoryName);
+        _logger.LogDebug("SceneFactory resolved: {SceneFactoryType} (Factory: {FactoryName})", _sceneFactory.GetType().Name, _factoryName);
 
         // Get ChatClientManager from factory
         _chatClientManager = _chatClientManagerFactory.Create(name)
             ?? throw new InvalidOperationException($"ChatClientManager not found for factory key: {name}. Make sure IChatClientManager is registered.");
 
-        _logger.LogTrace("ChatClientManager resolved: {ChatClientManagerType} (Factory: {FactoryName})", _chatClientManager.GetType().Name, _factoryName);
+        _logger.LogDebug("ChatClientManager resolved: {ChatClientManagerType} (Factory: {FactoryName})", _chatClientManager.GetType().Name, _factoryName);
 
         _settings = _settingsFactory.Create(name) ?? new PlayFrameworkSettings();
         _logger.LogDebug("Settings loaded - ExecutionMode: {ExecutionMode}, Planning: {PlanningEnabled}, Cache: {CacheEnabled}, FallbackMode: {FallbackMode} (Factory: {FactoryName})",
@@ -127,7 +127,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                 _settings.Memory?.MaxSummaryLength, _factoryName);
         }
 
-        var availableScenes = _sceneFactory.GetSceneNames().Count();
+        var availableScenes = _sceneFactory.SceneNames.Count;
         _logger.LogInformation("SceneManager initialized successfully - Scenes: {SceneCount}, ChatClients: {ChatClientCount}, FallbackMode: {FallbackMode}, Planner: {HasPlanner}, Summarizer: {HasSummarizer}, Director: {HasDirector}, Cache: {CacheEnabled}, RateLimit: {HasRateLimit}, Memory: {HasMemory} (Factory: {FactoryName})",
             availableScenes, _settings.ChatClientNames?.Count ?? 1, _settings.FallbackMode, _planner != null, _summarizer != null, _director != null, _settings.Cache.Enabled, _rateLimiter != null, _memory != null, _factoryName);
 
@@ -331,7 +331,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         var mainActorOutputs = new List<string>();
         foreach (var actorConfig in _mainActors)
         {
-            var actor = ActorFactory.Create(actorConfig, _serviceProvider);
+            var actor = ActorFactory.Create(actorConfig);
             var response = await actor.PlayAsync(context, cancellationToken);
 
             if (!string.IsNullOrWhiteSpace(response.Message))

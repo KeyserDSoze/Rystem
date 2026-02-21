@@ -25,16 +25,27 @@ internal sealed class ClientInteractionHandler : IClientInteractionHandler
         Dictionary<string, object?>? arguments = null)
     {
         if (clientInteractionDefinitions == null || !clientInteractionDefinitions.Any())
+        {
+            _logger.LogDebug("No client interaction definitions registered");
             return null;
+        }
 
         // Normalize the incoming tool name from LLM for matching
         var normalizedToolName = ToolNameNormalizer.Normalize(toolName);
+
+        _logger.LogDebug("Checking if '{ToolName}' (normalized: '{NormalizedToolName}') is a client tool. " +
+            "Registered client tools: [{ClientTools}]",
+            toolName, normalizedToolName,
+            string.Join(", ", clientInteractionDefinitions.Select(d => d.ToolName)));
 
         var definition = clientInteractionDefinitions
             .FirstOrDefault(d => d.ToolName.Equals(normalizedToolName, StringComparison.OrdinalIgnoreCase));
 
         if (definition == null)
+        {
+            _logger.LogDebug("Tool '{ToolName}' is NOT a client tool", toolName);
             return null;
+        }
 
         var interactionId = Guid.NewGuid().ToString();
 
@@ -47,7 +58,7 @@ internal sealed class ClientInteractionHandler : IClientInteractionHandler
             InteractionId = interactionId,
             ToolName = definition.ToolName,
             Arguments = arguments,
-            ArgumentsSchema = definition.ArgumentsSchema,
+            ArgumentsSchema = definition.JsonSchema,
             Description = definition.Description,
             TimeoutSeconds = definition.TimeoutSeconds
         };

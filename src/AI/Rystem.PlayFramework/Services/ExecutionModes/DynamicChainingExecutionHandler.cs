@@ -50,9 +50,8 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
         while (sceneExecutionCount < settings.MaxDynamicScenes)
         {
             // Get available scenes (exclude already executed ones)
-            var availableScenes = dependencies.SceneFactory.GetSceneNames()
-                .Where(name => !context.ExecutedScenes.ContainsKey(name))
-                .Select(name => dependencies.SceneFactory.Create(name))
+            var availableScenes = dependencies.SceneFactory.Scenes
+                .Where(scene => !context.ExecutedScenes.ContainsKey(scene.Name))
                 .ToList();
 
             if (availableScenes.Count == 0)
@@ -143,7 +142,7 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
 
         // Create scene selection tools from available scenes
         var sceneTools = availableScenes
-            .Select(scene => SceneSelectionToolFactory.CreateSceneSelectionTool(scene))
+            .Select(scene => scene.AiTool)
             .ToList();
 
         var chatOptions = new ChatOptions
@@ -183,7 +182,7 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
         if (functionCall != null)
         {
             var selectedSceneName = functionCall.Name;
-            return dependencies.SceneMatchingHelper.FindSceneByFuzzyMatch(selectedSceneName, dependencies.SceneFactory);
+            return dependencies.SceneFactory.TryGetScene(selectedSceneName);
         }
 
         return null;
@@ -200,7 +199,7 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
         var executionSummary = BuildExecutionSummary(context);
 
         // Get remaining available scenes
-        var remainingScenes = dependencies.SceneFactory.GetSceneNames()
+        var remainingScenes = dependencies.SceneFactory.SceneNames
             .Where(name => !context.ExecutedScenes.ContainsKey(name))
             .ToList();
 

@@ -13,11 +13,16 @@ internal sealed class StreamingHelper : IStreamingHelper
 {
     private readonly ILogger<StreamingHelper> _logger;
     private readonly IResponseHelper _responseHelper;
+    private readonly IToolExecutionManager _toolExecutionManager;
 
-    public StreamingHelper(ILogger<StreamingHelper> logger, IResponseHelper responseHelper)
+    public StreamingHelper(
+        ILogger<StreamingHelper> logger,
+        IResponseHelper responseHelper,
+        IToolExecutionManager toolExecutionManager)
     {
         _logger = logger;
         _responseHelper = responseHelper;
+        _toolExecutionManager = toolExecutionManager;
     }
 
     /// <inheritdoc />
@@ -115,23 +120,26 @@ internal sealed class StreamingHelper : IStreamingHelper
                 totalCost = (totalCost ?? 0) + streamUpdateWithCost.EstimatedCost;
             }
 
-            // Check if streaming is complete
-            if (chunk.FinishReason != null)
+            // Check if streaming is complete (use IsComplete from ChatClientManager, not just FinishReason)
+            if (streamUpdateWithCost.IsComplete)
             {
+                // Deduplicate function calls using centralized service
+                var deduplicatedFunctionCalls = _toolExecutionManager.DeduplicateToolCalls(accumulatedFunctionCalls);
+
                 // Build final message for conversation history
                 var contents = new List<AIContent>();
                 if (!string.IsNullOrEmpty(accumulatedText.ToString()))
                 {
                     contents.Add(new TextContent(accumulatedText.ToString()));
                 }
-                contents.AddRange(accumulatedFunctionCalls);
+                contents.AddRange(deduplicatedFunctionCalls);
                 contents.AddRange(accumulatedOtherContents); // Add multi-modal contents
 
                 yield return new StreamingResult
                 {
                     FinalMessage = new ChatMessage(ChatRole.Assistant, contents),
                     AccumulatedText = accumulatedText.ToString(),
-                    FunctionCalls = accumulatedFunctionCalls,
+                    FunctionCalls = deduplicatedFunctionCalls,
                     StreamedToUser = streamedToUser,
                     TotalCost = totalCost,
                     TotalInputTokens = totalInputTokens,
@@ -142,20 +150,23 @@ internal sealed class StreamingHelper : IStreamingHelper
             }
         }
 
-        // Handle case where streaming completed without final message
+        // Handle case where streaming completed without IsComplete flag
+        // Deduplicate function calls using centralized service
+        var finalDeduplicatedFunctionCalls = _toolExecutionManager.DeduplicateToolCalls(accumulatedFunctionCalls);
+
         var finalContents = new List<AIContent>();
         if (!string.IsNullOrEmpty(accumulatedText.ToString()))
         {
             finalContents.Add(new TextContent(accumulatedText.ToString()));
         }
-        finalContents.AddRange(accumulatedFunctionCalls);
+        finalContents.AddRange(finalDeduplicatedFunctionCalls);
         finalContents.AddRange(accumulatedOtherContents); // Add multi-modal contents
 
         yield return new StreamingResult
         {
             FinalMessage = new ChatMessage(ChatRole.Assistant, finalContents),
             AccumulatedText = accumulatedText.ToString(),
-            FunctionCalls = accumulatedFunctionCalls,
+            FunctionCalls = finalDeduplicatedFunctionCalls,
             StreamedToUser = streamedToUser,
             TotalCost = totalCost,
             TotalInputTokens = totalInputTokens,

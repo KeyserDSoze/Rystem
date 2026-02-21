@@ -1,5 +1,6 @@
-﻿using Microsoft.Extensions.AI;
-using System.Text.Json;
+﻿using System.Text.Json;
+using Microsoft.Extensions.AI;
+using Rystem.PlayFramework.Helpers;
 
 namespace Rystem.PlayFramework;
 
@@ -53,10 +54,7 @@ internal sealed class DeterministicPlanner : IPlanner
             .ToList();
 
         // Parse plan
-        var plan = JsonSerializer.Deserialize<ExecutionPlanDto>(planJson, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
+        var plan = JsonSerializer.Deserialize<ExecutionPlanDto>(planJson, JsonHelper.JsonSerializerOptions);
 
         if (plan == null)
         {
@@ -86,20 +84,15 @@ internal sealed class DeterministicPlanner : IPlanner
 
     private string BuildPlanningPrompt(SceneContext context)
     {
-        var availableScenes = _sceneFactory.GetSceneNames()
-            .Select(name => _sceneFactory.Create(name))
+        var availableScenes = _sceneFactory.Scenes
             .Select(scene => new
             {
                 name = scene.Name,
                 description = scene.Description,
-                available_tools = scene.GetTools().Select(t => new
+                available_tools = scene.Tools.Select(t => new
                 {
                     name = t.Name,
                     description = t.Description
-                }),
-                actors = scene.GetActors().Select(a => new
-                {
-                    type = a.GetType().Name
                 })
             });
 
@@ -110,10 +103,7 @@ internal sealed class DeterministicPlanner : IPlanner
             available_scenes = availableScenes
         };
 
-        return JsonSerializer.Serialize(promptData, new JsonSerializerOptions
-        {
-            WriteIndented = true
-        });
+        return JsonSerializer.Serialize(promptData, JsonHelper.JsonSerializerOptions);
     }
 
     private static string GetPlanningSystemPrompt()

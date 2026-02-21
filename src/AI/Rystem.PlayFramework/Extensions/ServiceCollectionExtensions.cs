@@ -48,8 +48,8 @@ public static class ServiceCollectionExtensions
         // Register helper services (singleton, shared across all instances)
         services.TryAddSingleton<IResponseHelper, ResponseHelper>();
         services.TryAddSingleton<IStreamingHelper, StreamingHelper>();
-        services.TryAddSingleton<ISceneMatchingHelper, SceneMatchingHelper>();
         services.TryAddSingleton<IClientInteractionHandler, ClientInteractionHandler>();
+        services.TryAddSingleton<IToolExecutionManager, ToolExecutionManager>();
 
         // Ensure all IFactory<T> types that SceneManager depends on are registered
         // This allows them to be injected even when the service itself is not registered
@@ -73,29 +73,12 @@ public static class ServiceCollectionExtensions
         // Register PlayFrameworkCache as transient with factory pattern (supports named instances)
         if (!builder.HasCustomCache)
         {
-            services.AddFactory<IPlayFrameworkCache>((sp, _) =>
-            {
-                var settingsFactory = sp.GetRequiredService<IFactory<PlayFrameworkSettings>>();
-                var jsonServiceFactory = sp.GetRequiredService<IFactory<IJsonService>>();
-                return new PlayFrameworkCache(
-                    settingsFactory.Create(name) ?? new PlayFrameworkSettings(),
-                    jsonServiceFactory.Create(name) ?? new DefaultJsonService(),
-                    sp.GetRequiredService<ILogger<PlayFrameworkCache>>(),
-                    sp.GetService<IDistributedCache>(),
-                    sp.GetService<IMemoryCache>());
-            }, name, ServiceLifetime.Transient);
+            services.AddFactory<IPlayFrameworkCache, PlayFrameworkCache>(name, ServiceLifetime.Transient);
         }
 
         // Register SceneManager with factory pattern
         services.AddFactory<ISceneManager, SceneManager>(name, ServiceLifetime.Transient);
-
-        // Register SceneFactory with factory pattern (used by SceneManager)
-        services.AddFactory<ISceneFactory>((sp, _) =>
-        {
-            var scenesFactory = sp.GetRequiredService<IFactory<List<SceneConfiguration>>>();
-            var scenes = scenesFactory.Create(name) ?? [];
-            return new SceneFactory(scenes, sp);
-        }, name, ServiceLifetime.Transient);
+        services.AddFactory<ISceneFactory, SceneFactory>(name, ServiceLifetime.Singleton);
 
         // Register Execution Mode infrastructure
         RegisterExecutionModeHandlers(services, name);

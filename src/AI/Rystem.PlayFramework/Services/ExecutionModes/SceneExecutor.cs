@@ -9,15 +9,15 @@ using Rystem.PlayFramework.Services.Helpers;
 namespace Rystem.PlayFramework.Services.ExecutionModes;
 
 /// <summary>
-/// Default implementation of scene executor.
-/// Handles tool calling loop, MCP integration, client interactions, and streaming.
+/// Clean implementation of scene executor with pending tools execution strategy.
+/// Uses IToolExecutionManager for centralized tool execution and sanitization.
 /// </summary>
 internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IFactory<IMcpServerManager> _mcpServerManagerFactory;
     private readonly IFactory<IJsonService> _jsonServiceFactory;
-    private readonly IClientInteractionHandler _clientInteractionHandler;
+    private readonly IToolExecutionManager _toolExecutionManager;
 
     private ExecutionModeHandlerDependencies _dependencies = null!;
     private string _factoryName = "default";
@@ -27,12 +27,12 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
         IServiceProvider serviceProvider,
         IFactory<IMcpServerManager> mcpServerManagerFactory,
         IFactory<IJsonService> jsonServiceFactory,
-        IClientInteractionHandler clientInteractionHandler)
+        IToolExecutionManager toolExecutionManager)
     {
         _serviceProvider = serviceProvider;
         _mcpServerManagerFactory = mcpServerManagerFactory;
         _jsonServiceFactory = jsonServiceFactory;
-        _clientInteractionHandler = clientInteractionHandler;
+        _toolExecutionManager = toolExecutionManager;
     }
 
     public void SetFactoryName(AnyOf<string?, Enum>? name)
@@ -45,6 +45,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
 
         _jsonService = _jsonServiceFactory.Create(name) ?? new DefaultJsonService();
     }
+
     public async IAsyncEnumerable<AiSceneResponse> ExecuteSceneAsync(
         SceneContext context,
         IScene scene,
@@ -70,7 +71,6 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
             && context.Properties.ContainsKey("_continuation_sceneName");
 
         // Execute scene actors only if NOT resuming from client interaction
-        // (when resuming, actors were already executed and saved in cache)
         if (!isResumingFromClientInteraction)
         {
             await scene.ExecuteActorsAsync(context, cancellationToken);
@@ -126,10 +126,6 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
             }
         }
 
-        // Get scene tools
-        var sceneTools = scene.GetTools().ToList();
-        var sceneToolsFunctions = sceneTools.Select(t => t.ToAITool()).ToList();
-
         // Add MCP system messages (resources and prompts) to ConversationHistory for tracking/caching
         if (mcpSystemMessages.Count > 0)
         {
@@ -141,7 +137,8 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
         }
 
         // Combine scene tools and MCP tools
-        var allTools = new List<AITool>(sceneToolsFunctions);
+        var allTools = new List<AITool>();
+        allTools.AddRange(scene.AiTools);
         allTools.AddRange(mcpTools);
 
         var chatOptions = new ChatOptions
@@ -150,60 +147,20 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
         };
 
         _dependencies.Logger.LogDebug("Scene {SceneName} executing with {SceneToolCount} scene tools + {McpToolCount} MCP tools (Factory: {FactoryName})",
-            scene.Name, sceneToolsFunctions.Count, mcpTools.Count, _factoryName);
+            scene.Name, scene.AiTools.Count, mcpTools.Count, _factoryName);
 
-        // If resuming from client interaction, inject the client results into conversation
+        // STEP 1: If resuming from client interaction, use ToolExecutionManager
         if (settings.ClientInteractionResults != null && settings.ClientInteractionResults.Count > 0)
         {
-            // Retrieve original FunctionCallContent info saved during continuation
-            var originalCallId = context.Properties.TryGetValue("_continuation_callId", out var cid) ? cid as string : null;
-            var originalToolName = context.Properties.TryGetValue("_continuation_toolName", out var tn) ? tn as string : null;
-
-            foreach (var clientResult in settings.ClientInteractionResults)
+            await foreach (var result in _toolExecutionManager.ResumeAfterClientResponseAsync(
+                context,
+                settings.ClientInteractionResults,
+                scene.Tools,
+                mcpTools,
+                scene.Name,
+                cancellationToken))
             {
-                // Build FunctionResultContent from client result
-                string resultText;
-                if (!string.IsNullOrEmpty(clientResult.Error))
-                {
-                    resultText = $"Client tool error: {clientResult.Error}";
-                }
-                else if (clientResult.Contents != null && clientResult.Contents.Count > 0)
-                {
-                    // Convert client contents to descriptive text for the LLM
-                    var contentParts = new List<string>();
-                    foreach (var content in clientResult.Contents)
-                    {
-                        if (string.Equals(content.Type, "text", StringComparison.OrdinalIgnoreCase))
-                        {
-                            contentParts.Add(content.Text ?? "");
-                        }
-                        else if (string.Equals(content.Type, "data", StringComparison.OrdinalIgnoreCase))
-                        {
-                            contentParts.Add($"[Binary data: {content.MediaType ?? "unknown"}]");
-                        }
-                        else
-                        {
-                            contentParts.Add($"[Content: {content.Type}]");
-                        }
-                    }
-                    resultText = string.Join("\n", contentParts);
-                }
-                else
-                {
-                    resultText = "Client tool executed successfully (no data returned)";
-                }
-
-                // Use original callId/name from the LLM's FunctionCallContent for proper correlation
-                var functionResult = new FunctionResultContent(
-                    originalCallId ?? clientResult.InteractionId,
-                    originalToolName ?? clientResult.InteractionId)
-                {
-                    Result = resultText
-                };
-                context.AddToolMessage(new ChatMessage(ChatRole.Tool, [functionResult]));
-
-                _dependencies.Logger.LogInformation("Injected client interaction result for '{InteractionId}' into conversation (Factory: {FactoryName})",
-                    clientResult.InteractionId, _factoryName);
+                yield return ConvertToolResult(result, scene.Name, context);
             }
         }
 
@@ -216,21 +173,20 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
             iteration++;
 
             ChatMessage? finalMessage = null;
-            string accumulatedText = string.Empty;
+            var accumulatedText = string.Empty;
             List<FunctionCallContent> accumulatedFunctionCalls = [];
-            bool streamedToUser = false;
+            var streamedToUser = false;
             decimal? totalCost = null;
             int? totalInputTokens = null;
             int? totalOutputTokens = null;
             int? totalCachedInputTokens = null;
 
-            // Rebuild messages from context each iteration (includes newly added assistant/tool/mcp messages)
-            var conversationMessages = context.GetMessagesForLLM();
+            // Rebuild messages from context each iteration - using centralized sanitization
+            var conversationMessages = _toolExecutionManager.GetMessagesForLLM(context);
 
             // Use streaming when enabled, fallback to non-streaming otherwise
             if (settings.EnableStreaming)
             {
-                // Use StreamingHelper for optimistic streaming
                 StreamingResult? lastResult = null;
                 await foreach (var result in _dependencies.StreamingHelper.ProcessOptimisticStreamAsync(
                     context,
@@ -241,7 +197,6 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                 {
                     lastResult = result;
 
-                    // Stream to user if needed
                     if (result.FinalMessage == null && result.StreamedToUser)
                     {
                         yield return _dependencies.ResponseHelper.CreateStreamingResponse(
@@ -253,7 +208,6 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                     }
                 }
 
-                // Extract final state
                 if (lastResult != null)
                 {
                     finalMessage = lastResult.FinalMessage;
@@ -268,7 +222,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
             }
             else
             {
-                // NON-STREAMING MODE - fallback to complete response
+                // NON-STREAMING MODE
                 var responseWithCost = await context.ChatClientManager.GetResponseAsync(
                     conversationMessages,
                     chatOptions,
@@ -318,17 +272,16 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                 }
 
                 context.ExecutionPhase = ExecutionPhase.Completed;
-
                 yield break;
             }
 
-            // Add assistant message to conversation history (persists for cache/memory)
+            // Add assistant message to conversation history
             context.AddAssistantMessage(finalMessage);
 
             // Process based on what we detected
             if (accumulatedFunctionCalls.Count == 0)
             {
-                // Extract multi-modal contents from final message
+                // Extract multi-modal contents
                 var finalContents = finalMessage.Contents?
                     .Where(c => c is DataContent or UriContent)
                     .ToList();
@@ -336,10 +289,9 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                 // Pure text response - finalize streaming if enabled
                 if (settings.EnableStreaming && streamedToUser)
                 {
-                    // Already streamed to user, just send completion marker (no message duplication)
                     yield return _dependencies.ResponseHelper.CreateFinalResponse(
                         sceneName: scene.Name,
-                        message: string.Empty, // ✅ Empty - text already streamed
+                        message: string.Empty, // Text already streamed
                         context: context,
                         inputTokens: totalInputTokens,
                         outputTokens: totalOutputTokens,
@@ -354,7 +306,6 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                 }
                 else
                 {
-                    // Non-streaming mode or no streaming happened
                     yield return _dependencies.ResponseHelper.CreateFinalResponse(
                         sceneName: scene.Name,
                         message: accumulatedText,
@@ -366,7 +317,6 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                         contents: finalContents);
                 }
 
-                // Check budget
                 if (settings.MaxBudget.HasValue && context.TotalCost > settings.MaxBudget.Value)
                 {
                     yield return _dependencies.ResponseHelper.CreateBudgetExceededResponse(
@@ -377,11 +327,10 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                 }
 
                 context.ExecutionPhase = ExecutionPhase.Completed;
-
                 yield break;
             }
 
-            // Function calls detected - track costs and prepare for tool execution
+            // Function calls detected - track costs
             if (totalCost.HasValue)
             {
                 yield return _dependencies.ResponseHelper.CreateAndTrackResponse(
@@ -405,185 +354,114 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                     currency: context.ChatClientManager.Currency);
 
                 context.ExecutionPhase = ExecutionPhase.Completed;
-
                 yield break;
             }
 
-            // Execute each function call
-            foreach (var functionCall in accumulatedFunctionCalls)
+            // STEP 3: Execute function calls using centralized ToolExecutionManager
+            await foreach (var result in _toolExecutionManager.ExecuteToolCallsAsync(
+                context,
+                accumulatedFunctionCalls,
+                scene.Tools,
+                mcpTools,
+                scene.ClientInteractionDefinitions,
+                scene.Name,
+                cancellationToken))
             {
-                // Check if this is a client-side tool FIRST (before server tool lookup)
-                var clientRequest = scene.ClientInteractionDefinitions != null
-                    ? _clientInteractionHandler.CreateRequestIfClientTool(
-                        scene.ClientInteractionDefinitions,
-                        functionCall.Name,
-                        functionCall.Arguments?.ToDictionary(x => x.Key, x => x.Value))
-                    : null;
+                var response = ConvertToolResult(result, scene.Name, context);
+                yield return response;
 
-                if (clientRequest != null)
+                // If awaiting client, yield break
+                if (result.Status == ToolExecutionStatus.AwaitingClient)
                 {
-                    // Save continuation info in context.Properties (will be cached)
-                    context.SetProperty("_continuation_sceneName", scene.Name);
-                    context.SetProperty("_continuation_interactionId", clientRequest.InteractionId);
-                    context.SetProperty("_continuation_callId", functionCall.CallId);
-                    context.SetProperty("_continuation_toolName", functionCall.Name);
-
-                    _dependencies.Logger.LogInformation("Client tool '{ToolName}' detected. Awaiting client execution for conversation '{ConversationKey}'",
-                        functionCall.Name, context.ConversationKey);
-
-                    // Yield AwaitingClient status with request - client uses ConversationKey to resume
-                    yield return new AiSceneResponse
-                    {
-                        Status = AiResponseStatus.AwaitingClient,
-                        ConversationKey = context.ConversationKey,
-                        ClientInteractionRequest = clientRequest,
-                        Message = $"Awaiting client execution of tool: {functionCall.Name}"
-                    };
-
-                    context.ExecutionPhase = ExecutionPhase.AwaitingClient;
-
-                    // Stop execution - client will resume with new POST using ConversationKey + ClientInteractionResults
                     yield break;
                 }
-
-                // Find the server-side tool (normalize function call name for comparison)
-                var normalizedFunctionName = ToolNameNormalizer.Normalize(functionCall.Name);
-                var tool = sceneTools.FirstOrDefault(t => t.Name == normalizedFunctionName);
-                if (tool == null)
-                {
-                    // Tool not found - send error result
-                    var errorResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
-                    {
-                        Result = $"Tool '{functionCall.Name}' not found"
-                    };
-                    context.AddToolMessage(new ChatMessage(ChatRole.Tool, [errorResult]));
-                    continue;
-                }
-
-                // Track tool execution
-                var toolKey = $"{scene.Name}.{functionCall.Name}";
-                context.ExecutedTools.Add(toolKey);
-
-                // Execute tool
-                yield return _dependencies.ResponseHelper.CreateStatusResponse(
-                    status: AiResponseStatus.FunctionRequest,
-                    message: $"Executing tool: {functionCall.Name}");
-
-                AiSceneResponse toolResponse;
-                try
-                {
-                    // Serialize arguments to JSON using IJsonService
-                    var argsJson = _jsonService.Serialize(functionCall.Arguments ?? new Dictionary<string, object?>());
-
-                    // Execute the tool
-                    var toolResult = await tool.ExecuteAsync(argsJson, context, cancellationToken);
-
-                    // Send result back to LLM
-                    var functionResult = new FunctionResultContent(functionCall.CallId, functionCall.Name);
-
-                    // Support multi-modal output from tools
-                    if (toolResult is AIContent aiContent)
-                    {
-                        // Tool returned AIContent directly (DataContent, UriContent, etc.)
-                        functionResult.Result = aiContent;
-                    }
-                    else if (toolResult is IEnumerable<AIContent> aiContents)
-                    {
-                        // Tool returned list of AIContent
-                        functionResult.Result = aiContents;
-                    }
-                    else
-                    {
-                        // Tool returned string or other object - use as-is
-                        functionResult.Result = toolResult;
-                    }
-
-                    context.AddToolMessage(new ChatMessage(ChatRole.Tool, [functionResult]));
-
-                    toolResponse = _dependencies.ResponseHelper.CreateAndTrackResponse(
-                        context: context,
-                        status: AiResponseStatus.FunctionCompleted,
-                        sceneName: scene.Name,
-                        message: $"Tool {functionCall.Name} executed: {toolResult}",
-                        functionName: functionCall.Name);
-                }
-                catch (Exception ex)
-                {
-                    // Send error result
-                    var errorResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
-                    {
-                        Result = $"Error executing tool: {ex.Message}"
-                    };
-                    context.AddToolMessage(new ChatMessage(ChatRole.Tool, [errorResult]));
-
-                    toolResponse = _dependencies.ResponseHelper.CreateErrorResponse(
-                        sceneName: scene.Name,
-                        message: $"Tool execution failed: {ex.Message}",
-                        errorMessage: ex.Message,
-                        context: context);
-                }
-
-                yield return toolResponse;
             }
-
-            // Continue loop to get next LLM response after function results
         }
 
         // Max iterations reached
-        yield return YieldAndTrack(context, new AiSceneResponse
-        {
-            Status = AiResponseStatus.Error,
-            SceneName = scene.Name,
-            Message = $"Maximum tool call iterations ({MaxToolCallIterations}) reached"
-        });
+        yield return _dependencies.ResponseHelper.CreateErrorResponse(
+            sceneName: scene.Name,
+            message: $"Maximum tool calling iterations ({MaxToolCallIterations}) exceeded",
+            errorMessage: "The conversation exceeded the maximum number of tool calling iterations.",
+            context: context,
+            inputTokens: null,
+            outputTokens: null,
+            cachedInputTokens: null,
+            cost: null);
+
+        context.ExecutionPhase = ExecutionPhase.Completed;
     }
 
-    private static AiSceneResponse YieldStatus(AiResponseStatus status, string? message = null, decimal? cost = null)
+    /// <summary>
+    /// Converts ToolExecutionResult to AiSceneResponse.
+    /// </summary>
+    private AiSceneResponse ConvertToolResult(ToolExecutionResult result, string sceneName, SceneContext context)
+    {
+        return result.Status switch
+        {
+            ToolExecutionStatus.Started => _dependencies.ResponseHelper.CreateAndTrackResponse(
+                context: context,
+                status: AiResponseStatus.FunctionRequest,
+                sceneName: sceneName,
+                message: result.Message ?? $"Executing tool: {result.ToolName}",
+                functionName: result.ToolName),
+
+            ToolExecutionStatus.Completed => _dependencies.ResponseHelper.CreateAndTrackResponse(
+                context: context,
+                status: AiResponseStatus.FunctionCompleted,
+                sceneName: sceneName,
+                message: result.Message ?? $"Tool {result.ToolName} completed",
+                functionName: result.ToolName),
+
+            ToolExecutionStatus.AwaitingClient => new AiSceneResponse
+            {
+                Status = AiResponseStatus.AwaitingClient,
+                ConversationKey = context.ConversationKey,
+                ClientInteractionRequest = result.ClientRequest,
+                Message = result.Message ?? $"Awaiting client execution of tool: {result.ToolName}"
+            },
+
+            ToolExecutionStatus.Error => _dependencies.ResponseHelper.CreateErrorResponse(
+                sceneName: sceneName,
+                message: result.Message ?? $"Tool execution failed",
+                errorMessage: result.Error,
+                context: context),
+
+            _ => new AiSceneResponse
+            {
+                Status = AiResponseStatus.Running,
+                Message = result.Message
+            }
+        };
+    }
+
+    /// <summary>
+    /// Create AIFunction wrapper for MCP tool.
+    /// This is no longer used - MCP tools are added directly from McpServerManager.
+    /// Kept for reference but should be removed if McpServerManager handles conversion.
+    /// </summary>
+    private AIFunction CreateMcpToolFunction(McpTool mcpTool, IMcpServerManager mcpManager)
+    {
+        var normalizedName = ToolNameNormalizer.Normalize(mcpTool.Name);
+
+        return AIFunctionFactory.Create(
+            (IDictionary<string, object?> arguments, CancellationToken ct) =>
+            {
+                // Serialize arguments to JSON for MCP call
+                var argsJson = _jsonService.Serialize(arguments);
+                return mcpManager.ExecuteToolAsync(mcpTool.Name, argsJson, ct);
+            },
+            normalizedName,
+            mcpTool.Description);
+    }
+
+    private static AiSceneResponse YieldStatus(AiResponseStatus status, string message)
     {
         return new AiSceneResponse
         {
             Status = status,
             Message = message,
-            Cost = cost,
-            TotalCost = cost ?? 0
+            Timestamp = DateTime.UtcNow
         };
     }
-
-    private static AiSceneResponse YieldAndTrack(SceneContext context, AiSceneResponse response)
-    {
-        response.TotalCost = context.TotalCost;
-        context.Responses.Add(response);
-        return response;
-    }
-
-    private AIFunction CreateMcpToolFunction(McpTool mcpTool, IMcpServerManager mcpManager)
-    {
-        return AIFunctionFactory.Create(
-            async (string argsJson) =>
-            {
-                _dependencies.Logger.LogDebug("Executing MCP tool: {ToolName} from server {ServerUrl} (Factory: {FactoryName})",
-                    mcpTool.Name, mcpTool.ServerUrl, _factoryName);
-
-                try
-                {
-                    var result = await mcpManager.ExecuteToolAsync(mcpTool.Name, argsJson, CancellationToken.None);
-
-                    _dependencies.Logger.LogInformation("MCP tool {ToolName} executed successfully (Factory: {FactoryName})",
-                        mcpTool.Name, _factoryName);
-
-                    return result;
-                }
-                catch (Exception ex)
-                {
-                    _dependencies.Logger.LogError(ex, "Failed to execute MCP tool {ToolName} from server {ServerUrl} (Factory: {FactoryName})",
-                        mcpTool.Name, mcpTool.ServerUrl, _factoryName);
-
-                    return $"Error executing MCP tool: {ex.Message}";
-                }
-            },
-            ToolNameNormalizer.Normalize(mcpTool.Name),
-            mcpTool.Description);
-    }
-
-
 }

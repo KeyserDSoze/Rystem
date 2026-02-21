@@ -1,6 +1,7 @@
-﻿using Microsoft.Extensions.AI;
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.AI;
+using Rystem.PlayFramework.Helpers;
 
 namespace Rystem.PlayFramework;
 
@@ -110,7 +111,7 @@ public sealed class SceneContext
         if (contextResult != null)
         {
             builder.AppendLine("[Request Context]");
-            builder.AppendLine(JsonSerializer.Serialize(contextResult, new JsonSerializerOptions { WriteIndented = true }));
+            builder.AppendLine(JsonSerializer.Serialize(contextResult, JsonHelper.JsonSerializerOptions));
             builder.AppendLine();
         }
 
@@ -194,7 +195,7 @@ public sealed class SceneContext
         if (memory.ImportantFacts.Count > 0)
         {
             builder.AppendLine("Important Facts:");
-            builder.AppendLine(JsonSerializer.Serialize(memory.ImportantFacts, new JsonSerializerOptions { WriteIndented = true }));
+            builder.AppendLine(JsonSerializer.Serialize(memory.ImportantFacts, JsonHelper.JsonSerializerOptions));
         }
 
         builder.AppendLine();
@@ -224,9 +225,140 @@ public sealed class SceneContext
 
     /// <summary>
     /// Gets messages for LLM request (only those with Message flag).
+    /// Sanitizes messages to ensure OpenAI compliance (removes orphaned tool_calls and their responses).
+    /// Skips sanitization if we're awaiting client response (tool_calls will be completed when client responds).
     /// </summary>
     public List<ChatMessage> GetMessagesForLLM()
-        => [.. ConversationHistory.Where(m => m.IsActiveMessage).Select(m => m.Message)];
+    {
+        var messages = ConversationHistory
+            .Where(m => m.IsActiveMessage)
+            .Select(m => m.Message)
+            .ToList();
+
+        // Debug logging - track message structure before sanitization
+        System.Diagnostics.Debug.WriteLine($"[GetMessagesForLLM] ExecutionPhase: {ExecutionPhase}, Message count: {messages.Count}");
+        for (int idx = 0; idx < messages.Count; idx++)
+        {
+            var msg = messages[idx];
+            var toolCalls = msg.Contents?.OfType<FunctionCallContent>().Select(tc => tc.CallId).ToList();
+            var toolResults = msg.Contents?.OfType<FunctionResultContent>().Select(tr => tr.CallId).ToList();
+            System.Diagnostics.Debug.WriteLine($"  [{idx}] Role: {msg.Role}, ToolCalls: [{string.Join(", ", toolCalls ?? [])}], ToolResults: [{string.Join(", ", toolResults ?? [])}]");
+        }
+
+        // Skip sanitization if we're awaiting client response
+        // In this state, tool_calls are intentionally incomplete (waiting for client execution)
+        if (ExecutionPhase == ExecutionPhase.AwaitingClient)
+        {
+            System.Diagnostics.Debug.WriteLine("[GetMessagesForLLM] Skipping sanitization (AwaitingClient)");
+            return messages;
+        }
+
+        // Sanitize: remove assistant messages with incomplete tool_calls
+        // AND remove orphaned tool messages (tool messages without a valid preceding assistant)
+        var sanitized = new List<ChatMessage>();
+        var expectedToolCallIds = new HashSet<string>(); // Track which tool_call_ids are expected
+
+        for (int i = 0; i < messages.Count; i++)
+        {
+            var msg = messages[i];
+
+            if (msg.Role == ChatRole.Assistant)
+            {
+                var toolCalls = msg.Contents?.OfType<FunctionCallContent>().ToList();
+                if (toolCalls != null && toolCalls.Count > 0)
+                {
+                    // Look ahead to verify ALL tool calls have responses
+                    var toolCallIds = toolCalls.Select(tc => tc.CallId).ToHashSet();
+                    var respondedCallIds = new HashSet<string>();
+
+                    for (int j = i + 1; j < messages.Count; j++)
+                    {
+                        var nextMsg = messages[j];
+
+                        // Stop at next turn boundary
+                        if (nextMsg.Role == ChatRole.Assistant || nextMsg.Role == ChatRole.User)
+                            break;
+
+                        if (nextMsg.Role == ChatRole.Tool)
+                        {
+                            var toolResults = nextMsg.Contents?.OfType<FunctionResultContent>().ToList();
+                            if (toolResults != null)
+                            {
+                                foreach (var result in toolResults)
+                                    respondedCallIds.Add(result.CallId);
+                            }
+                        }
+                    }
+
+                    // If any tool_call lacks a response, skip this assistant entirely
+                    if (!toolCallIds.All(id => respondedCallIds.Contains(id)))
+                    {
+                        var missingCallIds = toolCallIds.Where(id => !respondedCallIds.Contains(id)).ToList();
+                        System.Diagnostics.Debug.WriteLine($"[GetMessagesForLLM] SKIPPING assistant at [{i}] - Missing responses for: [{string.Join(", ", missingCallIds)}]");
+                        System.Diagnostics.Debug.WriteLine($"  ToolCallIds: [{string.Join(", ", toolCallIds)}]");
+                        System.Diagnostics.Debug.WriteLine($"  RespondedCallIds: [{string.Join(", ", respondedCallIds)}]");
+                        expectedToolCallIds.Clear(); // Don't expect any tools after skipped assistant
+                        continue; // Skip this assistant message
+                    }
+
+                    // Valid assistant with complete tool_calls - track expected responses
+                    expectedToolCallIds = toolCallIds;
+                    sanitized.Add(msg);
+                }
+                else
+                {
+                    // Assistant without tool_calls - no tools expected after this
+                    expectedToolCallIds.Clear();
+                    sanitized.Add(msg);
+                }
+            }
+            else if (msg.Role == ChatRole.User)
+            {
+                // User message starts new turn - no tools expected after this
+                expectedToolCallIds.Clear();
+                sanitized.Add(msg);
+            }
+            else if (msg.Role == ChatRole.Tool)
+            {
+                // Only include tool message if its CallId is expected
+                var toolResults = msg.Contents?.OfType<FunctionResultContent>().ToList();
+                if (toolResults != null)
+                {
+                    // Check if ANY result in this message matches expected CallIds
+                    var hasValidCallId = toolResults.Any(r => expectedToolCallIds.Contains(r.CallId));
+                    if (hasValidCallId)
+                    {
+                        sanitized.Add(msg);
+                        // Remove matched CallIds from expected set
+                        foreach (var result in toolResults)
+                            expectedToolCallIds.Remove(result.CallId);
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[GetMessagesForLLM] SKIPPING orphaned tool message at [{i}] - CallIds: [{string.Join(", ", toolResults.Select(r => r.CallId))}]");
+                    }
+                    // Otherwise skip this orphaned tool message
+                }
+            }
+            else
+            {
+                // System or other roles - always include
+                sanitized.Add(msg);
+            }
+        }
+
+        // Debug: log sanitized result
+        System.Diagnostics.Debug.WriteLine($"[GetMessagesForLLM] After sanitization: {sanitized.Count} messages");
+        for (int idx = 0; idx < sanitized.Count; idx++)
+        {
+            var msg = sanitized[idx];
+            var toolCalls = msg.Contents?.OfType<FunctionCallContent>().Select(tc => tc.CallId).ToList();
+            var toolResults = msg.Contents?.OfType<FunctionResultContent>().Select(tr => tr.CallId).ToList();
+            System.Diagnostics.Debug.WriteLine($"  [{idx}] Role: {msg.Role}, ToolCalls: [{string.Join(", ", toolCalls ?? [])}], ToolResults: [{string.Join(", ", toolResults ?? [])}]");
+        }
+
+        return sanitized;
+    }
 
     /// <summary>
     /// Gets messages for cache (includes InitialContext so it can be reused).

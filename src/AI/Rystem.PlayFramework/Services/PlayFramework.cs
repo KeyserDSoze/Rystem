@@ -27,29 +27,8 @@ internal sealed class PlayFramework : IPlayFramework
     /// <inheritdoc/>
     public ISceneManager? CreateOrDefault(AnyOf<string?, Enum>? name = null)
     {
-        return _sceneManagerFactory.Create(name) ?? _serviceProvider.GetService<ISceneManager>();
-    }
-
-    /// <inheritdoc/>
-    public ISceneManager GetDefault()
-    {
-        var manager = _sceneManagerFactory.Create(null);
-        if (manager == null)
-        {
-            throw new InvalidOperationException("No default PlayFramework configuration found. Register a default configuration using AddPlayFramework() without a key.");
-        }
-        return manager;
-    }
-
-    /// <inheritdoc/>
-    public ISceneManager Get(AnyOf<string?, Enum> name)
-    {
-        var manager = _sceneManagerFactory.Create(name);
-        if (manager == null)
-        {
-            throw new InvalidOperationException($"PlayFramework configuration '{name}' not found. Make sure to register it using AddPlayFramework(\"{name}\", ...).");
-        }
-        return manager;
+        var manager = _sceneManagerFactory.Create(name) ?? _serviceProvider.GetService<ISceneManager>();
+        return manager ?? throw new InvalidOperationException($"No {name} or default PlayFramework configuration found. Register a default configuration using AddPlayFramework() with or without a key.");
     }
 
     /// <inheritdoc/>

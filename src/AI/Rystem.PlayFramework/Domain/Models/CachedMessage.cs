@@ -1,6 +1,7 @@
-﻿using Microsoft.Extensions.AI;
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.AI;
+using Rystem.PlayFramework.Helpers;
 
 namespace Rystem.PlayFramework;
 
@@ -164,12 +165,6 @@ public sealed class CachedContent
     /// </summary>
     public string? Uri { get; set; }
 
-    private static readonly JsonSerializerOptions s_jsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        WriteIndented = false
-    };
-
     /// <summary>
     /// Creates a CachedContent from an AIContent.
     /// </summary>
@@ -188,7 +183,7 @@ public sealed class CachedContent
                 Name = functionCall.Name,
                 CallId = functionCall.CallId,
                 ArgumentsJson = functionCall.Arguments != null
-                    ? JsonSerializer.Serialize(functionCall.Arguments, s_jsonOptions)
+                    ? JsonSerializer.Serialize(functionCall.Arguments, JsonHelper.JsonSerializerOptions)
                     : null
             },
             FunctionResultContent functionResult => new CachedContent
@@ -196,7 +191,7 @@ public sealed class CachedContent
                 Type = "functionResult",
                 CallId = functionResult.CallId,
                 ResultJson = functionResult.Result != null
-                    ? JsonSerializer.Serialize(functionResult.Result, s_jsonOptions)
+                    ? JsonSerializer.Serialize(functionResult.Result, JsonHelper.JsonSerializerOptions)
                     : null
             },
             DataContent data => new CachedContent
@@ -230,13 +225,13 @@ public sealed class CachedContent
             "functionCall" => new FunctionCallContent(CallId ?? string.Empty, Name ?? string.Empty)
             {
                 Arguments = !string.IsNullOrEmpty(ArgumentsJson)
-                    ? JsonSerializer.Deserialize<Dictionary<string, object?>>(ArgumentsJson, s_jsonOptions)
+                    ? JsonSerializer.Deserialize<Dictionary<string, object?>>(ArgumentsJson, JsonHelper.JsonSerializerOptions)
                     : null
             },
             "functionResult" => new FunctionResultContent(CallId ?? string.Empty, Name ?? string.Empty)
             {
                 Result = !string.IsNullOrEmpty(ResultJson)
-                    ? JsonSerializer.Deserialize<object>(ResultJson, s_jsonOptions)
+                    ? JsonSerializer.Deserialize<object>(ResultJson, JsonHelper.JsonSerializerOptions)
                     : null
             },
             "data" => new DataContent(

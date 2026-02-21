@@ -110,10 +110,10 @@ builder.Services.AddPlayFramework("default", frameworkBuilder =>
                 .WithService<ICalculatorService>(serviceBuilder =>
                 {
                     serviceBuilder
-                        .WithMethod<double>(x => x.Add(default, default), "Add", "Adds two numbers together.")
-                        .WithMethod<double>(x => x.Subtract(default, default), "Subtract", "Subtracts the second number from the first.")
-                        .WithMethod<double>(x => x.Multiply(default, default), "Multiply", "Multiplies two numbers together.")
-                        .WithMethod<double>(x => x.Divide(default, default), "Divide", "Divides the first number by the second.");
+                        .WithMethod<double>(x => x.Add(default, default), "Add", "Adds two numbers together. Use for addition operations (e.g., '5 plus 3', '5+3').")
+                        .WithMethod<double>(x => x.Subtract(default, default), "Subtract", "Subtracts the second number from the first. Use for subtraction operations (e.g., '5 minus 3', '5-3').")
+                        .WithMethod<double>(x => x.Multiply(default, default), "Multiply", "Multiplies two numbers together. Use for multiplication operations (e.g., '5 times 7.69', '5*7.69', '5 per 7.69' when 'per' means multiplication).")
+                        .WithMethod<double>(x => x.Divide(default, default), "Divide", "Divides the first number by the second. Use for division operations (e.g., '5 divided by 7.69', '5/7.69', '5 diviso 7.69').");
                 });
         });
 });

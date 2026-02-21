@@ -21,21 +21,6 @@ public interface IPlayFramework
     ISceneManager? CreateOrDefault(AnyOf<string?, Enum>? name = null);
 
     /// <summary>
-    /// Gets the default scene manager (created without a key).
-    /// </summary>
-    /// <returns>The default scene manager.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when no default configuration is registered.</exception>
-    ISceneManager GetDefault();
-
-    /// <summary>
-    /// Gets a scene manager for the specified configuration key.
-    /// </summary>
-    /// <param name="name">Configuration key (string or enum).</param>
-    /// <returns>The scene manager for the specified key.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when the configuration is not found.</exception>
-    ISceneManager Get(AnyOf<string?, Enum> name);
-
-    /// <summary>
     /// Checks if a configuration exists for the specified key.
     /// </summary>
     /// <param name="name">Configuration key (string or enum).</param>

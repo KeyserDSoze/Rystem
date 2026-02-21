@@ -15,7 +15,6 @@ namespace Rystem.PlayFramework;
 internal sealed class WebSearchTool : ISceneTool
 {
     private readonly IFactory<IWebSearchService> _webSearchServiceFactory;
-    private readonly IServiceProvider _serviceProvider;
     private readonly PlayFrameworkSettings _settings;
     private readonly ILogger<WebSearchTool> _logger;
     private readonly string _sceneName;
@@ -23,14 +22,12 @@ internal sealed class WebSearchTool : ISceneTool
 
     public WebSearchTool(
         IFactory<IWebSearchService> webSearchServiceFactory,
-        IServiceProvider serviceProvider,
         PlayFrameworkSettings settings,
         ILogger<WebSearchTool> logger,
         string sceneName,
         string factoryKey)
     {
         _webSearchServiceFactory = webSearchServiceFactory;
-        _serviceProvider = serviceProvider;
         _settings = settings;
         _logger = logger;
         _sceneName = sceneName;
@@ -39,9 +36,11 @@ internal sealed class WebSearchTool : ISceneTool
 
     public string Name => "search_internet";
 
-    public string Description => 
+    public string Description =>
         "Search the web for current information, news, articles, and resources. " +
         "Use this when you need real-time or external information not available in the knowledge base.";
+
+    public AITool ToolDescription => throw new NotImplementedException();
 
     public AITool ToAITool()
     {
@@ -168,7 +167,7 @@ internal sealed class WebSearchTool : ISceneTool
         var sceneKey = $"scene:{_sceneName}";
         if (_settings.GlobalWebSearchSettings.TryGetValue(sceneKey, out var sceneSettings))
         {
-            if (sceneSettings.FactoryKey == _factoryKey || 
+            if (sceneSettings.FactoryKey == _factoryKey ||
                 (string.IsNullOrEmpty(sceneSettings.FactoryKey) && string.IsNullOrEmpty(_factoryKey)))
             {
                 return sceneSettings;
@@ -254,8 +253,8 @@ internal sealed class WebSearchTool : ISceneTool
             📖 Documentation: https://rystem.net/mcp/tools/content-repository.md
             """;
 
-        _logger.LogError(innerException, 
-            "Web search service with factory key {FactoryKey} not found. Scene: {SceneName}", 
+        _logger.LogError(innerException,
+            "Web search service with factory key {FactoryKey} not found. Scene: {SceneName}",
             factoryKey, _sceneName);
 
         throw new InvalidOperationException(errorMessage, innerException);
@@ -281,45 +280,45 @@ internal sealed class WebSearchTool : ISceneTool
         }
 
         var formatted = $"Found {result.Documents.Count} results from the web";
-        
+
         if (result.TotalCount.HasValue && result.TotalCount.Value > result.Documents.Count)
         {
             formatted += $" (total available: {result.TotalCount.Value:N0})";
         }
-        
+
         formatted += ":\n\n";
 
         for (int i = 0; i < result.Documents.Count; i++)
         {
             var doc = result.Documents[i];
-            
+
             formatted += $"[Result {i + 1}]";
-            
+
             if (doc.RelevanceScore > 0)
             {
                 formatted += $" (Relevance: {doc.RelevanceScore:F2})";
             }
-            
+
             formatted += $"\nTitle: {doc.Title}\n";
             formatted += $"URL: {doc.Url}\n";
-            
+
             if (doc.Domain != null)
             {
                 formatted += $"Domain: {doc.Domain}\n";
             }
-            
+
             if (doc.PublishedDate.HasValue)
             {
                 formatted += $"Published: {doc.PublishedDate.Value:yyyy-MM-dd}\n";
             }
-            
+
             formatted += $"Snippet: {doc.Snippet}\n";
-            
+
             if (doc.Description != null && doc.Description != doc.Snippet)
             {
                 formatted += $"Description: {doc.Description}\n";
             }
-            
+
             formatted += "\n";
         }
 

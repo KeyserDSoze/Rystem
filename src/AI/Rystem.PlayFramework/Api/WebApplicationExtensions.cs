@@ -1,11 +1,12 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System.Text.Json;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Api.Models;
-using System.Text.Json;
+using Rystem.PlayFramework.Helpers;
 
 namespace Rystem.PlayFramework.Api;
 
@@ -14,12 +15,6 @@ namespace Rystem.PlayFramework.Api;
 /// </summary>
 public static class WebApplicationExtensions
 {
-    private static readonly JsonSerializerOptions s_jsonSerializerOptions = new JsonSerializerOptions
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = false,
-        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
-    };
     /// <summary>
     /// Maps PlayFramework endpoints.
     /// - If factoryName is null: Creates generic endpoints accepting factoryName in route (/{factoryName}, /{factoryName}/streaming)
@@ -146,7 +141,7 @@ public static class WebApplicationExtensions
             await foreach (var response in sceneManager.ExecuteAsync(input, metadata, mergedSettings, cancellationToken))
             {
                 // Serialize response as SSE event with camelCase for properties and enums
-                var json = JsonSerializer.Serialize(response, s_jsonSerializerOptions);
+                var json = JsonSerializer.Serialize(response, JsonHelper.JsonSerializerOptions);
 
                 await httpContext.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
                 await httpContext.Response.Body.FlushAsync(cancellationToken);
@@ -163,7 +158,7 @@ public static class WebApplicationExtensions
             {
                 status = "error",
                 errorMessage = ex.Message
-            }, s_jsonSerializerOptions);
+            }, JsonHelper.JsonSerializerOptions);
 
             await httpContext.Response.WriteAsync($"data: {errorJson}\n\n", cancellationToken);
             await httpContext.Response.Body.FlushAsync(cancellationToken);

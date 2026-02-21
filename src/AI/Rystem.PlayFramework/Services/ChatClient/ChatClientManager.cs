@@ -1,14 +1,16 @@
-﻿using Microsoft.Extensions.AI;
+﻿using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Rystem;
-using System.Collections.Concurrent;
-using System.Runtime.CompilerServices;
 
 namespace Rystem.PlayFramework;
 
 /// <summary>
-/// Unified chat client manager with load balancing, fallback, retry, and cost calculation.
+/// Unified chat client manager with centralized load balancing, fallback, retry, and cost calculation.
+/// Uses a single client provider pattern for both streaming and non-streaming requests.
 /// </summary>
 internal sealed class ChatClientManager : IChatClientManager, IFactoryName
 {
@@ -18,6 +20,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
     private readonly IFactory<ITransientErrorDetector> _errorDetectorFactory;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ChatClientManager> _logger;
+    private readonly Services.Helpers.IToolExecutionManager _toolExecutionManager;
 
     // Resolved dependencies (set via SetFactoryName)
     private PlayFrameworkSettings _settings = null!;
@@ -38,7 +41,8 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
         IFactory<PlayFrameworkSettings> settingsFactory,
         IFactory<ITransientErrorDetector> errorDetectorFactory,
         IServiceProvider serviceProvider,
-        ILogger<ChatClientManager> logger)
+        ILogger<ChatClientManager> logger,
+        Services.Helpers.IToolExecutionManager toolExecutionManager)
     {
         _chatClientFactory = chatClientFactory;
         _costSettingsFactory = costSettingsFactory;
@@ -46,19 +50,21 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
         _errorDetectorFactory = errorDetectorFactory;
         _serviceProvider = serviceProvider;
         _logger = logger;
+        _toolExecutionManager = toolExecutionManager;
     }
 
     public void SetFactoryName(AnyOf<string?, Enum>? name)
     {
         _logger.LogDebug("ChatClientManager factory name set to: {FactoryName}", name?.ToString() ?? "default");
 
-        // Resolve all dependencies immediately
-        _settings = _settingsFactory.Create(name) ?? throw new InvalidOperationException($"PlayFrameworkSettings not found for factory: {name?.ToString() ?? "default"}");
+        _settings = _settingsFactory.Create(name)
+            ?? throw new InvalidOperationException($"PlayFrameworkSettings not found for factory: {name?.ToString() ?? "default"}");
         _defaultCostSettings = _costSettingsFactory.Create(name);
-        _errorDetector = _errorDetectorFactory.Create(name) ?? throw new InvalidOperationException($"ITransientErrorDetector not found for factory: {name?.ToString() ?? "default"}");
+        _errorDetector = _errorDetectorFactory.Create(name)
+            ?? throw new InvalidOperationException($"ITransientErrorDetector not found for factory: {name?.ToString() ?? "default"}");
     }
 
-    public string? ModelId => null; // Client-specific, available in response
+    public string? ModelId => null;
 
     public string Currency
     {
@@ -69,95 +75,76 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
                 var firstClientCostSettings = GetOrCreateCostSettings(_settings.ChatClientNames[0]);
                 return firstClientCostSettings?.Currency ?? "USD";
             }
-
-            // Fallback: use default cost settings
             return _defaultCostSettings?.Currency ?? "USD";
         }
     }
+
+    #region Main API Methods
 
     public async Task<ChatResponseWithCost> GetResponseAsync(
         IEnumerable<ChatMessage> chatMessages,
         ChatOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        // Convert to list for multiple enumeration
         var messageList = chatMessages as IList<ChatMessage> ?? chatMessages.ToList();
+        Exception? lastException = null;
 
-        // PHASE 1: Try load balancing pool
-        if (_settings.ChatClientNames?.Count > 0)
+        await foreach (var clientInfo in GetClientsToTryAsync(cancellationToken))
         {
-            _logger.LogDebug("🎯 Attempting load balancing pool with {ClientCount} clients (Mode: {Mode})",
-                _settings.ChatClientNames.Count, _settings.LoadBalancingMode);
-
-            var poolResult = await TryLoadBalancingPoolAsync(
-                _settings,
-                _errorDetector,
-                messageList,
-                options,
-                cancellationToken);
-
-            if (poolResult.Success)
-            {
-                _logger.LogInformation("✅ Load balancing pool succeeded (Client: {Client}, Cost: {Cost:F6})",
-                    poolResult.Response!.ClientName, poolResult.Response.CalculatedCost);
-                return poolResult.Response;
-            }
-
-            _logger.LogWarning("⚠️ Load balancing pool exhausted. Last error: {Error}",
-                poolResult.LastException?.Message ?? "Unknown");
-        }
-
-        // PHASE 2: Try fallback chain
-        if (_settings.FallbackChatClientNames?.Count > 0)
-        {
-            _logger.LogWarning("🔄 Switching to fallback chain with {ClientCount} clients (Mode: {Mode})",
-                _settings.FallbackChatClientNames.Count, _settings.FallbackMode);
-
-            var fallbackResult = await TryFallbackChainAsync(
-                _settings,
-                _errorDetector,
-                messageList,
-                options,
-                cancellationToken);
-
-            if (fallbackResult.Success)
-            {
-                _logger.LogInformation("✅ Fallback chain succeeded (Client: {Client}, Cost: {Cost:F6})",
-                    fallbackResult.Response!.ClientName, fallbackResult.Response.CalculatedCost);
-                return fallbackResult.Response;
-            }
-
-            _logger.LogError("❌ Fallback chain exhausted. Last error: {Error}",
-                fallbackResult.LastException?.Message ?? "Unknown");
-        }
-
-        // PHASE 3: Try direct IChatClient resolution (backward compatibility)
-        var directClient = _serviceProvider.GetService<IChatClient>();
-        if (directClient != null)
-        {
-            _logger.LogWarning("🔄 No named clients configured, trying direct IChatClient resolution");
-
             try
             {
-                var response = await directClient.GetResponseAsync(messageList, options, cancellationToken);
+                _logger.LogDebug("🎯 Trying {Phase} client: {Client} (Attempt {Attempt}/{MaxAttempts})",
+                    clientInfo.Phase, clientInfo.ClientName, clientInfo.Attempt, clientInfo.MaxAttempts);
+
+                var response = await clientInfo.Client.GetResponseAsync(messageList, options, cancellationToken);
+
+                // Centralized deduplication using ToolExecutionManager
+                response = _toolExecutionManager.DeduplicateToolCalls(response);
+
+                var cost = CalculateCost(response, clientInfo.CostSettings);
+
+                _logger.LogInformation("✅ {Phase} client {Client} succeeded (Attempt {Attempt}, Tokens: {Input}→{Output}, Cost: {Cost:F6})",
+                    clientInfo.Phase, clientInfo.ClientName, clientInfo.Attempt,
+                    response.Usage?.InputTokenCount ?? 0, response.Usage?.OutputTokenCount ?? 0, cost);
 
                 return new ChatResponseWithCost
                 {
                     Response = response,
-                    ClientName = "direct",
+                    CalculatedCost = cost,
                     InputTokens = (int)(response.Usage?.InputTokenCount ?? 0),
                     OutputTokens = (int)(response.Usage?.OutputTokenCount ?? 0),
-                    CachedInputTokens = (int)(response.Usage?.TotalTokenCount - response.Usage?.InputTokenCount - response.Usage?.OutputTokenCount ?? 0),
-                    CalculatedCost = CalculateCost(response, _defaultCostSettings)
+                    CachedInputTokens = 0,
+                    ClientName = clientInfo.ClientName
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Direct IChatClient resolution failed: {Error}", ex.Message);
+                lastException = ex;
+                var isTransient = !_errorDetector.IsNonTransient(ex);
+
+                if (isTransient && clientInfo.Attempt < clientInfo.MaxAttempts)
+                {
+                    var delay = TimeSpan.FromSeconds(_settings.RetryBaseDelaySeconds * Math.Pow(2, clientInfo.Attempt - 1));
+                    _logger.LogWarning("⚠️ Transient error from {Client} (Attempt {Attempt}/{MaxAttempts}), retrying in {Delay}s: {Error}",
+                        clientInfo.ClientName, clientInfo.Attempt, clientInfo.MaxAttempts, delay.TotalSeconds, ex.Message);
+                    await Task.Delay(delay, cancellationToken);
+                }
+                else
+                {
+                    _logger.LogWarning("❌ {ErrorType} error from {Client}: {Error}",
+                        isTransient ? "Transient (max retries)" : "Non-transient", clientInfo.ClientName, ex.Message);
+                }
             }
         }
-
-        throw new InvalidOperationException("All chat clients (load balancing + fallback + direct) failed");
+        return new ChatResponseWithCost
+        {
+            Response = new ChatResponse(new ChatMessage(ChatRole.Assistant, lastException?.Message ?? "Generic error")),
+            CalculatedCost = 0,
+            InputTokens = 0,
+            OutputTokens = 0,
+            CachedInputTokens = 0,
+            ClientName = string.Empty
+        };
     }
 
     public async IAsyncEnumerable<ChatUpdateWithCost> GetStreamingResponseAsync(
@@ -165,150 +152,184 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
         ChatOptions? options = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        // Try load balancing pool first
-        var enteredInSomething = false;
+        var messageList = chatMessages as IList<ChatMessage> ?? chatMessages.ToList();
+        var anyClientWorked = false;
+
+        await foreach (var clientInfo in GetClientsToTryAsync(cancellationToken))
+        {
+            var streamSuccess = false;
+
+            _logger.LogDebug("🎯 Trying {Phase} streaming client: {Client}", clientInfo.Phase, clientInfo.ClientName);
+
+            await foreach (var update in TryStreamFromClientAsync(
+                clientInfo.Client,
+                clientInfo.ClientName,
+                clientInfo.CostSettings,
+                messageList,
+                options,
+                cancellationToken))
+            {
+                anyClientWorked = true;
+
+                if (update.IsError)
+                {
+                    _logger.LogWarning("⚠️ Streaming error from {Client}: {Error}", clientInfo.ClientName, update.ErrorMessage);
+                    break;
+                }
+
+                // Note: Deduplication of function calls happens in StreamingHelper
+                // using ToolCallDeduplicator, since it's the one accumulating them
+                if (update.IsComplete)
+                {
+                    streamSuccess = true;
+                }
+
+                yield return update;
+            }
+
+            if (streamSuccess)
+            {
+                _logger.LogInformation("✅ Streaming succeeded from {Phase} client: {Client}", clientInfo.Phase, clientInfo.ClientName);
+                yield break;
+            }
+        }
+
+        if (!anyClientWorked)
+        {
+            throw new InvalidOperationException("All streaming clients (load balancing + fallback + direct) failed");
+        }
+    }
+
+    #endregion
+
+    #region Centralized Client Provider
+
+    /// <summary>
+    /// Central method that yields clients in priority order:
+    /// 1. Load balanced pool (with retry per client)
+    /// 2. Fallback chain (with retry per client)
+    /// 3. Direct IChatClient (backward compatibility)
+    /// </summary>
+    private async IAsyncEnumerable<ClientAttemptInfo> GetClientsToTryAsync(
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        // Phase 1: Load balanced pool
         if (_settings.ChatClientNames?.Count > 0)
         {
             var orderedClients = GetLoadBalancedOrder(_settings.ChatClientNames, _settings.LoadBalancingMode);
 
             foreach (var clientName in orderedClients)
             {
-                bool success = false;
-                Exception? lastError = null;
-
-                _logger.LogDebug("🎯 Trying streaming from load balanced client: {Client}", clientName);
-
-                await foreach (var update in TryStreamFromClientAsync(clientName, chatMessages, options, cancellationToken))
+                for (int attempt = 1; attempt <= _settings.MaxRetryAttempts; attempt++)
                 {
-                    enteredInSomething = true;
-                    if (update.IsError)
+                    IChatClient? client;
+                    TokenCostSettings? costSettings;
+
+                    try
                     {
-                        lastError = new Exception(update.ErrorMessage);
-                        break;
+                        client = GetOrCreateClient(clientName);
+                        costSettings = GetOrCreateCostSettings(clientName);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning("⚠️ Failed to create client {Client}: {Error}", clientName, ex.Message);
+                        break; // Skip this client entirely
                     }
 
-                    yield return update;
-
-                    if (update.IsComplete)
+                    yield return new ClientAttemptInfo
                     {
-                        success = true;
-                    }
+                        Client = client,
+                        ClientName = clientName,
+                        CostSettings = costSettings,
+                        Phase = "LoadBalanced",
+                        Attempt = attempt,
+                        MaxAttempts = _settings.MaxRetryAttempts
+                    };
                 }
-
-                if (success)
-                {
-                    _logger.LogInformation("✅ Streaming succeeded from client: {Client}", clientName);
-                    yield break;
-                }
-
-                _logger.LogWarning("⚠️ Streaming failed from {Client}: {Error}", clientName, lastError?.Message ?? "Unknown");
             }
         }
 
-        // Try fallback chain
+        // Phase 2: Fallback chain
         if (_settings.FallbackChatClientNames?.Count > 0)
         {
+            _logger.LogWarning("🔄 Primary pool exhausted, switching to fallback chain");
             var orderedClients = GetFallbackOrder(_settings.FallbackChatClientNames, _settings.FallbackMode);
 
             foreach (var clientName in orderedClients)
             {
-                bool success = false;
-                Exception? lastError = null;
-
-                _logger.LogDebug("🔄 Trying streaming from fallback client: {Client}", clientName);
-
-                await foreach (var update in TryStreamFromClientAsync(clientName, chatMessages, options, cancellationToken))
+                for (int attempt = 1; attempt <= _settings.MaxRetryAttempts; attempt++)
                 {
-                    enteredInSomething = true;
-                    if (update.IsError)
+                    IChatClient? client;
+                    TokenCostSettings? costSettings;
+
+                    try
                     {
-                        lastError = new Exception(update.ErrorMessage);
+                        client = GetOrCreateClient(clientName);
+                        costSettings = GetOrCreateCostSettings(clientName);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning("⚠️ Failed to create fallback client {Client}: {Error}", clientName, ex.Message);
                         break;
                     }
 
-                    yield return update;
-
-                    if (update.IsComplete)
+                    yield return new ClientAttemptInfo
                     {
-                        success = true;
-                    }
+                        Client = client,
+                        ClientName = clientName,
+                        CostSettings = costSettings,
+                        Phase = "Fallback",
+                        Attempt = attempt,
+                        MaxAttempts = _settings.MaxRetryAttempts
+                    };
                 }
-
-                if (success)
-                {
-                    _logger.LogInformation("✅ Fallback streaming succeeded from client: {Client}", clientName);
-                    yield break;
-                }
-
-                _logger.LogWarning("⚠️ Fallback streaming failed from {Client}: {Error}", clientName, lastError?.Message ?? "Unknown");
             }
         }
 
-        // Try direct IChatClient resolution (backward compatibility)
+        // Phase 3: Direct IChatClient (backward compatibility)
         var directClient = _serviceProvider.GetService<IChatClient>();
         if (directClient != null)
         {
-            _logger.LogWarning("🔄 No named streaming clients configured, trying direct IChatClient resolution");
-
-            await foreach (var update in directClient.GetStreamingResponseAsync(chatMessages, options, cancellationToken))
+            _logger.LogWarning("🔄 No named clients configured, using direct IChatClient");
+            yield return new ClientAttemptInfo
             {
-                enteredInSomething = true;
-                var isComplete = update.FinishReason != null;
-                yield return new ChatUpdateWithCost
-                {
-                    Update = update,
-                    IsComplete = isComplete,
-                    IsError = false
-                };
-
-                if (isComplete)
-                {
-                    yield break;
-                }
-            }
+                Client = directClient,
+                ClientName = "direct",
+                CostSettings = _defaultCostSettings,
+                Phase = "Direct",
+                Attempt = 1,
+                MaxAttempts = 1
+            };
         }
-        if (!enteredInSomething)
-            throw new InvalidOperationException("All streaming clients (load balancing + fallback + direct) failed");
+
+        await Task.CompletedTask; // Async iterator requirement
     }
 
-    /// <summary>
-    /// Helper method to try streaming from a single client (handles exceptions).
-    /// </summary>
+    #endregion
+
+    #region Streaming Helper
+
     private async IAsyncEnumerable<ChatUpdateWithCost> TryStreamFromClientAsync(
+        IChatClient client,
         string clientName,
-        IEnumerable<ChatMessage> chatMessages,
+        TokenCostSettings? costSettings,
+        IList<ChatMessage> chatMessages,
         ChatOptions? options,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        IChatClient? client = null;
-        TokenCostSettings? costSettings = null;
-        bool initializationFailed = false;
-        string? initializationError = null;
+        ChatResponseUpdate? lastUpdate = null;
+        var receivedExplicitCompletion = false;
 
-        try
+        await foreach (var update in client.GetStreamingResponseAsync(chatMessages, options, cancellationToken))
         {
-            client = GetOrCreateClient(clientName);
-            costSettings = GetOrCreateCostSettings(clientName);
-        }
-        catch (Exception ex)
-        {
-            initializationFailed = true;
-            initializationError = ex.Message;
-        }
+            lastUpdate = update;
 
-        if (initializationFailed)
-        {
-            yield return new ChatUpdateWithCost
-            {
-                IsError = true,
-                ErrorMessage = $"Failed to initialize client: {initializationError}"
-            };
-            yield break;
-        }
-
-        await foreach (var update in client!.GetStreamingResponseAsync(chatMessages, options, cancellationToken))
-        {
             var isComplete = update.FinishReason != null;
+            if (isComplete)
+            {
+                receivedExplicitCompletion = true;
+            }
+
             var inputTokens = (int)(update.Contents?.FirstOrDefault()?.GetType().GetProperty("InputTokens")?.GetValue(update.Contents.First()) ?? 0);
             var outputTokens = (int)(update.Contents?.FirstOrDefault()?.GetType().GetProperty("OutputTokens")?.GetValue(update.Contents.First()) ?? 0);
 
@@ -331,198 +352,58 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
                 IsError = false
             };
         }
-    }
 
-    #region Load Balancing Pool
-
-    private async Task<ClientExecutionResult> TryLoadBalancingPoolAsync(
-        PlayFrameworkSettings settings,
-        ITransientErrorDetector errorDetector,
-        IList<ChatMessage> chatMessages,
-        ChatOptions? options,
-        CancellationToken cancellationToken)
-    {
-        Exception? lastException = null;
-
-        var orderedClients = GetLoadBalancedOrder(settings.ChatClientNames!, settings.LoadBalancingMode);
-
-        foreach (var clientName in orderedClients)
+        // If streaming ended without explicit FinishReason, emit a synthetic completion
+        if (!receivedExplicitCompletion)
         {
-            _logger.LogDebug("🎯 Trying load balanced client: {Client}", clientName);
+            _logger.LogDebug("📍 Streaming ended without explicit FinishReason, emitting synthetic completion for {Client}", clientName);
 
-            var result = await ExecuteWithRetryAsync(
-                clientName,
-                settings.MaxRetryAttempts,
-                settings.RetryBaseDelaySeconds,
-                errorDetector,
-                chatMessages,
-                options,
-                cancellationToken);
-
-            if (result.Success)
+            yield return new ChatUpdateWithCost
             {
-                return result;
-            }
-
-            lastException = result.LastException;
-
-            // Non-transient error → skip to next client
-            if (result.LastException != null && errorDetector.IsNonTransient(result.LastException))
-            {
-                _logger.LogWarning("❌ Non-transient error from {Client}, skipping: {Error}",
-                    clientName, result.LastException.Message);
-                continue;
-            }
+                Update = lastUpdate, // Last received update (or null if empty stream)
+                EstimatedCost = 0,
+                InputTokens = 0,
+                OutputTokens = 0,
+                CachedInputTokens = 0,
+                IsComplete = true, // Mark as complete!
+                ClientName = clientName,
+                IsError = false
+            };
         }
-
-        return new ClientExecutionResult { Success = false, LastException = lastException };
-    }
-
-    #endregion
-
-    #region Fallback Chain
-
-    private async Task<ClientExecutionResult> TryFallbackChainAsync(
-        PlayFrameworkSettings settings,
-        ITransientErrorDetector errorDetector,
-        IList<ChatMessage> chatMessages,
-        ChatOptions? options,
-        CancellationToken cancellationToken)
-    {
-        Exception? lastException = null;
-
-        var orderedClients = GetFallbackOrder(settings.FallbackChatClientNames!, settings.FallbackMode);
-
-        foreach (var clientName in orderedClients)
-        {
-            _logger.LogDebug("🔄 Trying fallback client: {Client}", clientName);
-
-            var result = await ExecuteWithRetryAsync(
-                clientName,
-                settings.MaxRetryAttempts,
-                settings.RetryBaseDelaySeconds,
-                errorDetector,
-                chatMessages,
-                options,
-                cancellationToken);
-
-            if (result.Success)
-            {
-                return result;
-            }
-
-            lastException = result.LastException;
-
-            if (result.LastException != null && errorDetector.IsNonTransient(result.LastException))
-            {
-                _logger.LogWarning("❌ Non-transient error from fallback {Client}, skipping: {Error}",
-                    clientName, result.LastException.Message);
-                continue;
-            }
-        }
-
-        return new ClientExecutionResult { Success = false, LastException = lastException };
-    }
-
-    #endregion
-
-    #region Retry Logic
-
-    private async Task<ClientExecutionResult> ExecuteWithRetryAsync(
-        string clientName,
-        int maxAttempts,
-        double baseDelaySeconds,
-        ITransientErrorDetector errorDetector,
-        IList<ChatMessage> chatMessages,
-        ChatOptions? options,
-        CancellationToken cancellationToken)
-    {
-        Exception? lastException = null;
-
-        for (int attempt = 1; attempt <= maxAttempts; attempt++)
-        {
-            try
-            {
-                _logger.LogDebug("🔄 Attempt {Attempt}/{MaxAttempts} for client {Client}",
-                    attempt, maxAttempts, clientName);
-
-                var client = GetOrCreateClient(clientName);
-                var chatResponse = await client.GetResponseAsync(chatMessages, options, cancellationToken);
-
-                // Calculate cost
-                var costSettings = GetOrCreateCostSettings(clientName);
-                var cost = CalculateCost(chatResponse, costSettings);
-
-                var response = new ChatResponseWithCost
-                {
-                    Response = chatResponse,
-                    CalculatedCost = cost,
-                    InputTokens = (int)(chatResponse.Usage?.InputTokenCount ?? 0),
-                    OutputTokens = (int)(chatResponse.Usage?.OutputTokenCount ?? 0),
-                    CachedInputTokens = 0,
-                    ClientName = clientName
-                };
-
-                _logger.LogInformation("✅ Client {Client} succeeded (Attempt {Attempt}, Tokens: {Input}→{Output}, Cost: {Cost:F6})",
-                    clientName, attempt, response.InputTokens, response.OutputTokens, cost);
-
-                return new ClientExecutionResult { Success = true, Response = response };
-            }
-            catch (Exception ex)
-            {
-                lastException = ex;
-
-                if (errorDetector.IsNonTransient(ex))
-                {
-                    _logger.LogError("❌ Non-transient error from {Client}: {Error}", clientName, ex.Message);
-                    break; // Don't retry
-                }
-
-                if (attempt < maxAttempts)
-                {
-                    var delaySeconds = baseDelaySeconds * Math.Pow(2, attempt - 1);
-                    _logger.LogWarning("⚠️ Transient error from {Client} (Attempt {Attempt}/{MaxAttempts}), retrying in {Delay}s: {Error}",
-                        clientName, attempt, maxAttempts, delaySeconds, ex.Message);
-
-                    await Task.Delay(TimeSpan.FromSeconds(delaySeconds), cancellationToken);
-                }
-                else
-                {
-                    _logger.LogError("❌ Client {Client} failed after {Attempts} attempts: {Error}",
-                        clientName, maxAttempts, ex.Message);
-                }
-            }
-        }
-
-        return new ClientExecutionResult { Success = false, LastException = lastException };
     }
 
     #endregion
 
     #region Load Balancing Logic
 
-    private List<string> GetLoadBalancedOrder(List<string> clients, LoadBalancingMode mode)
-    {
-        return mode switch
+    private List<string> GetLoadBalancedOrder(List<string> clients, LoadBalancingMode mode) =>
+        mode switch
         {
             LoadBalancingMode.RoundRobin => GetRoundRobinOrder(clients),
             LoadBalancingMode.Random => GetRandomOrder(clients),
-            LoadBalancingMode.Sequential => clients.ToList(),
+            LoadBalancingMode.Sequential => [.. clients],
             LoadBalancingMode.None => clients.Take(1).ToList(),
-            _ => clients.ToList()
+            _ => [.. clients]
         };
-    }
+
+    private List<string> GetFallbackOrder(List<string> clients, FallbackMode mode) =>
+        mode switch
+        {
+            FallbackMode.RoundRobin => GetRoundRobinOrder(clients),
+            FallbackMode.Random => GetRandomOrder(clients),
+            _ => [.. clients]
+        };
 
     private List<string> GetRoundRobinOrder(List<string> clients)
     {
         var index = Interlocked.Increment(ref _roundRobinIndex) % clients.Count;
-        return clients.Skip(index).Concat(clients.Take(index)).ToList();
+        return [.. clients.Skip(index), .. clients.Take(index)];
     }
 
     private List<string> GetRandomOrder(List<string> clients)
     {
         var shuffled = clients.ToList();
-        lock (_random) // Lock for thread safety
+        lock (_random)
         {
             for (int i = shuffled.Count - 1; i > 0; i--)
             {
@@ -533,37 +414,21 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
         return shuffled;
     }
 
-    private List<string> GetFallbackOrder(List<string> clients, FallbackMode mode)
-    {
-        return mode switch
-        {
-            FallbackMode.RoundRobin => GetRoundRobinOrder(clients),
-            FallbackMode.Random => GetRandomOrder(clients),
-            _ => clients.ToList() // Sequential
-        };
-    }
-
     #endregion
 
-    #region Lazy Initialization & Cost Calculation
+    #region Client & Cost Helpers
 
-    private IChatClient GetOrCreateClient(string name)
-    {
-        return _clientCache.GetOrAdd(name, _ => new Lazy<IChatClient>(() =>
+    private IChatClient GetOrCreateClient(string name) =>
+        _clientCache.GetOrAdd(name, _ => new Lazy<IChatClient>(() =>
         {
-            var client = _chatClientFactory.Create(name);
-            if (client == null)
-            {
-                throw new InvalidOperationException($"IChatClient '{name}' not found in factory");
-            }
+            var client = _chatClientFactory.Create(name)
+                ?? throw new InvalidOperationException($"IChatClient '{name}' not found in factory");
             _logger.LogDebug("📦 Lazy-loaded chat client: {ClientName}", name);
             return client;
         })).Value;
-    }
 
-    private TokenCostSettings? GetOrCreateCostSettings(string name)
-    {
-        return _costSettingsCache.GetOrAdd(name, _ => new Lazy<TokenCostSettings?>(() =>
+    private TokenCostSettings? GetOrCreateCostSettings(string name) =>
+        _costSettingsCache.GetOrAdd(name, _ => new Lazy<TokenCostSettings?>(() =>
         {
             var settings = _costSettingsFactory.Create(name);
             if (settings != null)
@@ -573,7 +438,6 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
             }
             return settings;
         })).Value;
-    }
 
     private decimal CalculateCost(ChatResponse response, TokenCostSettings? settings)
     {
@@ -588,13 +452,20 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
 
     #endregion
 
+    #region Internal Types
+
     /// <summary>
-    /// Result of client execution attempt.
+    /// Information about a client attempt for the centralized provider.
     /// </summary>
-    private sealed class ClientExecutionResult
+    private sealed class ClientAttemptInfo
     {
-        public bool Success { get; init; }
-        public ChatResponseWithCost? Response { get; init; }
-        public Exception? LastException { get; init; }
+        public required IChatClient Client { get; init; }
+        public required string ClientName { get; init; }
+        public TokenCostSettings? CostSettings { get; init; }
+        public required string Phase { get; init; }
+        public int Attempt { get; init; }
+        public int MaxAttempts { get; init; }
     }
+
+    #endregion
 }
