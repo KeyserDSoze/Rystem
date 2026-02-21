@@ -27,7 +27,7 @@ internal sealed class TokenBucketRateLimiter : IRateLimiter, IFactoryName
         _rateLimitStorageFactory = rateLimitStorageFactory;
         _logger = logger;
     }
-
+    public bool FactoryNameAlreadySetup { get; set; }
     public void SetFactoryName(AnyOf<string?, Enum>? name)
     {
         _storage = _rateLimitStorageFactory?.Create(name) ?? _serviceProvider.GetRequiredService<IRateLimitStorage>();

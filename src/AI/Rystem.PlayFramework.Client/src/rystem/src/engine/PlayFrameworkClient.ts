@@ -99,6 +99,7 @@ export class PlayFrameworkClient {
         while (shouldContinue) {
             const headers = await this.settings.enrichHeaders(url, "POST", undefined, currentRequest);
             let reconnectAttempts = 0;
+            let awaitingClientResponse: AiSceneResponse | null = null; // Reset for each request iteration
 
             let shouldRetry = true;
             while (shouldRetry) {
@@ -124,8 +125,6 @@ export class PlayFrameworkClient {
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
                     let buffer = "";
-
-                    let awaitingClientResponse: AiSceneResponse | null = null;
 
                     try {
                         while (true) {
@@ -157,20 +156,24 @@ export class PlayFrameworkClient {
 
                                     // Check for completion/error markers
                                     if (event.status === "completed") {
-                                        shouldContinue = false;
-                                        return; // End streaming
+                                        // Don't set shouldContinue = false yet - check if client interaction needed first
+                                        shouldRetry = false; // Don't retry, stream closed successfully
+                                        break; // Exit read loop to handle client interaction if needed
                                     }
 
                                     if (event.status === "error") {
                                         shouldContinue = false;
+                                        shouldRetry = false; // Don't retry on error
                                         throw new Error((event as ErrorMarker).errorMessage || "Unknown error");
                                     }
 
-                                    // Check for AwaitingClient status
-                                    if (event.status === "AwaitingClient") {
+                                    // Check for AwaitingClient status (camelCase from server)
+                                    if (event.status === "awaitingClient") {
                                         awaitingClientResponse = event as AiSceneResponse;
+                                        console.log('⏸️ [PlayFrameworkClient] Received awaitingClient, tool:', awaitingClientResponse.clientInteractionRequest?.toolName);
                                         yield awaitingClientResponse; // Yield to user
-                                        break; // Exit SSE loop to execute client tool
+                                        // Don't break - continue reading until stream closes
+                                        continue; // Skip the second yield below to avoid duplication
                                     }
 
                                     // Yield valid AiSceneResponse
@@ -178,10 +181,8 @@ export class PlayFrameworkClient {
                                 }
                             }
 
-                            // Break out of read loop if AwaitingClient
-                            if (awaitingClientResponse) {
-                                break;
-                            }
+                            // Continue reading stream until "completed" event - don't exit early
+                            // even if AwaitingClient was received (stream must close properly)
                         }
                     } finally {
                         reader.releaseLock();
@@ -189,29 +190,31 @@ export class PlayFrameworkClient {
 
                     shouldRetry = false; // Success, no retry
 
-                    // Handle client interaction if AwaitingClient
-                    if (awaitingClientResponse?.clientInteractionRequest) {
+                    // Handle client interaction if AwaitingClient (and stream wasn't closed by completed/error)
+                    if (shouldContinue && awaitingClientResponse?.clientInteractionRequest) {
                         const clientRequest = awaitingClientResponse.clientInteractionRequest;
+
+                        console.log('🔧 [PlayFrameworkClient] Executing client tool:', clientRequest.toolName);
 
                         // Execute client tool
                         const result = await this.clientRegistry.execute(clientRequest);
 
-                        // Prepare new request with continuation token (inside settings for SceneManager)
+                        console.log('✅ [PlayFrameworkClient] Client tool completed, resuming with results');
+
+                        // Prepare new request with client interaction results
+                        // The server uses conversationKey + cache to restore context
                         currentRequest = {
                             ...currentRequest,
-                            continuationToken: awaitingClientResponse.continuationToken,
-                            clientInteractionResults: [result],
-                            settings: {
-                                ...currentRequest.settings,
-                                continuationToken: awaitingClientResponse.continuationToken,
-                                clientInteractionResults: [result]
-                            }
+                            clientInteractionResults: [result]
                         };
+
+                        console.log('📤 [PlayFrameworkClient] Sending resume request with clientInteractionResults');
 
                         // Continue loop to resume execution
                         shouldContinue = true;
                     } else {
-                        shouldContinue = false; // Normal completion
+                        console.log('✅ [PlayFrameworkClient] Stream completed normally (no client interaction)');
+                        shouldContinue = false; // Normal completion or already closed by completed/error
                     }
                 } catch (error) {
                     // Check if this is a network/connection error (not abort, not server error marker)

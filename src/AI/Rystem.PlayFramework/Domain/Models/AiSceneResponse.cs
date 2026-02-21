@@ -82,15 +82,9 @@ public sealed class AiSceneResponse
     /// <summary>
     /// Conversation key for this execution.
     /// Used to track and resume conversations.
+    /// Client sends this back with ClientInteractionResults to resume after AwaitingClient status.
     /// </summary>
     public string? ConversationKey { get; set; }
-
-    /// <summary>
-    /// Continuation token for resuming execution after client interaction.
-    /// Only present when Status is AwaitingClient.
-    /// Client must send this back with ClientInteractionResults to resume.
-    /// </summary>
-    public string? ContinuationToken { get; set; }
 
     /// <summary>
     /// Request for client-side tool execution.

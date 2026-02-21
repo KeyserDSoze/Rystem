@@ -1,48 +1,45 @@
-﻿namespace Rystem.PlayFramework;
+﻿using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
+using Rystem.PlayFramework.Helpers;
+
+namespace Rystem.PlayFramework;
 
 /// <summary>
 /// Factory for creating scenes.
 /// </summary>
-internal sealed class SceneFactory : ISceneFactory
+internal sealed class SceneFactory : ISceneFactory, IFactoryName
 {
-    internal readonly List<SceneConfiguration> _configurations;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly Dictionary<string, IScene> _cache = new(StringComparer.OrdinalIgnoreCase);
+    internal List<SceneConfiguration> _configurations = null!;
+    private readonly IFactory<List<SceneConfiguration>> _sceneConfigurationFactory;
 
-    public SceneFactory(
-        List<SceneConfiguration> configurations,
-        IServiceProvider serviceProvider)
+    public SceneFactory(IFactory<List<SceneConfiguration>> sceneConfigurationFactory)
     {
-        _configurations = configurations;
-        _serviceProvider = serviceProvider;
+        _sceneConfigurationFactory = sceneConfigurationFactory;
     }
-
-    public IScene Create(string sceneName)
+    public bool FactoryNameAlreadySetup { get; set; }
+    public void SetFactoryName(AnyOf<string?, Enum>? name)
     {
-        // Check cache first
-        if (_cache.TryGetValue(sceneName, out var cached))
+        _configurations = _sceneConfigurationFactory.Create(name) ?? [];
+        var sceneNames = new List<string>();
+        var scenes = new List<IScene>();
+        var tools = new List<AITool>();
+        if (_configurations != null)
         {
-            return cached;
+            foreach (var configuration in _configurations)
+            {
+                sceneNames.Add(configuration.Name);
+                var currentScene = new Scene(configuration);
+                scenes.Add(currentScene);
+                tools.Add(currentScene.AiTool);
+            }
         }
-
-        // Find configuration
-        var config = _configurations.FirstOrDefault(c => 
-            c.Name.Equals(sceneName, StringComparison.OrdinalIgnoreCase));
-
-        if (config == null)
-        {
-            throw new InvalidOperationException($"Scene '{sceneName}' not found");
-        }
-
-        // Create and cache scene
-        var scene = new Scene(config, _serviceProvider);
-        _cache[sceneName] = scene;
-
-        return scene;
+        SceneNames = sceneNames;
+        Scenes = scenes;
+        ScenesAsAiTool = tools;
     }
-
-    public IEnumerable<string> GetSceneNames()
-    {
-        return _configurations.Select(c => c.Name);
-    }
+    public IReadOnlyList<string> SceneNames { get; private set; }
+    public IReadOnlyList<IScene> Scenes { get; private set; }
+    public IReadOnlyList<AITool> ScenesAsAiTool { get; private set; }
+    public IScene? TryGetScene(string name)
+        => Scenes.FirstOrDefault(x => x.Name == name);
 }

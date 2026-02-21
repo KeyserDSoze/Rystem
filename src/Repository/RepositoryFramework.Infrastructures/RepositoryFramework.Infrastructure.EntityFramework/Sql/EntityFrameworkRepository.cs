@@ -10,6 +10,7 @@ namespace RepositoryFramework.Infrastructure.EntityFramework
         where TKey : notnull
         where TContext : DbContext
     {
+        public bool FactoryNameAlreadySetup { get; set; }
         public void SetFactoryName(string name)
         {
             return;
@@ -18,6 +19,7 @@ namespace RepositoryFramework.Infrastructure.EntityFramework
         private readonly IRepositoryMapper<T, TKey, TEntityModel> _mapper;
         private DbSet<TEntityModel> _dbSet = null!;
         private IQueryable<TEntityModel> _includingDbSet = null!;
+        public bool OptionsAlreadySetup { get; set; }
         private EntityFrameworkOptions<T, TKey, TEntityModel, TContext>? _options;
         public EntityFrameworkOptions<T, TKey, TEntityModel, TContext>? Options
         {

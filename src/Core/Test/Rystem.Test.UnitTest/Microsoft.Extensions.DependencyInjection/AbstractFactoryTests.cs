@@ -18,11 +18,12 @@ namespace Rystem.Test.UnitTest.DependencyInjection
         public string FactoryName { get; private set; }
         public ITestService Test { get; private set; }
         public TestOptions Options { get; private set; }
-
+        public bool FactoryNameAlreadySetup { get; set; }
         public void SetFactoryName(string name)
         {
             FactoryName = name;
         }
+        public bool OptionsAlreadySetup { get; set; }
         public void SetOptions(TestOptions options)
         {
             Options = options;
@@ -38,6 +39,8 @@ namespace Rystem.Test.UnitTest.DependencyInjection
         public ITestService Test { get; private set; }
         public string FactoryName => $"Decoration {DecoratedFactoryName} with {Test.FactoryName}";
         public string DecoratedFactoryName { get; private set; }
+        public bool FactoryNameAlreadySetup { get; set; }
+
         public void SetFactoryName(string name)
         {
             DecoratedFactoryName = name;
@@ -46,6 +49,7 @@ namespace Rystem.Test.UnitTest.DependencyInjection
         {
             Test = services.First();
         }
+        public bool OptionsAlreadySetup { get; set; }
         public TestOptions Options { get; private set; }
         public void SetOptions(TestOptions options)
         {
@@ -64,6 +68,7 @@ namespace Rystem.Test.UnitTest.DependencyInjection
     {
         public string Id { get; } = Guid.NewGuid().ToString();
         public ITestWithoutFactoryService Test { get; private set; }
+        public bool FactoryNameAlreadySetup { get; set; }
         public void SetDecoratedServices(IEnumerable<ITestWithoutFactoryService> services)
         {
             Test = services.First();

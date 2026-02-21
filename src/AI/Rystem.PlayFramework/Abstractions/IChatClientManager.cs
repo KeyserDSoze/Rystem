@@ -42,5 +42,5 @@ public interface IChatClientManager
     IAsyncEnumerable<ChatUpdateWithCost> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> chatMessages,
         ChatOptions? options = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default);
 }

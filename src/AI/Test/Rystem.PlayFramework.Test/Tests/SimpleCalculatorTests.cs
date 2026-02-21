@@ -16,16 +16,6 @@ public sealed class SimpleCalculatorTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .WithPlanning()
-                .WithSummarization(settings =>
-                {
-                    settings.CharacterThreshold = 15_000;
-                })
-                .Configure(settings =>
-                {
-                    settings.Planning.Enabled = false; // Disabled for simple test
-                    settings.Summarization.Enabled = false;
-                })
                 .AddMainActor("You are a helpful math assistant. When asked to perform calculations, use the available tools.")
                 .AddScene("Calculator", "Use this scene to perform mathematical calculations", sceneBuilder =>
                 {

@@ -1,4 +1,4 @@
-using Microsoft.Extensions.AI;
+﻿using Microsoft.Extensions.AI;
 using Rystem.PlayFramework;
 
 namespace Rystem.PlayFramework.Services.Helpers;
@@ -73,6 +73,12 @@ internal sealed class StreamingResult
     /// Accumulated text content from all chunks.
     /// </summary>
     public string AccumulatedText { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The current stream chunk (incremental text, not accumulated).
+    /// Used for token-level streaming to send only new content.
+    /// </summary>
+    public string? StreamChunk { get; init; }
 
     /// <summary>
     /// Accumulated function calls detected during streaming.

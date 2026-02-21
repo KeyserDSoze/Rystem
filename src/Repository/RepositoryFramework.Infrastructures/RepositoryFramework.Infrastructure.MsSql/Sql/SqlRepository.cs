@@ -9,6 +9,7 @@ namespace RepositoryFramework.Infrastructure.MsSql
     internal sealed class SqlRepository<T, TKey> : IRepository<T, TKey>, IAsyncDisposable, IDisposable, IServiceWithFactoryWithOptions<MsSqlOptions<T, TKey>>, IDefaultIntegration
         where TKey : notnull
     {
+        public bool OptionsAlreadySetup { get; set; }
         public void SetOptions(MsSqlOptions<T, TKey> options)
         {
             _options = options;
@@ -147,7 +148,7 @@ namespace RepositoryFramework.Infrastructure.MsSql
         {
             _ = DisposeAsync();
         }
-
+        public bool FactoryNameAlreadySetup { get; set; }
         public void SetFactoryName(string name)
         {
             return;

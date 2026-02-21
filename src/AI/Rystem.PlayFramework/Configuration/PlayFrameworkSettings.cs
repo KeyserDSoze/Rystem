@@ -218,9 +218,16 @@ public sealed class CacheSettings
     public bool Enabled { get; set; } = true;
 
     /// <summary>
-    /// Default cache expiration in seconds (null = no expiration).
+    /// Default cache expiration in seconds (null = 1 hour default).
     /// </summary>
     public int? DefaultExpirationSeconds { get; set; }
+
+    /// <summary>
+    /// Cache expiration as TimeSpan. Defaults to 1 hour if not set.
+    /// </summary>
+    public TimeSpan CacheExpiration => DefaultExpirationSeconds.HasValue
+        ? TimeSpan.FromSeconds(DefaultExpirationSeconds.Value)
+        : TimeSpan.FromHours(1);
 
     /// <summary>
     /// Cache key prefix.

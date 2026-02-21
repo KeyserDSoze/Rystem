@@ -1,8 +1,12 @@
 ﻿using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Mcp;
 using Rystem.PlayFramework.Services;
+using Rystem.PlayFramework.Services.ExecutionModes;
 using Rystem.PlayFramework.Services.Helpers;
 
 namespace Rystem.PlayFramework;
@@ -44,8 +48,8 @@ public static class ServiceCollectionExtensions
         // Register helper services (singleton, shared across all instances)
         services.TryAddSingleton<IResponseHelper, ResponseHelper>();
         services.TryAddSingleton<IStreamingHelper, StreamingHelper>();
-        services.TryAddSingleton<ISceneMatchingHelper, SceneMatchingHelper>();
         services.TryAddSingleton<IClientInteractionHandler, ClientInteractionHandler>();
+        services.TryAddSingleton<IToolExecutionManager, ToolExecutionManager>();
 
         // Ensure all IFactory<T> types that SceneManager depends on are registered
         // This allows them to be injected even when the service itself is not registered
@@ -61,21 +65,23 @@ public static class ServiceCollectionExtensions
         services.AddEngineFactory<IPlanner>();
         services.AddEngineFactory<ISummarizer>();
         services.AddEngineFactory<IDirector>();
-        services.AddEngineFactory<ICacheService>();
+        services.AddEngineFactory<IPlayFrameworkCache>();
         services.AddEngineFactory<IJsonService>();
         services.AddEngineFactory<IMcpServerManager>();  // Add MCP server manager factory
         services.AddEngineFactory<IRateLimiter>();  // Add rate limiter factory (optional, but DI needs it registered)
 
+        // Register PlayFrameworkCache as transient with factory pattern (supports named instances)
+        if (!builder.HasCustomCache)
+        {
+            services.AddFactory<IPlayFrameworkCache, PlayFrameworkCache>(name, ServiceLifetime.Transient);
+        }
+
         // Register SceneManager with factory pattern
         services.AddFactory<ISceneManager, SceneManager>(name, ServiceLifetime.Transient);
+        services.AddFactory<ISceneFactory, SceneFactory>(name, ServiceLifetime.Singleton);
 
-        // Register SceneFactory with factory pattern (used by SceneManager)
-        services.AddFactory<ISceneFactory>((sp, _) =>
-        {
-            var scenesFactory = sp.GetRequiredService<IFactory<List<SceneConfiguration>>>();
-            var scenes = scenesFactory.Create(name) ?? [];
-            return new SceneFactory(scenes, sp);
-        }, name, ServiceLifetime.Transient);
+        // Register Execution Mode infrastructure
+        RegisterExecutionModeHandlers(services, name);
 
         // Register settings with factory pattern (Singleton) - using instance overload
         services.AddFactory(builder.Settings, name, ServiceLifetime.Singleton);
@@ -148,12 +154,6 @@ public static class ServiceCollectionExtensions
             services.AddFactory<IDirector, MainDirector>(name, ServiceLifetime.Transient);
         }
 
-        // Register default cache service if not customized and cache is enabled
-        if (!builder.HasCustomCache && builder.Settings.Cache.Enabled)
-        {
-            services.AddFactory<ICacheService, CacheService>(name, ServiceLifetime.Transient);
-        }
-
         // Register default JSON service if not customized
         if (!builder.HasCustomJsonService)
         {
@@ -212,4 +212,36 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// Registers all execution mode handlers with factory pattern.
+    /// Each SceneExecutionMode enum value maps to a specific handler implementation.
+    /// </summary>
+    private static void RegisterExecutionModeHandlers(
+        IServiceCollection services,
+        AnyOf<string?, Enum>? name)
+    {
+        // Register ExecutionModeHandlerDependencies with factory pattern
+        services.AddFactory<ExecutionModeHandlerDependencies>(name, ServiceLifetime.Transient);
+
+        // Register SceneExecutor with factory pattern
+        services.AddFactory<ISceneExecutor, SceneExecutor>(name, ServiceLifetime.Transient);
+
+        // Register FinalResponseGenerator with factory pattern
+        services.AddFactory<FinalResponseGenerator>(name, ServiceLifetime.Transient);
+
+        // Register execution mode handlers with enum keys (factory-based)
+        services.TryAddFactory<IExecutionModeHandler, DirectExecutionHandler>(
+            SceneExecutionMode.Direct, ServiceLifetime.Transient);
+
+        services.TryAddFactory<IExecutionModeHandler, SceneExecutionHandler>(
+            SceneExecutionMode.Scene, ServiceLifetime.Transient);
+
+        services.TryAddFactory<IExecutionModeHandler, PlanningExecutionHandler>(
+            SceneExecutionMode.Planning, ServiceLifetime.Transient);
+
+        services.TryAddFactory<IExecutionModeHandler, DynamicChainingExecutionHandler>(
+            SceneExecutionMode.DynamicChaining, ServiceLifetime.Transient);
+    }
 }
+

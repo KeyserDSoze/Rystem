@@ -1,4 +1,4 @@
-using Microsoft.Extensions.AI;
+﻿using Microsoft.Extensions.AI;
 using Rystem.PlayFramework;
 
 namespace Rystem.PlayFramework.Services.Helpers;
@@ -22,7 +22,8 @@ internal sealed class ResponseHelper : IResponseHelper
             Status = isStreamingComplete ? AiResponseStatus.Running : AiResponseStatus.Streaming,
             SceneName = sceneName,
             StreamingChunk = streamingChunk,
-            Message = message,
+            // Only send full Message when streaming is complete, otherwise null to avoid duplication
+            Message = isStreamingComplete ? message : null,
             IsStreamingComplete = isStreamingComplete,
             TotalCost = totalCost ?? 0
         };

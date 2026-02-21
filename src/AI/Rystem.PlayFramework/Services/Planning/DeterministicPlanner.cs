@@ -1,5 +1,6 @@
-﻿using Microsoft.Extensions.AI;
-using System.Text.Json;
+﻿using System.Text.Json;
+using Microsoft.Extensions.AI;
+using Rystem.PlayFramework.Helpers;
 
 namespace Rystem.PlayFramework;
 
@@ -53,10 +54,7 @@ internal sealed class DeterministicPlanner : IPlanner
             .ToList();
 
         // Parse plan
-        var plan = JsonSerializer.Deserialize<ExecutionPlanDto>(planJson, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
+        var plan = JsonSerializer.Deserialize<ExecutionPlanDto>(planJson, JsonHelper.JsonSerializerOptions);
 
         if (plan == null)
         {
@@ -86,42 +84,34 @@ internal sealed class DeterministicPlanner : IPlanner
 
     private string BuildPlanningPrompt(SceneContext context)
     {
-        var availableScenes = _sceneFactory.GetSceneNames()
-            .Select(name => _sceneFactory.Create(name))
+        var availableScenes = _sceneFactory.Scenes
             .Select(scene => new
             {
                 name = scene.Name,
                 description = scene.Description,
-                available_tools = scene.GetTools().Select(t => new
+                available_tools = scene.Tools.Select(t => new
                 {
                     name = t.Name,
                     description = t.Description
-                }),
-                actors = scene.GetActors().Select(a => new
-                {
-                    type = a.GetType().Name
                 })
             });
 
         var promptData = new
         {
             user_request = context.InputMessage,
-            current_context = context.MainActorContext,
+            conversation_history = context.ConversationHistory.Select(m => new { role = m.Message.Role.Value, label = m.Label }),
             available_scenes = availableScenes
         };
 
-        return JsonSerializer.Serialize(promptData, new JsonSerializerOptions
-        {
-            WriteIndented = true
-        });
+        return JsonSerializer.Serialize(promptData, JsonHelper.JsonSerializerOptions);
     }
 
     private static string GetPlanningSystemPrompt()
     {
-        return @"You are an execution planner. Analyze the user request and current context to determine if execution is needed.
+        return @"You are an execution planner. Analyze the user request and conversation history to determine if execution is needed.
 
 RULES:
-1. Check current_context FIRST - data may already be available
+1. Check conversation_history FIRST - data may already be available
 2. If data is in context, return needs_execution=false with reasoning
 3. If execution needed, create a logical step-by-step plan
 4. Use EXACT scene names from available_scenes

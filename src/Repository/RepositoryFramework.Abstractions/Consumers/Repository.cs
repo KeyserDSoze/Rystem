@@ -10,7 +10,7 @@ namespace RepositoryFramework
         private readonly IFactory<IRepositoryPattern<T, TKey>> _repositoryFactory;
         private readonly IRepositoryBusinessManager<T, TKey>? _businessManager;
         private readonly IRepositoryFilterTranslator<T, TKey>? _translator;
-
+        public bool FactoryNameAlreadySetup { get; set; }
         public void SetFactoryName(string name)
         {
             var repository = _repositoryFactory.Create(name);

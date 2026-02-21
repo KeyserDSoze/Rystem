@@ -69,7 +69,7 @@ public class PlayFrameworkServiceTests : PlayFrameworkTestBase
         var playFramework = serviceProvider.GetRequiredService<IPlayFramework>();
 
         // Act
-        var defaultManager = playFramework.GetDefault();
+        var defaultManager = playFramework.CreateOrDefault();
 
         // Assert
         Assert.NotNull(defaultManager);
@@ -96,7 +96,7 @@ public class PlayFrameworkServiceTests : PlayFrameworkTestBase
         var playFramework = serviceProvider.GetRequiredService<IPlayFramework>();
 
         // Act & Assert
-        var exception = Assert.Throws<InvalidOperationException>(() => playFramework.GetDefault());
+        var exception = Assert.Throws<InvalidOperationException>(() => playFramework.CreateOrDefault());
         Assert.Contains("No default PlayFramework configuration found", exception.Message);
     }
 
@@ -120,7 +120,7 @@ public class PlayFrameworkServiceTests : PlayFrameworkTestBase
         var playFramework = serviceProvider.GetRequiredService<IPlayFramework>();
 
         // Act
-        var manager = playFramework.Get("test-config");
+        var manager = playFramework.Create("test-config");
 
         // Assert
         Assert.NotNull(manager);
@@ -146,7 +146,7 @@ public class PlayFrameworkServiceTests : PlayFrameworkTestBase
         var playFramework = serviceProvider.GetRequiredService<IPlayFramework>();
 
         // Act & Assert
-        var exception = Assert.Throws<InvalidOperationException>(() => playFramework.Get("non-existent"));
+        var exception = Assert.Throws<InvalidOperationException>(() => playFramework.Create("non-existent"));
         Assert.Contains("PlayFramework configuration 'non-existent' not found", exception.Message);
     }
 
@@ -246,7 +246,7 @@ public class PlayFrameworkServiceTests : PlayFrameworkTestBase
 
         // Act
         var freeManager = playFramework.Create(AppTier.Free);
-        var premiumManager = playFramework.Get(AppTier.Premium);
+        var premiumManager = playFramework.Create(AppTier.Premium);
 
         // Assert
         Assert.NotNull(freeManager);
@@ -311,7 +311,7 @@ public class PlayFrameworkServiceTests : PlayFrameworkTestBase
         {
             // Select configuration based on user tier
             var configKey = isPremium ? "tier-premium" : "tier-free";
-            var sceneManager = _playFramework.Get(configKey);
+            var sceneManager = _playFramework.Create(configKey);
 
             var results = new List<AiSceneResponse>();
             await foreach (var response in sceneManager.ExecuteAsync(query))

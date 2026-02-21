@@ -15,11 +15,6 @@ public sealed class DynamicActorTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .Configure(settings =>
-                {
-                    settings.Planning.Enabled = false;
-                    settings.Summarization.Enabled = false;
-                })
                 .AddMainActor("You are a helpful assistant.")
                 .AddMainActor(ctx =>
                 {

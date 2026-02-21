@@ -1,4 +1,6 @@
-﻿namespace Rystem.PlayFramework;
+﻿using Microsoft.Extensions.AI;
+
+namespace Rystem.PlayFramework;
 
 /// <summary>
 /// Factory for creating scenes.
@@ -6,12 +8,21 @@
 public interface ISceneFactory
 {
     /// <summary>
-    /// Creates a scene by name.
-    /// </summary>
-    IScene Create(string sceneName);
-
-    /// <summary>
     /// Gets all registered scene names.
     /// </summary>
-    IEnumerable<string> GetSceneNames();
+    IReadOnlyList<string> SceneNames { get; }
+    /// <summary>
+    /// Gets all registered scenes.
+    /// </summary>
+    IReadOnlyList<IScene> Scenes { get; }
+    /// <summary>
+    /// Gets all registered scenes as AiTool.
+    /// </summary>
+    IReadOnlyList<AITool> ScenesAsAiTool { get; }
+    /// <summary>
+    /// Get scene by name
+    /// </summary>
+    /// <param name="name"></param>
+    /// <returns></returns>
+    IScene? TryGetScene(string name);
 }

@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Rystem.PlayFramework.Helpers;
 using Rystem.PlayFramework.Telemetry;
 using System.Diagnostics;
 using System.Text.Json;
@@ -38,16 +39,18 @@ internal sealed class RagTool : ISceneTool
 
     public string Name => "search_knowledge_base";
 
-    public string Description => 
+    public string Description =>
         "Search for relevant information from the knowledge base to answer user questions. " +
         "Use this tool when you need factual information, documentation, or context to provide accurate answers.";
 
-    public AIFunction ToAIFunction()
+    public AITool ToolDescription => throw new NotImplementedException();
+
+    public AITool ToAITool()
     {
         // Create a simple function that accepts a search query
         return AIFunctionFactory.Create(
             (string query) => ExecuteAsync(query, default!, default),
-            name: Name,
+            name: ToolNameNormalizer.Normalize(Name),
             description: Description);
     }
 
@@ -171,7 +174,7 @@ internal sealed class RagTool : ISceneTool
         var sceneKey = $"scene:{_sceneName}";
         if (_settings.GlobalRagSettings.TryGetValue(sceneKey, out var sceneSettings))
         {
-            if (sceneSettings.FactoryKey == _factoryKey || 
+            if (sceneSettings.FactoryKey == _factoryKey ||
                 (string.IsNullOrEmpty(sceneSettings.FactoryKey) && string.IsNullOrEmpty(_factoryKey)))
             {
                 return sceneSettings;
@@ -255,8 +258,8 @@ internal sealed class RagTool : ISceneTool
             📖 Documentation: https://rystem.net/mcp/tools/repository-setup.md
             """;
 
-        _logger.LogError(innerException, 
-            "RAG service with factory key {FactoryKey} not found. Scene: {SceneName}", 
+        _logger.LogError(innerException,
+            "RAG service with factory key {FactoryKey} not found. Scene: {SceneName}",
             factoryKey, _sceneName);
 
         throw new InvalidOperationException(errorMessage, innerException);

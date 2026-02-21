@@ -1,4 +1,4 @@
-using Microsoft.Extensions.AI;
+﻿using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Rystem.PlayFramework.Test.Tests;
@@ -13,11 +13,7 @@ public class MultiModalTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .Configure(settings =>
-                {
-                    settings.Planning.Enabled = false;
-                    settings.Summarization.Enabled = false;
-                })
+                
                 .AddMainActor("You are a test assistant for multi-modal content.")
                 .AddScene("MultiModalTest", "Test scene for multi-modal support", sceneBuilder =>
                 {
@@ -287,11 +283,7 @@ public class MultiModalTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .Configure(settings =>
-                {
-                    settings.Planning.Enabled = false;
-                    settings.Summarization.Enabled = false;
-                })
+                
                 .AddScene("MultiModalTest", "Test scene for multi-modal support", sceneBuilder =>
                 {
                     sceneBuilder
@@ -355,11 +347,7 @@ public class MultiModalTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .Configure(settings =>
-                {
-                    settings.Planning.Enabled = false;
-                    settings.Summarization.Enabled = false;
-                })
+                
                 .AddScene("MultiModalTest", "Test scene for multi-modal support", sceneBuilder =>
                 {
                     sceneBuilder
@@ -410,11 +398,7 @@ public class MultiModalTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .Configure(settings =>
-                {
-                    settings.Planning.Enabled = false;
-                    settings.Summarization.Enabled = false;
-                })
+                
                 .AddScene("MultiModalTest", "Test scene for multi-modal support", sceneBuilder =>
                 {
                     sceneBuilder

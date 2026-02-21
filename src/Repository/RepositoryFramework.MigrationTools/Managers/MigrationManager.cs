@@ -61,12 +61,13 @@ namespace RepositoryFramework.Migration
             }
             return true;
         }
+        public bool FactoryNameAlreadySetup { get; set; }
 
         public void SetFactoryName(string name)
         {
             return;
         }
-
+        public bool OptionsAlreadySetup { get; set; }
         public void SetOptions(MigrationOptions<T, TKey> options)
         {
             _options = options;

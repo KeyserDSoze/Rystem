@@ -39,8 +39,6 @@ export interface SceneRequestSettings {
     maxDynamicScenes?: number;
     /** Unique key for this conversation (used by cache and memory). */
     conversationKey?: string;
-    /** Continuation token for resuming execution after client interaction. */
-    continuationToken?: string;
     /** Name of the scene to execute directly (used with SceneExecutionMode "Scene"). */
     sceneName?: string;
     /** Results from client-side tool executions. */
@@ -73,14 +71,14 @@ export interface PlayFrameworkRequest {
     settings?: SceneRequestSettings;
 
     /**
-     * Continuation token for resuming execution after client interaction.
-     * Convenience field — also available inside settings.continuationToken.
+     * Conversation key for resuming execution after client interaction.
+     * When present, server loads conversation state from cache.
      */
-    continuationToken?: string;
+    conversationKey?: string;
 
     /**
      * Results from client-side tool executions.
-     * Convenience field — also available inside settings.clientInteractionResults.
+     * Used to resume execution after AwaitingClient status.
      */
     clientInteractionResults?: ClientInteractionResult[];
 }

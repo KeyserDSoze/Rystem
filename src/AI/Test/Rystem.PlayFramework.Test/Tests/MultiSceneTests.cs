@@ -19,15 +19,9 @@ public sealed class MultiSceneTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .WithPlanning()
-                .WithSummarization(settings =>
+                .WithPlanning(settings =>
                 {
-                    settings.CharacterThreshold = 20_000;
-                })
-                .Configure(settings =>
-                {
-                    settings.Planning.Enabled = true; // Enable planning for multi-scene
-                    settings.Summarization.Enabled = false;
+                    settings.MaxRecursionDepth = 5;
                 })
                 .AddMainActor(@"You are an intelligent assistant that can:
 - Perform mathematical calculations
@@ -115,7 +109,7 @@ When a task requires multiple operations, plan the execution carefully.")
         var sceneFactory = ServiceProvider.GetRequiredService<ISceneFactory>();
 
         // Act
-        var sceneNames = sceneFactory.GetSceneNames().ToList();
+        var sceneNames = sceneFactory.SceneNames;
 
         // Assert
         Assert.Equal(4, sceneNames.Count);
@@ -132,21 +126,21 @@ When a task requires multiple operations, plan the execution carefully.")
         var sceneFactory = ServiceProvider.GetRequiredService<ISceneFactory>();
 
         // Act & Assert
-        var calculatorScene = sceneFactory.Create("Calculator");
+        var calculatorScene = sceneFactory.Scenes.First(x => x.Name == "Calculator");
         Assert.NotNull(calculatorScene);
-        Assert.Equal(4, calculatorScene.GetTools().Count());
+        Assert.Equal(4, calculatorScene.Tools.Count);
 
-        var weatherScene = sceneFactory.Create("Weather");
+        var weatherScene = sceneFactory.Scenes.First(x => x.Name == "Weather");
         Assert.NotNull(weatherScene);
-        Assert.Equal(3, weatherScene.GetTools().Count());
+        Assert.Equal(3, weatherScene.Tools.Count);
 
-        var dataAnalysisScene = sceneFactory.Create("DataAnalysis");
+        var dataAnalysisScene = sceneFactory.Scenes.First(x => x.Name == "DataAnalysis");
         Assert.NotNull(dataAnalysisScene);
-        Assert.Equal(4, dataAnalysisScene.GetTools().Count());
+        Assert.Equal(4, dataAnalysisScene.Tools.Count);
 
-        var reportScene = sceneFactory.Create("ReportGenerator");
+        var reportScene = sceneFactory.Scenes.First(x => x.Name == "ReportGenerator");
         Assert.NotNull(reportScene);
-        Assert.Equal(3, reportScene.GetTools().Count());
+        Assert.Equal(3, reportScene.Tools.Count);
     }
 
     [Fact]

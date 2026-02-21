@@ -1,3 +1,4 @@
+﻿using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -5,8 +6,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Api.Models;
-using System.Text.Json;
-using Stopwatch = System.Diagnostics.Stopwatch;
+using Rystem.PlayFramework.Helpers;
 
 namespace Rystem.PlayFramework.Api;
 
@@ -16,23 +16,24 @@ namespace Rystem.PlayFramework.Api;
 public static class WebApplicationExtensions
 {
     /// <summary>
-    /// Maps PlayFramework endpoints with default settings.
-    /// Creates two endpoints per factory:
-    /// - POST {basePath}/{factoryName} - Execute with step-by-step streaming (returns each PlayFramework step as SSE event)
-    /// - POST {basePath}/{factoryName}/streaming - Execute with token-level streaming (returns each text chunk as SSE event)
+    /// Maps PlayFramework endpoints.
+    /// - If factoryName is null: Creates generic endpoints accepting factoryName in route (/{factoryName}, /{factoryName}/streaming)
+    /// - If factoryName is specified: Creates factory-specific endpoints (/, /streaming) with factory-specific policies
     /// </summary>
     /// <param name="app">WebApplication instance.</param>
+    /// <param name="factoryName">Optional factory name. If null, endpoints accept factoryName as route parameter.</param>
     /// <param name="configure">Optional configuration for API settings.</param>
     /// <returns>RouteGroupBuilder for additional configuration.</returns>
     public static RouteGroupBuilder MapPlayFramework(
         this WebApplication app,
+        string? factoryName = null,
         Action<PlayFrameworkApiSettings>? configure = null)
     {
         var settings = new PlayFrameworkApiSettings();
         configure?.Invoke(settings);
 
         var group = app.MapGroup(settings.BasePath)
-            .WithTags("PlayFramework");
+            .WithTags(factoryName is null ? "PlayFramework" : $"PlayFramework-{factoryName}");
 
         if (settings.RequireAuthentication)
         {
@@ -45,167 +46,8 @@ public static class WebApplicationExtensions
             group.RequireAuthorization(policy);
         }
 
-        // Endpoint: Execute with step-by-step streaming (each step as SSE event)
-        group.MapPost("/{factoryName}", async (
-            [FromRoute] string factoryName,
-            [FromBody] PlayFrameworkRequest request,
-            [FromServices] IFactory<ISceneManager> sceneManagerFactory,
-            [FromServices] ILogger<ISceneManager> logger,
-            HttpContext httpContext,
-            CancellationToken cancellationToken) =>
-        {
-            try
-            {
-                // Get SceneManager for factory
-                var sceneManager = sceneManagerFactory.Create(factoryName);
-
-                // Extract metadata from HTTP context
-                var metadata = BuildMetadata(request.Metadata, httpContext, settings);
-
-                // Build multi-modal input
-                var input = BuildMultiModalInput(request);
-                var mergedSettings = MergeRequestIntoSettings(request);
-
-                // Set response headers for SSE
-                httpContext.Response.Headers.Append("Content-Type", "text/event-stream");
-                httpContext.Response.Headers.Append("Cache-Control", "no-cache");
-                httpContext.Response.Headers.Append("Connection", "keep-alive");
-
-                // Execute PlayFramework with step-by-step streaming
-                await foreach (var response in sceneManager.ExecuteAsync(input, metadata, mergedSettings, cancellationToken))
-                {
-                    // Serialize each step as SSE event
-                    var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                        WriteIndented = false
-                    });
-
-                    await httpContext.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
-                    await httpContext.Response.Body.FlushAsync(cancellationToken);
-                }
-
-                // Send completion marker
-                await httpContext.Response.WriteAsync("data: {\"status\":\"completed\"}\n\n", cancellationToken);
-                await httpContext.Response.Body.FlushAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "PlayFramework execution failed for factory '{FactoryName}'", factoryName);
-
-                // Send error event
-                var errorJson = JsonSerializer.Serialize(new
-                {
-                    status = "error",
-                    errorMessage = ex.Message
-                }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-
-                await httpContext.Response.WriteAsync($"data: {errorJson}\n\n", cancellationToken);
-                await httpContext.Response.Body.FlushAsync(cancellationToken);
-            }
-        })
-        .WithName("ExecutePlayFrameworkStepByStep")
-        .WithSummary("Execute PlayFramework scene (step-by-step streaming)")
-        .WithDescription("Executes a PlayFramework scene for any factory. Each step (Planning, Actor execution, etc.) is returned as a separate SSE event. Factory-specific policies are not applied in this endpoint. Use MapPlayFramework(factoryName) for factory-specific authorization.")
-        .Produces(200, contentType: "text/event-stream");
-
-        // Endpoint: Execute with token-level streaming (each text chunk as SSE event)
-        group.MapPost("/{factoryName}/streaming", async (
-            [FromRoute] string factoryName,
-            [FromBody] PlayFrameworkRequest request,
-            [FromServices] IFactory<ISceneManager> sceneManagerFactory,
-            [FromServices] ILogger<ISceneManager> logger,
-            HttpContext httpContext,
-            CancellationToken cancellationToken) =>
-        {
-            try
-            {
-                // Get SceneManager for factory
-                var sceneManager = sceneManagerFactory.Create(factoryName);
-
-                // Extract metadata from HTTP context
-                var metadata = BuildMetadata(request.Metadata, httpContext, settings);
-
-                // Build multi-modal input
-                var input = BuildMultiModalInput(request);
-                var mergedSettings = MergeRequestIntoSettings(request);
-
-                // Set response headers for SSE
-                httpContext.Response.Headers.Append("Content-Type", "text/event-stream");
-                httpContext.Response.Headers.Append("Cache-Control", "no-cache");
-                httpContext.Response.Headers.Append("Connection", "keep-alive");
-
-                // Execute PlayFramework with streaming
-                await foreach (var response in sceneManager.ExecuteAsync(input, metadata, mergedSettings, cancellationToken))
-                {
-                    // Serialize response as SSE event
-                    var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                        WriteIndented = false
-                    });
-
-                    await httpContext.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
-                    await httpContext.Response.Body.FlushAsync(cancellationToken);
-                }
-
-                // Send completion marker
-                await httpContext.Response.WriteAsync("data: {\"status\":\"completed\"}\n\n", cancellationToken);
-                await httpContext.Response.Body.FlushAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "PlayFramework streaming execution failed for factory '{FactoryName}'", factoryName);
-
-                // Send error event
-                var errorJson = JsonSerializer.Serialize(new
-                {
-                    status = "error",
-                    errorMessage = ex.Message
-                }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-
-                await httpContext.Response.WriteAsync($"data: {errorJson}\n\n", cancellationToken);
-                await httpContext.Response.Body.FlushAsync(cancellationToken);
-            }
-        })
-        .WithName("ExecutePlayFrameworkTokenStreaming")
-        .WithSummary("Execute PlayFramework scene (token-level streaming)")
-        .WithDescription("Executes a PlayFramework scene with token-level streaming for any factory. Each text chunk is returned as a separate SSE event. Factory-specific policies are not applied in this endpoint. Use MapPlayFramework(factoryName) for factory-specific authorization.")
-        .Produces(200, contentType: "text/event-stream");
-
-        return group;
-    }
-
-    /// <summary>
-    /// Maps PlayFramework endpoints for a specific factory with default settings.
-    /// Creates endpoints at:
-    /// - POST {basePath} - Execute with step-by-step streaming (returns each PlayFramework step as SSE event)
-    /// - POST {basePath}/streaming - Execute with token-level streaming (returns each text chunk as SSE event)
-    /// </summary>
-    public static RouteGroupBuilder MapPlayFramework(
-        this WebApplication app,
-        string factoryName,
-        Action<PlayFrameworkApiSettings>? configure = null)
-    {
-        var settings = new PlayFrameworkApiSettings();
-        configure?.Invoke(settings);
-
-        var group = app.MapGroup(settings.BasePath)
-            .WithTags($"PlayFramework-{factoryName}");
-
-        if (settings.RequireAuthentication)
-        {
-            group.RequireAuthorization();
-        }
-
-        // Apply global authorization policies
-        foreach (var policy in settings.AuthorizationPolicies)
-        {
-            group.RequireAuthorization(policy);
-        }
-
-        // Apply factory-specific policies
-        if (settings.FactoryPolicies.TryGetValue(factoryName, out var factoryPolicies))
+        // Apply factory-specific policies (only if factoryName is specified)
+        if (factoryName is not null && settings.FactoryPolicies.TryGetValue(factoryName, out var factoryPolicies))
         {
             foreach (var policy in factoryPolicies)
             {
@@ -213,138 +55,114 @@ public static class WebApplicationExtensions
             }
         }
 
-        // Endpoint: Execute with step-by-step streaming (each step as SSE event)
-        group.MapPost("", async (
+        // Determine route pattern and endpoint names
+        // When factoryName is null: root route (uses "default" factory internally)
+        // When factoryName is specified: static route with factory name (e.g., /default, /myBot)
+        var stepRoute = factoryName is null ? "" : $"/{factoryName}";
+        var streamingRoute = factoryName is null ? "/streaming" : $"/{factoryName}/streaming";
+        var stepEndpointName = factoryName is null ? "ExecutePlayFrameworkStepByStep" : $"Execute{factoryName}StepByStep";
+        var streamingEndpointName = factoryName is null ? "ExecutePlayFrameworkTokenStreaming" : $"Execute{factoryName}TokenStreaming";
+        var stepSummary = factoryName is null ? "Execute PlayFramework scene (step-by-step streaming)" : $"Execute {factoryName} scene (step-by-step streaming)";
+        var streamingSummary = factoryName is null ? "Execute PlayFramework scene (token-level streaming)" : $"Execute {factoryName} scene (token-level streaming)";
+
+        // Endpoint: Step-by-step streaming
+        group.MapPost(stepRoute, async (
             [FromBody] PlayFrameworkRequest request,
             [FromServices] IFactory<ISceneManager> sceneManagerFactory,
             [FromServices] ILogger<ISceneManager> logger,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
-            try
-            {
-                var sceneManager = sceneManagerFactory.Create(factoryName);
-                var metadata = BuildMetadata(request.Metadata, httpContext, settings);
-                var input = BuildMultiModalInput(request);
-                var mergedSettings = MergeRequestIntoSettings(request);
-
-                // Set response headers for SSE
-                httpContext.Response.Headers.Append("Content-Type", "text/event-stream");
-                httpContext.Response.Headers.Append("Cache-Control", "no-cache");
-                httpContext.Response.Headers.Append("Connection", "keep-alive");
-
-                // Execute PlayFramework with step-by-step streaming
-                await foreach (var response in sceneManager.ExecuteAsync(input, metadata, mergedSettings, cancellationToken))
-                {
-                    // Serialize each step as SSE event
-                    var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                        WriteIndented = false
-                    });
-
-                    await httpContext.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
-                    await httpContext.Response.Body.FlushAsync(cancellationToken);
-                }
-
-                // Send completion marker
-                await httpContext.Response.WriteAsync("data: {\"status\":\"completed\"}\n\n", cancellationToken);
-                await httpContext.Response.Body.FlushAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "PlayFramework execution failed for factory '{FactoryName}'", factoryName);
-
-                // Send error event
-                var errorJson = JsonSerializer.Serialize(new
-                {
-                    status = "error",
-                    errorMessage = ex.Message
-                }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-
-                await httpContext.Response.WriteAsync($"data: {errorJson}\n\n", cancellationToken);
-                await httpContext.Response.Body.FlushAsync(cancellationToken);
-            }
+            // Get factory from closure or route parameter
+            var routeFactory = httpContext.GetRouteValue("factoryName")?.ToString();
+            var targetFactory = factoryName ?? routeFactory ?? "default";
+            await ExecutePlayFrameworkAsync(targetFactory, request, sceneManagerFactory, logger, httpContext, settings, cancellationToken);
         })
-        .WithName($"Execute{factoryName}StepByStep")
-        .WithSummary($"Execute {factoryName} scene (step-by-step streaming)")
-        .WithDescription($"Executes {factoryName} scene with step-by-step streaming. Each step (Planning, Actor execution, etc.) is returned as a separate SSE event.");
+        .WithName(stepEndpointName)
+        .WithSummary(stepSummary)
+        .Produces(200, contentType: "text/event-stream");
 
-        // Endpoint: Execute with streaming
-        group.MapPost("/streaming", async (
+        // Endpoint: Token-level streaming
+        group.MapPost(streamingRoute, async (
             [FromBody] PlayFrameworkRequest request,
             [FromServices] IFactory<ISceneManager> sceneManagerFactory,
             [FromServices] ILogger<ISceneManager> logger,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
-            try
-            {
-                var sceneManager = sceneManagerFactory.Create(factoryName);
-                var metadata = BuildMetadata(request.Metadata, httpContext, settings);
-                var input = BuildMultiModalInput(request);
-                var mergedSettings = MergeRequestIntoSettings(request);
+            // Get factory from closure or route parameter
+            var routeFactory = httpContext.GetRouteValue("factoryName")?.ToString();
+            var targetFactory = factoryName ?? routeFactory ?? "default";
 
-                httpContext.Response.Headers.Append("Content-Type", "text/event-stream");
-                httpContext.Response.Headers.Append("Cache-Control", "no-cache");
-                httpContext.Response.Headers.Append("Connection", "keep-alive");
+            // Force enableStreaming for token-level streaming
+            request.Settings ??= new SceneRequestSettings();
+            request.Settings.EnableStreaming = true;
 
-                await foreach (var response in sceneManager.ExecuteAsync(input, metadata, mergedSettings, cancellationToken))
-                {
-                    var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                        WriteIndented = false
-                    });
-
-                    await httpContext.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
-                    await httpContext.Response.Body.FlushAsync(cancellationToken);
-                }
-
-                await httpContext.Response.WriteAsync("data: {\"status\":\"completed\"}\n\n", cancellationToken);
-                await httpContext.Response.Body.FlushAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "PlayFramework streaming execution failed for factory '{FactoryName}'", factoryName);
-
-                var errorJson = JsonSerializer.Serialize(new
-                {
-                    status = "error",
-                    errorMessage = ex.Message
-                }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-
-                await httpContext.Response.WriteAsync($"data: {errorJson}\n\n", cancellationToken);
-                await httpContext.Response.Body.FlushAsync(cancellationToken);
-            }
+            await ExecutePlayFrameworkAsync(targetFactory, request, sceneManagerFactory, logger, httpContext, settings, cancellationToken);
         })
-        .WithName($"Execute{factoryName}TokenStreaming")
-        .WithSummary($"Execute {factoryName} scene (token-level streaming)")
-        .WithDescription($"Executes {factoryName} scene with token-level streaming. Each text chunk is returned as a separate SSE event.");
+        .WithName(streamingEndpointName)
+        .WithSummary(streamingSummary)
+        .Produces(200, contentType: "text/event-stream");
 
         return group;
     }
 
-    private static MultiModalInput BuildMultiModalInput(PlayFrameworkRequest request)
+    /// <summary>
+    /// Core execution logic shared by all endpoints.
+    /// Handles SSE streaming, error handling, and response serialization.
+    /// </summary>
+    private static async Task ExecutePlayFrameworkAsync(
+        string factoryName,
+        PlayFrameworkRequest request,
+        IFactory<ISceneManager> sceneManagerFactory,
+        ILogger<ISceneManager> logger,
+        HttpContext httpContext,
+        PlayFrameworkApiSettings settings,
+        CancellationToken cancellationToken)
     {
-        // Simple text message
-        if (request.Contents == null || request.Contents.Count == 0)
+        try
         {
-            return MultiModalInput.FromText(request.Message ?? string.Empty);
+            // Get SceneManager for factory
+            var sceneManager = sceneManagerFactory.Create(factoryName);
+
+            // Extract metadata from HTTP context
+            var metadata = BuildMetadata(request.Metadata, httpContext, settings);
+
+            // Convert request to MultiModalInput and merge settings
+            var input = request.ToMultiModalInput();
+            var mergedSettings = request.GetMergedSettings();
+
+            // Set response headers for SSE
+            httpContext.Response.Headers.Append("Content-Type", "text/event-stream");
+            httpContext.Response.Headers.Append("Cache-Control", "no-cache");
+            httpContext.Response.Headers.Append("Connection", "keep-alive");
+
+            // Execute PlayFramework with streaming
+            await foreach (var response in sceneManager.ExecuteAsync(input, metadata, mergedSettings, cancellationToken))
+            {
+                // Serialize response as SSE event with camelCase for properties and enums
+                var json = JsonSerializer.Serialize(response, JsonHelper.JsonSerializerOptions);
+
+                await httpContext.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
+                await httpContext.Response.Body.FlushAsync(cancellationToken);
+            }
+
+            // No need to send explicit completion marker - SceneManager always sends Completed as final event
         }
-
-        // Multi-modal input
-        var input = new MultiModalInput
+        catch (Exception ex)
         {
-            Text = request.Message
-        };
+            logger.LogError(ex, "PlayFramework execution failed for factory '{FactoryName}'", factoryName);
 
-        foreach (var contentItem in request.Contents)
-        {
-            input.Contents.Add(contentItem.ToAIContent());
+            // Send error event with camelCase
+            var errorJson = JsonSerializer.Serialize(new
+            {
+                status = "error",
+                errorMessage = ex.Message
+            }, JsonHelper.JsonSerializerOptions);
+
+            await httpContext.Response.WriteAsync($"data: {errorJson}\n\n", cancellationToken);
+            await httpContext.Response.Body.FlushAsync(cancellationToken);
         }
-
-        return input;
     }
 
     private static Dictionary<string, object> BuildMetadata(
@@ -389,29 +207,5 @@ public static class WebApplicationExtensions
         }
 
         return metadata;
-    }
-
-    /// <summary>
-    /// Merges top-level ContinuationToken and ClientInteractionResults from PlayFrameworkRequest
-    /// into SceneRequestSettings so SceneManager can process them.
-    /// </summary>
-    private static SceneRequestSettings MergeRequestIntoSettings(PlayFrameworkRequest request)
-    {
-        var requestSettings = request.Settings ?? new SceneRequestSettings();
-
-        // Forward top-level continuation token (HTTP convenience) into settings if not already set
-        if (!string.IsNullOrEmpty(request.ContinuationToken) && string.IsNullOrEmpty(requestSettings.ContinuationToken))
-        {
-            requestSettings.ContinuationToken = request.ContinuationToken;
-        }
-
-        // Forward top-level client interaction results into settings if not already set
-        if (request.ClientInteractionResults != null && request.ClientInteractionResults.Count > 0
-            && (requestSettings.ClientInteractionResults == null || requestSettings.ClientInteractionResults.Count == 0))
-        {
-            requestSettings.ClientInteractionResults = request.ClientInteractionResults;
-        }
-
-        return requestSettings;
     }
 }

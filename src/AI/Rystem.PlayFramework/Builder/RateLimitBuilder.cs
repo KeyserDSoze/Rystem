@@ -9,7 +9,7 @@ public sealed class RateLimitBuilder
 {
     private readonly IServiceCollection _services;
     private readonly AnyOf<string?, Enum>? _factoryName;
-    private RateLimitSettings _settings = new() { Enabled = true };
+    private readonly RateLimitSettings _settings = new() { Enabled = true };
 
     internal RateLimitBuilder(IServiceCollection services, AnyOf<string?, Enum>? factoryName)
     {

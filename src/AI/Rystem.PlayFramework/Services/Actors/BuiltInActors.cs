@@ -3,6 +3,32 @@
 /// <summary>
 /// Simple actor that returns a static message.
 /// </summary>
+internal sealed class ServiceActor : IActor
+{
+    private readonly Type _actorType;
+    private readonly bool _cacheForSubsequentCalls;
+
+    public ServiceActor(Type actorType, bool cacheForSubsequentCalls)
+    {
+        _actorType = actorType;
+        _cacheForSubsequentCalls = cacheForSubsequentCalls;
+    }
+
+    public Task<ActorResponse> PlayAsync(SceneContext context, CancellationToken cancellationToken = default)
+    {
+        var actor = context.ServiceProvider.GetService(_actorType);
+        if (actor is IActor actorable)
+            return actorable.PlayAsync(context, cancellationToken);
+        return Task.FromResult(new ActorResponse
+        {
+            Message = string.Empty,
+            CacheForSubsequentCalls = _cacheForSubsequentCalls
+        });
+    }
+}
+/// <summary>
+/// Simple actor that returns a static message.
+/// </summary>
 internal sealed class StaticActor : IActor
 {
     private readonly string _message;

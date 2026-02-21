@@ -9,6 +9,7 @@ namespace RepositoryFramework
         private readonly IFactory<IQueryPattern<T, TKey>> _queryFactory;
         private readonly IRepositoryBusinessManager<T, TKey>? _businessManager;
         private readonly IRepositoryFilterTranslator<T, TKey>? _translator;
+        public bool FactoryNameAlreadySetup { get; set; }
         public void SetFactoryName(string name)
         {
             _query = _queryFactory.Create(name);

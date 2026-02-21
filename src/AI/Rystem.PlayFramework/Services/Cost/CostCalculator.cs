@@ -24,22 +24,39 @@ internal sealed class CostCalculator : ICostCalculator
             {
                 Usage = usage,
                 Currency = Currency,
-                ModelId = usage.ModelId
+                ModelId = usage.ModelId,
+                ClientName = usage.ClientName
             };
         }
 
-        // Try to find model-specific costs
-        ModelCostSettings? modelCosts = null;
-        if (!string.IsNullOrEmpty(usage.ModelId) && 
-            _settings.ModelCosts.TryGetValue(usage.ModelId, out var costs))
+        // Priority: ClientCosts > ModelCosts > Default
+        // 1. Try client-specific costs first (highest priority - regional/contract pricing)
+        ClientCostSettings? clientCosts = null;
+        if (!string.IsNullOrEmpty(usage.ClientName) &&
+            _settings.ClientCosts.TryGetValue(usage.ClientName, out var cCosts))
         {
-            modelCosts = costs;
+            clientCosts = cCosts;
+        }
+
+        // 2. Try model-specific costs (fallback)
+        ModelCostSettings? modelCosts = null;
+        if (clientCosts is null && !string.IsNullOrEmpty(usage.ModelId) && 
+            _settings.ModelCosts.TryGetValue(usage.ModelId, out var mCosts))
+        {
+            modelCosts = mCosts;
         }
 
         // Calculate costs per token type
-        var inputCostPer1K = modelCosts?.InputTokenCostPer1K ?? _settings.InputTokenCostPer1K;
-        var outputCostPer1K = modelCosts?.OutputTokenCostPer1K ?? _settings.OutputTokenCostPer1K;
-        var cachedCostPer1K = modelCosts?.CachedInputTokenCostPer1K ?? _settings.CachedInputTokenCostPer1K;
+        // Priority: client > model > default
+        var inputCostPer1K = clientCosts?.InputTokenCostPer1K 
+            ?? modelCosts?.InputTokenCostPer1K 
+            ?? _settings.InputTokenCostPer1K;
+        var outputCostPer1K = clientCosts?.OutputTokenCostPer1K 
+            ?? modelCosts?.OutputTokenCostPer1K 
+            ?? _settings.OutputTokenCostPer1K;
+        var cachedCostPer1K = clientCosts?.CachedInputTokenCostPer1K 
+            ?? modelCosts?.CachedInputTokenCostPer1K 
+            ?? _settings.CachedInputTokenCostPer1K;
 
         var inputCost = CalculateCost(usage.InputTokens, inputCostPer1K);
         var outputCost = CalculateCost(usage.OutputTokens, outputCostPer1K);
@@ -52,6 +69,7 @@ internal sealed class CostCalculator : ICostCalculator
             CachedInputCost = cachedCost,
             Currency = Currency,
             ModelId = usage.ModelId,
+            ClientName = usage.ClientName,
             Usage = usage
         };
     }
@@ -59,6 +77,13 @@ internal sealed class CostCalculator : ICostCalculator
     public CostCalculation Calculate(TokenUsage usage, string modelId)
     {
         usage.ModelId = modelId;
+        return Calculate(usage);
+    }
+
+    public CostCalculation Calculate(TokenUsage usage, string? modelId, string? clientName)
+    {
+        usage.ModelId = modelId;
+        usage.ClientName = clientName;
         return Calculate(usage);
     }
 

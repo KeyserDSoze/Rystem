@@ -9,6 +9,7 @@ namespace Rystem.Content.Infrastructure.Storage
 {
     internal sealed class FileStorageRepository : IContentRepository, IServiceWithFactoryWithOptions<FileServiceClientWrapper>
     {
+        public bool OptionsAlreadySetup { get; set; }
         public void SetOptions(FileServiceClientWrapper options)
         {
             Options = options;
@@ -214,6 +215,7 @@ namespace Rystem.Content.Infrastructure.Storage
             }
             return true;
         }
+        public bool FactoryNameAlreadySetup { get; set; }
         private string _factoryName;
         public void SetFactoryName(string name)
         {

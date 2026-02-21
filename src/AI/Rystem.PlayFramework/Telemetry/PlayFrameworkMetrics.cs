@@ -13,53 +13,53 @@ public static class PlayFrameworkMetrics
     /// Meter name for PlayFramework metrics.
     /// </summary>
     public const string MeterName = "Rystem.PlayFramework";
-    
+
     private static readonly Meter _meter = new(MeterName, PlayFrameworkActivitySource.Version);
-    
+
     // ========== COUNTERS ==========
-    
+
     /// <summary>
     /// Total number of scene executions.
     /// </summary>
     private static readonly Counter<long> _sceneExecutionCounter = _meter.CreateCounter<long>(
         "playframework.scene.executions",
         description: "Total number of scene executions");
-    
+
     /// <summary>
     /// Total number of tool calls.
     /// </summary>
     private static readonly Counter<long> _toolCallCounter = _meter.CreateCounter<long>(
         "playframework.tool.calls",
         description: "Total number of tool calls");
-    
+
     /// <summary>
     /// Total number of cache hits.
     /// </summary>
     private static readonly Counter<long> _cacheHitCounter = _meter.CreateCounter<long>(
         "playframework.cache.hits",
         description: "Number of cache hits");
-    
+
     /// <summary>
     /// Total number of cache misses.
     /// </summary>
     private static readonly Counter<long> _cacheMissCounter = _meter.CreateCounter<long>(
         "playframework.cache.misses",
         description: "Number of cache misses");
-    
+
     /// <summary>
     /// Total number of LLM calls.
     /// </summary>
     private static readonly Counter<long> _llmCallCounter = _meter.CreateCounter<long>(
         "playframework.llm.calls",
         description: "Total number of LLM API calls");
-    
+
     /// <summary>
     /// Total number of tokens consumed.
     /// </summary>
     private static readonly Counter<long> _tokenCounter = _meter.CreateCounter<long>(
         "playframework.llm.tokens.total",
         description: "Total tokens consumed (prompt + completion)");
-    
+
     /// <summary>
     /// Total number of MCP tool executions.
     /// </summary>
@@ -89,7 +89,7 @@ public static class PlayFrameworkMetrics
         description: "Total number of web searches performed");
 
     // ========== HISTOGRAMS ==========
-    
+
     /// <summary>
     /// Scene execution duration distribution.
     /// </summary>
@@ -97,7 +97,7 @@ public static class PlayFrameworkMetrics
         "playframework.scene.duration",
         unit: "ms",
         description: "Scene execution duration in milliseconds");
-    
+
     /// <summary>
     /// Tool execution duration distribution.
     /// </summary>
@@ -105,7 +105,7 @@ public static class PlayFrameworkMetrics
         "playframework.tool.duration",
         unit: "ms",
         description: "Tool execution duration in milliseconds");
-    
+
     /// <summary>
     /// LLM call duration distribution.
     /// </summary>
@@ -113,14 +113,14 @@ public static class PlayFrameworkMetrics
         "playframework.llm.duration",
         unit: "ms",
         description: "LLM API call duration in milliseconds");
-    
+
     /// <summary>
     /// Token usage per request distribution.
     /// </summary>
     private static readonly Histogram<long> _tokenUsage = _meter.CreateHistogram<long>(
         "playframework.llm.tokens.per_request",
         description: "LLM token usage per request");
-    
+
     /// <summary>
     /// Cost per scene execution distribution.
     /// </summary>
@@ -128,7 +128,7 @@ public static class PlayFrameworkMetrics
         "playframework.cost.per_execution",
         unit: "USD",
         description: "Cost per scene execution in USD");
-    
+
     /// <summary>
     /// Cache access duration distribution.
     /// </summary>
@@ -207,7 +207,7 @@ public static class PlayFrameworkMetrics
         description: "Number of currently active tool calls");
 
     // ========== PUBLIC API ==========
-    
+
     /// <summary>
     /// Records a scene execution with all relevant metrics.
     /// </summary>
@@ -225,22 +225,22 @@ public static class PlayFrameworkMetrics
             { "scene.mode", executionMode },
             { "success", success }
         };
-        
+
         _sceneExecutionCounter.Add(1, tags);
         _sceneExecutionDuration.Record(durationMs, tags);
-        
+
         if (tokenCount > 0)
         {
             _tokenCounter.Add(tokenCount, tags);
             _tokenUsage.Record(tokenCount, tags);
         }
-        
+
         if (cost > 0)
         {
             _costPerExecution.Record(cost, tags);
         }
     }
-    
+
     /// <summary>
     /// Records a tool execution.
     /// </summary>
@@ -256,11 +256,11 @@ public static class PlayFrameworkMetrics
             { "tool.type", toolType },
             { "success", success }
         };
-        
+
         _toolCallCounter.Add(1, tags);
         _toolExecutionDuration.Record(durationMs, tags);
     }
-    
+
     /// <summary>
     /// Records a cache access (hit or miss).
     /// </summary>
@@ -270,15 +270,15 @@ public static class PlayFrameworkMetrics
         double durationMs)
     {
         var tags = new TagList { { "cache.key", cacheKey } };
-        
+
         if (hit)
             _cacheHitCounter.Add(1, tags);
         else
             _cacheMissCounter.Add(1, tags);
-        
+
         _cacheAccessDuration.Record(durationMs, tags);
     }
-    
+
     /// <summary>
     /// Records an LLM API call.
     /// </summary>
@@ -296,10 +296,10 @@ public static class PlayFrameworkMetrics
             { "llm.model", model },
             { "success", success }
         };
-        
+
         _llmCallCounter.Add(1, tags);
         _llmCallDuration.Record(durationMs, tags);
-        
+
         var totalTokens = promptTokens + completionTokens;
         if (totalTokens > 0)
         {
@@ -307,7 +307,7 @@ public static class PlayFrameworkMetrics
             _tokenUsage.Record(totalTokens, tags);
         }
     }
-    
+
     /// <summary>
     /// Records an MCP tool execution.
     /// </summary>

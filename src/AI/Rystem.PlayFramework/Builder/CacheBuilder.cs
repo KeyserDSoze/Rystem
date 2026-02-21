@@ -1,7 +1,4 @@
-﻿using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace Rystem.PlayFramework;
 
@@ -40,10 +37,31 @@ public sealed class CacheBuilder
     /// <summary>
     /// Uses custom cache implementation.
     /// </summary>
-    public CacheBuilder WithCustomCache<TCache>() where TCache : class, ICacheService
+    public CacheBuilder WithCustomCache<TCache>() where TCache : class, IPlayFrameworkCache
     {
-        _parent.Services.AddScoped<ICacheService, TCache>();
+        _parent.Services.AddFactory<IPlayFrameworkCache, TCache>(_parent.Name, ServiceLifetime.Transient);
         _parent.HasCustomCache = true;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the default cache expiration duration.
+    /// This is a server-side setting and cannot be overridden by clients.
+    /// </summary>
+    /// <param name="expiration">Cache expiration duration.</param>
+    public CacheBuilder WithExpiration(TimeSpan expiration)
+    {
+        _parent.Settings.Cache.DefaultExpirationSeconds = (int)expiration.TotalSeconds;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the cache key prefix.
+    /// </summary>
+    /// <param name="prefix">Key prefix for all cache entries.</param>
+    public CacheBuilder WithKeyPrefix(string prefix)
+    {
+        _parent.Settings.Cache.KeyPrefix = prefix;
         return this;
     }
 

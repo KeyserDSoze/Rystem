@@ -1,4 +1,4 @@
-namespace Rystem.PlayFramework.Configuration;
+﻿namespace Rystem.PlayFramework.Configuration;
 
 /// <summary>
 /// Definition of a client-side tool registered via AddTool().
@@ -25,5 +25,10 @@ public sealed class ClientInteractionDefinition
     /// JSON Schema of arguments (null for tools without arguments).
     /// Sent to LLM so it knows exact parameter structure.
     /// </summary>
-    public string? ArgumentsSchema { get; init; }
+    public string? JsonSchema { get; init; }
+    /// <summary>
+    /// JSON Schema of arguments (null for tools without arguments).
+    /// Sent to LLM so it knows exact parameter structure.
+    /// </summary>
+    public Type? ArgumentType { get; init; }
 }

@@ -1,7 +1,7 @@
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
+﻿using System.Text.Json;
+using System.Text.Json.Schema;
+using System.Text.Json.Serialization.Metadata;
+using Rystem.PlayFramework.Helpers;
 
 namespace Rystem.PlayFramework.Configuration;
 
@@ -15,7 +15,8 @@ public sealed class ClientInteractionBuilder
 
     /// <summary>
     /// Registers a tool with strongly-typed arguments.
-    /// JSON Schema is automatically generated from type T and sent to LLM.
+    /// JSON Schema is automatically generated from type T using System.Text.Json.Schema.
+    /// Supports [Description], [Required], and other standard attributes.
     /// </summary>
     /// <typeparam name="T">Argument model type (must be a class)</typeparam>
     /// <param name="toolName">Unique tool name (e.g., "CapturePhoto")</param>
@@ -32,15 +33,15 @@ public sealed class ClientInteractionBuilder
 
         if (timeoutSeconds <= 0)
             throw new ArgumentException("Timeout must be positive", nameof(timeoutSeconds));
-
-        var jsonSchema = GenerateJsonSchema<T>();
-
+        var schemaNode = JsonSchemaExporter.GetJsonSchemaAsNode(JsonHelper.JsonSerializerOptions, typeof(T));
+        var jsonSchema = schemaNode.ToJsonString(JsonHelper.JsonSerializerOptions);
         _definitions.Add(new ClientInteractionDefinition
         {
-            ToolName = toolName,
+            ToolName = ToolNameNormalizer.Normalize(toolName),
             Description = description,
             TimeoutSeconds = timeoutSeconds,
-            ArgumentsSchema = jsonSchema
+            ArgumentType = typeof(T),
+            JsonSchema = jsonSchema
         });
 
         return this;
@@ -67,7 +68,7 @@ public sealed class ClientInteractionBuilder
 
         _definitions.Add(new ClientInteractionDefinition
         {
-            ToolName = toolName,
+            ToolName = ToolNameNormalizer.Normalize(toolName),
             Description = description,
             TimeoutSeconds = timeoutSeconds
         });
@@ -76,92 +77,36 @@ public sealed class ClientInteractionBuilder
     }
 
     /// <summary>
-    /// Generates JSON Schema from type T using System.Text.Json introspection.
-    /// Supports [Description] and [Range] attributes from System.ComponentModel.
+    /// Registers a simple tool without arguments.
+    /// Use this for tools that don't need parameters (e.g., "PlaySound", "Vibrate").
     /// </summary>
-    private static string GenerateJsonSchema<T>() where T : class
+    /// <param name="toolName">Unique tool name</param>
+    /// <param name="jsonSchema">Json schema for input</param>
+    /// <param name="description">Human-readable description</param>
+    /// <param name="timeoutSeconds">Maximum execution time</param>
+    /// <returns>Builder for fluent configuration</returns>
+    public ClientInteractionBuilder AddTool(
+        string toolName,
+        string jsonSchema,
+        string? description = null,
+        int timeoutSeconds = 30)
     {
-        var type = typeof(T);
-        var schema = new JsonObject
+        if (string.IsNullOrWhiteSpace(toolName))
+            throw new ArgumentException("Tool name cannot be empty", nameof(toolName));
+
+        if (timeoutSeconds <= 0)
+            throw new ArgumentException("Timeout must be positive", nameof(timeoutSeconds));
+
+        _definitions.Add(new ClientInteractionDefinition
         {
-            ["type"] = "object",
-            ["properties"] = new JsonObject(),
-            ["required"] = new JsonArray()
-        };
+            ToolName = ToolNameNormalizer.Normalize(toolName),
+            Description = description,
+            TimeoutSeconds = timeoutSeconds,
+            JsonSchema = jsonSchema
+        });
 
-        var properties = (JsonObject)schema["properties"]!;
-        var required = (JsonArray)schema["required"]!;
-
-        foreach (var prop in type.GetProperties())
-        {
-            var propSchema = new JsonObject { ["type"] = GetJsonType(prop.PropertyType) };
-
-            // Add description from [Description] attribute
-            var descAttr = prop.GetCustomAttributes(typeof(DescriptionAttribute), false)
-                .FirstOrDefault() as DescriptionAttribute;
-            if (descAttr != null)
-                propSchema["description"] = descAttr.Description;
-
-            // Add range constraints from [Range] attribute
-            var rangeAttr = prop.GetCustomAttributes(typeof(RangeAttribute), false)
-                .FirstOrDefault() as RangeAttribute;
-            if (rangeAttr != null)
-            {
-                if (rangeAttr.Minimum != null)
-                    propSchema["minimum"] = Convert.ToInt32(rangeAttr.Minimum);
-                if (rangeAttr.Maximum != null)
-                    propSchema["maximum"] = Convert.ToInt32(rangeAttr.Maximum);
-            }
-
-            // Add default value if property has init accessor with default
-            var defaultValue = prop.GetValue(Activator.CreateInstance(type));
-            if (defaultValue != null)
-                propSchema["default"] = JsonValue.Create(defaultValue);
-
-            properties[ToCamelCase(prop.Name)] = propSchema;
-
-            // Mark as required if not nullable
-            if (!IsNullable(prop.PropertyType))
-                required.Add(ToCamelCase(prop.Name));
-        }
-
-        return schema.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+        return this;
     }
-
-    private static string GetJsonType(Type type)
-    {
-        var underlyingType = Nullable.GetUnderlyingType(type) ?? type;
-
-        if (underlyingType == typeof(string))
-            return "string";
-        if (underlyingType == typeof(int) || underlyingType == typeof(long) ||
-            underlyingType == typeof(short) || underlyingType == typeof(byte))
-            return "integer";
-        if (underlyingType == typeof(float) || underlyingType == typeof(double) ||
-            underlyingType == typeof(decimal))
-            return "number";
-        if (underlyingType == typeof(bool))
-            return "boolean";
-        if (underlyingType.IsArray || (underlyingType.IsGenericType &&
-            underlyingType.GetGenericTypeDefinition() == typeof(List<>)))
-            return "array";
-
-        return "object";
-    }
-
-    private static bool IsNullable(Type type)
-    {
-        if (!type.IsValueType) return true; // Reference types are nullable
-        return Nullable.GetUnderlyingType(type) != null; // Nullable<T>
-    }
-
-    private static string ToCamelCase(string str)
-    {
-        if (string.IsNullOrEmpty(str) || char.IsLower(str[0]))
-            return str;
-        return char.ToLowerInvariant(str[0]) + str[1..];
-    }
-
     /// <summary>
     /// Builds the final list of client interaction definitions.
     /// Called internally by SceneBuilder.

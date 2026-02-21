@@ -5,12 +5,12 @@
 /// </summary>
 internal static class ActorFactory
 {
-    public static IActor Create(ActorConfiguration config, IServiceProvider serviceProvider)
+    public static IActor Create(ActorConfiguration config)
     {
         // Custom actor type
         if (config.ActorType != null)
         {
-            return (IActor)serviceProvider.GetService(config.ActorType)!;
+            return new ServiceActor(config.ActorType, config.CacheForSubsequentCalls)!;
         }
 
         // Static message

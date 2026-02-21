@@ -25,7 +25,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
             else
                 return CastExtensions.Cast<TKey>(settings.PartitionKeyFunction.Invoke(entity))!;
         }
-
+        public bool FactoryNameAlreadySetup { get; set; }
         public void SetFactoryName(string name)
         {
         }

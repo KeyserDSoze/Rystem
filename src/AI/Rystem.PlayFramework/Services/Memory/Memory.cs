@@ -1,7 +1,8 @@
-﻿using Microsoft.Extensions.AI;
+﻿using System.Text.Json;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Text.Json;
+using Rystem.PlayFramework.Helpers;
 
 namespace Rystem.PlayFramework;
 
@@ -27,7 +28,7 @@ internal sealed class Memory : IMemory
         _storageFactory = storageFactory;
         _logger = logger;
     }
-
+    public bool FactoryNameAlreadySetup { get; set; }
     public void SetFactoryName(AnyOf<string?, Enum>? name)
     {
         _factoryName = name?.ToString() ?? "default";
@@ -63,7 +64,7 @@ internal sealed class Memory : IMemory
         {
             var previousContext = $@"Previous memory (Conversation #{previousMemory.ConversationCount}):
 Summary: {previousMemory.Summary}
-Important Facts: {JsonSerializer.Serialize(previousMemory.ImportantFacts, new JsonSerializerOptions { WriteIndented = true })}
+Important Facts: {JsonSerializer.Serialize(previousMemory.ImportantFacts, JsonHelper.JsonSerializerOptions)}
 Last Updated: {previousMemory.LastUpdated:yyyy-MM-dd HH:mm:ss} UTC";
 
             promptMessages.Add(new ChatMessage(ChatRole.System, previousContext));

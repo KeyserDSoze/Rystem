@@ -72,15 +72,10 @@ public sealed class SceneRequestSettings
     /// <summary>
     /// Unique key for this conversation.
     /// Used by cache and memory to store and retrieve conversation-specific data.
+    /// When resuming after AwaitingClient, pass this key along with ClientInteractionResults.
     /// If not provided, a new GUID will be generated (resulting in no cache/memory reuse).
     /// </summary>
     public string? ConversationKey { get; set; }
-
-    /// <summary>
-    /// Continuation token for resuming execution after client interaction.
-    /// When present with ClientInteractionResults, server loads state from distributed cache.
-    /// </summary>
-    public string? ContinuationToken { get; set; }
 
     /// <summary>
     /// Name of the scene to execute directly (used with SceneExecutionMode.Scene).
