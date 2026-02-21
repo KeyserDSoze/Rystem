@@ -18,6 +18,7 @@ namespace RepositoryFramework.Cache
         {
             _query = services.First();
         }
+        public bool FactoryNameAlreadySetup { get; set; }
         public void SetFactoryName(string name)
         {
             if (QueryFactory != null && QueryFactory.Exists(name))

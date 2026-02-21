@@ -33,13 +33,15 @@ public sealed class ClientInteractionBuilder
 
         if (timeoutSeconds <= 0)
             throw new ArgumentException("Timeout must be positive", nameof(timeoutSeconds));
-
+        var schemaNode = JsonSchemaExporter.GetJsonSchemaAsNode(JsonHelper.JsonSerializerOptions, typeof(T));
+        var jsonSchema = schemaNode.ToJsonString(JsonHelper.JsonSerializerOptions);
         _definitions.Add(new ClientInteractionDefinition
         {
             ToolName = ToolNameNormalizer.Normalize(toolName),
             Description = description,
             TimeoutSeconds = timeoutSeconds,
             ArgumentType = typeof(T),
+            JsonSchema = jsonSchema
         });
 
         return this;

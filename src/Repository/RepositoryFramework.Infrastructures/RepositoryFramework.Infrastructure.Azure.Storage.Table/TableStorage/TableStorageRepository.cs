@@ -10,10 +10,12 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
     internal sealed class TableStorageRepository<T, TKey> : IRepository<T, TKey>, IServiceWithFactoryWithOptions<TableClientWrapper<T, TKey>>
         where TKey : notnull
     {
+        public bool OptionsAlreadySetup { get; set; }
         public void SetOptions(TableClientWrapper<T, TKey> options)
         {
             _options = options;
         }
+        public bool FactoryNameAlreadySetup { get; set; }
         public void SetFactoryName(string name)
         {
             if (_keyReaderFactory != null)

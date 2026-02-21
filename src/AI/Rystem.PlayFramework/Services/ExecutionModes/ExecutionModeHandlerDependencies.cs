@@ -23,7 +23,7 @@ internal sealed class ExecutionModeHandlerDependencies : IFactoryName
     {
         _serviceProvider = serviceProvider;
     }
-
+    public bool FactoryNameAlreadySetup { get; set; }
     public void SetFactoryName(AnyOf<string?, Enum>? name)
     {
         FactoryName = name?.ToString() ?? "default";

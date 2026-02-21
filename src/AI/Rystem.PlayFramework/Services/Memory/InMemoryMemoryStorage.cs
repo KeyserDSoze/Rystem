@@ -23,7 +23,7 @@ internal sealed class InMemoryMemoryStorage : IMemoryStorage
         _logger = logger;
         _settingsFactory = settingsFactory;
     }
-
+    public bool FactoryNameAlreadySetup { get; set; }
     public void SetFactoryName(AnyOf<string?, Enum>? name)
     {
         _factoryName = name?.ToString() ?? "default";

@@ -8,6 +8,7 @@ namespace Rystem.Content.Infrastructure.Storage
 {
     internal sealed class BlobStorageRepository : IContentRepository, IServiceWithFactoryWithOptions<BlobServiceClientWrapper>
     {
+        public bool OptionsAlreadySetup { get; set; }
         public void SetOptions(BlobServiceClientWrapper options)
         {
             Options = options;
@@ -172,6 +173,7 @@ namespace Rystem.Content.Infrastructure.Storage
             }
             return true;
         }
+        public bool FactoryNameAlreadySetup { get; set; }
         private string _factoryName;
         public void SetFactoryName(string name)
         {

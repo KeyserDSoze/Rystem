@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
+using Rystem.PlayFramework.Domain.Wrappers;
 using Rystem.PlayFramework.Helpers;
 
 namespace Rystem.PlayFramework;
@@ -39,21 +40,7 @@ internal sealed class ServiceMethodTool : ISceneTool
     public string Description { get; }
     public AITool ToolDescription { get; }
 
-    /// <summary>
-    /// Lazy service resolver that provides the service instance when accessed
-    /// </summary>
-    private sealed class LazyServiceTarget
-    {
-        private readonly Type _serviceType;
-
-        public LazyServiceTarget(Type serviceType)
-        {
-            _serviceType = serviceType;
-        }
-
-        // This will be called by reflection when AIFunctionFactory tries to get the target
-        // But it won't actually be used because we override ExecuteAsync
-    }
+    
 
     public async Task<object?> ExecuteAsync(
         string arguments,

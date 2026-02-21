@@ -23,7 +23,7 @@ internal sealed class FinalResponseGenerator : IFactoryName
         _dependencies = dependenciesFactory.Create(name)
             ?? throw new InvalidOperationException($"ExecutionModeHandlerDependencies not found for factory: {name}");
     }
-
+    public bool FactoryNameAlreadySetup { get; set; }
     public async IAsyncEnumerable<AiSceneResponse> GenerateAsync(
         SceneContext context,
         SceneRequestSettings settings,

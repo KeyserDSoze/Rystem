@@ -28,7 +28,7 @@ internal sealed class Memory : IMemory
         _storageFactory = storageFactory;
         _logger = logger;
     }
-
+    public bool FactoryNameAlreadySetup { get; set; }
     public void SetFactoryName(AnyOf<string?, Enum>? name)
     {
         _factoryName = name?.ToString() ?? "default";

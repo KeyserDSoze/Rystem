@@ -1,6 +1,9 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
 using Rystem.PlayFramework.Configuration;
+using Rystem.PlayFramework.Domain.Wrappers;
 using Rystem.PlayFramework.Helpers;
 
 namespace Rystem.PlayFramework;
@@ -19,21 +22,31 @@ internal sealed class ClientInteractionTool : ISceneTool
         _definition = definition;
         Name = _definition.ToolName;
         Description = _definition.Description ?? $"Client-side tool: {_definition.ToolName}";
+        ToolDescription = ToAITool();
+    }
+
+    private AIFunctionDeclaration ToAITool()
+    {
+        JsonElement schema;
+
         if (!string.IsNullOrWhiteSpace(_definition.JsonSchema))
         {
-            var parameters = JsonDocument
-                        .Parse(_definition.JsonSchema)
-                        .RootElement;
-            ToolDescription = AIFunctionFactory.CreateDeclaration(Name, Description, parameters, null);
-        }
-        else if (definition.ArgumentType != null)
-        {
-            var schema = AIJsonUtilities.CreateJsonSchema(definition.ArgumentType, Description, false, null, JsonHelper.JsonSerializerOptions);
-            ToolDescription = AIFunctionFactory.CreateDeclaration(Name, Description, schema, null);
+            schema = JsonDocument.Parse(_definition.JsonSchema).RootElement;
+            var declaration = AIFunctionFactory.CreateDeclaration(
+                name: Name,
+                description: Description,
+                jsonSchema: schema
+            );
+            return declaration;
         }
         else
         {
-            ToolDescription = null!;
+            var declaration = AIFunctionFactory.Create(
+            () => Name,
+            Name,
+            Description,
+            JsonHelper.JsonSerializerOptions);
+            return declaration;
         }
     }
 

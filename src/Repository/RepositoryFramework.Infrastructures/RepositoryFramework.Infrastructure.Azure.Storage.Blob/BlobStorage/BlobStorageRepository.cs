@@ -10,7 +10,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
         where TKey : notnull
     {
         private readonly IFactory<IConnectionService<T, TKey, BlobContainerClientWrapper>>? _connectionServiceFactory;
-
+        public bool OptionsAlreadySetup { get; set; }
         public void SetOptions(BlobContainerClientWrapper options)
         {
             Options = options;
@@ -121,6 +121,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Blob
                 }
             }
         }
+        public bool FactoryNameAlreadySetup { get; set; }
         public void SetFactoryName(string name)
         {
             if (_connectionServiceFactory != null)

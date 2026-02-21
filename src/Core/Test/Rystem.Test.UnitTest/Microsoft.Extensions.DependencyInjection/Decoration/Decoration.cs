@@ -28,11 +28,12 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection.Decorati
             _patternFactory = patternFactory;
         }
         public T Get() => _pattern.Get();
+        public bool FactoryNameAlreadySetup { get; set; }
         public void SetFactoryName(string name)
         {
             _pattern = _patternFactory.Create(name);
         }
-
+        public bool OptionsAlreadySetup { get; set; }
         public void SetOptions(RepositoryOptions options)
         {
             _options = options;
@@ -56,12 +57,12 @@ namespace Rystem.Test.UnitTest.Microsoft.Extensions.DependencyInjection.Decorati
         {
             _repository = services.First();
         }
-
+        public bool OptionsAlreadySetup { get; set; }
         public void SetOptions(RepositoryOptions options)
         {
             _options = options;
         }
-
+        public bool FactoryNameAlreadySetup { get; set; }
         public void SetFactoryName(string name)
         {
             return;

@@ -39,9 +39,9 @@ internal sealed class Scene : IScene
 
         Description = CreateDescription(configuration, Tools);
         AiTool = AIFunctionFactory.Create(
-            () => configuration.Name,
-            configuration.Name,
-            configuration.Description,
+            () => Name,
+            Name,
+            Description,
             JsonHelper.JsonSerializerOptions);
     }
     private static string CreateDescription(SceneConfiguration configuration, List<ISceneTool> tools)

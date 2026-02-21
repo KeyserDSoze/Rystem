@@ -14,6 +14,7 @@ namespace RepositoryFramework.Api.Client
     {
         private readonly HttpClient _httpClient;
         private ApiClientSettings<T, TKey>? _options;
+        public bool OptionsAlreadySetup { get; set; }
         public void SetOptions(ApiClientSettings<T, TKey> options)
         {
             _options = options;
@@ -235,6 +236,7 @@ namespace RepositoryFramework.Api.Client
                 }
         }
         public string? FactoryName { get; private set; }
+        public bool FactoryNameAlreadySetup { get; set; }
         public void SetFactoryName(string name)
         {
             FactoryName = name;

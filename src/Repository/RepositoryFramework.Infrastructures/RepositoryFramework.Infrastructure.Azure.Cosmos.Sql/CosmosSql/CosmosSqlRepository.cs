@@ -11,6 +11,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
     internal sealed class CosmosSqlRepository<T, TKey> : IRepository<T, TKey>, IServiceWithFactoryWithOptions<CosmosSqlClient>, IDefaultIntegration
         where TKey : notnull
     {
+        public bool OptionsAlreadySetup { get; set; }
         public void SetOptions(CosmosSqlClient options)
         {
             Options = options;
@@ -132,6 +133,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
                 }
             }
         }
+        public bool FactoryNameAlreadySetup { get; set; }
         public void SetFactoryName(string name)
         {
             return;

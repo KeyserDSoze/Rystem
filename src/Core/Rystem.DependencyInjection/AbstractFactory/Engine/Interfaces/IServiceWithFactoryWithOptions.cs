@@ -2,5 +2,6 @@
 {
     public interface IServiceWithFactoryWithOptions : IServiceForFactory
     {
+        bool OptionsAlreadySetup { get; set; }
     }
 }

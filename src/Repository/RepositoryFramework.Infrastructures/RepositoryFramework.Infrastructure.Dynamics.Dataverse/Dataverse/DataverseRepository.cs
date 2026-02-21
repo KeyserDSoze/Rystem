@@ -13,10 +13,12 @@ namespace RepositoryFramework.Infrastructure.Dynamics.Dataverse
     internal sealed class DataverseRepository<T, TKey> : IRepository<T, TKey>, IServiceWithFactoryWithOptions<DataverseClientWrapper<T, TKey>>, IDefaultIntegration
         where TKey : notnull
     {
+        public bool OptionsAlreadySetup { get; set; }
         public void SetOptions(DataverseClientWrapper<T, TKey> options)
         {
             Options = options;
         }
+        public bool FactoryNameAlreadySetup { get; set; }
         public void SetFactoryName(string name)
         {
             return;

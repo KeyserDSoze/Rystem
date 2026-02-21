@@ -10,6 +10,7 @@ namespace Rystem.Content.Infrastructure
 {
     internal sealed class SharepointRepository : IContentRepository, IServiceWithFactoryWithOptions<SharepointClientWrapper>
     {
+        public bool OptionsAlreadySetup { get; set; }
         public void SetOptions(SharepointClientWrapper options)
         {
             Options = options;
@@ -276,6 +277,7 @@ namespace Rystem.Content.Infrastructure
             }
             return false;
         }
+        public bool FactoryNameAlreadySetup { get; set; }
 
         public void SetFactoryName(string name)
         {

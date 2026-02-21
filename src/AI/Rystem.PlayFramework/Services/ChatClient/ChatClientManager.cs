@@ -52,7 +52,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
         _logger = logger;
         _toolExecutionManager = toolExecutionManager;
     }
-
+    public bool FactoryNameAlreadySetup { get; set; }
     public void SetFactoryName(AnyOf<string?, Enum>? name)
     {
         _logger.LogDebug("ChatClientManager factory name set to: {FactoryName}", name?.ToString() ?? "default");

@@ -34,7 +34,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
         _jsonServiceFactory = jsonServiceFactory;
         _toolExecutionManager = toolExecutionManager;
     }
-
+    public bool FactoryNameAlreadySetup { get; set; }
     public void SetFactoryName(AnyOf<string?, Enum>? name)
     {
         _factoryName = name?.ToString() ?? "default";

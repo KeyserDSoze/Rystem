@@ -13,6 +13,8 @@ namespace RepositoryFramework.InMemory
         {
             Options = options;
         }
+        public bool OptionsAlreadySetup { get; set; }
+        public bool FactoryNameAlreadySetup { get; set; }
         public void SetFactoryName(string name)
         {
             return;

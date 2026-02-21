@@ -83,7 +83,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _memoryFactory = memoryFactory;
         _memoryStorageFactory = memoryStorageFactory;
     }
-
+    public bool FactoryNameAlreadySetup { get; set; }
     public void SetFactoryName(AnyOf<string?, Enum>? name)
     {
         _factoryName = name?.ToString() ?? "default";

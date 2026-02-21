@@ -16,6 +16,7 @@ internal sealed class SceneFactory : ISceneFactory, IFactoryName
     {
         _sceneConfigurationFactory = sceneConfigurationFactory;
     }
+    public bool FactoryNameAlreadySetup { get; set; }
     public void SetFactoryName(AnyOf<string?, Enum>? name)
     {
         _configurations = _sceneConfigurationFactory.Create(name) ?? [];

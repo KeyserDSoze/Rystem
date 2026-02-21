@@ -39,7 +39,7 @@ internal sealed class RagTool : ISceneTool
 
     public string Name => "search_knowledge_base";
 
-    public string Description => 
+    public string Description =>
         "Search for relevant information from the knowledge base to answer user questions. " +
         "Use this tool when you need factual information, documentation, or context to provide accurate answers.";
 
@@ -174,7 +174,7 @@ internal sealed class RagTool : ISceneTool
         var sceneKey = $"scene:{_sceneName}";
         if (_settings.GlobalRagSettings.TryGetValue(sceneKey, out var sceneSettings))
         {
-            if (sceneSettings.FactoryKey == _factoryKey || 
+            if (sceneSettings.FactoryKey == _factoryKey ||
                 (string.IsNullOrEmpty(sceneSettings.FactoryKey) && string.IsNullOrEmpty(_factoryKey)))
             {
                 return sceneSettings;
@@ -258,8 +258,8 @@ internal sealed class RagTool : ISceneTool
             📖 Documentation: https://rystem.net/mcp/tools/repository-setup.md
             """;
 
-        _logger.LogError(innerException, 
-            "RAG service with factory key {FactoryKey} not found. Scene: {SceneName}", 
+        _logger.LogError(innerException,
+            "RAG service with factory key {FactoryKey} not found. Scene: {SceneName}",
             factoryKey, _sceneName);
 
         throw new InvalidOperationException(errorMessage, innerException);
