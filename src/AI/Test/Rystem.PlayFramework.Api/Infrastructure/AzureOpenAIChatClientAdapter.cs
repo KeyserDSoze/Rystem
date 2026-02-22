@@ -166,7 +166,7 @@ public sealed class AzureOpenAIChatClientAdapter : IChatClient
                         functionDescription: aiFunc.Description);
 
                     chatOptions.Tools.Add(functionDef);
-                    
+
                     if (!isStreaming)
                     {
                         _logger.LogInformation("  - Tool: {ToolName} | {ToolDescription}", aiFunc.Name, aiFunc.Description);
