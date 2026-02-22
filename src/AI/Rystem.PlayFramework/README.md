@@ -1,418 +1,518 @@
-# PlayFramework Minimal API - Usage Examples
+# 🎮 Rystem PlayFramework
 
-## Setup
+[![NuGet](https://img.shields.io/nuget/v/Rystem.PlayFramework.svg)](https://www.nuget.org/packages/Rystem.PlayFramework/)
+[![.NET](https://img.shields.io/badge/.NET-10.0-purple)](https://dotnet.microsoft.com/)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-### 1. Register PlayFramework in Program.cs
+> **Orchestrated AI execution framework with multi-modal support, client-side tools, and advanced planning**
+
+Production-ready framework for building **AI-powered applications** with:
+- 🎭 **Scene-Based Architecture** - Organize AI workflows into reusable scenes
+- 🔧 **Server & Client Tools** - Execute code on server or browser/mobile
+- 🧠 **Execution Modes** - Direct, Planning, DynamicChaining, Scene
+- 📸 **Multi-Modal Content** - Images, audio, video, PDFs, URIs
+- 🔄 **Streaming** - Step-by-step or token-level SSE
+- ⚖️ **Load Balancing & Fallback** - Multi-provider reliability
+- 💰 **Cost Tracking** - Per-request budget limits
+- 🔐 **Authorization** - Policy-based access control
+- 📊 **Observability** - Logging, telemetry, metrics
+
+---
+
+## 📦 Installation
+
+```bash
+dotnet add package Rystem.PlayFramework
+dotnet add package Rystem.PlayFramework.Providers.OpenAI  # Or other providers
+```
+
+**Supported Providers:**
+- OpenAI (GPT-4, GPT-4o, o1, o3)
+- Azure OpenAI
+- Anthropic (Claude)
+- Google (Gemini)
+- Ollama (Local models)
+
+---
+
+## 🚀 Quick Start
+
+### 1. Define a Scene
+
+```csharp
+public interface IWeatherService
+{
+    Task<string> GetWeatherAsync(string city);
+}
+
+public class WeatherService : IWeatherService
+{
+    public async Task<string> GetWeatherAsync(string city)
+    {
+        // Call weather API
+        return $"The weather in {city} is sunny, 24°C";
+    }
+}
+```
+
+### 2. Register PlayFramework
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
-// Register PlayFramework with multiple factories
-builder.Services.AddPlayFramework("chat", pb => pb
-    .AddChatClient("gpt-4o")
-    .AddScene<WeatherScene>()
-    .AddScene<SearchScene>());
+builder.Services.AddPlayFramework("default", pb => pb
+    // Add LLM provider
+    .AddChatClient(client => client
+        .AddOpenAIChatClient("gpt-4o", Environment.GetEnvironmentVariable("OPENAI_API_KEY")!))
 
-builder.Services.AddPlayFramework("assistant", pb => pb
-    .AddChatClient("claude-sonnet")
-    .AddScene<CodeReviewScene>()
-    .AddScene<DocumentationScene>());
+    // Add scene with service tool
+    .AddScene("weather", "Get weather information", scene => scene
+        .WithService<IWeatherService>(s => s
+            .AddTool(x => x.GetWeatherAsync)))
+
+    // Add cache for conversation state
+    .WithCache(cache => cache
+        .WithInMemory()
+        .WithExpiration(TimeSpan.FromMinutes(30))));
+
+// Register services
+builder.Services.AddSingleton<IWeatherService, WeatherService>();
 
 var app = builder.Build();
 
-// Map PlayFramework endpoints for ALL factories
-// Creates: POST /api/ai/{factoryName} - Step-by-step streaming (each step as SSE event)
-//          POST /api/ai/{factoryName}/streaming - Token-level streaming (each text chunk as SSE event)
+// Map HTTP endpoints
 app.MapPlayFramework(settings =>
 {
     settings.BasePath = "/api/ai";
-    settings.RequireAuthentication = true;
-    settings.EnableAutoMetadata = true;
-});
-
-// OR: Map endpoints for a SPECIFIC factory
-// Creates: POST /api/chat - Step-by-step streaming
-//          POST /api/chat/streaming - Token-level streaming
-app.MapPlayFramework("chat", settings =>
-{
-    settings.BasePath = "/api/chat";
+    settings.RequireAuthentication = false;
 });
 
 app.Run();
 ```
 
-## API Endpoints
+### 3. Test the API
 
-### Non-Streaming Endpoint
-
-**POST** `/api/ai/{factoryName}`
-
-**Request Body:**
-```json
-{
-  "message": "What's the weather in Milan?",
-  "metadata": {
-    "userId": "user123",
-    "sessionId": "session456"
-  },
-  "settings": {
-    "maxBudget": 0.10,
-    "enableStreaming": false
-  }
-}
+```bash
+curl -X POST http://localhost:5158/api/ai/default \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "What is the weather in Milan?"
+  }'
 ```
 
-**Response (200 OK):**
+**Response:**
 ```json
 {
-  "responses": [
-    {
-      "status": "Running",
-      "sceneName": "WeatherScene",
-      "message": "The weather in Milan is sunny, 24°C",
-      "totalCost": 0.0023,
-      "timestamp": "2026-02-15T10:30:00Z"
-    }
-  ],
   "finalMessage": "The weather in Milan is sunny, 24°C",
-  "status": "Success",
+  "status": "completed",
   "totalCost": 0.0023,
-  "totalTokens": 150,
-  "elapsedMilliseconds": 1240,
-  "metadata": {
-    "userId": "user123",
-    "sessionId": "session456",
-    "ipAddress": "192.168.1.100",
-    "requestId": "0HN7S8QG9K3PQ:00000001"
-  }
+  "elapsedMilliseconds": 1240
 }
 ```
 
-### Streaming Endpoint (SSE)
+---
 
-**POST** `/api/ai/{factoryName}/streaming`
+## 🎭 Scene Definition
 
-**Request Body:** (same as non-streaming)
+### Scene with Multiple Tools
 
-**Response (text/event-stream):**
-```
-data: {"status":"Planning","message":"Creating execution plan"}
-
-data: {"status":"ExecutingScene","sceneName":"WeatherScene","message":"Calling weather API"}
-
-data: {"status":"Streaming","streamingChunk":"The weather","isStreamingComplete":false}
-
-data: {"status":"Streaming","streamingChunk":" in Milan","isStreamingComplete":false}
-
-data: {"status":"Running","message":"The weather in Milan is sunny, 24°C","totalCost":0.0023}
-
-data: {"status":"completed"}
-```
-
-## Multi-Modal Request
-
-### Send Image with Text
-
-```json
+```csharp
+public interface ICalculatorService
 {
-  "message": "What's in this image?",
-  "contents": [
-    {
-      "type": "image",
-      "data": "iVBORw0KGgoAAAANSUhEUgAAAAUA...", 
-      "mediaType": "image/png",
-      "name": "photo.png"
-    }
-  ],
-  "metadata": {
-    "userId": "user123"
-  }
+    double Add(double augend, double addend);
+    double Subtract(double minuend, double subtrahend);
+    double Multiply(double multiplicand, double multiplier);
+    double Divide(double dividend, double divisor);
 }
+
+builder.Services.AddPlayFramework("default", pb => pb
+    .AddChatClient(...)
+    .AddScene("calculator", "Perform arithmetic operations", scene => scene
+        .WithService<ICalculatorService>(s => s
+            .AddTool(x => x.Add)
+            .AddTool(x => x.Subtract)
+            .AddTool(x => x.Multiply)
+            .AddTool(x => x.Divide))));
 ```
 
-### Send Audio File
+### Scene with System Prompt
 
-```json
-{
-  "message": "Transcribe this audio",
-  "contents": [
-    {
-      "type": "audio",
-      "data": "UklGRnoGAABXQVZFZm10IBAAAA...",
-      "mediaType": "audio/mp3",
-      "name": "recording.mp3"
-    }
-  ]
-}
+```csharp
+.AddScene("assistant", "General purpose assistant", scene => scene
+    .WithSystemPrompt("You are a helpful AI assistant. Be concise and accurate.")
+    .WithService<IAssistantService>(s => s.AddTool(x => x.Search)))
 ```
 
-### Multiple Contents
+### Scene with Client-Side Tools
 
-```json
-{
-  "message": "Compare these two images",
-  "contents": [
-    {
-      "type": "image",
-      "data": "base64_data_1...",
-      "mediaType": "image/jpeg",
-      "name": "image1.jpg"
-    },
-    {
-      "type": "image",
-      "data": "base64_data_2...",
-      "mediaType": "image/jpeg",
-      "name": "image2.jpg"
-    }
-  ]
-}
+Execute tools on **browser/mobile** (camera, geolocation, file picker):
+
+```csharp
+.AddScene("vision", "Analyze user photos", scene => scene
+    .OnClient(client => client
+        .AddTool("capturePhoto", "Take photo from camera")
+        .AddTool("getCurrentLocation", "Get GPS coordinates")
+        .AddTool("selectFiles", "Open file picker"))
+    .WithService<IVisionService>(s => s
+        .AddTool(x => x.AnalyzeImage)))
 ```
 
-## Client Examples
-
-### JavaScript/TypeScript (Fetch API)
-
+**Client-side implementation** (TypeScript):
 ```typescript
-// Non-streaming request
-async function executePlayFramework(factoryName: string, message: string) {
-  const response = await fetch(`/api/ai/${factoryName}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer YOUR_TOKEN'
-    },
-    body: JSON.stringify({
-      message,
-      metadata: {
-        userId: 'user123',
-        sessionId: 'session456'
-      }
-    })
-  });
-
-  const result = await response.json();
-  console.log('Final message:', result.finalMessage);
-  console.log('Total cost:', result.totalCost);
-}
-
-// Streaming request (SSE)
-async function executePlayFrameworkStreaming(factoryName: string, message: string) {
-  const response = await fetch(`/api/ai/${factoryName}/streaming`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer YOUR_TOKEN'
-    },
-    body: JSON.stringify({
-      message,
-      metadata: { userId: 'user123' }
-    })
-  });
-
-  const reader = response.body!.getReader();
-  const decoder = new TextDecoder();
-
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-
-    const chunk = decoder.decode(value);
-    const lines = chunk.split('\n\n');
-
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        const data = JSON.parse(line.slice(6));
-        
-        if (data.status === 'Streaming') {
-          process.stdout.write(data.streamingChunk);
-        } else if (data.status === 'completed') {
-          console.log('\n✓ Completed');
-        } else {
-          console.log(`[${data.status}] ${data.message || ''}`);
-        }
-      }
-    }
-  }
-}
+registry.register("capturePhoto", async () => {
+    const content = await AIContentConverter.fromCamera();
+    return [content];
+});
 ```
 
-### C# HttpClient
+See [Client Interaction Guide](Docs/CLIENT_INTERACTION_ARCHITECTURE_V2.md) for details.
+
+---
+
+## 🎛️ Execution Modes
+
+Control **how scenes are selected and executed**:
 
 ```csharp
-using System.Net.Http.Json;
-using System.Text.Json;
-
-// Non-streaming request
-async Task<PlayFrameworkResponse> ExecuteAsync(string factoryName, string message)
+var request = new PlayFrameworkRequest
 {
-    using var client = new HttpClient();
-    client.DefaultRequestHeaders.Add("Authorization", "Bearer YOUR_TOKEN");
-
-    var request = new PlayFrameworkRequest
+    Message = "Book a flight to Paris and reserve a hotel",
+    Settings = new SceneRequestSettings
     {
-        Message = message,
-        Metadata = new Dictionary<string, object>
-        {
-            ["userId"] = "user123",
-            ["sessionId"] = "session456"
-        }
-    };
+        ExecutionMode = SceneExecutionMode.Planning, // Direct | Planning | DynamicChaining | Scene
+        MaxRecursionDepth = 5,
+        EnableSummarization = true
+    }
+};
+```
 
-    var response = await client.PostAsJsonAsync(
-        $"https://your-api.com/api/ai/{factoryName}",
-        request);
+### Mode Comparison
 
-    response.EnsureSuccessStatusCode();
-    return await response.Content.ReadFromJsonAsync<PlayFrameworkResponse>();
-}
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| **Direct** | Single scene, no planning | Simple queries, fast responses |
+| **Planning** | Upfront multi-step plan | Known workflows (booking, checkout) |
+| **DynamicChaining** | LLM decides next step live | Exploratory tasks (research, debugging) |
+| **Scene** | Execute specific scene by name | Resuming after client interaction |
 
-// Streaming request
-async Task ExecuteStreamingAsync(string factoryName, string message)
+### Enable Planning
+
+```csharp
+builder.Services.AddPlayFramework("default", pb => pb
+    .AddChatClient(...)
+    .WithPlanning(planning => planning
+        .MaxRecursionDepth = 5
+        .Enabled = true)
+    .AddScene(...));
+```
+
+### Enable Dynamic Chaining
+
+```csharp
+.AddScene("research", "Research a topic", scene => scene
+    .WithService<ISearchService>(s => s.AddTool(x => x.Search))
+    .WithDynamicChaining(maxScenes: 10))
+```
+
+---
+
+## 🔧 Multi-Modal Content
+
+### Send Images
+
+```csharp
+var request = new PlayFrameworkRequest
 {
-    using var client = new HttpClient();
-    client.DefaultRequestHeaders.Add("Authorization", "Bearer YOUR_TOKEN");
-
-    var request = new PlayFrameworkRequest
+    Message = "Describe this image",
+    Contents = new List<ContentItem>
     {
-        Message = message,
-        Metadata = new Dictionary<string, object> { ["userId"] = "user123" }
-    };
-
-    var response = await client.PostAsJsonAsync(
-        $"https://your-api.com/api/ai/{factoryName}/streaming",
-        request);
-
-    response.EnsureSuccessStatusCode();
-
-    await using var stream = await response.Content.ReadAsStreamAsync();
-    using var reader = new StreamReader(stream);
-
-    while (!reader.EndOfStream)
-    {
-        var line = await reader.ReadLineAsync();
-        if (string.IsNullOrEmpty(line)) continue;
-
-        if (line.StartsWith("data: "))
+        new()
         {
-            var json = line.Substring(6);
-            var data = JsonSerializer.Deserialize<AiSceneResponse>(json);
-
-            if (data?.Status == AiResponseStatus.Streaming)
-            {
-                Console.Write(data.StreamingChunk);
-            }
-            else
-            {
-                Console.WriteLine($"[{data?.Status}] {data?.Message}");
-            }
+            Type = ContentType.Image,
+            Base64Data = Convert.ToBase64String(imageBytes),
+            MediaType = "image/jpeg",
+            Name = "photo.jpg"
         }
     }
+};
+```
+
+### Send Audio
+
+```csharp
+new ContentItem
+{
+    Type = ContentType.Audio,
+    Base64Data = Convert.ToBase64String(audioBytes),
+    MediaType = "audio/mp3",
+    Name = "recording.mp3"
 }
 ```
 
-## Advanced Configuration
-
-### Custom Base Path per Factory
+### Send PDFs via URI
 
 ```csharp
-// Chat factory at /api/chat
-app.MapPlayFramework("chat", settings =>
+new ContentItem
 {
-    settings.BasePath = "/api/chat";
-    settings.RequireAuthentication = false;
-});
-
-// Assistant factory at /api/assistant
-app.MapPlayFramework("assistant", settings =>
-{
-    settings.BasePath = "/api/assistant";
-    settings.RequireAuthentication = true;
-});
+    Type = ContentType.Uri,
+    Uri = "https://example.com/document.pdf",
+    MediaType = "application/pdf"
+}
 ```
 
-### Rate Limiting Integration
+---
+
+## ⚙️ Configuration & Settings
+
+### Global Settings
 
 ```csharp
-using Microsoft.AspNetCore.RateLimiting;
+builder.Services.AddPlayFramework("default", pb => pb
+    .AddChatClient(...)
 
-builder.Services.AddRateLimiter(options =>
-{
-    options.AddFixedWindowLimiter("playframework", opt =>
+    // Planning
+    .WithPlanning(planning =>
     {
-        opt.PermitLimit = 10;
-        opt.Window = TimeSpan.FromMinutes(1);
-    });
+        planning.Enabled = true;
+        planning.MaxRecursionDepth = 5;
+    })
+
+    // Summarization
+    .WithSummarization(summarization =>
+    {
+        summarization.Enabled = true;
+        summarization.MaxTokensBeforeSummarization = 8000;
+    })
+
+    // Director (multi-scene orchestration)
+    .WithDirector(director =>
+    {
+        director.Enabled = true;
+        director.MaxScenes = 5;
+    })
+
+    // Cache (for conversation state)
+    .WithCache(cache => cache
+        .WithRedis("localhost:6379")
+        .WithExpiration(TimeSpan.FromMinutes(30)))
+
+    // Rate Limiting
+    .WithRateLimiting(rateLimiting =>
+    {
+        rateLimiting.Strategy = RateLimitingStrategy.TokenBucket;
+        rateLimiting.MaxTokensPerMinute = 10000;
+        rateLimiting.MaxRequestsPerMinute = 60;
+    })
+
+    // Cost Settings
+    .WithCostSettings(cost =>
+    {
+        cost.InputTokenCost = 0.00001m;   // $0.01 per 1K tokens
+        cost.OutputTokenCost = 0.00003m;  // $0.03 per 1K tokens
+        cost.Currency = "USD";
+    }));
+```
+
+### Per-Request Settings
+
+```csharp
+var request = new PlayFrameworkRequest
+{
+    Message = "Your query",
+    Settings = new SceneRequestSettings
+    {
+        // Execution mode
+        ExecutionMode = SceneExecutionMode.Planning,
+
+        // Planning
+        MaxRecursionDepth = 5,
+        MaxDynamicScenes = 10,
+
+        // Features
+        EnableSummarization = true,
+        EnableDirector = false,
+        EnableStreaming = true,
+
+        // Model overrides
+        ModelId = "gpt-4o",
+        Temperature = 0.7f,
+        MaxTokens = 4096,
+
+        // Caching
+        CacheBehavior = CacheBehavior.Default,
+        ConversationKey = "user-123-session-1",
+
+        // Budget
+        MaxBudget = 0.50m, // $0.50 max cost
+
+        // Scene selection
+        SceneName = "SpecificScene" // For SceneExecutionMode.Scene
+    },
+    Metadata = new Dictionary<string, object>
+    {
+        { "userId", "user-123" },
+        { "sessionId", "session-abc" }
+    }
+};
+```
+
+---
+
+## 🔄 Conversation State & Caching
+
+Use `conversationKey` for **multi-turn conversations**:
+
+```csharp
+var conversationKey = Guid.NewGuid().ToString();
+
+// First request
+var response1 = await sceneManager.ExecuteAsync(new PlayFrameworkRequest
+{
+    Message = "What's the weather in Paris?",
+    Settings = new SceneRequestSettings
+    {
+        ConversationKey = conversationKey
+    }
 });
 
-var app = builder.Build();
-app.UseRateLimiter();
-
-app.MapPlayFramework(settings =>
+// Follow-up request (uses cached context)
+var response2 = await sceneManager.ExecuteAsync(new PlayFrameworkRequest
 {
-    settings.BasePath = "/api/ai";
+    Message = "And in London?",
+    Settings = new SceneRequestSettings
+    {
+        ConversationKey = conversationKey
+    }
+});
+// LLM remembers Paris context!
+```
+
+### Cache Configuration
+
+**In-Memory** (single-server):
+```csharp
+.WithCache(cache => cache
+    .WithInMemory()
+    .WithExpiration(TimeSpan.FromMinutes(30)))
+```
+
+**Redis** (distributed):
+```csharp
+.WithCache(cache => cache
+    .WithRedis("localhost:6379,password=secret")
+    .WithExpiration(TimeSpan.FromMinutes(60)))
+```
+
+---
+
+## ⚖️ Load Balancing & Fallback
+
+Use **multiple LLM providers** for reliability:
+
+```csharp
+builder.Services.AddPlayFramework("default", pb => pb
+    .AddChatClient(client => client
+        // Primary pool (round-robin)
+        .AddOpenAIChatClient("openai-primary", apiKey)
+        .AddOpenAIChatClient("openai-secondary", apiKey)
+        .AddAzureOpenAIChatClient("azure-backup", endpoint, apiKey)
+
+        // Fallback chain (if primary pool fails)
+        .AddFallback(fallback => fallback
+            .AddAnthropicChatClient("claude-fallback", apiKey)
+            .AddGoogleChatClient("gemini-fallback", apiKey))
+
+        // Load balancing
+        .WithLoadBalancing(LoadBalancingMode.RoundRobin) // RoundRobin | Random | LeastCost
+
+        // Retry
+        .WithRetry(retry =>
+        {
+            retry.MaxRetryAttempts = 3;
+            retry.RetryBaseDelaySeconds = 1;
+        })));
+```
+
+---
+
+## 🚫 Rate Limiting
+
+**Token Bucket** strategy (recommended):
+
+```csharp
+.WithRateLimiting(rateLimiting =>
+{
+    rateLimiting.Strategy = RateLimitingStrategy.TokenBucket;
+    rateLimiting.MaxTokensPerMinute = 10000;      // 10K tokens/min
+    rateLimiting.MaxRequestsPerMinute = 60;       // 60 requests/min
+    rateLimiting.RefillIntervalSeconds = 10;      // Refill every 10s
 })
-.RequireRateLimiting("playframework");
 ```
 
-### CORS Configuration
+**Redis-based** (distributed):
+```csharp
+.WithRateLimiting(rateLimiting =>
+{
+    rateLimiting.UseRedis("localhost:6379");
+    rateLimiting.Strategy = RateLimitingStrategy.TokenBucket;
+})
+```
+
+---
+
+## 📊 Observability
+
+### Logging
 
 ```csharp
-builder.Services.AddCors(options =>
+builder.Services.AddLogging(logging =>
 {
-    options.AddPolicy("AllowPlayFramework", policy =>
-    {
-        policy.WithOrigins("https://your-frontend.com")
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
+    logging.AddConsole();
+    logging.AddApplicationInsights();
+    logging.SetMinimumLevel(LogLevel.Information);
 });
-
-var app = builder.Build();
-app.UseCors("AllowPlayFramework");
-
-app.MapPlayFramework().RequireCors("AllowPlayFramework");
 ```
 
-## Error Handling
-
-**Error Response (500 Internal Server Error):**
-```json
-{
-  "type": "https://tools.ietf.org/html/rfc9110#section-15.6.1",
-  "title": "PlayFramework Execution Failed",
-  "status": 500,
-  "detail": "Scene 'WeatherScene' not found"
-}
+**Log Output:**
+```
+[13:45:23 INF] 🎯 Trying LoadBalanced client: openai-primary (Attempt 1/3)
+[13:45:24 INF] ✅ LoadBalanced client openai-primary succeeded (Tokens: 150→89, Cost: $0.0023)
+[13:45:24 INF] ⚙️ Executing tool: GetWeatherAsync (City: Milan)
+[13:45:24 INF] ✅ Scene 'weather' completed (Cost: $0.0023, Tokens: 239)
 ```
 
-**Error in Streaming (SSE):**
-```
-data: {"status":"error","errorMessage":"Scene 'WeatherScene' not found"}
+### Telemetry
+
+```csharp
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics => metrics
+        .AddMeter("Rystem.PlayFramework"))
+    .WithTracing(tracing => tracing
+        .AddSource("Rystem.PlayFramework"));
 ```
 
-## Authorization Policies
+**Metrics:**
+- `playframework.request.duration`
+- `playframework.request.cost`
+- `playframework.request.tokens`
+- `playframework.scene.executions`
 
-PlayFramework supports **ASP.NET Core authorization policies** for fine-grained access control.
+---
+
+## 🔐 Authorization
 
 ### Global Policies
 
-Apply policies to all factories:
-
 ```csharp
-// Register policies
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("Authenticated", policy => 
         policy.RequireAuthenticatedUser());
-    
+
     options.AddPolicy("PlayFrameworkAccess", policy =>
         policy.RequireClaim("feature", "ai"));
-    
-    options.AddPolicy("PremiumUser", policy =>
-        policy.RequireClaim("subscription", "premium"));
 });
 
-// Apply to endpoints
 app.MapPlayFramework(settings =>
 {
     settings.BasePath = "/api/ai";
@@ -427,61 +527,207 @@ app.MapPlayFramework(settings =>
 
 ### Factory-Specific Policies
 
-Apply different policies per factory (only for single-factory endpoints):
-
 ```csharp
-// Premium factory with premium-only access
 app.MapPlayFramework("premium", settings =>
 {
     settings.BasePath = "/api/ai/premium";
-    settings.RequireAuthentication = true;
-    
-    // Global policies
-    settings.AuthorizationPolicies = new List<string>
-    {
-        "Authenticated"
-    };
-    
-    // Factory-specific policies
     settings.FactoryPolicies = new Dictionary<string, List<string>>
     {
         { "premium", new List<string> { "PremiumUser" } }
     };
 });
-
-// Admin factory with admin-only access
-app.MapPlayFramework("admin", settings =>
-{
-    settings.BasePath = "/api/ai/admin";
-    settings.RequireAuthentication = true;
-    settings.AuthorizationPolicies = new List<string> { "Authenticated" };
-    settings.FactoryPolicies = new Dictionary<string, List<string>>
-    {
-        { "admin", new List<string> { "AdminOnly" } }
-    };
-});
 ```
 
-**Note**: Factory-specific policies are **only available** in single-factory endpoints (`MapPlayFramework("factoryName")`). Multi-factory endpoints (`MapPlayFramework()`) only support global policies.
+See [AUTHORIZATION_EXAMPLE.md](AUTHORIZATION_EXAMPLE.md) for details.
 
-### Multiple Policies
+---
 
-All policies must pass for authorization to succeed:
+## 📡 API Endpoints
+
+### Step-by-Step Streaming (SSE)
+
+**POST** `/api/ai/{factoryName}`
+
+**Request:**
+```json
+{
+  "message": "What's the weather in Milan?",
+  "settings": {
+    "executionMode": "Direct",
+    "maxBudget": 0.10
+  }
+}
+```
+
+**Response (text/event-stream):**
+```
+data: {"status":"executingScene","sceneName":"weather","message":"Calling weather API"}
+
+data: {"status":"streaming","streamingChunk":"The weather"}
+
+data: {"status":"streaming","streamingChunk":" in Milan"}
+
+data: {"status":"completed","message":"The weather in Milan is sunny, 24°C"}
+```
+
+### Token-Level Streaming
+
+**POST** `/api/ai/{factoryName}/streaming`
+
+Returns **individual text chunks** as they're generated.
+
+### Non-Streaming
+
+Set `enableStreaming: false` in settings to get full response at once.
+
+---
+
+## 🧪 Testing
+
+### Unit Test Example
 
 ```csharp
-app.MapPlayFramework("secure", settings =>
+[Fact]
+public async Task Scene_Should_Execute_Successfully()
 {
-    settings.AuthorizationPolicies = new List<string>
+    // Arrange
+    var services = new ServiceCollection();
+    services.AddPlayFramework("test", pb => pb
+        .AddChatClient(client => client
+            .AddMockChatClient("mock", responses: new[] { "Sunny, 24°C" }))
+        .AddScene("weather", "Get weather", scene => scene
+            .WithService<IWeatherService>(s => s.AddTool(x => x.GetWeatherAsync))));
+
+    services.AddSingleton<IWeatherService, WeatherService>();
+
+    var provider = services.BuildServiceProvider();
+    var sceneManager = provider.GetRequiredService<ISceneManager>();
+
+    // Act
+    var response = await sceneManager.ExecuteAsync(new PlayFrameworkRequest
     {
-        "Authenticated",
-        "PlayFrameworkAccess",
-        "RateLimitApproved"
-    };
-    settings.FactoryPolicies = new Dictionary<string, List<string>>
+        Message = "Weather in Milan?",
+        Settings = new SceneRequestSettings { FactoryName = "test" }
+    });
+
+    // Assert
+    Assert.Equal(AiResponseStatus.Completed, response.Status);
+    Assert.Contains("Sunny", response.FinalMessage);
+}
+```
+
+---
+
+## 💡 Complete Example
+
+### E-Commerce Assistant
+
+```csharp
+public interface IProductService
+{
+    Task<List<Product>> SearchProductsAsync(string query);
+    Task<Product> GetProductDetailsAsync(int productId);
+}
+
+public interface ICartService
+{
+    Task AddToCartAsync(int productId, int quantity);
+    Task<Cart> GetCartAsync(string userId);
+}
+
+builder.Services.AddPlayFramework("shop", pb => pb
+    .AddChatClient(client => client
+        .AddOpenAIChatClient("gpt-4o", apiKey))
+
+    // Search scene
+    .AddScene("product-search", "Search for products", scene => scene
+        .WithSystemPrompt("You are a helpful shopping assistant. Help users find products.")
+        .WithService<IProductService>(s => s
+            .AddTool(x => x.SearchProductsAsync)
+            .AddTool(x => x.GetProductDetailsAsync)))
+
+    // Cart scene
+    .AddScene("cart-management", "Manage shopping cart", scene => scene
+        .WithService<ICartService>(s => s
+            .AddTool(x => x.AddToCartAsync)
+            .AddTool(x => x.GetCartAsync)))
+
+    // Confirmation scene (client-side)
+    .AddScene("checkout", "Complete purchase", scene => scene
+        .OnClient(client => client
+            .AddTool("getUserConfirmation", "Ask user to confirm purchase"))
+        .WithService<ICheckoutService>(s => s
+            .AddTool(x => x.ProcessPaymentAsync)))
+
+    // Enable planning for multi-step workflows
+    .WithPlanning(planning =>
     {
-        { "secure", new List<string> { "AdminOnly", "AuditLogged" } }
-    };
+        planning.Enabled = true;
+        planning.MaxRecursionDepth = 5;
+    })
+
+    // Cache for conversation state
+    .WithCache(cache => cache
+        .WithRedis("localhost:6379")
+        .WithExpiration(TimeSpan.FromMinutes(30)))
+
+    // Rate limiting
+    .WithRateLimiting(rateLimiting =>
+    {
+        rateLimiting.Strategy = RateLimitingStrategy.TokenBucket;
+        rateLimiting.MaxTokensPerMinute = 5000;
+    }));
+
+app.MapPlayFramework("shop", settings =>
+{
+    settings.BasePath = "/api/shop";
+    settings.RequireAuthentication = true;
 });
 ```
 
-See [AUTHORIZATION_EXAMPLE.md](AUTHORIZATION_EXAMPLE.md) for comprehensive examples.
+**Usage:**
+```bash
+curl -X POST http://localhost:5158/api/shop/shop \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "message": "Find me a red t-shirt, size M, add to cart and checkout",
+    "settings": {
+      "executionMode": "Planning",
+      "conversationKey": "user-123-session-1"
+    }
+  }'
+```
+
+**Flow:**
+1. **Planning** - Creates plan: Search → Add to Cart → Checkout
+2. **Product Search** - Calls `SearchProductsAsync("red t-shirt")`
+3. **Cart Management** - Calls `AddToCartAsync(productId, quantity)`
+4. **Checkout** - Triggers client-side confirmation → Calls `ProcessPaymentAsync`
+
+---
+
+## 📚 Additional Resources
+
+- 📖 **Full Documentation**: https://rystem.net/playframework
+- 💻 **GitHub**: https://github.com/KeyserDSoze/Rystem
+- 📦 **NuGet**: https://www.nuget.org/packages/Rystem.PlayFramework
+- 🎯 **MCP Tools**: https://rystem.net/mcp
+- 📘 **Client Interaction Guide**: [Docs/CLIENT_INTERACTION_ARCHITECTURE_V2.md](Docs/CLIENT_INTERACTION_ARCHITECTURE_V2.md)
+- 🔐 **Authorization Examples**: [AUTHORIZATION_EXAMPLE.md](AUTHORIZATION_EXAMPLE.md)
+- 📊 **Streaming Technical Details**: [Docs/STREAMING_TECHNICAL.md](Docs/STREAMING_TECHNICAL.md)
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome! Please open an issue or PR.
+
+---
+
+## 📄 License
+
+MIT © [Alessandro Rapiti](https://github.com/KeyserDSoze)
+
+---
+
+**Made with ❤️ by the Rystem team**

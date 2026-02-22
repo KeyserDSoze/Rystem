@@ -1,6 +1,6 @@
 {
   "name": "rystem.playframework.client",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Alessandro Rapiti <alessandro.rapiti44@gmail.com>",
   "license": "MIT",
   "description": "TypeScript client for Rystem PlayFramework HTTP API with step-by-step and token-level streaming support.",
