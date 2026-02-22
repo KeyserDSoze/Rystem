@@ -68,8 +68,4 @@
         </When>
     </Choose>
 
-    <ItemGroup>
-        <None Include="rystem.png" Pack="true" PackagePath="" />
-    </ItemGroup>
-
 </Project>
