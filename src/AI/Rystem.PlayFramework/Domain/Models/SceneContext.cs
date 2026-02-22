@@ -111,7 +111,7 @@ public sealed class SceneContext
         if (contextResult != null)
         {
             builder.AppendLine("[Request Context]");
-            builder.AppendLine(JsonSerializer.Serialize(contextResult, JsonHelper.JsonSerializerOptions));
+            builder.AppendLine(contextResult is string asString ? asString : JsonSerializer.Serialize(contextResult, JsonHelper.JsonSerializerOptions));
             builder.AppendLine();
         }
 

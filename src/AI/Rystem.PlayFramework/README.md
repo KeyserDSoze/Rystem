@@ -73,7 +73,10 @@ builder.Services.AddPlayFramework("default", pb => pb
     // Add cache for conversation state
     .WithCache(cache => cache
         .WithInMemory()
-        .WithExpiration(TimeSpan.FromMinutes(30))));
+        .WithExpiration(TimeSpan.FromMinutes(30)))
+
+    // Add custom authorization layer (optional)
+    .AddAuthorizationLayer<CustomAuthorizationLayer>());
 
 // Register services
 builder.Services.AddSingleton<IWeatherService, WeatherService>();
@@ -501,7 +504,14 @@ builder.Services.AddOpenTelemetry()
 
 ## 🔐 Authorization
 
-### Global Policies
+PlayFramework supports **two levels of authorization**:
+
+1. **HTTP Endpoint Authorization** - ASP.NET Core policies (token validation, claims, roles)
+2. **Business Logic Authorization** - Custom `IAuthorizationLayer` (user permissions, quotas, feature flags)
+
+### HTTP Endpoint Authorization (ASP.NET Core Policies)
+
+Apply standard ASP.NET Core authorization at the **HTTP endpoint level**:
 
 ```csharp
 builder.Services.AddAuthorization(options =>
@@ -511,6 +521,9 @@ builder.Services.AddAuthorization(options =>
 
     options.AddPolicy("PlayFrameworkAccess", policy =>
         policy.RequireClaim("feature", "ai"));
+
+    options.AddPolicy("PremiumUser", policy =>
+        policy.RequireClaim("subscription", "premium"));
 });
 
 app.MapPlayFramework(settings =>
@@ -525,20 +538,154 @@ app.MapPlayFramework(settings =>
 });
 ```
 
-### Factory-Specific Policies
+**When to use**: Token validation, JWT claims, role-based access, rate limiting policies.
+
+---
+
+### Business Logic Authorization (IAuthorizationLayer)
+
+Implement **custom authorization logic** that runs **after initialization** but **before scene execution**:
 
 ```csharp
-app.MapPlayFramework("premium", settings =>
+public class CustomAuthorizationLayer : IAuthorizationLayer
 {
-    settings.BasePath = "/api/ai/premium";
-    settings.FactoryPolicies = new Dictionary<string, List<string>>
+    private readonly IUserService _userService;
+    private readonly ILogger<CustomAuthorizationLayer> _logger;
+
+    public CustomAuthorizationLayer(
+        IUserService userService,
+        ILogger<CustomAuthorizationLayer> logger)
     {
-        { "premium", new List<string> { "PremiumUser" } }
-    };
-});
+        _userService = userService;
+        _logger = logger;
+    }
+
+    public async Task<AuthorizationResult> AuthorizeAsync(
+        SceneContext context,
+        SceneRequestSettings settings,
+        CancellationToken cancellationToken)
+    {
+        // Extract userId from metadata
+        if (!context.Metadata.TryGetValue("userId", out var userIdObj) || userIdObj is not string userId)
+        {
+            return new AuthorizationResult
+            {
+                IsAuthorized = false,
+                Reason = "User ID not found in request metadata"
+            };
+        }
+
+        // Check user quota
+        var user = await _userService.GetUserAsync(userId, cancellationToken);
+        if (user.MonthlyQuota <= 0)
+        {
+            _logger.LogWarning("User {UserId} exceeded monthly quota", userId);
+            return new AuthorizationResult
+            {
+                IsAuthorized = false,
+                Reason = $"Monthly quota exceeded. Resets on {user.QuotaResetDate:yyyy-MM-dd}"
+            };
+        }
+
+        // Check feature flag for specific scene
+        if (settings.SceneName == "PremiumScene" && !user.HasFeature("premium-scenes"))
+        {
+            return new AuthorizationResult
+            {
+                IsAuthorized = false,
+                Reason = "Premium subscription required for this feature"
+            };
+        }
+
+        // Check budget limits
+        if (settings.MaxBudget.HasValue && settings.MaxBudget.Value > user.MaxBudgetPerRequest)
+        {
+            return new AuthorizationResult
+            {
+                IsAuthorized = false,
+                Reason = $"Requested budget ${settings.MaxBudget.Value} exceeds user limit ${user.MaxBudgetPerRequest}"
+            };
+        }
+
+        // All checks passed
+        _logger.LogInformation("User {UserId} authorized (Quota: {Quota}, Features: {Features})",
+            userId, user.MonthlyQuota, string.Join(", ", user.Features));
+
+        return new AuthorizationResult
+        {
+            IsAuthorized = true
+        };
+    }
+}
 ```
 
-See [AUTHORIZATION_EXAMPLE.md](AUTHORIZATION_EXAMPLE.md) for details.
+**Register in PlayFramework:**
+```csharp
+builder.Services.AddPlayFramework("default", pb => pb
+    .AddChatClient(...)
+    .AddScene(...)
+    .AddAuthorizationLayer<CustomAuthorizationLayer>());
+
+// Register dependencies
+builder.Services.AddSingleton<IUserService, UserService>();
+```
+
+**Response when authorization fails:**
+```json
+{
+  "status": "error",
+  "errorMessage": "Authorization failed: Monthly quota exceeded. Resets on 2025-03-01",
+  "message": "You are not authorized to perform this action."
+}
+```
+
+**When to use**:
+- ✅ User-specific quotas (requests per month, tokens per day)
+- ✅ Feature flags (beta features, premium scenes)
+- ✅ Budget limits (max cost per request/user)
+- ✅ Time-based restrictions (business hours only)
+- ✅ Content filtering (block specific inputs)
+- ✅ Multi-tenancy (tenant-specific permissions)
+
+**Execution flow:**
+1. **HTTP Request** → ASP.NET Core policies check (JWT, claims, roles)
+2. **Initialization** → Load cache, initialize context, execute main actors
+3. **Authorization Layer** → Custom business logic checks ← **YOU ARE HERE**
+4. **Scene Execution** → If authorized, execute selected scenes
+5. **Response** → Return results
+
+---
+
+### Combining Both Levels
+
+```csharp
+// 1. HTTP Endpoint Authorization (ASP.NET Core)
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Authenticated", policy => 
+        policy.RequireAuthenticatedUser());
+});
+
+app.MapPlayFramework(settings =>
+{
+    settings.BasePath = "/api/ai";
+    settings.RequireAuthentication = true;
+    settings.AuthorizationPolicies = new List<string> { "Authenticated" };
+});
+
+// 2. Business Logic Authorization (IAuthorizationLayer)
+builder.Services.AddPlayFramework("default", pb => pb
+    .AddChatClient(...)
+    .AddAuthorizationLayer<CustomAuthorizationLayer>());
+```
+
+**Both must pass** for execution to proceed:
+- ❌ **Fail at HTTP level** → 401/403 HTTP error (no execution)
+- ✅ **Pass HTTP level** → Continue to initialization
+- ❌ **Fail at business level** → Custom error response (after initialization)
+- ✅ **Pass business level** → Execute scenes
+
+See [AUTHORIZATION_EXAMPLE.md](AUTHORIZATION_EXAMPLE.md) for comprehensive examples.
 
 ---
 

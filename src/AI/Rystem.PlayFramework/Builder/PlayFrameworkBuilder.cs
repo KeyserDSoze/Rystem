@@ -366,6 +366,14 @@ public sealed class PlayFrameworkBuilder
         Services.AddFactory<IContext, TContext>(Name, ServiceLifetime.Transient);
         return this;
     }
+    /// <summary>
+    /// Uses a custom summarizer.
+    /// </summary>
+    public PlayFrameworkBuilder AddAuthorizationLayer<TAuthorizationLayer>() where TAuthorizationLayer : class, IAuthorizationLayer
+    {
+        Services.AddFactory<IAuthorizationLayer, TAuthorizationLayer>(Name, ServiceLifetime.Transient);
+        return this;
+    }
 
     /// <summary>
     /// Uses a custom director.
