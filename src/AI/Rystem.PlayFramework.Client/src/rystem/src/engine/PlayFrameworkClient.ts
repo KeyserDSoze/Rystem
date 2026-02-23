@@ -167,10 +167,10 @@ export class PlayFrameworkClient {
                                         throw new Error((event as ErrorMarker).errorMessage || "Unknown error");
                                     }
 
-                                    // Check for AwaitingClient status (camelCase from server)
-                                    if (event.status === "awaitingClient") {
+                                    // Check for AwaitingClient status (PascalCase from server)
+                                    if (event.status === "AwaitingClient") {
                                         awaitingClientResponse = event as AiSceneResponse;
-                                        console.log('⏸️ [PlayFrameworkClient] Received awaitingClient, tool:', awaitingClientResponse.clientInteractionRequest?.toolName);
+                                        console.log('⏸️ [PlayFrameworkClient] Received AwaitingClient, tool:', awaitingClientResponse.clientInteractionRequest?.toolName);
                                         yield awaitingClientResponse; // Yield to user
                                         // Don't break - continue reading until stream closes
                                         continue; // Skip the second yield below to avoid duplication

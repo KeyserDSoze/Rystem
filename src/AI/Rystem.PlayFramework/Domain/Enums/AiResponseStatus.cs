@@ -102,5 +102,10 @@ public enum AiResponseStatus
     /// <summary>
     /// Error occurred during execution.
     /// </summary>
-    Error
+    Error,
+
+    /// <summary>
+    /// Indicates that the request was not authorized.
+    /// </summary>
+    Unauthorized
 }

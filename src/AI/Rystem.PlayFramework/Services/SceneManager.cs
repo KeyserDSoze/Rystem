@@ -366,7 +366,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                 _logger.LogWarning(errorMessage + " (Factory: {FactoryName})", _factoryName);
                 yield return YieldAndTrack(context, new AiSceneResponse
                 {
-                    Status = AiResponseStatus.Error,
+                    Status = AiResponseStatus.Unauthorized,
                     ErrorMessage = errorMessage,
                     Message = "You are not authorized to perform this action."
                 });
