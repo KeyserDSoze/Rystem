@@ -644,6 +644,143 @@ app.MapPlayFramework("tenant-b", settings =>
 - `/api/ai/tenant-b` - Chat for Tenant B
 - `/api/ai/tenant-b/conversations` - Conversations for Tenant B
 
+---
+
+## 📸 Multi-Modal Content (Images, Audio, Video, PDFs)
+
+PlayFramework supports **base64-encoded media content** in messages. To optimize performance and reduce payload size, the `includeContents` parameter controls whether to include or exclude media when fetching conversations.
+
+### Overview
+
+**StoredMessage** model supports multi-modal content:
+```csharp
+public class StoredMessage
+{
+    public string Role { get; set; }       // user | assistant | system | tool
+    public string? Text { get; set; }      // Text content
+    public List<AIContent>? Contents { get; set; } // Multi-modal attachments
+}
+
+public class AIContent
+{
+    public string Type { get; set; }       // "text" | "data"
+    public string? Text { get; set; }      // For type="text"
+    public string? Data { get; set; }      // Base64 encoded (for type="data")
+    public string? MediaType { get; set; } // MIME type: image/jpeg, audio/mp3, application/pdf
+}
+```
+
+### includeContents Parameter
+
+By default, `Contents` are **excluded** from list operations to reduce bandwidth and improve performance. Use `includeContents=true` when you need to display media.
+
+#### REST API Examples
+
+**List conversations WITHOUT media (faster, smaller payload):**
+```bash
+GET /api/ai/default/conversations?includeContents=false&take=50
+```
+
+**Get single conversation WITH media (for display):**
+```bash
+GET /api/ai/default/conversations/abc-123?includeContents=true
+```
+
+**Response without contents:**
+```json
+{
+  "conversationKey": "abc-123",
+  "userId": "user@example.com",
+  "isPublic": false,
+  "timestamp": "2025-01-15T10:30:00Z",
+  "messages": [
+    {
+      "role": "user",
+      "text": "Analyze this image",
+      "contents": null  // ← Excluded to reduce payload
+    }
+  ]
+}
+```
+
+**Response with contents:**
+```json
+{
+  "conversationKey": "abc-123",
+  "messages": [
+    {
+      "role": "user",
+      "text": "Analyze this image",
+      "contents": [
+        {
+          "type": "data",
+          "data": "iVBORw0KGgoAAAANSUhEUgAA...",  // ← Base64 image
+          "mediaType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "text": "The image shows a sunset over mountains.",
+      "contents": null
+    }
+  ]
+}
+```
+
+### Storage Optimization with Repository Framework
+
+PlayFramework uses **Repository Framework metadata** to control content inclusion:
+
+```csharp
+var result = await queryBuilder
+    .Skip(parameters.Skip)
+    .Take(pageSize)
+    .AddMetadata(nameof(parameters.IncludeContents), parameters.IncludeContents.ToString())
+    .ToListAsEntityAsync();
+```
+
+**Backend automatically excludes Contents** when `includeContents=false`:
+```csharp
+if (!includeContents)
+{
+    foreach (var message in conversation.Messages)
+    {
+        message.Contents = null;  // Reduce JSON payload size
+    }
+}
+```
+
+### When to Use includeContents
+
+| Operation | includeContents | Reason |
+|-----------|----------------|--------|
+| **List conversations** | `false` (default) | Faster, smaller payload - only need titles/previews |
+| **Load single conversation for display** | `true` | Need to render images/PDFs/audio in UI |
+| **Search conversations** | `false` | Only searching text content |
+| **Export conversation** | `true` | Full conversation with attachments |
+
+### Performance Impact
+
+**Without contents** (includeContents=false):
+- ✅ 100 conversations ≈ **50 KB** payload
+- ✅ Query time: **~50ms**
+
+**With contents** (includeContents=true):
+- ⚠️ 100 conversations ≈ **5-50 MB** payload (depending on images/PDFs)
+- ⚠️ Query time: **~500ms**
+
+**Best Practice**: Always use `includeContents=false` for list operations, `true` only when loading a single conversation for display.
+
+### Frontend Integration
+
+For TypeScript/React clients, see [PlayFramework TypeScript Client README](../Rystem.PlayFramework.Client/src/rystem/README.md) for:
+- `ContentUrlConverter` helper (Base64 → Blob URL conversion)
+- React viewer components (ImageViewer, AudioPlayer, VideoPlayer, PDFViewer)
+- Memory management best practices
+
+---
+
 ### Authorization Best Practices
 
 1. **HTTP Policies** - Validate JWT tokens, require authentication

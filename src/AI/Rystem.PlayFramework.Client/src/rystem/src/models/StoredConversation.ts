@@ -69,6 +69,12 @@ export interface ConversationQueryParameters {
      * Number of items to take for pagination (default: 50).
      */
     take?: number;
+
+    /**
+     * Include message contents (images, audio, PDFs, etc.) in responses (default: false).
+     * When false, contents are excluded to reduce payload size in list operations.
+     */
+    includeContents?: boolean;
 }
 
 /**

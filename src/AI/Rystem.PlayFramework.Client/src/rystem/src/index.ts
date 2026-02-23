@@ -16,6 +16,7 @@ export type { ClientTool } from "./engine/ClientInteractionRegistry";
 
 // Utilities
 export { AIContentConverter } from "./utils/AIContentConverter";
+export { ContentUrlConverter } from "./utils/ContentUrlConverter";
 
 // Service Collection
 export { PlayFrameworkSettings } from "./servicecollection/PlayFrameworkSettings";

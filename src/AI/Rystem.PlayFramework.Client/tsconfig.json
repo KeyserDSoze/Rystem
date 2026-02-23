@@ -26,8 +26,8 @@
     "strictPropertyInitialization": true,
     "noImplicitThis": true
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist", "src/rystem/lib"],
+  "include": ["src/*.tsx", "src/*.ts"],
+  "exclude": ["node_modules", "dist"],
   "references": [
     { "path": "./src/rystem/tsconfig.json" },
     { "path": "./tsconfig.node.json" }

@@ -136,6 +136,7 @@ public static class WebApplicationExtensions
                 // Endpoint: Get conversation by key
                 group.MapGet(conversationRoute, async (
                     string conversationKey,
+                    [FromQuery] bool includeContents,
                     [FromServices] ILogger<ISceneManager> logger,
                     HttpContext httpContext,
                     CancellationToken cancellationToken) =>
@@ -145,7 +146,7 @@ public static class WebApplicationExtensions
                     var repository = repositoryFactory.Create(targetFactory);
                     var currentUserId = GetCurrentUserId(httpContext);
 
-                    return await GetConversationAsync(conversationKey, repository, currentUserId, logger, cancellationToken);
+                    return await GetConversationAsync(conversationKey, includeContents, repository, currentUserId, logger, cancellationToken);
                 })
                 .WithName(factoryName is null ? "GetConversation" : $"Get{factoryName}Conversation")
                 .WithSummary(factoryName is null ? "Get conversation by key" : $"Get {factoryName} conversation by key")
@@ -371,6 +372,7 @@ public static class WebApplicationExtensions
             var result = await queryBuilder
                 .Skip(parameters.Skip)
                 .Take(pageSize)
+                .AddMetadata(nameof(parameters.IncludeContents), parameters.IncludeContents.ToString())
                 .ToListAsEntityAsync();
 
             logger.LogDebug("Found {Count} conversations.", result.Count);
@@ -392,6 +394,7 @@ public static class WebApplicationExtensions
     /// </summary>
     private static async Task<IResult> GetConversationAsync(
         string conversationKey,
+        bool includeContents,
         IRepository<StoredConversation, string> repository,
         string? currentUserId,
         ILogger logger,
@@ -414,6 +417,15 @@ public static class WebApplicationExtensions
                     conversationKey, currentUserId ?? "anonymous");
 
                 return Results.Forbid();
+            }
+
+            // Exclude contents if not requested (reduce payload size)
+            if (!includeContents)
+            {
+                foreach (var message in conversation.Messages)
+                {
+                    message.Contents = null;
+                }
             }
 
             return Results.Ok(conversation);

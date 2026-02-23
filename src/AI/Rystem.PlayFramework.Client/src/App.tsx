@@ -3,11 +3,14 @@ import {
     PlayFrameworkServices,
     PlayFrameworkClient,
     AIContentConverter,
+    ContentUrlConverter,
     type PlayFrameworkRequest,
     type AiSceneResponse,
     type AiResponseStatus,
     type SceneExecutionMode,
     type StoredConversation,
+    type StoredMessage,
+    type AIContent,
     ConversationSortOrder
 } from './rystem/src/index';
 import './App.css';
@@ -20,6 +23,7 @@ interface ChatMessage {
     status?: AiResponseStatus;
     timestamp: Date;
     toolName?: string;
+    contents?: AIContent[];
 }
 
 type StreamMode = 'step' | 'token';
@@ -117,6 +121,248 @@ function statusBadge(status?: AiResponseStatus) {
         }}>
             {status}
         </span>
+    );
+}
+
+// ─── Content Viewer Components ───────────────────────────────────────────
+
+interface ContentViewerProps {
+    content: AIContent;
+}
+
+function ImageViewer({ content }: ContentViewerProps) {
+    const [url, setUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        const blobUrl = ContentUrlConverter.toBlobUrl(content, `image-${Date.now()}`);
+        setUrl(blobUrl);
+
+        return () => {
+            if (blobUrl) {
+                ContentUrlConverter.revokeUrl(blobUrl);
+            }
+        };
+    }, [content]);
+
+    if (!url) return <div style={{ color: '#999', fontSize: '12px' }}>Loading image...</div>;
+
+    return (
+        <div style={{ marginTop: '8px', position: 'relative' }}>
+            <img
+                src={url}
+                alt={content.name || 'Image'}
+                style={{
+                    maxWidth: '100%',
+                    maxHeight: '400px',
+                    borderRadius: '8px',
+                    border: '1px solid #444',
+                }}
+            />
+            <button
+                onClick={() => ContentUrlConverter.downloadAsFile(content, content.name)}
+                style={{
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    borderRadius: '4px',
+                    border: '1px solid rgba(255,255,255,0.3)',
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    color: '#fff',
+                    cursor: 'pointer',
+                }}
+            >
+                Download
+            </button>
+        </div>
+    );
+}
+
+function AudioPlayer({ content }: ContentViewerProps) {
+    const [url, setUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        const blobUrl = ContentUrlConverter.toBlobUrl(content, `audio-${Date.now()}`);
+        setUrl(blobUrl);
+
+        return () => {
+            if (blobUrl) {
+                ContentUrlConverter.revokeUrl(blobUrl);
+            }
+        };
+    }, [content]);
+
+    if (!url) return <div style={{ color: '#999', fontSize: '12px' }}>Loading audio...</div>;
+
+    return (
+        <div style={{ marginTop: '8px' }}>
+            <audio controls style={{ width: '100%', maxWidth: '500px' }}>
+                <source src={url} type={content.mediaType || 'audio/mpeg'} />
+                Your browser does not support audio playback.
+            </audio>
+            <button
+                onClick={() => ContentUrlConverter.downloadAsFile(content, content.name)}
+                style={{
+                    marginTop: '6px',
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    borderRadius: '4px',
+                    border: '1px solid #444',
+                    backgroundColor: '#333',
+                    color: '#aaa',
+                    cursor: 'pointer',
+                }}
+            >
+                Download Audio
+            </button>
+        </div>
+    );
+}
+
+function VideoPlayer({ content }: ContentViewerProps) {
+    const [url, setUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        const blobUrl = ContentUrlConverter.toBlobUrl(content, `video-${Date.now()}`);
+        setUrl(blobUrl);
+
+        return () => {
+            if (blobUrl) {
+                ContentUrlConverter.revokeUrl(blobUrl);
+            }
+        };
+    }, [content]);
+
+    if (!url) return <div style={{ color: '#999', fontSize: '12px' }}>Loading video...</div>;
+
+    return (
+        <div style={{ marginTop: '8px' }}>
+            <video
+                controls
+                style={{
+                    width: '100%',
+                    maxWidth: '600px',
+                    maxHeight: '400px',
+                    borderRadius: '8px',
+                    border: '1px solid #444',
+                }}
+            >
+                <source src={url} type={content.mediaType || 'video/mp4'} />
+                Your browser does not support video playback.
+            </video>
+            <button
+                onClick={() => ContentUrlConverter.downloadAsFile(content, content.name)}
+                style={{
+                    marginTop: '6px',
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    borderRadius: '4px',
+                    border: '1px solid #444',
+                    backgroundColor: '#333',
+                    color: '#aaa',
+                    cursor: 'pointer',
+                }}
+            >
+                Download Video
+            </button>
+        </div>
+    );
+}
+
+function PDFViewer({ content }: ContentViewerProps) {
+    const [url, setUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        const blobUrl = ContentUrlConverter.toBlobUrl(content, `pdf-${Date.now()}`);
+        setUrl(blobUrl);
+
+        return () => {
+            if (blobUrl) {
+                ContentUrlConverter.revokeUrl(blobUrl);
+            }
+        };
+    }, [content]);
+
+    if (!url) return <div style={{ color: '#999', fontSize: '12px' }}>Loading PDF...</div>;
+
+    return (
+        <div style={{ marginTop: '8px' }}>
+            <iframe
+                src={url}
+                title={content.name || 'PDF Document'}
+                style={{
+                    width: '100%',
+                    height: '500px',
+                    border: '1px solid #444',
+                    borderRadius: '8px',
+                }}
+            />
+            <button
+                onClick={() => ContentUrlConverter.downloadAsFile(content, content.name)}
+                style={{
+                    marginTop: '6px',
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    borderRadius: '4px',
+                    border: '1px solid #444',
+                    backgroundColor: '#333',
+                    color: '#aaa',
+                    cursor: 'pointer',
+                }}
+            >
+                Download PDF
+            </button>
+        </div>
+    );
+}
+
+function ContentViewer({ content }: ContentViewerProps) {
+    const mediaType = content.mediaType?.toLowerCase() || '';
+
+    if (mediaType.startsWith('image/')) {
+        return <ImageViewer content={content} />;
+    }
+
+    if (mediaType.startsWith('audio/')) {
+        return <AudioPlayer content={content} />;
+    }
+
+    if (mediaType.startsWith('video/')) {
+        return <VideoPlayer content={content} />;
+    }
+
+    if (mediaType === 'application/pdf') {
+        return <PDFViewer content={content} />;
+    }
+
+    // Fallback for unknown types
+    return (
+        <div style={{
+            marginTop: '8px',
+            padding: '10px',
+            backgroundColor: '#2d2d2d',
+            borderRadius: '6px',
+            border: '1px solid #444',
+        }}>
+            <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '6px' }}>
+                📎 {content.name || 'Attachment'} ({mediaType || 'unknown type'})
+            </div>
+            <button
+                onClick={() => ContentUrlConverter.downloadAsFile(content, content.name)}
+                style={{
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    borderRadius: '4px',
+                    border: '1px solid #444',
+                    backgroundColor: '#333',
+                    color: '#aaa',
+                    cursor: 'pointer',
+                }}
+            >
+                Download File
+            </button>
+        </div>
     );
 }
 
@@ -228,7 +474,8 @@ function App() {
         if (!clientRef.current) return;
 
         try {
-            const conv = await clientRef.current.getConversation(key);
+            // Request with includeContents=true to get media attachments
+            const conv = await clientRef.current.getConversation(key, true);
 
             if (!conv) {
                 alert('Conversation not found');
@@ -239,7 +486,8 @@ function App() {
             const chatMsgs: ChatMessage[] = conv.messages.map(m => ({
                 role: m.role as 'user' | 'assistant' | 'system' | 'tool',
                 text: m.text || '',
-                timestamp: new Date(conv.timestamp)
+                timestamp: new Date(conv.timestamp),
+                contents: m.contents // Include attached media content
             }));
 
             setMessages(chatMsgs);
@@ -762,6 +1010,15 @@ function App() {
                     >
                         {msg.role !== 'user' && statusBadge(msg.status)}
                         {msg.text || (msg.role === 'assistant' && loading ? '...' : '')}
+
+                        {/* Display attached content (images, audio, video, PDFs) */}
+                        {msg.contents && msg.contents.length > 0 && (
+                            <div style={{ marginTop: '8px' }}>
+                                {msg.contents.map((content, contentIdx) => (
+                                    <ContentViewer key={contentIdx} content={content} />
+                                ))}
+                            </div>
+                        )}
                     </div>
                 ))}
                     <div ref={messagesEndRef} />

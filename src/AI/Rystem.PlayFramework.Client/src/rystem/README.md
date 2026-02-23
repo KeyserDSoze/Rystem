@@ -619,6 +619,680 @@ See [Backend README](../../../README.md) for full setup guide.
 
 ---
 
+## 🔄 Combining Stored Conversations with Live Streaming
+
+This section shows how to **load historic messages** from `StoredConversation` and **continue the conversation** with live SSE streaming.
+
+### Understanding the Two Models
+
+PlayFramework uses **two different models** for different purposes:
+
+| Model | Purpose | When | Format | Content |
+|-------|---------|------|--------|---------|
+| **`AiSceneResponse`** | Real-time execution tracking | During `executeStepByStep()` / `executeTokenStreaming()` | SSE (Server-Sent Events) | Status updates, streaming chunks, scene metadata |
+| **`StoredConversation`** | Persistent conversation history | When loading from repository via REST API | JSON | Complete messages, user metadata, execution state |
+
+**Why two models?**
+- `AiSceneResponse` contains **temporary execution metadata** (status, sceneName, functionName) needed for real-time UI updates
+- `StoredConversation` contains **only essential data** (messages, userId, timestamp) for efficient storage and querying
+
+### Complete Example: Chat with History
+
+```tsx
+import React, { useState, useEffect } from 'react';
+import { usePlayFramework, StoredConversation, AiSceneResponse } from '@rystem/playframework-client';
+
+interface ChatMessage {
+    role: 'user' | 'assistant';
+    text: string;
+    isStreaming?: boolean;  // Distinguishes streaming vs historic messages
+    status?: string;        // For showing execution status
+}
+
+function ChatWithHistory() {
+    const client = usePlayFramework('default');
+
+    // State
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [input, setInput] = useState('');
+    const [conversationKey, setConversationKey] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    // 📥 LOAD: Load historic conversation from repository
+    const loadConversation = async (key: string) => {
+        try {
+            // Fetch from REST API → StoredConversation
+            const stored = await client.getConversation(key);
+
+            if (!stored) {
+                alert('Conversation not found or unauthorized');
+                return;
+            }
+
+            // Convert StoredMessage[] → ChatMessage[]
+            const historicMessages: ChatMessage[] = stored.messages.map(msg => ({
+                role: msg.role as 'user' | 'assistant',
+                text: msg.text || '',
+                isStreaming: false  // Historic messages are complete
+            }));
+
+            setMessages(historicMessages);
+            setConversationKey(stored.conversationKey);
+
+            console.log(`✅ Loaded ${stored.messages.length} messages from conversation ${key}`);
+        } catch (error) {
+            console.error('Failed to load conversation:', error);
+            alert(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    };
+
+    // 📤 SEND: Send message and stream response
+    const sendMessage = async () => {
+        if (!input.trim() || loading) return;
+
+        const userMessage = input;
+        setInput('');
+        setLoading(true);
+
+        // Add user message to UI
+        const userMsg: ChatMessage = { role: 'user', text: userMessage };
+        setMessages(prev => [...prev, userMsg]);
+
+        // Add placeholder for assistant response
+        const assistantMsg: ChatMessage = { 
+            role: 'assistant', 
+            text: '', 
+            isStreaming: true,  // Flag: currently streaming
+            status: 'initializing'
+        };
+        setMessages(prev => [...prev, assistantMsg]);
+
+        try {
+            // 🔄 Stream from PlayFramework → AiSceneResponse events
+            for await (const step of client.executeStepByStep({
+                message: userMessage,
+                settings: {
+                    conversationKey: conversationKey || undefined,  // Resume existing or start new
+                    enableStreaming: true
+                }
+            })) {
+                // Update conversationKey from first response
+                if (step.conversationKey && !conversationKey) {
+                    setConversationKey(step.conversationKey);
+                }
+
+                // Update message with streaming chunks
+                if (step.streamingChunk) {
+                    setMessages(prev => {
+                        const updated = [...prev];
+                        const last = updated[updated.length - 1];
+                        last.text += step.streamingChunk;
+                        last.status = step.status;
+                        return updated;
+                    });
+                }
+
+                // Update status (planning, executingScene, etc.)
+                else if (step.status) {
+                    setMessages(prev => {
+                        const updated = [...prev];
+                        const last = updated[updated.length - 1];
+                        last.status = step.status;
+                        return updated;
+                    });
+                }
+            }
+
+            // Mark streaming as complete
+            setMessages(prev => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+                last.isStreaming = false;
+                delete last.status;
+                return updated;
+            });
+
+        } catch (error) {
+            console.error('Streaming error:', error);
+            setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                    role: 'assistant',
+                    text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                    isStreaming: false,
+                    status: 'error'
+                };
+                return updated;
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 🗑️ CLEAR: Start new conversation
+    const clearConversation = () => {
+        setMessages([]);
+        setConversationKey(null);
+    };
+
+    return (
+        <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif' }}>
+            <h1>💬 PlayFramework Chat</h1>
+
+            {/* Conversation Info */}
+            <div style={{ 
+                padding: '10px', 
+                marginBottom: '10px', 
+                backgroundColor: '#f0f0f0', 
+                borderRadius: '8px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+            }}>
+                <div>
+                    {conversationKey ? (
+                        <>
+                            <strong>Conversation:</strong> {conversationKey.substring(0, 8)}...
+                            <span style={{ marginLeft: '10px', color: '#666' }}>
+                                ({messages.length} messages)
+                            </span>
+                        </>
+                    ) : (
+                        <span style={{ color: '#999' }}>New conversation</span>
+                    )}
+                </div>
+                <button 
+                    onClick={clearConversation}
+                    style={{
+                        padding: '5px 15px',
+                        borderRadius: '6px',
+                        border: '1px solid #ccc',
+                        backgroundColor: '#fff',
+                        cursor: 'pointer'
+                    }}
+                >
+                    Clear
+                </button>
+            </div>
+
+            {/* Messages */}
+            <div style={{ 
+                height: '500px', 
+                overflowY: 'auto', 
+                border: '1px solid #ddd', 
+                borderRadius: '8px',
+                padding: '15px', 
+                marginBottom: '15px',
+                backgroundColor: '#fafafa'
+            }}>
+                {messages.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: '#999', marginTop: '50px' }}>
+                        <p>No messages yet. Start a conversation or load an existing one.</p>
+                        <button 
+                            onClick={() => loadConversation('some-conversation-key')}
+                            style={{
+                                padding: '8px 16px',
+                                borderRadius: '6px',
+                                border: '1px solid #61dafb',
+                                backgroundColor: '#61dafb',
+                                color: '#fff',
+                                cursor: 'pointer',
+                                marginTop: '10px'
+                            }}
+                        >
+                            Load Example Conversation
+                        </button>
+                    </div>
+                ) : (
+                    messages.map((msg, i) => (
+                        <div
+                            key={i}
+                            style={{
+                                padding: '12px',
+                                margin: '8px 0',
+                                borderRadius: '12px',
+                                backgroundColor: msg.role === 'user' ? '#e3f2fd' : '#fff',
+                                border: msg.role === 'assistant' ? '1px solid #e0e0e0' : 'none',
+                                maxWidth: '85%',
+                                marginLeft: msg.role === 'user' ? 'auto' : '0',
+                                marginRight: msg.role === 'user' ? '0' : 'auto',
+                            }}
+                        >
+                            <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                marginBottom: '6px',
+                                fontSize: '12px',
+                                color: '#666'
+                            }}>
+                                <strong style={{ color: msg.role === 'user' ? '#1976d2' : '#388e3c' }}>
+                                    {msg.role === 'user' ? '👤 You' : '🤖 AI'}
+                                </strong>
+
+                                {/* Show streaming indicator or status */}
+                                {msg.isStreaming && (
+                                    <span style={{ 
+                                        color: '#ff6b6b',
+                                        fontStyle: 'italic',
+                                        fontSize: '11px'
+                                    }}>
+                                        {msg.status || 'streaming'} ●
+                                    </span>
+                                )}
+                            </div>
+
+                            <div style={{ 
+                                whiteSpace: 'pre-wrap', 
+                                wordBreak: 'break-word',
+                                lineHeight: '1.5'
+                            }}>
+                                {msg.text || '...'}
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            {/* Input */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+                <input
+                    type="text"
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && !loading && sendMessage()}
+                    placeholder={loading ? 'AI is responding...' : 'Type your message...'}
+                    disabled={loading}
+                    style={{
+                        flex: 1,
+                        padding: '12px 16px',
+                        fontSize: '15px',
+                        borderRadius: '8px',
+                        border: '1px solid #ddd',
+                        outline: 'none'
+                    }}
+                />
+                <button
+                    onClick={sendMessage}
+                    disabled={loading || !input.trim()}
+                    style={{
+                        padding: '12px 24px',
+                        fontSize: '15px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        backgroundColor: loading ? '#ccc' : '#61dafb',
+                        color: loading ? '#666' : '#fff',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        fontWeight: 600
+                    }}
+                >
+                    {loading ? 'Sending...' : 'Send'}
+                </button>
+            </div>
+
+            {/* Helper Text */}
+            <div style={{ 
+                marginTop: '15px', 
+                fontSize: '13px', 
+                color: '#666',
+                textAlign: 'center'
+            }}>
+                💡 Messages are automatically saved to the repository when backend persistence is enabled.
+                <br />
+                Use the conversation list to browse and load previous conversations.
+            </div>
+        </div>
+    );
+}
+
+export default ChatWithHistory;
+```
+
+### Key Features Demonstrated
+
+✅ **Load Historic Messages**: Converts `StoredMessage[]` → `ChatMessage[]`  
+✅ **Continue Conversation**: Uses same `conversationKey` to resume context  
+✅ **Real-Time Streaming**: Updates UI with `AiSceneResponse` chunks  
+✅ **Status Indicators**: Shows execution status during streaming  
+✅ **Seamless UX**: Historic + streaming messages in same UI  
+
+### Flow Diagram
+
+```
+1. User clicks "Load Conversation"
+   ↓
+2. GET /api/ai/default/conversations/{key}
+   ↓
+3. Receives StoredConversation (REST JSON)
+   ├─ messages: StoredMessage[]
+   ├─ conversationKey: "abc-123"
+   └─ timestamp, userId, isPublic
+   ↓
+4. Convert to ChatMessage[] and display
+   ↓
+5. User types new message
+   ↓
+6. POST /api/ai/default (SSE streaming)
+   settings: { conversationKey: "abc-123" }
+   ↓
+7. Receives AiSceneResponse events (SSE)
+   ├─ status: "planning" → "executingScene" → "streaming"
+   ├─ streamingChunk: "Hello", " world", "!"
+   └─ conversationKey: "abc-123" (same as before)
+   ↓
+8. Backend loads context from cache/repository
+   ↓
+9. LLM generates response using historic context
+   ↓
+10. Response streamed to UI in real-time
+    ↓
+11. Backend saves new messages to repository
+    ↓
+12. Conversation continues seamlessly
+```
+
+### Best Practices
+
+1. **Separate concerns**: Use `StoredMessage` for storage, `AiSceneResponse` for streaming
+2. **Flag streaming state**: Add `isStreaming` flag to distinguish live vs historic
+3. **Show status**: Display execution status (`planning`, `executingScene`) during streaming
+4. **Handle errors**: Wrap streaming in try-catch and show error messages
+5. **Auto-save**: Backend automatically persists conversations when repository is enabled
+
+---
+
+## 📸 Multi-Modal Content (Images, Audio, Video, PDFs)
+
+PlayFramework supports **base64-encoded media content** in messages. The client provides helper utilities to convert Base64 data to Blob URLs for browser display.
+
+### ContentUrlConverter Helper
+
+Converts `AIContent` (base64 data) to Blob URLs that can be used in HTML `<img>`, `<audio>`, `<video>`, and `<iframe>` elements.
+
+```typescript
+import { ContentUrlConverter, AIContent } from "@rystem/playframework-client";
+
+const content: AIContent = {
+    type: "data",
+    data: "iVBORw0KGgoAAAANSUhEUgAA...",  // Base64 JPEG
+    mediaType: "image/jpeg"
+};
+
+// Convert to Blob URL
+const url = ContentUrlConverter.toBlobUrl(content);
+
+// Use in <img> tag
+<img src={url} alt="Image" />
+
+// IMPORTANT: Cleanup when done (frees memory!)
+ContentUrlConverter.revokeUrl(url);
+```
+
+### API Methods
+
+#### `toBlob(content: AIContent): Blob | null`
+Decodes Base64 string to Blob object.
+
+```typescript
+const blob = ContentUrlConverter.toBlob(content);
+```
+
+#### `toBlobUrl(content: AIContent, cacheKey?: string): string | null`
+Creates `blob:` URL for browser display. Supports optional caching.
+
+```typescript
+const url = ContentUrlConverter.toBlobUrl(content, 'image-123');
+```
+
+#### `revokeUrl(url: string, cacheKey?: string): void`
+Revokes Blob URL to free memory. **Always call this when done!**
+
+```typescript
+ContentUrlConverter.revokeUrl(url, 'image-123');
+```
+
+#### `clearCache(): void`
+Revokes all cached URLs at once.
+
+```typescript
+ContentUrlConverter.clearCache();
+```
+
+#### `downloadAsFile(content: AIContent, filename?: string): void`
+Triggers browser download.
+
+```typescript
+ContentUrlConverter.downloadAsFile(content, 'image.jpg');
+```
+
+#### `getFileExtension(mediaType?: string): string`
+Maps MIME type to file extension.
+
+```typescript
+const ext = ContentUrlConverter.getFileExtension('image/jpeg'); // ".jpg"
+```
+
+---
+
+### React Example: Image Viewer
+
+```tsx
+import { useState, useEffect } from 'react';
+import { ContentUrlConverter, AIContent } from "@rystem/playframework-client";
+
+interface ImageViewerProps {
+    content: AIContent;
+}
+
+function ImageViewer({ content }: ImageViewerProps) {
+    const [url, setUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        // Create Blob URL when component mounts
+        const blobUrl = ContentUrlConverter.toBlobUrl(content, `image-${Date.now()}`);
+        setUrl(blobUrl);
+
+        // Cleanup when component unmounts (important for memory!)
+        return () => {
+            if (blobUrl) {
+                ContentUrlConverter.revokeUrl(blobUrl);
+            }
+        };
+    }, [content]);
+
+    if (!url) return <div>Loading image...</div>;
+
+    return (
+        <div>
+            <img src={url} alt="Image" style={{ maxWidth: '100%' }} />
+            <button onClick={() => ContentUrlConverter.downloadAsFile(content, 'image.jpg')}>
+                Download
+            </button>
+        </div>
+    );
+}
+```
+
+---
+
+### React Example: Auto-Detection Content Viewer
+
+```tsx
+import { ContentUrlConverter, AIContent } from "@rystem/playframework-client";
+
+function ContentViewer({ content }: { content: AIContent }) {
+    const mediaType = content.mediaType?.toLowerCase() || '';
+    const [url, setUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        const blobUrl = ContentUrlConverter.toBlobUrl(content);
+        setUrl(blobUrl);
+
+        return () => {
+            if (blobUrl) ContentUrlConverter.revokeUrl(blobUrl);
+        };
+    }, [content]);
+
+    if (!url) return <div>Loading...</div>;
+
+    // Image
+    if (mediaType.startsWith('image/')) {
+        return <img src={url} alt="Image" style={{ maxWidth: '100%' }} />;
+    }
+
+    // Audio
+    if (mediaType.startsWith('audio/')) {
+        return (
+            <audio controls style={{ width: '100%' }}>
+                <source src={url} type={mediaType} />
+            </audio>
+        );
+    }
+
+    // Video
+    if (mediaType.startsWith('video/')) {
+        return (
+            <video controls style={{ maxWidth: '100%' }}>
+                <source src={url} type={mediaType} />
+            </video>
+        );
+    }
+
+    // PDF
+    if (mediaType === 'application/pdf') {
+        return (
+            <iframe
+                src={url}
+                title="PDF Document"
+                style={{ width: '100%', height: '600px', border: '1px solid #ddd' }}
+            />
+        );
+    }
+
+    // Fallback for unknown types
+    return (
+        <div>
+            <p>📎 Attachment: {content.mediaType || 'unknown type'}</p>
+            <button onClick={() => ContentUrlConverter.downloadAsFile(content)}>
+                Download File
+            </button>
+        </div>
+    );
+}
+```
+
+---
+
+### includeContents Parameter
+
+When loading conversations, control whether to fetch base64 content:
+
+```typescript
+// ❌ List conversations WITHOUT media (faster, smaller payload)
+const list = await client.listConversations({
+    includeContents: false,  // Default: false
+    take: 50
+});
+
+// ✅ Load single conversation WITH media (for display)
+const conv = await client.getConversation(key, true);  // includeContents=true
+```
+
+**Why this matters:**
+
+| Operation | includeContents | Payload Size | Speed |
+|-----------|----------------|--------------|-------|
+| List 100 conversations | `false` | ~50 KB | ⚡ Fast (~50ms) |
+| List 100 conversations | `true` | ~5-50 MB | 🐢 Slow (~500ms) |
+| Get single conversation | `true` | ~50-500 KB | ✅ Acceptable |
+
+**Best Practice**: Always use `includeContents=false` for list operations, `true` only when loading a conversation for display.
+
+---
+
+### Full Example: Chat with Multi-Modal Support
+
+```tsx
+import { useState, useEffect } from 'react';
+import { usePlayFramework, StoredMessage, AIContent, ContentUrlConverter } from "@rystem/playframework-client";
+
+function ChatWithMedia() {
+    const client = usePlayFramework('default');
+    const [messages, setMessages] = useState<StoredMessage[]>([]);
+    const [conversationKey, setConversationKey] = useState<string | null>(null);
+
+    const loadConversation = async (key: string) => {
+        // Load conversation WITH contents
+        const conv = await client.getConversation(key, true);
+
+        if (conv) {
+            setMessages(conv.messages);
+            setConversationKey(conv.conversationKey);
+        }
+    };
+
+    return (
+        <div>
+            <h1>Chat with Media Support</h1>
+
+            {messages.map((msg, i) => (
+                <div key={i} style={{ 
+                    backgroundColor: msg.role === 'user' ? '#e3f2fd' : '#fff',
+                    padding: '12px',
+                    margin: '8px 0',
+                    borderRadius: '8px'
+                }}>
+                    <strong>{msg.role === 'user' ? '👤 You' : '🤖 AI'}</strong>
+                    <p>{msg.text}</p>
+
+                    {/* Display attached content (images, PDFs, etc.) */}
+                    {msg.contents && msg.contents.length > 0 && (
+                        <div style={{ marginTop: '8px' }}>
+                            {msg.contents.map((content, idx) => (
+                                <ContentViewer key={idx} content={content} />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            ))}
+
+            <button onClick={() => loadConversation('example-key')}>
+                Load Example Conversation
+            </button>
+        </div>
+    );
+}
+```
+
+---
+
+### Memory Management Best Practices
+
+1. **Always cleanup Blob URLs**: Use `useEffect` cleanup function in React
+2. **Use caching for repeated content**: Pass `cacheKey` parameter
+3. **Clear cache on unmount**: Call `ContentUrlConverter.clearCache()` when appropriate
+4. **Lazy load media**: Only convert to Blob URL when needed for display
+5. **Use includeContents wisely**: Exclude contents from list operations
+
+**Example cleanup:**
+```tsx
+useEffect(() => {
+    const url = ContentUrlConverter.toBlobUrl(content);
+    setImageUrl(url);
+
+    // Cleanup when component unmounts
+    return () => {
+        if (url) ContentUrlConverter.revokeUrl(url);
+    };
+}, [content]);
+
+// Clear all on app unmount
+useEffect(() => {
+    return () => ContentUrlConverter.clearCache();
+}, []);
+```
+
+---
+
 ## 🚫 Cancellation
 
 Use `AbortController` to **cancel ongoing requests**:

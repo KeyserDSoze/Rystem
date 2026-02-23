@@ -281,14 +281,17 @@ export class PlayFrameworkClient {
      * Gets a single conversation by key.
      * 
      * @param conversationKey - The conversation key to retrieve.
+     * @param includeContents - Whether to include message contents (images, audio, PDFs). Default: false.
      * @param signal - AbortSignal for cancellation.
      * @returns Promise<StoredConversation | null>
      */
     public async getConversation(
         conversationKey: string,
+        includeContents: boolean = false,
         signal?: AbortSignal
     ): Promise<StoredConversation | null> {
-        const url = `${this.settings.baseUrl}/${this.settings.factoryName}/conversations/${conversationKey}`;
+        const queryString = includeContents ? '?includeContents=true' : '';
+        const url = `${this.settings.baseUrl}/${this.settings.factoryName}/conversations/${conversationKey}${queryString}`;
         const headers = await this.settings.enrichHeaders(url, "GET", undefined, undefined);
         const effectiveSignal = this.createTimeoutSignal(signal);
 
@@ -396,6 +399,10 @@ export class PlayFrameworkClient {
         // Take - default to 50 if not provided
         const take = params.take !== undefined ? params.take : 50;
         queryParams.push(`take=${take}`);
+
+        // IncludeContents - default to false if not provided
+        const includeContents = params.includeContents !== undefined ? params.includeContents : false;
+        queryParams.push(`includeContents=${includeContents}`);
 
         return queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
     }

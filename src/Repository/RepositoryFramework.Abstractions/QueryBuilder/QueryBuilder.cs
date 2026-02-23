@@ -43,6 +43,17 @@ namespace RepositoryFramework
             return this;
         }
         /// <summary>
+        /// Add metadata as key value pair to your query. This metadata is used in your Repository for custom operations or custom queries.
+        /// </summary>
+        /// <param name="key">Key</param>
+        /// <param name="value">Value</param>
+        /// <returns>QueryBuilder<<typeparamref name="T"/>, <typeparamref name="TKey"/>></returns>
+        public QueryBuilder<T, TKey> AddMetadata(string key, string value)
+        {
+            _ = _operations.AddMetadata(key, value, FilterRequest.Entity);
+            return this;
+        }
+        /// <summary>
         /// Skip first <paramref name="skip"/> elements.
         /// </summary>
         /// <param name="skip">Number of elements to skip.</param>

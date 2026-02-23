@@ -34,6 +34,12 @@ public sealed class ConversationQueryParameters
     /// Number of items to take for pagination (default: 50, max configured in settings).
     /// </summary>
     public int Take { get; set; } = 50;
+
+    /// <summary>
+    /// Include message contents (images, audio, PDFs, etc.) in responses (default: false).
+    /// When false, contents are excluded to reduce payload size in list operations.
+    /// </summary>
+    public bool IncludeContents { get; set; } = false;
 }
 
 /// <summary>

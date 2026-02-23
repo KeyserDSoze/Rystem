@@ -16,6 +16,8 @@ namespace RepositoryFramework
                 {
                     if (operation.Operation == FilterOperations.Top || operation.Operation == FilterOperations.Skip)
                         query.Operations.Add(new ValueFilterOperation(operation.Operation, operation.Request, operation.Value != null ? long.Parse(operation.Value) : null));
+                    else if (operation.Operation == FilterOperations.Metadata)
+                        query.Operations.Add(new MetadataFilterOperations(FilterOperations.Metadata, operation.Request, operation.Key!, operation.Value!));
                     else
                         query.Operations.Add(new LambdaFilterOperation(operation.Operation, operation.Request, operation.Value?.DeserializeAsDynamic<T>()));
                 }

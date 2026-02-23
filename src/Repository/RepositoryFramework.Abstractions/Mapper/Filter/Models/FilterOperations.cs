@@ -12,5 +12,6 @@
         ThenBy = 64,
         ThenByDescending = 128,
         GroupBy = 256,
+        Metadata = 512
     }
 }

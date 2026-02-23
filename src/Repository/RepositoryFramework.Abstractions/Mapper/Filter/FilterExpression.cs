@@ -13,11 +13,17 @@ namespace RepositoryFramework
             foreach (var operation in Operations)
             {
                 string? value = null;
+                string? key = null;
                 if (operation is LambdaFilterOperation lambda)
                     value = lambda.Expression?.Serialize();
                 else if (operation is ValueFilterOperation valueQueryOperation)
                     value = valueQueryOperation.Value.ToString();
-                serialized.Operations.Add(new FilterOperationAsString(operation.Operation, operation.Request, value));
+                else if (operation is MetadataFilterOperations metadataOperation)
+                {
+                    key = metadataOperation.Key;
+                    value = metadataOperation.Value;
+                }
+                serialized.Operations.Add(new FilterOperationAsString(operation.Operation, operation.Request, value, key));
             }
             return serialized;
         }
@@ -40,6 +46,11 @@ namespace RepositoryFramework
         internal IFilterExpression Take(int top, FilterRequest request)
         {
             Operations.Add(new ValueFilterOperation(FilterOperations.Top, request, top));
+            return this;
+        }
+        internal IFilterExpression AddMetadata(string key, string value, FilterRequest request)
+        {
+            Operations.Add(new MetadataFilterOperations(FilterOperations.Metadata, request, key, value));
             return this;
         }
         internal IFilterExpression Skip(int skip, FilterRequest request)
