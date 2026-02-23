@@ -6,7 +6,9 @@ import {
     type PlayFrameworkRequest,
     type AiSceneResponse,
     type AiResponseStatus,
-    type SceneExecutionMode
+    type SceneExecutionMode,
+    type StoredConversation,
+    ConversationSortOrder
 } from './rystem/src/index';
 import './App.css';
 
@@ -132,6 +134,14 @@ function App() {
     const inputRef = useRef<HTMLInputElement>(null);
     const clientRef = useRef<PlayFrameworkClient | null>(null);
 
+    // ─── Conversation Management State ───────────────────────────────────
+    const [conversations, setConversations] = useState<StoredConversation[]>([]);
+    const [searchText, setSearchText] = useState('');
+    const [showPublic, setShowPublic] = useState(true);
+    const [showPrivate, setShowPrivate] = useState(true);
+    const [showSidebar, setShowSidebar] = useState(false);
+    const [loadingConversations, setLoadingConversations] = useState(false);
+
     // Initialize client
     useEffect(() => {
         clientReady.then(() => {
@@ -163,6 +173,83 @@ function App() {
             return updated;
         });
     }, []);
+
+    // ── Load conversations ────────────────────────────────────────────
+
+    const loadConversations = useCallback(async () => {
+        if (!clientRef.current) return;
+
+        setLoadingConversations(true);
+        try {
+            const result = await clientRef.current.listConversations({
+                searchText: searchText || undefined,
+                includePublic: showPublic,
+                includePrivate: showPrivate,
+                orderBy: ConversationSortOrder.TimestampDescending,
+                take: 100
+            });
+            setConversations(result);
+        } catch (error: any) {
+            console.error('Failed to load conversations:', error);
+        } finally {
+            setLoadingConversations(false);
+        }
+    }, [searchText, showPublic, showPrivate]);
+
+    // Load conversations when sidebar opens or filters change
+    useEffect(() => {
+        if (showSidebar) {
+            loadConversations();
+        }
+    }, [showSidebar, showPublic, showPrivate, loadConversations]);
+
+    // ── Delete conversation ───────────────────────────────────────────
+
+    const handleDeleteConversation = async (key: string) => {
+        if (!clientRef.current) return;
+        if (!window.confirm('Delete this conversation?')) return;
+
+        try {
+            await clientRef.current.deleteConversation(key);
+            await loadConversations(); // Reload list
+            if (conversationKey === key) {
+                // If deleted current conversation, clear chat
+                handleClear();
+            }
+        } catch (error: any) {
+            console.error('Failed to delete conversation:', error);
+            alert(`Failed to delete: ${error.message}`);
+        }
+    };
+
+    // ── Load conversation into chat ───────────────────────────────────
+
+    const handleLoadConversation = async (key: string) => {
+        if (!clientRef.current) return;
+
+        try {
+            const conv = await clientRef.current.getConversation(key);
+
+            if (!conv) {
+                alert('Conversation not found');
+                return;
+            }
+
+            // Convert stored messages to ChatMessages
+            const chatMsgs: ChatMessage[] = conv.messages.map(m => ({
+                role: m.role as 'user' | 'assistant' | 'system' | 'tool',
+                text: m.text || '',
+                timestamp: new Date(conv.timestamp)
+            }));
+
+            setMessages(chatMsgs);
+            setConversationKey(conv.conversationKey);
+            setShowSidebar(false); // Close sidebar after loading
+        } catch (error: any) {
+            console.error('Failed to load conversation:', error);
+            alert(`Failed to load: ${error.message}`);
+        }
+    };
 
     // ── Send message ──────────────────────────────────────────────────
 
@@ -338,7 +425,184 @@ function App() {
     // ── Render ────────────────────────────────────────────────────────
 
     return (
-        <div className="App" style={{ height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
+        <div className="App" style={{ height: '100vh', display: 'flex', flexDirection: 'row', backgroundColor: '#1e1e1e' }}>
+            {/* Sidebar - Conversation List */}
+            {showSidebar && (
+                <div style={{
+                    width: '350px',
+                    backgroundColor: '#252525',
+                    borderRight: '1px solid #3a3a3a',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    flexShrink: 0,
+                }}>
+                    {/* Sidebar Header */}
+                    <div style={{
+                        padding: '12px 16px',
+                        borderBottom: '1px solid #3a3a3a',
+                        backgroundColor: '#282c34',
+                    }}>
+                        <h2 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#61dafb' }}>Conversations</h2>
+
+                        {/* Search Input */}
+                        <input
+                            type="text"
+                            placeholder="Search messages..."
+                            value={searchText}
+                            onChange={e => setSearchText(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '6px 10px',
+                                fontSize: '12px',
+                                borderRadius: '6px',
+                                border: '1px solid #444',
+                                backgroundColor: '#1e1e1e',
+                                color: '#eee',
+                                marginBottom: '8px',
+                            }}
+                        />
+
+                        {/* Filter Toggles */}
+                        <div style={{ display: 'flex', gap: '8px', fontSize: '12px' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#aaa', cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={showPublic}
+                                    onChange={e => setShowPublic(e.target.checked)}
+                                />
+                                Public
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#aaa', cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={showPrivate}
+                                    onChange={e => setShowPrivate(e.target.checked)}
+                                />
+                                Private
+                            </label>
+                            <button
+                                onClick={loadConversations}
+                                disabled={loadingConversations}
+                                style={{
+                                    marginLeft: 'auto',
+                                    padding: '4px 10px',
+                                    fontSize: '11px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #444',
+                                    backgroundColor: '#333',
+                                    color: '#aaa',
+                                    cursor: loadingConversations ? 'not-allowed' : 'pointer',
+                                }}
+                            >
+                                {loadingConversations ? 'Loading...' : 'Refresh'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Conversation List */}
+                    <div style={{
+                        flex: 1,
+                        overflowY: 'auto',
+                        padding: '8px',
+                    }}>
+                        {loadingConversations && (
+                            <div style={{ textAlign: 'center', color: '#777', padding: '20px', fontSize: '13px' }}>
+                                Loading...
+                            </div>
+                        )}
+                        {!loadingConversations && conversations.length === 0 && (
+                            <div style={{ textAlign: 'center', color: '#555', padding: '20px', fontSize: '13px' }}>
+                                No conversations found
+                            </div>
+                        )}
+                        {!loadingConversations && conversations.map(conv => (
+                            <div
+                                key={conv.conversationKey}
+                                style={{
+                                    padding: '10px',
+                                    marginBottom: '6px',
+                                    borderRadius: '8px',
+                                    backgroundColor: conversationKey === conv.conversationKey ? '#2d5a8a' : '#2d2d2d',
+                                    border: '1px solid ' + (conversationKey === conv.conversationKey ? '#61dafb' : '#3a3a3a'),
+                                    cursor: 'pointer',
+                                    transition: 'background-color 0.2s',
+                                }}
+                                onMouseEnter={e => {
+                                    if (conversationKey !== conv.conversationKey) {
+                                        e.currentTarget.style.backgroundColor = '#353535';
+                                    }
+                                }}
+                                onMouseLeave={e => {
+                                    if (conversationKey !== conv.conversationKey) {
+                                        e.currentTarget.style.backgroundColor = '#2d2d2d';
+                                    }
+                                }}
+                            >
+                                <div onClick={() => handleLoadConversation(conv.conversationKey)}>
+                                    <div style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        marginBottom: '4px',
+                                    }}>
+                                        <span style={{
+                                            fontSize: '11px',
+                                            color: '#888',
+                                        }}>
+                                            {new Date(conv.timestamp).toLocaleString()}
+                                        </span>
+                                        <span style={{
+                                            fontSize: '10px',
+                                            padding: '2px 6px',
+                                            borderRadius: '4px',
+                                            backgroundColor: conv.isPublic ? '#2d5a2d' : '#5a2d2d',
+                                            color: conv.isPublic ? '#5cb85c' : '#f0ad4e',
+                                        }}>
+                                            {conv.isPublic ? 'Public' : 'Private'}
+                                        </span>
+                                    </div>
+                                    <div style={{
+                                        fontSize: '13px',
+                                        color: '#ddd',
+                                        marginBottom: '6px',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                    }}>
+                                        {conv.messages[0]?.text || 'Empty conversation'}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: '#666' }}>
+                                        {conv.messages.length} message{conv.messages.length !== 1 ? 's' : ''}
+                                        {conv.userId && ` • User: ${conv.userId}`}
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteConversation(conv.conversationKey);
+                                    }}
+                                    style={{
+                                        marginTop: '8px',
+                                        width: '100%',
+                                        padding: '4px 8px',
+                                        fontSize: '11px',
+                                        borderRadius: '4px',
+                                        border: '1px solid #5a2d2d',
+                                        backgroundColor: 'transparent',
+                                        color: '#d9534f',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Main Chat Area */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             {/* Header */}
             <header style={{
                 padding: '12px 20px',
@@ -350,6 +614,21 @@ function App() {
                 flexShrink: 0,
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <button
+                        onClick={() => setShowSidebar(!showSidebar)}
+                        style={{
+                            padding: '6px 12px',
+                            fontSize: '12px',
+                            borderRadius: '6px',
+                            border: '1px solid #444',
+                            backgroundColor: showSidebar ? '#61dafb' : '#333',
+                            color: showSidebar ? '#1e1e1e' : '#aaa',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                        }}
+                    >
+                        {showSidebar ? 'Hide' : 'Show'} Conversations
+                    </button>
                     <h1 style={{ margin: 0, fontSize: '18px', color: '#61dafb' }}>
                         PlayFramework Test Chat
                     </h1>
@@ -433,8 +712,8 @@ function App() {
                     }}>
                         Clear
                     </button>
-                </div>
-            </header>
+                    </div>
+                </header>
 
             {/* Messages */}
             <div style={{
@@ -485,8 +764,8 @@ function App() {
                         {msg.text || (msg.role === 'assistant' && loading ? '...' : '')}
                     </div>
                 ))}
-                <div ref={messagesEndRef} />
-            </div>
+                    <div ref={messagesEndRef} />
+                </div>
 
             {/* Input bar */}
             <div style={{
@@ -549,7 +828,8 @@ function App() {
                 <span>
                     Mode: {mode === 'step' ? 'Step-by-Step' : 'Token Streaming'}
                     {conversationKey && ` | Conv: ${conversationKey.substring(0, 8)}...`}
-                </span>
+                    </span>
+                </div>
             </div>
         </div>
     );

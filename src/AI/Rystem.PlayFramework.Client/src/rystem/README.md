@@ -420,6 +420,205 @@ for await (const step of client.executeStepByStep({
 
 ---
 
+## 💾 Conversation Management (Repository Pattern)
+
+If the backend has **Repository persistence enabled**, you can manage conversations using REST endpoints.
+
+### List Conversations
+
+```typescript
+import { ConversationSortOrder } from "@rystem/playframework-client";
+
+// Get conversations with filters
+const conversations = await client.listConversations({
+    searchText: "weather",                          // Search in message text
+    includePublic: true,                            // Include public conversations
+    includePrivate: true,                           // Include private conversations
+    orderBy: ConversationSortOrder.TimestampDescending, // Sort by newest first
+    skip: 0,                                        // Pagination offset
+    take: 50                                        // Page size
+});
+
+console.log(conversations);
+// [
+//   {
+//     conversationKey: "abc-123",
+//     userId: "user@example.com",
+//     isPublic: false,
+//     timestamp: "2025-01-15T10:30:00Z",
+//     messages: [...],
+//     executionState: {...}
+//   }
+// ]
+```
+
+### Get Single Conversation
+
+```typescript
+const conversation = await client.getConversation("abc-123");
+
+if (conversation) {
+    console.log(conversation.messages); // Full message history
+    console.log(conversation.isPublic); // Public vs private
+} else {
+    console.log("Conversation not found or unauthorized");
+}
+```
+
+**Authorization**: Private conversations require userId match (set via backend `IAuthorizationLayer`).
+
+### Delete Conversation
+
+```typescript
+// Owner-only operation
+await client.deleteConversation("abc-123");
+console.log("Conversation deleted");
+```
+
+**Response:**
+- ✅ Success - Conversation deleted
+- ❌ `403 Forbidden` - Not the owner
+- ❌ `404 Not Found` - Conversation not found
+
+### Update Visibility (Public/Private)
+
+```typescript
+// Toggle conversation visibility (owner-only)
+const updated = await client.updateConversationVisibility("abc-123", true);
+console.log(`Conversation is now ${updated.isPublic ? "public" : "private"}`);
+```
+
+### React Example: Conversation List UI
+
+```tsx
+import { useState, useEffect } from "react";
+import { usePlayFramework, StoredConversation, ConversationSortOrder } from "@rystem/playframework-client";
+
+function ConversationList() {
+    const client = usePlayFramework("default");
+    const [conversations, setConversations] = useState<StoredConversation[]>([]);
+    const [searchText, setSearchText] = useState("");
+    const [showPublic, setShowPublic] = useState(true);
+    const [showPrivate, setShowPrivate] = useState(true);
+    const [loading, setLoading] = useState(false);
+
+    const loadConversations = async () => {
+        setLoading(true);
+        try {
+            const result = await client.listConversations({
+                searchText: searchText || undefined,
+                includePublic: showPublic,
+                includePrivate: showPrivate,
+                orderBy: ConversationSortOrder.TimestampDescending,
+                take: 100
+            });
+            setConversations(result);
+        } catch (error) {
+            console.error("Failed to load conversations:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadConversations();
+    }, [showPublic, showPrivate]);
+
+    const handleDelete = async (key: string) => {
+        if (!window.confirm("Delete this conversation?")) return;
+        try {
+            await client.deleteConversation(key);
+            await loadConversations(); // Reload list
+        } catch (error: any) {
+            alert(`Failed to delete: ${error.message}`);
+        }
+    };
+
+    const handleLoadConversation = async (key: string) => {
+        const conv = await client.getConversation(key);
+        if (conv) {
+            // Load conversation into chat UI
+            console.log("Loaded:", conv.messages);
+        }
+    };
+
+    return (
+        <div>
+            <h2>Conversations</h2>
+
+            {/* Search & Filters */}
+            <input
+                type="text"
+                placeholder="Search messages..."
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+            />
+            <button onClick={loadConversations}>Search</button>
+
+            <label>
+                <input
+                    type="checkbox"
+                    checked={showPublic}
+                    onChange={e => setShowPublic(e.target.checked)}
+                />
+                Public
+            </label>
+            <label>
+                <input
+                    type="checkbox"
+                    checked={showPrivate}
+                    onChange={e => setShowPrivate(e.target.checked)}
+                />
+                Private
+            </label>
+
+            {/* Conversation List */}
+            {loading ? (
+                <div>Loading...</div>
+            ) : (
+                <ul>
+                    {conversations.map(conv => (
+                        <li key={conv.conversationKey}>
+                            <div onClick={() => handleLoadConversation(conv.conversationKey)}>
+                                <strong>{new Date(conv.timestamp).toLocaleString()}</strong>
+                                <span style={{ color: conv.isPublic ? "green" : "red" }}>
+                                    {conv.isPublic ? "Public" : "Private"}
+                                </span>
+                                <p>{conv.messages[0]?.text || "Empty conversation"}</p>
+                                <small>{conv.messages.length} messages</small>
+                            </div>
+                            <button onClick={() => handleDelete(conv.conversationKey)}>Delete</button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+```
+
+### Backend Setup Required
+
+For conversation management to work, the backend must:
+
+1. **Enable Repository persistence:**
+   ```csharp
+   builder.Services.AddPlayFramework("default", pb => pb
+       .UseRepository(repo => repo.WithEntityFramework<AppDbContext>()));
+   ```
+
+2. **Enable conversation endpoints:**
+   ```csharp
+   app.MapPlayFramework("default", settings =>
+   {
+       settings.EnableConversationEndpoints = true;
+   });
+   ```
+
+See [Backend README](../../../README.md) for full setup guide.
+
+---
+
 ## 🚫 Cancellation
 
 Use `AbortController` to **cancel ongoing requests**:

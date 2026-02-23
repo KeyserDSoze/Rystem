@@ -1,4 +1,4 @@
-namespace Rystem.PlayFramework.Api;
+﻿namespace Rystem.PlayFramework.Api;
 
 /// <summary>
 /// Settings for PlayFramework HTTP API endpoints.
@@ -54,4 +54,17 @@ public sealed class PlayFrameworkApiSettings
     /// If null, factory name is always required in URL.
     /// </summary>
     public string? DefaultFactoryName { get; set; }
+
+    /// <summary>
+    /// Enable conversation management endpoints (List, Get, Delete, Update Visibility).
+    /// Requires IRepository&lt;StoredConversation, string&gt; to be registered.
+    /// Default: false
+    /// </summary>
+    public bool EnableConversationEndpoints { get; set; } = false;
+
+    /// <summary>
+    /// Maximum number of conversations returned in a single List request.
+    /// Default: 100
+    /// </summary>
+    public int MaxConversationsPageSize { get; set; } = 100;
 }

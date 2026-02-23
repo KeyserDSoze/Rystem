@@ -83,6 +83,49 @@ Content-Type: application/json
 
 **Risponde con SSE**: Ogni chunk di testo come evento separato (più granulare).
 
+### Conversation Management (se Repository abilitato)
+
+#### List Conversations
+```
+GET /api/ai/default/conversations?searchText=weather&orderBy=TimestampDescending&take=20
+```
+
+Ottieni lista conversazioni con filtri:
+- `searchText` - Cerca nei messaggi
+- `includePublic` - Includi conversazioni pubbliche (default: `true`)
+- `includePrivate` - Includi conversazioni private (default: `true`)
+- `orderBy` - Ordinamento: `TimestampDescending` | `TimestampAscending`
+- `skip` - Offset paginazione
+- `take` - Dimensione pagina
+
+#### Get Conversation
+```
+GET /api/ai/default/conversations/{conversationKey}
+```
+
+Ottieni singola conversazione (richiede autorizzazione per private).
+
+#### Delete Conversation
+```
+DELETE /api/ai/default/conversations/{conversationKey}
+```
+
+Elimina conversazione (solo owner).
+
+#### Update Visibility
+```
+PATCH /api/ai/default/conversations/{conversationKey}/visibility
+Content-Type: application/json
+
+{
+  "isPublic": true
+}
+```
+
+Cambia visibilità pubblico/privato (solo owner).
+
+> **Nota**: Per abilitare questi endpoints, aggiungi `.UseRepository()` nella configurazione PlayFramework in `Program.cs`.
+
 ### Health Check
 ```
 GET /health

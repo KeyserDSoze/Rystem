@@ -4,6 +4,10 @@ export type { PlayFrameworkRequest, SceneRequestSettings, SceneExecutionMode, Ca
 export type { AiSceneResponse, AiResponseStatus, SSEEvent, CompletionMarker, ErrorMarker } from "./models/AiSceneResponse";
 export type { ClientInteractionRequest } from "./models/ClientInteractionRequest";
 export type { ClientInteractionResult, AIContent } from "./models/ClientInteractionResult";
+export type { StoredConversation, ConversationQueryParameters, UpdateConversationVisibilityRequest } from "./models/StoredConversation";
+export { ConversationSortOrder } from "./models/StoredConversation";
+export type { StoredMessage } from "./models/StoredMessage";
+export type { ExecutionState } from "./models/ExecutionState";
 
 // Engine
 export { PlayFrameworkClient } from "./engine/PlayFrameworkClient";

@@ -5,6 +5,7 @@ using Rystem.PlayFramework.Api.Models;
 using Rystem.PlayFramework.Api.Services;
 using Microsoft.Extensions.AI;
 using Scalar.AspNetCore;
+using RepositoryFramework.InMemory;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,7 +27,12 @@ builder.Services.AddCors(options =>
 
 // In-memory distributed cache (required for OnClient continuation tokens)
 builder.Services.AddMemoryCache();
-
+builder.Services.AddRepository<StoredConversation, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithInMemory(inMemoryOptions =>
+    {
+    }, "default");
+});
 builder.Services.AddOpenApi();
 
 // Register Calculator Service (used by Calculator scene)
@@ -61,6 +67,7 @@ builder.Services.AddPlayFramework("default", frameworkBuilder =>
                 .WithMemory()
                 .WithExpiration(TimeSpan.FromMinutes(30));
         })
+        .UseRepository()
         .WithPlanning(planningSettings =>
         {
             planningSettings.MaxRecursionDepth = 5;
@@ -143,6 +150,7 @@ app.MapPlayFramework("default", settings =>
     settings.BasePath = "/api/ai";
     settings.RequireAuthentication = false; // Set to true for production
     settings.EnableCompression = true;
+    settings.EnableConversationEndpoints = true; // Enable conversation management endpoints
 });
 
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))

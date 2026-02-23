@@ -16,6 +16,10 @@ Modern React 18 + TypeScript 5 + Vite client for Rystem PlayFramework
 - 📝 **Type Safe** - Full TypeScript strict mode
 - 🎨 **Code Quality** - ESLint + Prettier
 - 🚀 **Production Ready** - Optimized builds with code splitting
+- 💬 **AI Chat Interface** - Real-time streaming chat with PlayFramework
+- 💾 **Conversation Management** - List, search, filter, and delete conversations
+- 🔄 **SSE Streaming** - Step-by-step or token-level streaming
+- 🛠️ **Client Tools** - Camera, geolocation, file picker integration
 
 ## 🚀 Quick Start
 
@@ -166,6 +170,53 @@ CMD ["npm", "run", "preview"]
 | HMR | 5-8s | <1s |
 | Build | 60-90s | 15-25s |
 | Bundle | 150kb | 95-110kb |
+
+## 💬 PlayFramework Integration
+
+This app demonstrates full integration with Rystem PlayFramework, including:
+
+### Chat Interface
+- **Step-by-step streaming** - Track execution progress (planning → scene execution → completion)
+- **Token-level streaming** - Real-time text generation (typewriter effect)
+- **Multi-modal content** - Send images, audio, PDFs with messages
+- **Client-side tools** - Camera, geolocation, user confirmation
+
+### Conversation Management
+If the backend has **Repository persistence enabled**, the app provides:
+
+- 📋 **Conversation List** - Browse all conversations with filters
+- 🔍 **Search** - Filter by message text
+- 🔒 **Public/Private** - Toggle conversation visibility
+- 🗑️ **Delete** - Remove conversations (owner-only)
+- 📂 **Load History** - Resume previous conversations
+
+**UI Features:**
+```tsx
+// Sidebar with conversation list
+<ConversationList
+  searchText="weather"
+  showPublic={true}
+  showPrivate={true}
+  onLoad={(key) => loadConversation(key)}
+  onDelete={(key) => deleteConversation(key)}
+/>
+```
+
+**Backend Setup Required:**
+```csharp
+// In .NET backend
+builder.Services.AddPlayFramework("default", pb => pb
+    .UseRepository(repo => repo.WithEntityFramework<AppDbContext>()));
+
+app.MapPlayFramework("default", settings =>
+{
+    settings.EnableConversationEndpoints = true;
+});
+```
+
+See [PlayFramework Client Library README](src/rystem/README.md) for full API documentation.
+
+---
 
 ## 🔗 Backend Integration
 

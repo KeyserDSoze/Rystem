@@ -3,6 +3,7 @@ import { AiSceneResponse, SSEEvent, ErrorMarker } from "../models/AiSceneRespons
 import { PlayFrameworkSettings } from "../servicecollection/PlayFrameworkSettings";
 import { ClientInteractionRegistry } from "./ClientInteractionRegistry";
 import { ClientInteractionResult } from "../models/ClientInteractionResult";
+import type { StoredConversation, ConversationQueryParameters, UpdateConversationVisibilityRequest } from "../models/StoredConversation";
 
 /**
  * PlayFramework HTTP client with step-by-step and token-level streaming support.
@@ -243,5 +244,159 @@ export class PlayFrameworkClient {
                 }
             }
         }
+    }
+
+    // ─── Conversation Management Methods ────────────────────────────────────────
+
+    /**
+     * Lists conversations with filtering, sorting, and pagination.
+     * 
+     * @param params - Query parameters for filtering and pagination.
+     * @param signal - AbortSignal for cancellation.
+     * @returns Promise<StoredConversation[]>
+     */
+    public async listConversations(
+        params?: ConversationQueryParameters,
+        signal?: AbortSignal
+    ): Promise<StoredConversation[]> {
+        const queryString = this.buildQueryString(params || {});
+        const url = `${this.settings.baseUrl}/${this.settings.factoryName}/conversations${queryString}`;
+        const headers = await this.settings.enrichHeaders(url, "GET", undefined, undefined);
+        const effectiveSignal = this.createTimeoutSignal(signal);
+
+        const response = await fetch(url, {
+            method: "GET",
+            headers,
+            signal: effectiveSignal
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to list conversations: ${response.statusText}`);
+        }
+
+        return await response.json();
+    }
+
+    /**
+     * Gets a single conversation by key.
+     * 
+     * @param conversationKey - The conversation key to retrieve.
+     * @param signal - AbortSignal for cancellation.
+     * @returns Promise<StoredConversation | null>
+     */
+    public async getConversation(
+        conversationKey: string,
+        signal?: AbortSignal
+    ): Promise<StoredConversation | null> {
+        const url = `${this.settings.baseUrl}/${this.settings.factoryName}/conversations/${conversationKey}`;
+        const headers = await this.settings.enrichHeaders(url, "GET", undefined, undefined);
+        const effectiveSignal = this.createTimeoutSignal(signal);
+
+        const response = await fetch(url, {
+            method: "GET",
+            headers,
+            signal: effectiveSignal
+        });
+
+        if (response.status === 404) {
+            return null;
+        }
+
+        if (!response.ok) {
+            throw new Error(`Failed to get conversation: ${response.statusText}`);
+        }
+
+        return await response.json();
+    }
+
+    /**
+     * Deletes a conversation (owner only).
+     * 
+     * @param conversationKey - The conversation key to delete.
+     * @param signal - AbortSignal for cancellation.
+     * @returns Promise<void>
+     */
+    public async deleteConversation(
+        conversationKey: string,
+        signal?: AbortSignal
+    ): Promise<void> {
+        const url = `${this.settings.baseUrl}/${this.settings.factoryName}/conversations/${conversationKey}`;
+        const headers = await this.settings.enrichHeaders(url, "DELETE", undefined, undefined);
+        const effectiveSignal = this.createTimeoutSignal(signal);
+
+        const response = await fetch(url, {
+            method: "DELETE",
+            headers,
+            signal: effectiveSignal
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to delete conversation: ${response.statusText}`);
+        }
+    }
+
+    /**
+     * Updates conversation visibility (public/private).
+     * 
+     * @param conversationKey - The conversation key to update.
+     * @param isPublic - Whether the conversation should be public.
+     * @param signal - AbortSignal for cancellation.
+     * @returns Promise<StoredConversation>
+     */
+    public async updateConversationVisibility(
+        conversationKey: string,
+        isPublic: boolean,
+        signal?: AbortSignal
+    ): Promise<StoredConversation> {
+        const url = `${this.settings.baseUrl}/${this.settings.factoryName}/conversations/${conversationKey}/visibility`;
+        const body: UpdateConversationVisibilityRequest = { isPublic };
+        const headers = await this.settings.enrichHeaders(url, "PATCH", undefined, body);
+        const effectiveSignal = this.createTimeoutSignal(signal);
+
+        const response = await fetch(url, {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify(body),
+            signal: effectiveSignal
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to update conversation visibility: ${response.statusText}`);
+        }
+
+        return await response.json();
+    }
+
+    /**
+     * Helper to build query string from parameters.
+     */
+    private buildQueryString(params: ConversationQueryParameters): string {
+        const queryParams: string[] = [];
+
+        if (params.searchText) {
+            queryParams.push(`searchText=${encodeURIComponent(params.searchText)}`);
+        }
+
+        // OrderBy - default to TimestampDescending (0) if not provided
+        const orderBy = params.orderBy !== undefined ? params.orderBy : 0;
+        queryParams.push(`orderBy=${orderBy}`);
+
+        // IncludePublic - default to true if not provided
+        const includePublic = params.includePublic !== undefined ? params.includePublic : true;
+        queryParams.push(`includePublic=${includePublic}`);
+
+        // IncludePrivate - default to true if not provided
+        const includePrivate = params.includePrivate !== undefined ? params.includePrivate : true;
+        queryParams.push(`includePrivate=${includePrivate}`);
+
+        // Skip - default to 0 if not provided (REQUIRED by backend)
+        const skip = params.skip !== undefined ? params.skip : 0;
+        queryParams.push(`skip=${skip}`);
+
+        // Take - default to 50 if not provided
+        const take = params.take !== undefined ? params.take : 50;
+        queryParams.push(`take=${take}`);
+
+        return queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
     }
 }

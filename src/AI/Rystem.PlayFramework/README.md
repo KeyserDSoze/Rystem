@@ -417,6 +417,285 @@ var response2 = await sceneManager.ExecuteAsync(new PlayFrameworkRequest
 
 ---
 
+## 💾 Conversation Persistence (Repository Pattern)
+
+PlayFramework supports **persistent storage** of conversations using **Rystem Repository Pattern**. This enables:
+- ✅ **Multi-user** conversation history
+- ✅ **Public/Private** conversations
+- ✅ **Search & filtering** across conversations
+- ✅ **Authorization** checks (owner-only access)
+- ✅ **REST API** for conversation management
+
+### Enable Repository Persistence
+
+```csharp
+builder.Services.AddPlayFramework("default", pb => pb
+    .AddChatClient(...)
+    .AddScene(...)
+
+    // Enable caching (required for Repository to work)
+    .WithCache(cache => cache
+        .WithMemory()
+        .WithExpiration(TimeSpan.FromMinutes(30)))
+
+    // Enable repository persistence
+    .UseRepository(repo => repo
+        .WithEntityFramework<AppDbContext>())); // Or WithInMemory(), WithCosmos(), etc.
+```
+
+### StoredConversation Model
+
+```csharp
+public class StoredConversation : IEntity<string>
+{
+    public string ConversationKey { get; set; }  // Unique ID (primary key)
+    public string? UserId { get; set; }          // Owner (from IAuthorizationLayer)
+    public bool IsPublic { get; set; }           // Public vs Private
+    public DateTimeOffset Timestamp { get; set; } // Created/Updated
+    public List<StoredMessage> Messages { get; set; } // Conversation history
+    public ExecutionState? ExecutionState { get; set; } // Planning/Director state
+}
+```
+
+### Conversation Authorization
+
+Conversations are **automatically saved** with:
+- **UserId** from `IAuthorizationLayer.AuthorizeAsync()` or `settings.UserId`
+- **IsPublic** flag (default: `false`)
+
+**Private conversations** require userId match when loading from repository:
+```csharp
+// In SceneManager
+if (!storedConversation.IsPublic && storedConversation.UserId != currentUserId)
+{
+    return AiSceneResponse.Unauthorized("Access denied to private conversation");
+}
+```
+
+### REST API Endpoints
+
+Enable conversation management endpoints:
+
+```csharp
+app.MapPlayFramework("default", settings =>
+{
+    settings.BasePath = "/api/ai";
+    settings.EnableConversationEndpoints = true;  // Enable CRUD endpoints
+    settings.MaxConversationsPageSize = 100;      // Max results per query
+});
+```
+
+**Available endpoints:**
+
+#### List Conversations
+**GET** `/api/ai/default/conversations`
+
+Query parameters:
+- `searchText` - Filter by message content
+- `includePublic` - Include public conversations (default: `true`)
+- `includePrivate` - Include private conversations (default: `true`)
+- `orderBy` - Sort order: `TimestampDescending` | `TimestampAscending` (default: `TimestampDescending`)
+- `skip` - Pagination offset (default: `0`)
+- `take` - Page size (default: `50`, max: `MaxConversationsPageSize`)
+
+**Example:**
+```bash
+curl "http://localhost:5158/api/ai/default/conversations?searchText=weather&orderBy=TimestampDescending&take=20"
+```
+
+**Response:**
+```json
+[
+  {
+    "conversationKey": "abc-123",
+    "userId": "user@example.com",
+    "isPublic": false,
+    "timestamp": "2025-01-15T10:30:00Z",
+    "messages": [...],
+    "executionState": {...}
+  }
+]
+```
+
+#### Get Conversation
+**GET** `/api/ai/default/conversations/{conversationKey}`
+
+Returns single conversation. **Authorization check**: private conversations require userId match.
+
+**Response:**
+- `200 OK` - Conversation found and authorized
+- `403 Forbidden` - Private conversation, unauthorized
+- `404 Not Found` - Conversation not found
+
+#### Delete Conversation
+**DELETE** `/api/ai/default/conversations/{conversationKey}`
+
+**Owner-only** operation. Requires userId match.
+
+**Response:**
+- `204 No Content` - Successfully deleted
+- `403 Forbidden` - Not the owner
+- `404 Not Found` - Conversation not found
+
+#### Update Visibility
+**PATCH** `/api/ai/default/conversations/{conversationKey}/visibility`
+
+**Request:**
+```json
+{
+  "isPublic": true
+}
+```
+
+Toggles conversation between public/private. **Owner-only** operation.
+
+**Response:**
+- `200 OK` - Returns updated conversation
+- `403 Forbidden` - Not the owner
+- `404 Not Found` - Conversation not found
+
+### Custom Query Example
+
+Use Rystem Repository to build custom queries:
+
+```csharp
+var repository = repositoryFactory.Create("default");
+
+// Find conversations for specific user
+var userConversations = await repository
+    .Where(x => x.UserId == "user@example.com")
+    .OrderByDescending(x => x.Timestamp)
+    .Take(50)
+    .ToListAsEntityAsync();
+
+// Search by message content
+var searchResults = await repository
+    .Where(x => x.Messages.Any(m => m.Text.Contains("weather")))
+    .ToListAsEntityAsync();
+
+// Public conversations only
+var publicConversations = await repository
+    .Where(x => x.IsPublic)
+    .OrderByDescending(x => x.Timestamp)
+    .ToListAsEntityAsync();
+```
+
+### Storage Backends
+
+PlayFramework repository supports all Rystem storage providers:
+
+**Entity Framework Core:**
+```csharp
+.UseRepository(repo => repo
+    .WithEntityFramework<AppDbContext>())
+```
+
+**Cosmos DB:**
+```csharp
+.UseRepository(repo => repo
+    .WithCosmosDb("connection-string", "database", "container"))
+```
+
+**Azure Table Storage:**
+```csharp
+.UseRepository(repo => repo
+    .WithAzureTable("connection-string", "tableName"))
+```
+
+**In-Memory (testing):**
+```csharp
+.UseRepository(repo => repo
+    .WithInMemory())
+```
+
+### Multi-Tenant Scenarios
+
+Use **Factory Pattern** for tenant-specific repositories:
+
+```csharp
+// Register multiple factories
+builder.Services.AddPlayFramework("tenant-a", pb => pb
+    .AddChatClient(...)
+    .UseRepository(repo => repo
+        .WithEntityFramework<TenantADbContext>()));
+
+builder.Services.AddPlayFramework("tenant-b", pb => pb
+    .AddChatClient(...)
+    .UseRepository(repo => repo
+        .WithEntityFramework<TenantBDbContext>()));
+
+// Map separate endpoints
+app.MapPlayFramework("tenant-a", settings =>
+{
+    settings.BasePath = "/api/ai";
+    settings.EnableConversationEndpoints = true;
+});
+
+app.MapPlayFramework("tenant-b", settings =>
+{
+    settings.BasePath = "/api/ai";
+    settings.EnableConversationEndpoints = true;
+});
+```
+
+**Endpoints:**
+- `/api/ai/tenant-a` - Chat for Tenant A
+- `/api/ai/tenant-a/conversations` - Conversations for Tenant A
+- `/api/ai/tenant-b` - Chat for Tenant B
+- `/api/ai/tenant-b/conversations` - Conversations for Tenant B
+
+### Authorization Best Practices
+
+1. **HTTP Policies** - Validate JWT tokens, require authentication
+2. **IAuthorizationLayer** - Extract `userId` for ownership
+3. **Repository Checks** - Prevent cross-user access to private conversations
+
+**Example flow:**
+```csharp
+public class CustomAuthorizationLayer : IAuthorizationLayer
+{
+    public async Task<AuthorizationResult> AuthorizeAsync(
+        SceneContext context,
+        SceneRequestSettings settings,
+        CancellationToken cancellationToken)
+    {
+        // Extract userId from JWT claims (set by HTTP middleware)
+        if (!context.Metadata.TryGetValue("userId", out var userId))
+        {
+            return new AuthorizationResult
+            {
+                IsAuthorized = false,
+                Reason = "User ID not found"
+            };
+        }
+
+        // Return userId for conversation ownership
+        return new AuthorizationResult
+        {
+            IsAuthorized = true,
+            UserId = userId.ToString()
+        };
+    }
+}
+```
+
+**Middleware to extract userId:**
+```csharp
+app.Use(async (context, next) =>
+{
+    if (context.User.Identity?.IsAuthenticated == true)
+    {
+        var userId = context.User.Identity.Name;
+        // Will be available in PlayFramework via context.Metadata["userId"]
+    }
+    await next();
+});
+```
+
+See [Repository Pattern Documentation](https://rystem.net/mcp/tools/repository-setup.md) for more storage options.
+
+---
+
 ## ⚖️ Load Balancing & Fallback
 
 Use **multiple LLM providers** for reliability:
