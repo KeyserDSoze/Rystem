@@ -194,5 +194,10 @@ public enum ExecutionPhase
     /// <summary>
     /// Break the execution for any reason.
     /// </summary>
-    Break
+    Break,
+
+    /// <summary>
+    /// Break the execution for unauthorized access.
+    /// </summary>
+    Unauthorized
 }

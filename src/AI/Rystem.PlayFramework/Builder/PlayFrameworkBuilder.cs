@@ -231,6 +231,31 @@ public sealed class PlayFrameworkBuilder
     }
 
     /// <summary>
+    /// Enables default guardrails to define operational boundaries.
+    /// Adds a system prompt that instructs the AI to use only registered scenes, actors, and tools.
+    /// Prevents hallucination and out-of-scope responses.
+    /// </summary>
+    public PlayFrameworkBuilder UseDefaultGuardrails()
+    {
+        Settings.Guardrails.Enabled = true;
+        Settings.Guardrails.CustomPrompt = null;
+        return this;
+    }
+
+    /// <summary>
+    /// Enables custom guardrails with a specific prompt.
+    /// Use this to define your own operational boundaries and constraints.
+    /// </summary>
+    /// <param name="prompt">Custom system prompt to define guardrails</param>
+    public PlayFrameworkBuilder UseCustomGuardrails(string prompt)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(prompt);
+        Settings.Guardrails.Enabled = true;
+        Settings.Guardrails.CustomPrompt = prompt;
+        return this;
+    }
+
+    /// <summary>
     /// Enables cost tracking with default settings (USD currency, costs must be configured).
     /// </summary>
     public PlayFrameworkBuilder WithCostTracking()

@@ -102,6 +102,13 @@ public sealed class PlayFrameworkSettings
     public MemorySettings? Memory { get; set; }
 
     /// <summary>
+    /// Guardrails configuration.
+    /// Defines operational boundaries for the AI system to prevent out-of-scope responses.
+    /// Disabled by default. Enable via .UseDefaultGuardrails() or .UseCustomGuardrails() builder.
+    /// </summary>
+    public GuardrailsSettings Guardrails { get; set; } = new();
+
+    /// <summary>
     /// Global RAG configurations (key = factory key or empty for default).
     /// </summary>
     public Dictionary<string, RagSettings> GlobalRagSettings { get; set; } = new();
@@ -233,4 +240,22 @@ public sealed class CacheSettings
     /// Cache key prefix.
     /// </summary>
     public string KeyPrefix { get; set; } = "play_framework:";
+}
+
+/// <summary>
+/// Settings for AI guardrails (operational boundaries).
+/// </summary>
+public sealed class GuardrailsSettings
+{
+    /// <summary>
+    /// Whether guardrails are enabled.
+    /// When enabled, a system prompt is added at initialization to define operational boundaries.
+    /// </summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// Custom guardrails prompt.
+    /// If null, uses default prompt that explains available scenes, actors, and tools.
+    /// </summary>
+    public string? CustomPrompt { get; set; }
 }

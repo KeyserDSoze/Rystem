@@ -15,6 +15,7 @@ Production-ready framework for building **AI-powered applications** with:
 - ⚖️ **Load Balancing & Fallback** - Multi-provider reliability
 - 💰 **Cost Tracking** - Per-request budget limits
 - 🔐 **Authorization** - Policy-based access control
+- 🛡️ **Guardrails** - Prevent hallucinations and out-of-scope responses
 - 📊 **Observability** - Logging, telemetry, metrics
 
 ---
@@ -64,6 +65,9 @@ builder.Services.AddPlayFramework("default", pb => pb
     // Add LLM provider
     .AddChatClient(client => client
         .AddOpenAIChatClient("gpt-4o", Environment.GetEnvironmentVariable("OPENAI_API_KEY")!))
+
+    // Add operational boundaries (prevents hallucinations)
+    .UseDefaultGuardrails()
 
     // Add scene with service tool
     .AddScene("weather", "Get weather information", scene => scene
@@ -313,7 +317,12 @@ builder.Services.AddPlayFramework("default", pb => pb
         cost.InputTokenCost = 0.00001m;   // $0.01 per 1K tokens
         cost.OutputTokenCost = 0.00003m;  // $0.03 per 1K tokens
         cost.Currency = "USD";
-    }));
+    })
+
+    // Guardrails (operational boundaries)
+    .UseDefaultGuardrails()  // Prevents hallucinations and out-of-scope responses
+    // OR
+    .UseCustomGuardrails("You must only answer questions about..."));
 ```
 
 ### Per-Request Settings
@@ -686,6 +695,134 @@ builder.Services.AddPlayFramework("default", pb => pb
 - ✅ **Pass business level** → Execute scenes
 
 See [AUTHORIZATION_EXAMPLE.md](AUTHORIZATION_EXAMPLE.md) for comprehensive examples.
+
+---
+
+## 🛡️ Guardrails (Operational Boundaries)
+
+**Guardrails** prevent the AI from **hallucinating** or responding to requests **outside the system's capabilities**. When enabled, a system prompt is automatically added at the beginning of every new conversation to define what the AI can and cannot do.
+
+### Why Use Guardrails?
+
+Without guardrails, LLMs may:
+- ❌ Invent tools or scenes that don't exist
+- ❌ Reference external systems or APIs not available
+- ❌ Respond to questions unrelated to your application's purpose
+- ❌ Hallucinate function signatures or parameters
+
+**With guardrails**, the AI:
+- ✅ Uses ONLY registered scenes, actors, and tools
+- ✅ Stays within the defined context
+- ✅ Suggests alternatives when a request is out of scope
+- ✅ Asks for clarification instead of inventing capabilities
+
+### Enable Default Guardrails
+
+The **default prompt** (~150 tokens) instructs the AI to operate strictly within available capabilities:
+
+```csharp
+builder.Services.AddPlayFramework("default", pb => pb
+    .AddChatClient(...)
+    .UseDefaultGuardrails()  // Adds default operational boundaries
+    .AddScene("weather", "Get weather information", scene => scene
+        .WithService<IWeatherService>(s => s.AddTool(x => x.GetWeatherAsync)))
+    .AddScene("calculator", "Perform calculations", scene => scene
+        .WithService<ICalculatorService>(s => s.AddTool(x => x.Add))));
+```
+
+**Default prompt:**
+```plaintext
+You are a PlayFramework AI orchestrator. You can ONLY respond using:
+- Available Scenes (specialized handlers for specific tasks)
+- Available Actors (context providers and data enrichers)
+- Available Tools (functions you can call)
+
+RULES:
+1. Use ONLY the scenes, actors, and tools explicitly registered in this system
+2. If a request is outside available capabilities, explain what you CAN do instead
+3. When selecting a scene, match user intent to scene purpose
+4. When calling tools, use exact function signatures provided
+5. Stay within the context provided by main actors and system context
+6. Do NOT invent capabilities, hallucinate tools, or reference external systems
+
+If unsure, ask for clarification within your available capabilities.
+```
+
+### Enable Custom Guardrails
+
+Define **your own boundaries** for domain-specific applications:
+
+```csharp
+builder.Services.AddPlayFramework("default", pb => pb
+    .AddChatClient(...)
+    .UseCustomGuardrails(@"
+        You are an AI assistant for the XYZ Corporation customer support system.
+
+        CAPABILITIES:
+        - Check order status (GetOrderStatus tool)
+        - Process returns (InitiateReturn tool)
+        - Answer product questions using product database
+
+        RESTRICTIONS:
+        - Do NOT discuss pricing, discounts, or promotions (direct to sales team)
+        - Do NOT process refunds over $500 (escalate to manager)
+        - Do NOT share customer data from other accounts
+        - Stay professional and empathetic
+
+        If a request is outside these capabilities, politely explain what you CAN help with.
+    ")
+    .AddScene("orders", "Manage customer orders", scene => scene
+        .WithService<IOrderService>(s => s
+            .AddTool(x => x.GetOrderStatus)
+            .AddTool(x => x.InitiateReturn))));
+```
+
+### When to Use Guardrails
+
+| Scenario | Recommendation |
+|----------|---------------|
+| **General-purpose chatbot** | ✅ Use default guardrails |
+| **Domain-specific app** (e.g., HR, finance, healthcare) | ✅ Use custom guardrails with strict policies |
+| **Open exploration** (research assistant, creative writing) | ⚠️ Consider disabling (but monitor for misuse) |
+| **Production systems** | ✅ Always enable (default or custom) |
+
+### Execution Flow with Guardrails
+
+1. **New Conversation** → Guardrails prompt added as **first system message**
+2. **Context & Actors** → Main actors provide additional context
+3. **User Message** → User's actual request
+4. **Scene Selection** → LLM chooses scene based on guardrails + context
+5. **Tool Execution** → LLM uses only allowed tools
+
+**Note:** Guardrails are only added for **new conversations** (not when resuming from cache).
+
+### Example Behavior
+
+**Without Guardrails:**
+```
+User: "Can you book a flight to Paris?"
+AI: "Sure! I'll use the FlightBookingAPI to search for flights..." ❌ (invented tool)
+```
+
+**With Default Guardrails:**
+```
+User: "Can you book a flight to Paris?"
+AI: "I don't have a flight booking capability. I can help with: weather information and calculations. Would you like to check the weather in Paris instead?" ✅
+```
+
+**With Custom Guardrails (customer support):**
+```
+User: "Can you give me a 50% discount?"
+AI: "I'm not able to discuss pricing or discounts. Please contact our sales team at sales@xyz.com for promotional offers." ✅
+```
+
+### Best Practices
+
+1. **✅ Enable in production** - Always use guardrails to prevent unexpected behavior
+2. **✅ Keep prompts concise** - Guardrails consume tokens in every request (~100-200 tokens)
+3. **✅ Test edge cases** - Verify AI rejects out-of-scope requests gracefully
+4. **✅ Combine with authorization** - Use `IAuthorizationLayer` for user-specific restrictions
+5. **✅ Monitor logs** - Track when guardrails prevent hallucinations
 
 ---
 

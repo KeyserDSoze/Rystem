@@ -236,56 +236,30 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             CacheBehavior = settings.CacheBehavior
         };
 
-        //        context.AddSystemMessage(@"""You are a helpful AI assistant.
-        //IMPORTANT RULES:
-        //- You MUST use the available scenes to handle user requests
-        //- Select the appropriate scene based on the user's question
-        //- Each scene provides specific tools and capabilities
-        //- Do NOT respond directly - always select a scene first""");
-        if (_authorizationLayer != null)
-        {
-            var authorizationResult = await _authorizationLayer.AuthorizeAsync(context, settings, cancellationToken);
-            if (!authorizationResult.IsAuthorized)
-            {
-                var errorMessage = $"Authorization failed: {authorizationResult.Reason}";
-                _logger.LogWarning(errorMessage + " (Factory: {FactoryName})", _factoryName);
-                yield return YieldAndTrack(context, new AiSceneResponse
-                {
-                    Status = AiResponseStatus.Error,
-                    ErrorMessage = errorMessage,
-                    Message = "You are not authorized to perform this action."
-                });
-                context.ExecutionPhase = ExecutionPhase.Break;
-                yield break;
-            }
-            else
-            {
-                _logger.LogDebug("Authorization succeeded (Factory: {FactoryName})", _factoryName);
-            }
-        }
-
         await foreach (var initizializeResponse in InitializePlayFrameworkAsync(context, settings, cancellationToken))
         {
             Tracking(initizializeResponse);
             yield return initizializeResponse;
         }
 
-        if (context.ExecutionPhase != ExecutionPhase.Break)
+        if (context.ExecutionPhase != ExecutionPhase.Unauthorized)
         {
-            // Execute without try-catch (yield return restriction)
-            await foreach (var response in ExecuteInternalAsync(context, settings, cancellationToken))
+            if (context.ExecutionPhase != ExecutionPhase.Break)
             {
-                Tracking(response);
-                yield return response;
+                // Execute without try-catch (yield return restriction)
+                await foreach (var response in ExecuteInternalAsync(context, settings, cancellationToken))
+                {
+                    Tracking(response);
+                    yield return response;
+                }
             }
-        }
 
-
-        // Finalization (always executes)
-        await foreach (var finalizeResponse in FinalizePlayFrameworkAsync(context, settings, cancellationToken))
-        {
-            Tracking(finalizeResponse);
-            yield return finalizeResponse;
+            // Finalization (always executes)
+            await foreach (var finalizeResponse in FinalizePlayFrameworkAsync(context, settings, cancellationToken))
+            {
+                Tracking(finalizeResponse);
+                yield return finalizeResponse;
+            }
         }
 
         try
@@ -341,7 +315,16 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         SceneContext context,
         CancellationToken cancellationToken)
     {
-        // Get context result from IContext service (e.g., user info from JWT, system info)
+        // 1. Add guardrails prompt first (if enabled)
+        if (_settings.Guardrails.Enabled)
+        {
+            var guardrailsPrompt = _settings.Guardrails.CustomPrompt ?? s_DefaultGuardrailsPrompt;
+            context.AddSystemMessage(guardrailsPrompt);
+            _logger.LogDebug("Guardrails prompt added (custom: {IsCustom}) (Factory: {FactoryName})",
+                _settings.Guardrails.CustomPrompt != null, _factoryName);
+        }
+
+        // 2. Get context result from IContext service (e.g., user info from JWT, system info)
         object? contextResult = null;
         if (_context != null)
         {
@@ -349,7 +332,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             contextResult = await _context.RetrieveAsync(context, settings, cancellationToken);
         }
 
-        // Execute main actors and collect their outputs
+        // 3. Execute main actors and collect their outputs
         var mainActorOutputs = new List<string>();
         foreach (var actorConfig in _mainActors)
         {
@@ -362,17 +345,39 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             }
         }
 
-        // Build the initial context system message (Context + MainActors combined)
+        // 4. Build the initial context system message (Context + MainActors combined)
         context.BuildInitialContext(contextResult, mainActorOutputs);
 
-        _logger.LogDebug("New context initialized with {MainActorCount} main actors, context result: {HasContext} (Factory: {FactoryName})",
-            mainActorOutputs.Count, contextResult != null, _factoryName);
+        _logger.LogDebug("New context initialized with {MainActorCount} main actors, context result: {HasContext}, guardrails: {Guardrails} (Factory: {FactoryName})",
+            mainActorOutputs.Count, contextResult != null, _settings.Guardrails.Enabled, _factoryName);
     }
 
     private async IAsyncEnumerable<AiSceneResponse> InitializePlayFrameworkAsync(SceneContext context,
         SceneRequestSettings settings,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        //Authorization check before doing any work (including cache load)
+        if (_authorizationLayer != null)
+        {
+            var authorizationResult = await _authorizationLayer.AuthorizeAsync(context, settings, cancellationToken);
+            if (!authorizationResult.IsAuthorized)
+            {
+                var errorMessage = $"Authorization failed: {authorizationResult.Reason}";
+                _logger.LogWarning(errorMessage + " (Factory: {FactoryName})", _factoryName);
+                yield return YieldAndTrack(context, new AiSceneResponse
+                {
+                    Status = AiResponseStatus.Error,
+                    ErrorMessage = errorMessage,
+                    Message = "You are not authorized to perform this action."
+                });
+                context.ExecutionPhase = ExecutionPhase.Break;
+                yield break;
+            }
+            else
+            {
+                _logger.LogDebug("Authorization succeeded (Factory: {FactoryName})", _factoryName);
+            }
+        }
         // Load from cache (includes conversation history, execution state, and continuation data)
         var isResuming = false;
         if (_settings.Cache.Enabled && context.ConversationKey != null)
@@ -660,4 +665,26 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         context.Responses.Add(response);
         return response;
     }
+
+    /// <summary>
+    /// Returns the default guardrails system prompt.
+    /// Instructs the AI to operate within defined boundaries (scenes, actors, tools).
+    /// </summary>
+    private static readonly string s_DefaultGuardrailsPrompt =
+        """
+        You are a PlayFramework AI orchestrator. You can ONLY respond using:
+        - Available Scenes (specialized handlers for specific tasks)
+        - Available Actors (context providers and data enrichers)
+        - Available Tools (functions you can call)
+
+        RULES:
+        1. Use ONLY the scenes, actors, and tools explicitly registered in this system
+        2. If a request is outside available capabilities, explain what you CAN do instead
+        3. When selecting a scene, match user intent to scene purpose
+        4. When calling tools, use exact function signatures provided
+        5. Stay within the context provided by main actors and system context
+        6. Do NOT invent capabilities, hallucinate tools, or reference external systems
+
+        If unsure, ask for clarification within your available capabilities.
+        """;
 }
