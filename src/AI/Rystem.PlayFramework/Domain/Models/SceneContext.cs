@@ -518,7 +518,7 @@ public sealed class SceneContext
             UserId = UserId,
             IsPublic = IsPublic,
             Timestamp = DateTime.UtcNow,
-            Messages = messagesToStore.Select(CachedMessage.FromTrackedMessage).ToList(),
+            Messages = [.. messagesToStore.Select(StoredMessage.FromTrackedMessage)],
             ExecutionState = CreateExecutionState(ExecutionPhase)
         };
     }

@@ -9,7 +9,7 @@ namespace Rystem.PlayFramework;
 /// Serializable representation of a TrackedMessage for cache storage.
 /// Converts complex ChatMessage contents to a flat, serializable format.
 /// </summary>
-public sealed class CachedMessage
+public sealed class StoredMessage
 {
     /// <summary>
     /// Business type flags.
@@ -34,7 +34,7 @@ public sealed class CachedMessage
     /// <summary>
     /// Serialized contents for complex messages (function calls, function results, etc.).
     /// </summary>
-    public List<CachedContent>? Contents { get; set; }
+    public List<StoredContent>? Contents { get; set; }
 
     /// <summary>
     /// Additional properties from the original message.
@@ -42,12 +42,12 @@ public sealed class CachedMessage
     public Dictionary<string, object?>? AdditionalProperties { get; set; }
 
     /// <summary>
-    /// Creates a CachedMessage from a TrackedMessage.
+    /// Creates a StoredMessage from a TrackedMessage.
     /// </summary>
-    public static CachedMessage FromTrackedMessage(TrackedMessage tracked)
+    public static StoredMessage FromTrackedMessage(TrackedMessage tracked)
     {
         var message = tracked.Message;
-        var cached = new CachedMessage
+        var cached = new StoredMessage
         {
             BusinessType = tracked.BusinessType,
             Label = tracked.Label,
@@ -62,7 +62,7 @@ public sealed class CachedMessage
             cached.Contents = [];
             foreach (var content in message.Contents)
             {
-                cached.Contents.Add(CachedContent.FromAIContent(content));
+                cached.Contents.Add(StoredContent.FromAIContent(content));
             }
         }
 
@@ -118,7 +118,7 @@ public sealed class CachedMessage
 /// <summary>
 /// Serializable representation of AIContent.
 /// </summary>
-public sealed class CachedContent
+public sealed class StoredContent
 {
     /// <summary>
     /// Type discriminator: "text", "functionCall", "functionResult", "data", "uri".
@@ -168,16 +168,16 @@ public sealed class CachedContent
     /// <summary>
     /// Creates a CachedContent from an AIContent.
     /// </summary>
-    public static CachedContent FromAIContent(AIContent content)
+    public static StoredContent FromAIContent(AIContent content)
     {
         return content switch
         {
-            TextContent text => new CachedContent
+            TextContent text => new StoredContent
             {
                 Type = "text",
                 Text = text.Text
             },
-            FunctionCallContent functionCall => new CachedContent
+            FunctionCallContent functionCall => new StoredContent
             {
                 Type = "functionCall",
                 Name = functionCall.Name,
@@ -186,7 +186,7 @@ public sealed class CachedContent
                     ? JsonSerializer.Serialize(functionCall.Arguments, JsonHelper.JsonSerializerOptions)
                     : null
             },
-            FunctionResultContent functionResult => new CachedContent
+            FunctionResultContent functionResult => new StoredContent
             {
                 Type = "functionResult",
                 CallId = functionResult.CallId,
@@ -194,19 +194,19 @@ public sealed class CachedContent
                     ? JsonSerializer.Serialize(functionResult.Result, JsonHelper.JsonSerializerOptions)
                     : null
             },
-            DataContent data => new CachedContent
+            DataContent data => new StoredContent
             {
                 Type = "data",
                 MediaType = data.MediaType,
                 DataBase64 = data.Data.Length > 0 ? Convert.ToBase64String(data.Data.ToArray()) : null
             },
-            UriContent uri => new CachedContent
+            UriContent uri => new StoredContent
             {
                 Type = "uri",
                 Uri = uri.Uri?.ToString(),
                 MediaType = uri.MediaType
             },
-            _ => new CachedContent
+            _ => new StoredContent
             {
                 Type = "unknown",
                 Text = content.ToString()

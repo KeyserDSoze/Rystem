@@ -24,7 +24,7 @@ public sealed class StoredConversation
     /// <summary>
     /// Serializable messages.
     /// </summary>
-    public required List<CachedMessage> Messages { get; init; }
+    public required List<StoredMessage> Messages { get; init; }
 
     /// <summary>
     /// Execution state (scenes executed, tools used, etc.).
