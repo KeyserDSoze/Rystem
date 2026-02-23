@@ -59,11 +59,13 @@
         <When Condition=" '$(Configuration)'=='Debug' ">
             <ItemGroup>
                 <ProjectReference Include="..\..\Core\Rystem.DependencyInjection\Rystem.DependencyInjection.csproj" />
+                <ProjectReference Include="..\..\Repository\RepositoryFramework.Abstractions\RepositoryFramework.Abstractions.csproj" />
             </ItemGroup>
         </When>
         <When Condition=" '$(Configuration)'!='Debug' ">
             <ItemGroup>
                 <PackageReference Include="Rystem.DependencyInjection" Version="10.0.5" />
+                <PackageReference Include="Rystem.RepositoryFramework.Abstractions" Version="10.0.5" />
             </ItemGroup>
         </When>
     </Choose>

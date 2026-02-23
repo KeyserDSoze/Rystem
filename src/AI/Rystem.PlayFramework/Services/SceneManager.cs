@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Services;
 using Rystem.PlayFramework.Services.ExecutionModes;
 using Rystem.PlayFramework.Telemetry;
+using RepositoryFramework;
 
 namespace Rystem.PlayFramework;
 
@@ -30,6 +31,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private readonly IFactory<IExecutionModeHandler> _executionModeHandlerFactory;
     private readonly IPlayFrameworkCache _playFrameworkCache;
     private readonly IClientInteractionHandler _clientInteractionHandler;
+    private readonly IFactory<IRepository<StoredConversation, string>>? _repositoryFactory;
 
     // Resolved dependencies (set via SetFactoryName)
     private string? _factoryName;
@@ -45,6 +47,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private IMemoryStorage? _memoryStorage;
     private IContext? _context;
     private IAuthorizationLayer? _authorizationLayer;
+    private IRepository<StoredConversation, string>? _repository;
 
     public SceneManager(
         IServiceProvider serviceProvider,
@@ -63,7 +66,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         IFactory<IMemory>? memoryFactory = null,
         IFactory<IMemoryStorage>? memoryStorageFactory = null,
         IFactory<IContext>? contextFactory = null,
-        IFactory<IAuthorizationLayer>? authorizationLayerFactory = null)
+        IFactory<IAuthorizationLayer>? authorizationLayerFactory = null,
+        IFactory<IRepository<StoredConversation, string>>? repositoryFactory = null)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -82,6 +86,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _rateLimiterFactory = rateLimiterFactory;
         _memoryFactory = memoryFactory;
         _memoryStorageFactory = memoryStorageFactory;
+        _repositoryFactory = repositoryFactory;
     }
     public bool FactoryNameAlreadySetup { get; set; }
     public void SetFactoryName(AnyOf<string?, Enum>? name)
@@ -133,6 +138,12 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
 
         _context = _contextFactory?.Create(name);
         _authorizationLayer = _authorizationLayerFactory?.Create(name);
+        _repository = _repositoryFactory?.Create(name);
+
+        if (_repository != null)
+        {
+            _logger.LogDebug("Repository persistence enabled (Factory: {FactoryName})", _factoryName);
+        }
     }
 
     public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(
@@ -357,9 +368,12 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         //Authorization check before doing any work (including cache load)
+        string? userId = null;
         if (_authorizationLayer != null)
         {
             var authorizationResult = await _authorizationLayer.AuthorizeAsync(context, settings, cancellationToken);
+            userId = authorizationResult.UserId; // Store userId for later use
+
             if (!authorizationResult.IsAuthorized)
             {
                 var errorMessage = $"Authorization failed: {authorizationResult.Reason}";
@@ -375,26 +389,77 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             }
             else
             {
-                _logger.LogDebug("Authorization succeeded (Factory: {FactoryName})", _factoryName);
+                _logger.LogDebug("Authorization succeeded - UserId: {UserId} (Factory: {FactoryName})",
+                    userId ?? "anonymous", _factoryName);
             }
         }
-        // Load from cache (includes conversation history, execution state, and continuation data)
-        var isResuming = false;
-        if (_settings.Cache.Enabled && context.ConversationKey != null)
-        {
-            yield return YieldStatus(AiResponseStatus.LoadingCache, "Loading from cache");
-            await _playFrameworkCache.LoadAsync(context, cancellationToken);
 
-            if (context.IsResuming)
+        // Set userId in context (from authorization or settings override)
+        context.UserId = userId;
+        // Load from cache (includes conversation history, execution state, and continuation data)
+        var loadedFromStorageOrCache = false;
+        if (context.ConversationKey != null)
+        {
+            // Try cache first if enabled
+            if (_settings.Cache.Enabled)
             {
-                isResuming = true;
-                _logger.LogInformation(
-                    "Resuming conversation '{ConversationKey}' from phase {Phase} - Scenes: {SceneCount}, Tools: {ToolCount}",
-                    context.ConversationKey,
-                    context.RestoredExecutionState!.Phase,
-                    context.ExecutedSceneOrder.Count,
-                    context.ExecutedTools.Count);
+                yield return YieldStatus(AiResponseStatus.LoadingCache, "Loading from cache");
+                await _playFrameworkCache.LoadAsync(context, cancellationToken);
+
+                if (context.IsResuming)
+                {
+                    loadedFromStorageOrCache = true;
+                    _logger.LogInformation(
+                        "Resuming conversation '{ConversationKey}' from cache - Phase: {Phase}, Scenes: {SceneCount}, Tools: {ToolCount}",
+                        context.ConversationKey,
+                        context.RestoredExecutionState!.Phase,
+                        context.ExecutedSceneOrder.Count,
+                        context.ExecutedTools.Count);
+                }
             }
+
+            // If not in cache, try repository
+            if (!loadedFromStorageOrCache && _repository != null)
+            {
+                _logger.LogDebug("Not found in cache, trying repository for conversation '{ConversationKey}'", context.ConversationKey);
+
+                var storedConversation = await _repository.GetAsync(context.ConversationKey, cancellationToken);
+                if (storedConversation != null)
+                {
+                    // Load from repository
+                    context.LoadFromStoredConversation(storedConversation);
+                    loadedFromStorageOrCache = true;
+
+                    _logger.LogInformation(
+                        "Loaded conversation '{ConversationKey}' from repository - UserId: {UserId}, IsPublic: {IsPublic}, Messages: {MessageCount}",
+                        context.ConversationKey,
+                        storedConversation.UserId ?? "anonymous",
+                        storedConversation.IsPublic,
+                        storedConversation.Messages.Count);
+
+                    // Warm up cache
+                    if (_settings.Cache.Enabled)
+                    {
+                        _logger.LogDebug("Warming up cache with repository data for conversation '{ConversationKey}'", context.ConversationKey);
+                        await _playFrameworkCache.SaveAsync(context, cancellationToken);
+                    }
+                }
+            }
+        }
+
+        // Check authorization for private conversations
+        if (!context.IsPublic && context.UserId != userId)
+        {
+            var errorMessage = $"Unauthorized access to private conversation: userId mismatch (expected: {userId}, actual: {context.UserId ?? "anonymous"})";
+            _logger.LogWarning(errorMessage + " (Factory: {FactoryName})", _factoryName);
+            yield return YieldAndTrack(context, new AiSceneResponse
+            {
+                Status = AiResponseStatus.Unauthorized,
+                ErrorMessage = errorMessage,
+                Message = "You are not authorized to access this conversation."
+            });
+            context.ExecutionPhase = ExecutionPhase.Break;
+            yield break;
         }
 
         // Check if resuming from client interaction (ConversationKey + ClientInteractionResults)
@@ -402,7 +467,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             && context.Properties.ContainsKey("_continuation_sceneName");
 
         // Initialize context only if NOT resuming from cache
-        if (!isResuming)
+        if (!loadedFromStorageOrCache)
         {
             yield return YieldStatus(AiResponseStatus.Initializing, "Building initial context");
             await InitializeNewContextAsync(context, cancellationToken);
@@ -527,6 +592,10 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
 
                 // Apply summary to context (marks resumable as summarized, adds summary)
                 context.ApplySummary(summary);
+
+                // Save conversation after summarization
+                _logger.LogDebug("Saving conversation '{ConversationKey}' after summarization", context.ConversationKey);
+                await SaveConversationAsync(context, cancellationToken);
             }
         }
     }
@@ -539,8 +608,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         // Save to cache with Completed phase
         if (settings.CacheBehavior != CacheBehavior.Avoidable && _settings.Cache.Enabled && context.ConversationKey != null)
         {
-            yield return YieldStatus(AiResponseStatus.SavingCache, "Saving to cache");
-            await _playFrameworkCache.SaveAsync(context, cancellationToken);
+            yield return YieldStatus(AiResponseStatus.SavingCache, "Saving conversation");
+            await SaveConversationAsync(context, cancellationToken);
         }
 
         // Save updated memory if enabled
@@ -574,6 +643,70 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                 _logger.LogError(ex, "Failed to save conversation memory for key '{Key}' (Factory: {FactoryName})",
                     context.ConversationKey, _factoryName);
                 // Don't fail the entire request if memory save fails
+            }
+        }
+    }
+
+    /// <summary>
+    /// Saves conversation to both cache and repository (if enabled).
+    /// </summary>
+    private async Task SaveConversationAsync(SceneContext context, CancellationToken cancellationToken)
+    {
+        if (context.ConversationKey == null)
+            return;
+
+        // Save to cache
+        if (_settings.Cache.Enabled)
+        {
+            _logger.LogDebug("Saving conversation '{ConversationKey}' to cache", context.ConversationKey);
+            await _playFrameworkCache.SaveAsync(context, cancellationToken);
+        }
+
+        // Save to repository
+        if (_repository != null)
+        {
+            _logger.LogDebug("Saving conversation '{ConversationKey}' to repository - UserId: {UserId}, IsPrivate: {IsPrivate}",
+                context.ConversationKey, context.UserId ?? "anonymous", context.IsPublic);
+
+            var storedConversation = context.ToStoredConversation();
+
+            // Check if conversation already exists
+            var existingConversation = await _repository.GetAsync(context.ConversationKey, cancellationToken);
+
+            if (existingConversation != null)
+            {
+                var updated = await _repository.UpdateAsync(context.ConversationKey, storedConversation, cancellationToken);
+                if (updated.IsOk)
+                {
+                    _logger.LogInformation(
+                        "Updated conversation '{ConversationKey}' in repository - Messages: {MessageCount}, Phase: {Phase}",
+                        context.ConversationKey,
+                        storedConversation.Messages.Count,
+                        storedConversation.ExecutionState?.Phase);
+                }
+                else
+                {
+                    _logger.LogError("Failed to update conversation '{ConversationKey}' in repository: {Error}",
+                        context.ConversationKey, updated.Message);
+                }
+            }
+            else
+            {
+                var inserted = await _repository.InsertAsync(context.ConversationKey, storedConversation, cancellationToken);
+                if (inserted.IsOk)
+                {
+                    _logger.LogInformation(
+                        "Inserted conversation '{ConversationKey}' in repository - Messages: {MessageCount}, Phase: {Phase}, UserId: {UserId}",
+                        context.ConversationKey,
+                        storedConversation.Messages.Count,
+                        storedConversation.ExecutionState?.Phase,
+                        storedConversation.UserId ?? "anonymous");
+                }
+                else
+                {
+                    _logger.LogError("Failed to insert conversation '{ConversationKey}' in repository: {Error}",
+                        context.ConversationKey, inserted.Message);
+                }
             }
         }
     }

@@ -62,6 +62,17 @@ public sealed class SceneContext
     public string? ConversationKey { get; set; }
 
     /// <summary>
+    /// User ID who owns this conversation (null = anonymous/public).
+    /// Set by IAuthorizationLayer during initialization.
+    /// </summary>
+    public string? UserId { get; set; }
+
+    /// <summary>
+    /// Whether this conversation is private (requires userId match to access).
+    /// </summary>
+    public bool IsPublic { get; set; }
+
+    /// <summary>
     /// Cache behavior for this request.
     /// </summary>
     public CacheBehavior CacheBehavior { get; set; } = CacheBehavior.Default;
@@ -376,8 +387,8 @@ public sealed class SceneContext
     /// <summary>
     /// Gets messages for cache (includes InitialContext so it can be reused).
     /// </summary>
-    public List<TrackedMessage> GetMessagesForCache()
-        => [.. ConversationHistory.Where(m => m.ShouldCache)];
+    public List<TrackedMessage> GetMessagesToStore()
+        => [.. ConversationHistory.Where(m => m.ShouldStore)];
 
     /// <summary>
     /// Gets messages for memory storage.
@@ -493,5 +504,43 @@ public sealed class SceneContext
         }
 
         ConversationHistory.Insert(insertIndex, TrackedMessage.CreateExecutionCheckpoint(state));
+    }
+
+    /// <summary>
+    /// Creates a StoredConversation from current context for persistence.
+    /// </summary>
+    public StoredConversation ToStoredConversation()
+    {
+        var messagesToStore = GetMessagesToStore();
+        return new StoredConversation
+        {
+            ConversationKey = ConversationKey ?? throw new InvalidOperationException("ConversationKey is required"),
+            UserId = UserId,
+            IsPublic = IsPublic,
+            Timestamp = DateTime.UtcNow,
+            Messages = messagesToStore.Select(CachedMessage.FromTrackedMessage).ToList(),
+            ExecutionState = CreateExecutionState(ExecutionPhase)
+        };
+    }
+
+    /// <summary>
+    /// Loads messages and state from a StoredConversation.
+    /// </summary>
+    public void LoadFromStoredConversation(StoredConversation stored)
+    {
+        var initialContext = ConversationHistory.FirstOrDefault(x => x.Label == "InitialContext");
+        ConversationHistory.Clear();
+        if (initialContext != null)
+            ConversationHistory.Add(initialContext);
+
+        foreach (var cachedMsg in stored.Messages)
+            ConversationHistory.Add(cachedMsg.ToTrackedMessage());
+
+        if (stored.ExecutionState != null)
+            RestoreExecutionState(stored.ExecutionState);
+
+        UserId = stored.UserId;
+        ConversationKey = stored.ConversationKey;
+        IsPublic = stored.IsPublic;
     }
 }

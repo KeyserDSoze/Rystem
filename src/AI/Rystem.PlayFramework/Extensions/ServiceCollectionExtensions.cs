@@ -4,6 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using RepositoryFramework;
 using Rystem.PlayFramework.Mcp;
 using Rystem.PlayFramework.Services;
 using Rystem.PlayFramework.Services.ExecutionModes;
@@ -69,6 +70,12 @@ public static class ServiceCollectionExtensions
         services.AddEngineFactory<IJsonService>();
         services.AddEngineFactory<IMcpServerManager>();  // Add MCP server manager factory
         services.AddEngineFactory<IRateLimiter>();  // Add rate limiter factory (optional, but DI needs it registered)
+
+        // Add repository factory (optional, registered only if user calls UseRepository())
+        if (builder.HasRepository)
+        {
+            services.AddEngineFactory<IRepository<StoredConversation, string>>();
+        }
 
         // Register PlayFrameworkCache as transient with factory pattern (supports named instances)
         if (!builder.HasCustomCache)

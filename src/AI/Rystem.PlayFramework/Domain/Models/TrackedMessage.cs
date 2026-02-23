@@ -40,7 +40,7 @@ public enum MessageBusinessType
     /// <summary>
     /// Message is saved to cache.
     /// </summary>
-    Cache = 2,
+    Store = 2,
 
     /// <summary>
     /// Message is saved to long-term memory.
@@ -81,7 +81,7 @@ public sealed class TrackedMessage
     public static TrackedMessage CreateInitialContext(string content)
         => new()
         {
-            BusinessType = MessageBusinessType.Message | MessageBusinessType.Cache, // Cached for reuse
+            BusinessType = MessageBusinessType.Message | MessageBusinessType.Store, // Cached for reuse
             Message = new ChatMessage(ChatRole.System, content),
             Label = "InitialContext"
         };
@@ -93,7 +93,7 @@ public sealed class TrackedMessage
     public static TrackedMessage CreateUserMessage(ChatMessage message)
         => new()
         {
-            BusinessType = MessageBusinessType.Message | MessageBusinessType.Cache | MessageBusinessType.Memory | MessageBusinessType.Resume,
+            BusinessType = MessageBusinessType.Message | MessageBusinessType.Store | MessageBusinessType.Memory | MessageBusinessType.Resume,
             Message = message,
             Label = "User"
         };
@@ -111,7 +111,7 @@ public sealed class TrackedMessage
     public static TrackedMessage CreateAssistantMessage(ChatMessage message)
         => new()
         {
-            BusinessType = MessageBusinessType.Message | MessageBusinessType.Cache | MessageBusinessType.Memory | MessageBusinessType.Resume,
+            BusinessType = MessageBusinessType.Message | MessageBusinessType.Store | MessageBusinessType.Memory | MessageBusinessType.Resume,
             Message = message,
             Label = "Assistant"
         };
@@ -129,7 +129,7 @@ public sealed class TrackedMessage
     public static TrackedMessage CreateToolMessage(ChatMessage message)
         => new()
         {
-            BusinessType = MessageBusinessType.Message | MessageBusinessType.Cache | MessageBusinessType.Resume,
+            BusinessType = MessageBusinessType.Message | MessageBusinessType.Store | MessageBusinessType.Resume,
             Message = message,
             Label = "Tool"
         };
@@ -141,7 +141,7 @@ public sealed class TrackedMessage
     public static TrackedMessage CreateSummaryMessage(string summary)
         => new()
         {
-            BusinessType = MessageBusinessType.Message | MessageBusinessType.Cache,
+            BusinessType = MessageBusinessType.Message | MessageBusinessType.Store,
             Message = new ChatMessage(ChatRole.System, $"[Previous conversation summary]\n{summary}"),
             Label = "Summary"
         };
@@ -177,7 +177,7 @@ public sealed class TrackedMessage
     public static TrackedMessage CreateSceneActorMessage(string sceneName, string actorName, string content)
         => new()
         {
-            BusinessType = MessageBusinessType.Message | MessageBusinessType.Cache,
+            BusinessType = MessageBusinessType.Message | MessageBusinessType.Store,
             Message = new ChatMessage(ChatRole.System, content), // Clean content without decorations
             Label = $"SceneActor:{sceneName}:{actorName}"
         };
@@ -189,7 +189,7 @@ public sealed class TrackedMessage
     public static TrackedMessage CreateMcpContextMessage(string sceneName, string content)
         => new()
         {
-            BusinessType = MessageBusinessType.Message | MessageBusinessType.Cache,
+            BusinessType = MessageBusinessType.Message | MessageBusinessType.Store,
             Message = new ChatMessage(ChatRole.System, content),
             Label = $"McpContext:{sceneName}"
         };
@@ -257,9 +257,9 @@ public sealed class TrackedMessage
     public bool IsActiveMessage => BusinessType.HasFlag(MessageBusinessType.Message);
 
     /// <summary>
-    /// Should this message be cached?
+    /// Should this message be stored/cached?
     /// </summary>
-    public bool ShouldCache => BusinessType.HasFlag(MessageBusinessType.Cache);
+    public bool ShouldStore => BusinessType.HasFlag(MessageBusinessType.Store);
 
     /// <summary>
     /// Should this message be saved to memory?

@@ -24,6 +24,7 @@ public sealed class PlayFrameworkBuilder
     internal bool HasCustomMemoryStorage { get; set; }
     internal Type? CustomMemoryType { get; set; }
     internal Type? CustomMemoryStorageType { get; set; }
+    internal bool HasRepository { get; set; }
 
     internal PlayFrameworkBuilder(IServiceCollection services, AnyOf<string?, Enum>? name = null)
     {
