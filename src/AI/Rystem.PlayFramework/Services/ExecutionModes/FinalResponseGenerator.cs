@@ -49,13 +49,18 @@ internal sealed class FinalResponseGenerator : IFactoryName
         }
 
         // Generate final response based on gathered data
+        // Use full conversation history (includes user request, scene results, tool calls)
+        var messages = context.GetMessagesForLLM();
+
+        // Add final prompt to guide the LLM to synthesize a complete answer
         var finalPrompt = new ChatMessage(ChatRole.User, "Based on all the information gathered, provide the final answer to the user's request.");
+        messages.Add(finalPrompt);
 
         if (settings.EnableStreaming)
         {
             // Streaming mode - use StreamingHelper
             await foreach (var streamUpdateWithCost in context.ChatClientManager.GetStreamingResponseAsync(
-                [finalPrompt],
+                messages,  // ✅ Use conversation history + final prompt
                 cancellationToken: cancellationToken))
             {
                 await foreach (var streamResponse in _dependencies.StreamingHelper.ProcessChunkAsync(
@@ -71,7 +76,7 @@ internal sealed class FinalResponseGenerator : IFactoryName
         {
             // Non-streaming mode
             var responseWithCost = await context.ChatClientManager.GetResponseAsync(
-                [finalPrompt],
+                messages,  // ✅ Use conversation history + final prompt
                 cancellationToken: cancellationToken);
 
             // Extract multi-modal contents from LLM response and save to conversation history

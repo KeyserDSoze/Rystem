@@ -61,6 +61,7 @@ else
 builder.Services.AddPlayFramework("default", frameworkBuilder =>
 {
     frameworkBuilder
+        .UseDefaultGuardrails()
         .AddCache(cacheBuilder =>
         {
             cacheBuilder

@@ -61,7 +61,7 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
             }
 
             // Select next scene to execute
-            yield return YieldStatus(AiResponseStatus.Running, $"Selecting scene {sceneExecutionCount + 1}/{settings.MaxDynamicScenes}");
+            yield return YieldStatus(AiResponseStatus.Running, $"Round {sceneExecutionCount + 1}/{settings.MaxDynamicScenes}");
 
             var selectedScene = await SelectSceneForChainingAsync(dependencies, context, availableScenes, settings, cancellationToken);
             if (selectedScene == null)
@@ -81,10 +81,16 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
             var sceneResultBuilder = new StringBuilder();
             await foreach (var response in sceneExecutor.ExecuteSceneAsync(context, selectedScene, settings, cancellationToken))
             {
-                // Accumulate scene results
-                if (response.Status == AiResponseStatus.Running && !string.IsNullOrWhiteSpace(response.Message))
+                // Accumulate scene results from various status types (not just Running)
+                if (!string.IsNullOrWhiteSpace(response.Message))
                 {
-                    sceneResultBuilder.AppendLine(response.Message);
+                    // Include Running, FunctionRequest, FunctionCompleted messages for complete context
+                    if (response.Status == AiResponseStatus.Running ||
+                        response.Status == AiResponseStatus.FunctionRequest ||
+                        response.Status == AiResponseStatus.FunctionCompleted)
+                    {
+                        sceneResultBuilder.AppendLine(response.Message);
+                    }
                 }
 
                 yield return response;
@@ -137,9 +143,6 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
         SceneRequestSettings settings,
         CancellationToken cancellationToken)
     {
-        // Build context message with execution history
-        var contextMessage = BuildChainingContext(context);
-
         // Create scene selection tools from available scenes
         var sceneTools = availableScenes
             .Select(scene => scene.AiTool)
@@ -150,12 +153,11 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
             Tools = sceneTools
         };
 
-        // Build prompt
-        var messages = new List<ChatMessage>
-        {
-            new ChatMessage(ChatRole.User, context.InputMessage)
-        };
+        // Use full conversation history from context (includes all previous messages, tool calls, and results)
+        var messages = context.GetMessagesForLLM();
 
+        // Optionally add execution context as system message for additional guidance
+        var contextMessage = BuildChainingContext(context);
         if (!string.IsNullOrWhiteSpace(contextMessage))
         {
             messages.Add(new ChatMessage(ChatRole.System, contextMessage));
@@ -182,7 +184,20 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
         if (functionCall != null)
         {
             var selectedSceneName = functionCall.Name;
-            return dependencies.SceneFactory.TryGetScene(selectedSceneName);
+            var selectedScene = dependencies.SceneFactory.TryGetScene(selectedSceneName);
+
+            // Add tool result to conversation history (required by OpenAI/Azure OpenAI)
+            // Assistant message with tool_calls MUST be followed by tool message with result
+            var toolResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
+            {
+                Result = selectedScene != null 
+                    ? $"Scene '{selectedScene.Name}' selected successfully. Description: {selectedScene.Description}. Available tools: {string.Join(", ", selectedScene.Tools.Select(t => t.Name))}"
+                    : $"Error: Scene '{selectedSceneName}' not found"
+            };
+            var toolMessage = new ChatMessage(ChatRole.Tool, [toolResult]);
+            context.AddToolMessage(toolMessage);
+
+            return selectedScene;
         }
 
         return null;
@@ -249,27 +264,47 @@ Use the decideContinuation tool to indicate your decision.";
 
         var functionCall = responseMessage?.Contents?.OfType<FunctionCallContent>().FirstOrDefault();
 
+        bool shouldContinue = false;
+        string? reasoning = null;
+
         if (functionCall?.Arguments != null &&
             functionCall.Arguments.TryGetValue("shouldContinue", out var shouldContinueValue))
         {
+            // Extract reasoning if available
+            if (functionCall.Arguments.TryGetValue("reasoning", out var reasoningValue))
+            {
+                reasoning = reasoningValue?.ToString();
+            }
+
             // Handle various formats the LLM might return
             if (shouldContinueValue is bool boolValue)
             {
-                return boolValue;
+                shouldContinue = boolValue;
             }
-            if (shouldContinueValue is JsonElement jsonElement)
+            else if (shouldContinueValue is JsonElement jsonElement)
             {
-                if (jsonElement.ValueKind == JsonValueKind.True) return true;
-                if (jsonElement.ValueKind == JsonValueKind.False) return false;
-                if (jsonElement.ValueKind == JsonValueKind.String)
+                if (jsonElement.ValueKind == JsonValueKind.True) shouldContinue = true;
+                else if (jsonElement.ValueKind == JsonValueKind.False) shouldContinue = false;
+                else if (jsonElement.ValueKind == JsonValueKind.String)
                 {
-                    return bool.TryParse(jsonElement.GetString(), out var parsed) && parsed;
+                    shouldContinue = bool.TryParse(jsonElement.GetString(), out var parsed) && parsed;
                 }
             }
-            if (shouldContinueValue is string strValue)
+            else if (shouldContinueValue is string strValue)
             {
-                return bool.TryParse(strValue, out var parsed) && parsed;
+                shouldContinue = bool.TryParse(strValue, out var parsed) && parsed;
             }
+
+            // Add tool result to conversation history (required by OpenAI/Azure OpenAI)
+            // Assistant message with tool_calls MUST be followed by tool message with result
+            var toolResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
+            {
+                Result = $"Decision: {(shouldContinue ? "continue" : "stop")}. {(reasoning != null ? $"Reasoning: {reasoning}" : "")}"
+            };
+            var toolMessage = new ChatMessage(ChatRole.Tool, [toolResult]);
+            context.AddToolMessage(toolMessage);
+
+            return shouldContinue;
         }
 
         // Fallback: if tool wasn't called properly, default to false (stop chaining)

@@ -1,4 +1,6 @@
-﻿namespace Rystem.PlayFramework.Api.Services;
+﻿using System.ComponentModel;
+
+namespace Rystem.PlayFramework.Api.Services;
 
 /// <summary>
 /// Implementation of calculator service with basic arithmetic operations.
@@ -13,28 +15,36 @@ public sealed class CalculatorService : ICalculatorService
         _logger = logger;
     }
 
-    public double Add(double augend, double addend)
+    public double Add(
+        [Description("The first number (augend) to add")] double augend,
+        [Description("The second number (addend) to add")] double addend)
     {
         var result = augend + addend;
         _logger.LogInformation("Add: {Augend} + {Addend} = {Result}", augend, addend, result);
         return result;
     }
 
-    public double Subtract(double minuend, double subtrahend)
+    public double Subtract(
+        [Description("The number to subtract from (minuend)")] double minuend,
+        [Description("The number to subtract (subtrahend)")] double subtrahend)
     {
         var result = minuend - subtrahend;
         _logger.LogInformation("Subtract: {Minuend} - {Subtrahend} = {Result}", minuend, subtrahend, result);
         return result;
     }
 
-    public double Multiply(double multiplicand, double multiplier)
+    public double Multiply(
+        [Description("The first number to multiply (multiplicand)")] double multiplicand,
+        [Description("The second number to multiply by (multiplier)")] double multiplier)
     {
         var result = multiplicand * multiplier;
         _logger.LogInformation("Multiply: {Multiplicand} × {Multiplier} = {Result}", multiplicand, multiplier, result);
         return result;
     }
 
-    public double Divide(double dividend, double divisor)
+    public double Divide(
+        [Description("The number to be divided (dividend)")] double dividend,
+        [Description("The number to divide by (divisor)")] double divisor)
     {
         if (divisor == 0)
         {
