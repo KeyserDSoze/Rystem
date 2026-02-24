@@ -1,5 +1,6 @@
 import { ClientInteractionRequest } from "../models/ClientInteractionRequest";
 import { ClientInteractionResult, AIContent } from "../models/ClientInteractionResult";
+import { CommandResult } from "../models/CommandResult";
 
 /**
  * Type for client-side tool implementation.
@@ -8,11 +9,37 @@ import { ClientInteractionResult, AIContent } from "../models/ClientInteractionR
 export type ClientTool<TArgs = any> = (args?: TArgs) => Promise<AIContent[]>;
 
 /**
+ * Type for client-side command implementation.
+ * Takes optional arguments and returns CommandResult (success + optional message).
+ */
+export type ClientCommand<TArgs = any> = (args?: TArgs) => Promise<CommandResult>;
+
+/**
+ * Command feedback modes:
+ * - 'never': Never send feedback (silent command)
+ * - 'onError': Send feedback only on failure (default)
+ * - 'always': Always send feedback (even on success)
+ */
+export type CommandFeedbackMode = 'never' | 'onError' | 'always';
+
+/**
+ * Options for command registration.
+ */
+export interface CommandOptions {
+    /**
+     * When to send feedback to the server.
+     * @default 'onError'
+     */
+    feedbackMode?: CommandFeedbackMode;
+}
+
+/**
  * Registry for client-side tools (camera, geolocation, file picker, etc.).
  * Tools are registered once and executed when server requests them.
  */
 export class ClientInteractionRegistry {
-    private tools: Map<string, ClientTool> = new Map();
+    private tools: Map<string, ClientTool | ClientCommand> = new Map();
+    private commands: Map<string, CommandOptions> = new Map();
 
     /**
      * Registers a client-side tool.
@@ -31,10 +58,53 @@ export class ClientInteractionRegistry {
             console.warn(`ClientInteractionRegistry: Tool "${toolName}" is already registered. Overwriting.`);
         }
         this.tools.set(toolName, implementation as ClientTool);
+        this.commands.delete(toolName); // Remove from commands if re-registered as tool
     }
 
     /**
-     * Executes a registered tool and returns the result.
+     * Registers a command (fire-and-forget tool).
+     * Commands return CommandResult and can optionally send feedback based on feedbackMode.
+     * @param toolName - Unique command name matching server AddCommand() registration.
+     * @param implementation - Async function that returns CommandResult.
+     * @param options - Feedback configuration.
+     * 
+     * @example
+     * registry.registerCommand("logAction", async (args) => {
+     *     console.log(args.action);
+     *     return CommandResult.ok();
+     * }, { feedbackMode: 'never' });
+     */
+    public registerCommand<TArgs = any>(
+        toolName: string,
+        implementation: ClientCommand<TArgs>,
+        options?: CommandOptions
+    ): void {
+        if (this.tools.has(toolName)) {
+            console.warn(`ClientInteractionRegistry: Command "${toolName}" is already registered. Overwriting.`);
+        }
+        this.tools.set(toolName, implementation as ClientCommand);
+        this.commands.set(toolName, {
+            feedbackMode: options?.feedbackMode ?? 'onError'
+        });
+    }
+
+    /**
+     * Checks if a tool is registered as a command.
+     */
+    public isCommand(toolName: string): boolean {
+        return this.commands.has(toolName);
+    }
+
+    /**
+     * Gets command options.
+     */
+    public getCommandOptions(toolName: string): CommandOptions | undefined {
+        return this.commands.get(toolName);
+    }
+
+    /**
+     * Executes a registered tool/command and returns the result.
+     * For commands, converts CommandResult to AIContent[] if needed.
      * @param request - Client interaction request from server.
      * @returns ClientInteractionResult with contents or error.
      * 
@@ -57,21 +127,39 @@ export class ClientInteractionRegistry {
                 };
             }
 
-            // Execute tool with timeout
+            const isCommand = this.isCommand(request.toolName);
+
+            // Execute tool with timeout (protects against client-side hangs/crashes)
+            const timeoutMs = request.timeoutSeconds * 1000;
             let timer: ReturnType<typeof setTimeout> | undefined;
             const timeoutPromise = new Promise<never>((_, reject) => {
                 timer = setTimeout(() => {
                     reject(new Error(`Tool execution timeout after ${request.timeoutSeconds}s`));
-                }, request.timeoutSeconds * 1000);
+                }, timeoutMs);
             });
 
             const executionPromise = tool(request.arguments);
 
-            let contents: AIContent[];
+            let result: AIContent[] | CommandResult;
             try {
-                contents = await Promise.race([executionPromise, timeoutPromise]);
+                result = await Promise.race([executionPromise, timeoutPromise]);
             } finally {
                 if (timer !== undefined) clearTimeout(timer);
+            }
+
+            // If it's a command, convert CommandResult to AIContent[]
+            let contents: AIContent[];
+            if (isCommand && 'success' in result) {
+                const cmdResult = result as CommandResult;
+                contents = [
+                    { type: 'text', text: cmdResult.success ? 'true' : 'false' }
+                ];
+                // Add message if present
+                if (cmdResult.message) {
+                    contents.push({ type: 'text', text: cmdResult.message });
+                }
+            } else {
+                contents = result as AIContent[];
             }
 
             return {

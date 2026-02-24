@@ -94,13 +94,30 @@ builder.Services.AddPlayFramework("default", frameworkBuilder =>
                     })
                     .OnClient(clientBuilder =>
                     {
+                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                        // STANDARD TOOLS (require response)
+                        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                         clientBuilder
                             .AddTool("getCurrentLocation",
                                 "Gets the user's current geographic location (latitude, longitude) from the browser. Use when the user asks about nearby places, weather, or anything location-dependent.",
                                 timeoutSeconds: 15)
                             .AddTool<UserConfirmationArgs>("getUserConfirmation",
                                 "Asks the user for explicit confirmation before performing a sensitive or irreversible action. Use when the user requests something that needs a yes/no decision.",
-                                timeoutSeconds: 60);
+                                timeoutSeconds: 60)
+
+                            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                            // COMMANDS (fire-and-forget, optional feedback)
+                            // Timeout protects against client-side execution failures
+                            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                            .AddCommand<LogActionArgs>("logUserAction",
+                                "Logs a user action silently in the browser console. No response needed.",
+                                timeoutSeconds: 5)
+                            .AddCommand<TrackEventArgs>("trackAnalytics",
+                                "Tracks an analytics event. Sends feedback only if tracking fails.",
+                                timeoutSeconds: 10)
+                            .AddCommand<SaveDataArgs>("saveToLocalStorage",
+                                "Saves data to browser local storage. Always sends confirmation message.",
+                                timeoutSeconds: 10);
                     });
             })
         .AddScene("Calculator", "Use this scene for mathematical calculations and arithmetic operations (addition, subtraction, multiplication, division).", sceneBuilder =>

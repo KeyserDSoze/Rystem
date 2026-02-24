@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Services;
@@ -473,6 +474,10 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             await InitializeNewContextAsync(context, cancellationToken);
         }
 
+        // Auto-complete incomplete Commands from previous turn (if any)
+        // This happens AFTER context initialization and BEFORE adding new user message
+        await AutoCompleteIncompleteCommandAsync(context, cancellationToken);
+
         // Add user message only if NOT resuming from client interaction
         // (when resuming, conversation history from cache already contains the user message)
         if (!isResumingFromClientInteraction)
@@ -797,6 +802,83 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         response.TotalCost = context.TotalCost;
         context.Responses.Add(response);
         return response;
+    }
+
+    /// <summary>
+    /// Auto-completes incomplete Command interactions from previous conversation.
+    /// Commands don't require immediate client response - they are auto-completed with 'true' on next user message.
+    /// </summary>
+    private async Task AutoCompleteIncompleteCommandAsync(
+        SceneContext context,
+        CancellationToken cancellationToken)
+    {
+        // Check if there's a pending client interaction (Command) from previous turn
+        var isCommand = context.Properties.TryGetValue("_continuation_isCommand", out var isCommandObj)
+            && isCommandObj is bool commandFlag && commandFlag;
+
+        if (!isCommand)
+        {
+            _logger.LogDebug("No incomplete Command found for auto-completion");
+            return;
+        }
+
+        var interactionId = context.Properties.TryGetValue("_continuation_interactionId", out var idObj)
+            ? idObj as string
+            : null;
+        var callId = context.Properties.TryGetValue("_continuation_callId", out var cidObj)
+            ? cidObj as string
+            : null;
+        var toolName = context.Properties.TryGetValue("_continuation_toolName", out var tnObj)
+            ? tnObj as string
+            : null;
+
+        if (string.IsNullOrEmpty(interactionId) || string.IsNullOrEmpty(callId) || string.IsNullOrEmpty(toolName))
+        {
+            _logger.LogWarning("Incomplete Command state detected but missing required properties (InteractionId, CallId, or ToolName)");
+            return;
+        }
+
+        _logger.LogInformation(
+            "Auto-completing Command '{ToolName}' (InteractionId: {InteractionId}) with success",
+            toolName, interactionId);
+
+        // Create auto-completion result with 'true' (success)
+        var functionResult = new FunctionResultContent(callId, toolName)
+        {
+            Result = "true"  // Commands auto-complete with success by default
+        };
+
+        // Add to conversation history
+        context.AddToolMessage(new ChatMessage(ChatRole.Tool, [functionResult]));
+
+        // Clear Command continuation state (it's been completed)
+        context.Properties.Remove("_continuation_isCommand");
+        context.Properties.Remove("_continuation_interactionId");
+        context.Properties.Remove("_continuation_callId");
+        context.Properties.Remove("_continuation_toolName");
+        context.Properties.Remove("_continuation_sceneName");
+
+        // Persist the auto-completed conversation
+        if (_repository != null)
+        {
+            var storedConversation = context.ToStoredConversation();
+            var updateResult = await _repository.UpdateAsync(context.ConversationKey, storedConversation, cancellationToken);
+
+            if (updateResult.IsOk)
+            {
+                _logger.LogInformation(
+                    "Conversation '{ConversationKey}' updated with auto-completed Command",
+                    context.ConversationKey);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Failed to update conversation '{ConversationKey}' after Command auto-completion: {Error}",
+                    context.ConversationKey, updateResult.Message);
+            }
+        }
+
+        _logger.LogDebug("Command auto-completion completed for '{ToolName}'", toolName);
     }
 
     /// <summary>

@@ -8,11 +8,13 @@ export type { StoredConversation, ConversationQueryParameters, UpdateConversatio
 export { ConversationSortOrder } from "./models/StoredConversation";
 export type { StoredMessage } from "./models/StoredMessage";
 export type { ExecutionState } from "./models/ExecutionState";
+export type { CommandResult } from "./models/CommandResult";
+export { CommandResult as CommandResultHelper } from "./models/CommandResult";
 
 // Engine
 export { PlayFrameworkClient } from "./engine/PlayFrameworkClient";
 export { ClientInteractionRegistry } from "./engine/ClientInteractionRegistry";
-export type { ClientTool } from "./engine/ClientInteractionRegistry";
+export type { ClientTool, ClientCommand, CommandFeedbackMode, CommandOptions } from "./engine/ClientInteractionRegistry";
 
 // Utilities
 export { AIContentConverter } from "./utils/AIContentConverter";

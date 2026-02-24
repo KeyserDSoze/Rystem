@@ -250,6 +250,7 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
         context.SetProperty("_continuation_interactionId", clientRequest.InteractionId);
         context.SetProperty("_continuation_callId", currentCall.CallId);
         context.SetProperty("_continuation_toolName", currentCall.Name);
+        context.SetProperty("_continuation_isCommand", clientRequest.IsCommand);
 
         // Save remaining tools as pending
         var remainingCalls = allCalls.Skip(currentIndex + 1).ToList();
@@ -279,6 +280,7 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
         context.Properties.Remove("_continuation_interactionId");
         context.Properties.Remove("_continuation_callId");
         context.Properties.Remove("_continuation_toolName");
+        context.Properties.Remove("_continuation_isCommand");
         context.ExecutionPhase = ExecutionPhase.ExecutingScene;
     }
 

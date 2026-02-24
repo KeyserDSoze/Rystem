@@ -4,6 +4,7 @@ import {
     PlayFrameworkClient,
     AIContentConverter,
     ContentUrlConverter,
+    CommandResultHelper,
     type PlayFrameworkRequest,
     type AiSceneResponse,
     type AiResponseStatus,
@@ -47,6 +48,10 @@ const clientReady = PlayFrameworkServices.configure(FACTORY_NAME, API_BASE, sett
 function registerClientTools(client: PlayFrameworkClient) {
     const registry = client.getClientRegistry();
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // STANDARD TOOLS (require response)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     // getCurrentLocation — uses browser Geolocation API
     registry.register('getCurrentLocation', async () => {
         const content = await AIContentConverter.fromGeolocation({ timeout: 10_000 });
@@ -62,6 +67,41 @@ function registerClientTools(client: PlayFrameworkClient) {
             return [AIContentConverter.fromText(confirmed ? 'confirmed' : 'denied')];
         }
     );
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // COMMANDS (fire-and-forget, optional feedback)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    // Command - NEVER mode: Silent logging (no feedback)
+    registry.registerCommand('logUserAction', async (args?: { action: string }) => {
+        console.log(`[Command] User action: ${args?.action || 'unknown'}`);
+        return CommandResultHelper.ok();
+    }, { feedbackMode: 'never' });
+
+    // Command - ON_ERROR mode (default): Track analytics, send feedback only on error
+    registry.registerCommand('trackAnalytics', async (args?: { event: string }) => {
+        try {
+            await fetch('/analytics', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(args)
+            });
+            return CommandResultHelper.ok(`Event "${args?.event}" tracked`);
+        } catch (error: any) {
+            return CommandResultHelper.fail(`Analytics error: ${error.message}`);
+        }
+    }); // Default feedbackMode: 'onError'
+
+    // Command - ALWAYS mode: Critical operation with full feedback
+    registry.registerCommand('saveToLocalStorage', async (args?: { key: string; value: string }) => {
+        try {
+            if (!args) throw new Error('Missing arguments');
+            localStorage.setItem(args.key, args.value);
+            return CommandResultHelper.ok(`Saved "${args.key}" to local storage`);
+        } catch (error: any) {
+            return CommandResultHelper.fail(`Storage error: ${error.message}`);
+        }
+    }, { feedbackMode: 'always' });
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -150,7 +190,7 @@ function ImageViewer({ content }: ContentViewerProps) {
         <div style={{ marginTop: '8px', position: 'relative' }}>
             <img
                 src={url}
-                alt={content.name || 'Image'}
+                alt="Image"
                 style={{
                     maxWidth: '100%',
                     maxHeight: '400px',
@@ -159,7 +199,7 @@ function ImageViewer({ content }: ContentViewerProps) {
                 }}
             />
             <button
-                onClick={() => ContentUrlConverter.downloadAsFile(content, content.name)}
+                onClick={() => ContentUrlConverter.downloadAsFile(content, 'image')}
                 style={{
                     position: 'absolute',
                     top: '8px',
@@ -202,7 +242,7 @@ function AudioPlayer({ content }: ContentViewerProps) {
                 Your browser does not support audio playback.
             </audio>
             <button
-                onClick={() => ContentUrlConverter.downloadAsFile(content, content.name)}
+                onClick={() => ContentUrlConverter.downloadAsFile(content, 'audio')}
                 style={{
                     marginTop: '6px',
                     padding: '4px 10px',
@@ -252,7 +292,7 @@ function VideoPlayer({ content }: ContentViewerProps) {
                 Your browser does not support video playback.
             </video>
             <button
-                onClick={() => ContentUrlConverter.downloadAsFile(content, content.name)}
+                onClick={() => ContentUrlConverter.downloadAsFile(content, 'video')}
                 style={{
                     marginTop: '6px',
                     padding: '4px 10px',
@@ -290,7 +330,7 @@ function PDFViewer({ content }: ContentViewerProps) {
         <div style={{ marginTop: '8px' }}>
             <iframe
                 src={url}
-                title={content.name || 'PDF Document'}
+                title="PDF Document"
                 style={{
                     width: '100%',
                     height: '500px',
@@ -299,7 +339,7 @@ function PDFViewer({ content }: ContentViewerProps) {
                 }}
             />
             <button
-                onClick={() => ContentUrlConverter.downloadAsFile(content, content.name)}
+                onClick={() => ContentUrlConverter.downloadAsFile(content, 'document.pdf')}
                 style={{
                     marginTop: '6px',
                     padding: '4px 10px',
@@ -346,10 +386,10 @@ function ContentViewer({ content }: ContentViewerProps) {
             border: '1px solid #444',
         }}>
             <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '6px' }}>
-                📎 {content.name || 'Attachment'} ({mediaType || 'unknown type'})
+                📎 Attachment ({mediaType || 'unknown type'})
             </div>
             <button
-                onClick={() => ContentUrlConverter.downloadAsFile(content, content.name)}
+                onClick={() => ContentUrlConverter.downloadAsFile(content, 'file')}
                 style={{
                     padding: '4px 10px',
                     fontSize: '11px',
@@ -487,7 +527,7 @@ function App() {
                 role: m.role as 'user' | 'assistant' | 'system' | 'tool',
                 text: m.text || '',
                 timestamp: new Date(conv.timestamp),
-                contents: m.contents // Include attached media content
+                contents: m.contents ?? undefined // Include attached media content, convert null to undefined
             }));
 
             setMessages(chatMsgs);

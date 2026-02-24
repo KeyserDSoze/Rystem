@@ -1,4 +1,4 @@
-namespace Rystem.PlayFramework;
+﻿namespace Rystem.PlayFramework;
 
 /// <summary>
 /// Request for executing a tool on the client side.
@@ -36,7 +36,16 @@ public sealed class ClientInteractionRequest
 
     /// <summary>
     /// Maximum time in seconds the client has to execute and return result.
-    /// After this time, continuation token may expire from cache.
+    /// For standard tools: timeout for client response.
+    /// For commands: timeout for client-side execution (protects against crashes/hangs).
+    /// After timeout, continuation token may expire from cache.
     /// </summary>
     public int TimeoutSeconds { get; init; } = 30;
+
+    /// <summary>
+    /// Indicates if this is a command (fire-and-forget tool).
+    /// Commands don't require immediate response - they are auto-completed with 'true' on next user message.
+    /// Client can optionally send feedback using CommandResult (success + message).
+    /// </summary>
+    public bool IsCommand { get; init; } = false;
 }

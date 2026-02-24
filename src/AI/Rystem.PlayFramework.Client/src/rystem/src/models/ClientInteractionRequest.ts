@@ -32,6 +32,15 @@ export interface ClientInteractionRequest {
 
     /**
      * Maximum execution time in seconds.
+     * For standard tools: timeout for client response.
+     * For commands: timeout for client-side execution (protects against crashes/hangs).
      */
     timeoutSeconds: number;
+
+    /**
+     * Indicates if this is a command (fire-and-forget tool).
+     * Commands don't require immediate response - auto-completed with 'true' on next user message.
+     * Client can optionally send CommandResult (success + message) based on feedbackMode.
+     */
+    isCommand?: boolean;
 }

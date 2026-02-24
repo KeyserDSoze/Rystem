@@ -60,7 +60,8 @@ internal sealed class ClientInteractionHandler : IClientInteractionHandler
             Arguments = arguments,
             ArgumentsSchema = definition.JsonSchema,
             Description = definition.Description,
-            TimeoutSeconds = definition.TimeoutSeconds
+            TimeoutSeconds = definition.TimeoutSeconds,
+            IsCommand = definition.IsCommand
         };
     }
 

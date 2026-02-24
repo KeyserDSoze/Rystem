@@ -18,6 +18,8 @@ public sealed class ClientInteractionDefinition
 
     /// <summary>
     /// Maximum execution time in seconds.
+    /// For standard tools: timeout for client response.
+    /// For commands: timeout for client-side execution (protects against client crashes/hangs).
     /// </summary>
     public int TimeoutSeconds { get; init; }
 
@@ -31,4 +33,10 @@ public sealed class ClientInteractionDefinition
     /// Sent to LLM so it knows exact parameter structure.
     /// </summary>
     public Type? ArgumentType { get; init; }
+
+    /// <summary>
+    /// Indicates if this is a command (fire-and-forget tool).
+    /// Commands don't require immediate response from client.
+    /// </summary>
+    public bool IsCommand { get; init; } = false;
 }
