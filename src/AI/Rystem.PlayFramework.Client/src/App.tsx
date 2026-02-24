@@ -817,7 +817,10 @@ function App() {
                                         textOverflow: 'ellipsis',
                                         whiteSpace: 'nowrap',
                                     }}>
-                                        {conv.messages[0]?.text || 'Empty conversation'}
+                                        {/* Show last user message for better preview */}
+                                        {[...conv.messages].reverse().find(m => m.role === 'user')?.text 
+                                            || conv.messages[0]?.text 
+                                            || 'Empty conversation'}
                                     </div>
                                     <div style={{ fontSize: '11px', color: '#666' }}>
                                         {conv.messages.length} message{conv.messages.length !== 1 ? 's' : ''}
