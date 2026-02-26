@@ -2,6 +2,7 @@
 using Azure;
 using Azure.AI.OpenAI;
 using Microsoft.Extensions.AI;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Rystem.PlayFramework.Api.Infrastructure;
 
@@ -103,7 +104,7 @@ public sealed class AzureOpenAISdkChatClient : IChatClient
                             var toolCall = OpenAI.Chat.ChatToolCall.CreateFunctionToolCall(
                                 funcCall.CallId ?? Guid.NewGuid().ToString(),
                                 funcCall.Name,
-                                BinaryData.FromString(funcCall.Arguments?.ToString() ?? "{}"));
+                                BinaryData.FromObjectAsJson(funcCall.Arguments));
                             openAiMessages.Add(OpenAI.Chat.ChatMessage.CreateAssistantMessage(new[] { toolCall }));
                             break;
 
@@ -143,24 +144,34 @@ public sealed class AzureOpenAISdkChatClient : IChatClient
         {
             foreach (var tool in options.Tools)
             {
+                var name = tool.Name;
+                var description = tool.Description;
+                string jsonSchemaAsText = "{}";
                 if (tool is AIFunction aiFunc)
                 {
                     // Generate JSON schema using AIJsonUtilities
-                    var text = aiFunc.JsonSchema.ToString();
-                    BinaryData? parametersSchema = BinaryData.FromString(text);
-
-                    // Create tool with or without schema
-                    var functionDef = parametersSchema != null
-                        ? OpenAI.Chat.ChatTool.CreateFunctionTool(
-                            functionName: aiFunc.Name,
-                            functionDescription: aiFunc.Description,
-                            functionParameters: parametersSchema)
-                        : OpenAI.Chat.ChatTool.CreateFunctionTool(
-                            functionName: aiFunc.Name,
-                            functionDescription: aiFunc.Description);
-
-                    chatOptions.Tools.Add(functionDef);
+                    jsonSchemaAsText = aiFunc.JsonSchema.ToString();
                 }
+                else if (tool is AIFunctionDeclaration aIFunctionDeclaration)
+                {
+                    jsonSchemaAsText = aIFunctionDeclaration.JsonSchema.ToString();
+                }
+                else
+                {
+                    var errorMsg = $"Unsupported tool type: {tool.GetType().FullName}. Only AIFunction and AIFunctionDeclaration are supported.";
+                    _logger.LogError(errorMsg);
+                }
+                var parametersSchema = BinaryData.FromString(jsonSchemaAsText.Replace("\"type\":[\"object\",\"null\"]", "\"type\":\"object\""));
+                // Create tool with or without schema
+                var functionDef = parametersSchema != null
+                    ? OpenAI.Chat.ChatTool.CreateFunctionTool(
+                        functionName: name,
+                        functionDescription: description,
+                        functionParameters: parametersSchema)
+                    : OpenAI.Chat.ChatTool.CreateFunctionTool(
+                        functionName: name,
+                        functionDescription: description);
+                chatOptions.Tools.Add(functionDef);
             }
         }
 
