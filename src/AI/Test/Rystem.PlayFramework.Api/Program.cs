@@ -45,10 +45,12 @@ var azureOpenAIDeployment = builder.Configuration["AzureOpenAI:Deployment"] ?? "
 
 if (!string.IsNullOrEmpty(azureOpenAIEndpoint) && !string.IsNullOrEmpty(azureOpenAIKey))
 {
+    // NOTE: keep AzureOpenAIChatClientAdapter in the project for reference/debugging,
+    // but register a direct Azure OpenAI SDK backed IChatClient implementation in DI.
     builder.Services.AddSingleton<IChatClient>(sp =>
     {
-        var logger = sp.GetRequiredService<ILogger<AzureOpenAIChatClientAdapter>>();
-        return new AzureOpenAIChatClientAdapter(azureOpenAIEndpoint, azureOpenAIKey, azureOpenAIDeployment, logger);
+        var logger = sp.GetRequiredService<ILogger<AzureOpenAISdkChatClient>>();
+        return new AzureOpenAISdkChatClient(azureOpenAIEndpoint, azureOpenAIKey, azureOpenAIDeployment, logger);
     });
 }
 else
