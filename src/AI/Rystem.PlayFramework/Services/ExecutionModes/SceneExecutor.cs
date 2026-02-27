@@ -370,7 +370,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                 var response = ConvertToolResult(result, scene.Name, context);
                 yield return response;
 
-                // If awaiting client, yield break
+                // If awaiting client, check if it's a Command (fire-and-forget)
                 if (result.Status == ToolExecutionStatus.AwaitingClient)
                 {
                     yield break;
@@ -415,7 +415,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
 
             ToolExecutionStatus.AwaitingClient => new AiSceneResponse
             {
-                Status = AiResponseStatus.AwaitingClient,
+                Status = result.ClientRequest?.IsCommand == true ? AiResponseStatus.CommandClient : AiResponseStatus.AwaitingClient,
                 ConversationKey = context.ConversationKey,
                 ClientInteractionRequest = result.ClientRequest,
                 Message = result.Message ?? $"Awaiting client execution of tool: {result.ToolName}"

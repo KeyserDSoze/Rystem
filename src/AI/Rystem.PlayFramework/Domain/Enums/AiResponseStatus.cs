@@ -90,6 +90,12 @@ public enum AiResponseStatus
     AwaitingClient,
 
     /// <summary>
+    /// Command for client to execute tool and no return a result.
+    /// Server has saved state in cache with continuation token.
+    /// </summary>
+    CommandClient,
+
+    /// <summary>
     /// Execution completed successfully.
     /// </summary>
     Completed,

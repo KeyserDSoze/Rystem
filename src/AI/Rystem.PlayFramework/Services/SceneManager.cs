@@ -781,7 +781,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         }
 
         // Only send Completed if NOT waiting for client interaction
-        // When AwaitingClient, the stream will close and client will resume with new request
+        // For Commands (CommandClient status), client closes stream on its side after execution
+        // If feedbackMode requires response, client includes CommandResult in next user message
         if (context.ExecutionPhase != ExecutionPhase.AwaitingClient)
         {
             yield return YieldStatus(AiResponseStatus.Completed, "Execution completed", context.TotalCost);

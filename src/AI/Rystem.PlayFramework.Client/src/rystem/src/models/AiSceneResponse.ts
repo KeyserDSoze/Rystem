@@ -21,6 +21,7 @@ export type AiResponseStatus =
     | "SavingCache"
     | "SavingMemory"
     | "AwaitingClient"
+    | "CommandClient"
     | "Completed"
     | "BudgetExceeded"
     | "Error"

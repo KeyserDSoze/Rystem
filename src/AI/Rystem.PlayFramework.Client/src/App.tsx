@@ -136,6 +136,7 @@ const statusColors: Partial<Record<AiResponseStatus, string>> = {
 
     // Client Interaction
     AwaitingClient: '#ff6b6b',
+    CommandClient: '#ff9500',
 
     // Final States
     Completed: '#5cb85c',
@@ -700,6 +701,18 @@ function App() {
                 role: 'tool',
                 text: `Executing client tool: ${step.clientInteractionRequest.toolName}...`,
                 status: 'AwaitingClient',
+                toolName: step.clientInteractionRequest.toolName,
+                timestamp: new Date()
+            });
+            return;
+        }
+
+        // CommandClient — add a tool message (fire-and-forget command)
+        if (step.status === 'CommandClient' && step.clientInteractionRequest) {
+            addMessage({
+                role: 'tool',
+                text: `Executing command: ${step.clientInteractionRequest.toolName}...`,
+                status: 'CommandClient',
                 toolName: step.clientInteractionRequest.toolName,
                 timestamp: new Date()
             });

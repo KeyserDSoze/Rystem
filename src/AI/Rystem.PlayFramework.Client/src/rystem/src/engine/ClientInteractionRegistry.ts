@@ -151,12 +151,25 @@ export class ClientInteractionRegistry {
             let contents: AIContent[];
             if (isCommand && 'success' in result) {
                 const cmdResult = result as CommandResult;
-                contents = [
-                    { type: 'text', text: cmdResult.success ? 'true' : 'false' }
-                ];
-                // Add message if present
-                if (cmdResult.message) {
-                    contents.push({ type: 'text', text: cmdResult.message });
+                const commandOptions = this.getCommandOptions(request.toolName);
+                const feedbackMode = commandOptions?.feedbackMode ?? 'onError';
+
+                // Determine if feedback should be sent
+                const shouldSendFeedback = 
+                    feedbackMode === 'always' ||
+                    (feedbackMode === 'onError' && !cmdResult.success);
+
+                if (shouldSendFeedback) {
+                    // Send feedback (success + message)
+                    contents = [
+                        { type: 'text', text: cmdResult.success ? 'true' : 'false' }
+                    ];
+                    if (cmdResult.message) {
+                        contents.push({ type: 'text', text: cmdResult.message });
+                    }
+                } else {
+                    // No feedback mode - send minimal success indicator
+                    contents = [{ type: 'text', text: 'true' }];
                 }
             } else {
                 contents = result as AIContent[];
