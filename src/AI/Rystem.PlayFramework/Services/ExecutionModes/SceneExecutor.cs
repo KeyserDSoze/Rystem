@@ -271,7 +271,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                         currency: context.ChatClientManager.Currency);
                 }
 
-                context.ExecutionPhase = ExecutionPhase.Completed;
+                context.ExecutionPhase = ExecutionPhase.CompletedNoResponse;
                 yield break;
             }
 
@@ -325,8 +325,8 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                         totalCost: context.TotalCost,
                         currency: context.ChatClientManager.Currency);
                 }
-
-                context.ExecutionPhase = ExecutionPhase.Completed;
+                if (context.ExecutionPhase != ExecutionPhase.AwaitingClient)
+                    context.ExecutionPhase = ExecutionPhase.Completed;
                 yield break;
             }
 
@@ -353,7 +353,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                     totalCost: context.TotalCost,
                     currency: context.ChatClientManager.Currency);
 
-                context.ExecutionPhase = ExecutionPhase.Completed;
+                context.ExecutionPhase = ExecutionPhase.BudgetExceeded;
                 yield break;
             }
 
@@ -389,7 +389,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
             cachedInputTokens: null,
             cost: null);
 
-        context.ExecutionPhase = ExecutionPhase.Completed;
+        context.ExecutionPhase = ExecutionPhase.TooManyToolRequests;
     }
 
     /// <summary>

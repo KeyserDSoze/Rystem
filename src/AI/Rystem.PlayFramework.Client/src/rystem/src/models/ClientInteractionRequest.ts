@@ -43,4 +43,12 @@ export interface ClientInteractionRequest {
      * Client can optionally send CommandResult (success + message) based on feedbackMode.
      */
     isCommand?: boolean;
+
+    /**
+     * Feedback mode for Commands (only used when isCommand=true).
+     * - 'never': No feedback sent, auto-complete immediately with 'true'
+     * - 'onError': Send feedback only if command fails
+     * - 'always': Always send feedback (success + message)
+     */
+    feedbackMode?: 'never' | 'onError' | 'always';
 }

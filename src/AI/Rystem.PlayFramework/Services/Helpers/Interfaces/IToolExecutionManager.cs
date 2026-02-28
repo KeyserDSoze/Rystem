@@ -122,8 +122,11 @@ public enum ToolExecutionStatus
     /// <summary>Server tool completed successfully</summary>
     Completed,
 
-    /// <summary>Awaiting client to execute client-side tool</summary>
+    /// <summary>Awaiting client to execute client-side tool (requires response)</summary>
     AwaitingClient,
+
+    /// <summary>Client-side command execution (fire-and-forget, optional response)</summary>
+    CommandClient,
 
     /// <summary>Tool execution failed</summary>
     Error

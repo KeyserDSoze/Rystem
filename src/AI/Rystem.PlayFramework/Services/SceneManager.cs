@@ -1,10 +1,12 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Services;
 using Rystem.PlayFramework.Services.ExecutionModes;
+using Rystem.PlayFramework.Services.Helpers;
 using Rystem.PlayFramework.Telemetry;
 using RepositoryFramework;
 
@@ -463,9 +465,12 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             yield break;
         }
 
-        // Check if resuming from client interaction (ConversationKey + ClientInteractionResults)
+        // Check if resuming from CLIENT TOOL RESPONSE (NOT Command auto-completion)
+        // Standard tools (AwaitingClient) send results immediately and are processed by ResumeAfterClientResponseAsync
+        // Commands (CommandClient) auto-complete in AutoCompleteIncompleteCommandAsync before this check
         var isResumingFromClientInteraction = settings.ClientInteractionResults is { Count: > 0 }
-            && context.Properties.ContainsKey("_continuation_sceneName");
+            && context.Properties.ContainsKey("_continuation_sceneName")
+            && !context.Properties.ContainsKey("_pending_commands"); // NOT a Command batch
 
         // Initialize context only if NOT resuming from cache
         if (!loadedFromStorageOrCache)
@@ -476,7 +481,10 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
 
         // Auto-complete incomplete Commands from previous turn (if any)
         // This happens AFTER context initialization and BEFORE adding new user message
-        await AutoCompleteIncompleteCommandAsync(context, cancellationToken);
+        await foreach (var autoCompleteResponse in AutoCompleteIncompleteCommandAsync(context, settings, cancellationToken))
+        {
+            yield return autoCompleteResponse;
+        }
 
         // Add user message only if NOT resuming from client interaction
         // (when resuming, conversation history from cache already contains the user message)
@@ -806,80 +814,102 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     }
 
     /// <summary>
-    /// Auto-completes incomplete Command interactions from previous conversation.
-    /// Commands don't require immediate client response - they are auto-completed with 'true' on next user message.
+    /// Auto-completes ALL incomplete Command interactions from previous conversation.
+    /// Commands with feedbackMode='always' or 'onError' may send CommandResult with next user message.
+    /// Commands with feedbackMode='never' are auto-completed immediately in ExecuteToolCallsAsync.
+    /// 
+    /// Handles batch Commands: if LLM called multiple Commands, all are auto-completed and
+    /// FunctionResultContent added separately for each (matching OpenAI requirement).
     /// </summary>
-    private async Task AutoCompleteIncompleteCommandAsync(
+    private async IAsyncEnumerable<AiSceneResponse> AutoCompleteIncompleteCommandAsync(
         SceneContext context,
-        CancellationToken cancellationToken)
+        SceneRequestSettings settings,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        // Check if there's a pending client interaction (Command) from previous turn
-        var isCommand = context.Properties.TryGetValue("_continuation_isCommand", out var isCommandObj)
-            && isCommandObj is bool commandFlag && commandFlag;
-
-        if (!isCommand)
+        // Load pending commands from JSON array
+        if (!context.Properties.TryGetValue("_pending_commands", out var commandsJsonObj)
+            || commandsJsonObj is not string commandsJson)
         {
-            _logger.LogDebug("No incomplete Command found for auto-completion");
-            return;
+            _logger.LogDebug("No pending commands found for auto-completion");
+            yield break;
         }
 
-        var interactionId = context.Properties.TryGetValue("_continuation_interactionId", out var idObj)
-            ? idObj as string
-            : null;
-        var callId = context.Properties.TryGetValue("_continuation_callId", out var cidObj)
-            ? cidObj as string
-            : null;
-        var toolName = context.Properties.TryGetValue("_continuation_toolName", out var tnObj)
-            ? tnObj as string
-            : null;
-
-        if (string.IsNullOrEmpty(interactionId) || string.IsNullOrEmpty(callId) || string.IsNullOrEmpty(toolName))
+        List<SerializedPendingCommand> pendingCommands;
+        try
         {
-            _logger.LogWarning("Incomplete Command state detected but missing required properties (InteractionId, CallId, or ToolName)");
-            return;
+            pendingCommands = JsonSerializer.Deserialize<List<SerializedPendingCommand>>(commandsJson)
+                ?? throw new InvalidOperationException("Failed to deserialize pending commands");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to deserialize pending commands from JSON. Skipping auto-completion.");
+            yield break;
         }
 
-        _logger.LogInformation(
-            "Auto-completing Command '{ToolName}' (InteractionId: {InteractionId}) with success",
-            toolName, interactionId);
-
-        // Create auto-completion result with 'true' (success)
-        var functionResult = new FunctionResultContent(callId, toolName)
+        if (pendingCommands.Count == 0)
         {
-            Result = "true"  // Commands auto-complete with success by default
-        };
+            _logger.LogDebug("Pending commands array is empty");
+            yield break;
+        }
 
-        // Add to conversation history
-        context.AddToolMessage(new ChatMessage(ChatRole.Tool, [functionResult]));
+        yield return YieldStatus(AiResponseStatus.Initializing, 
+            $"Auto-completing {pendingCommands.Count} command(s): {string.Join(", ", pendingCommands.Select(c => c.ToolName))}");
 
-        // Clear Command continuation state (it's been completed)
-        context.Properties.Remove("_continuation_isCommand");
-        context.Properties.Remove("_continuation_interactionId");
-        context.Properties.Remove("_continuation_callId");
-        context.Properties.Remove("_continuation_toolName");
-        context.Properties.Remove("_continuation_sceneName");
+        // Group client results by InteractionId for lookup
+        var clientResultsById = settings.ClientInteractionResults?
+            .ToDictionary(r => r.InteractionId, r => r)
+            ?? new Dictionary<string, ClientInteractionResult>();
 
-        // Persist the auto-completed conversation
-        if (_repository != null)
+        // Process EACH pending command separately and add FunctionResultContent for each
+        foreach (var pending in pendingCommands)
         {
-            var storedConversation = context.ToStoredConversation();
-            var updateResult = await _repository.UpdateAsync(context.ConversationKey, storedConversation, cancellationToken);
+            FunctionResultContent functionResult;
 
-            if (updateResult.IsOk)
+            // Check if client sent explicit result for this command
+            if (clientResultsById.TryGetValue(pending.InteractionId, out var clientResult))
             {
+                // Client sent explicit result - extract success flag and message from Contents
+                // CommandResult is converted to Contents: [{ text: 'true'|'false' }, { text: message }]
+                var isSuccess = clientResult.Error == null 
+                    && clientResult.Contents?.FirstOrDefault()?.Text == "true";
+
+                var messageText = clientResult.Contents?.Skip(1).FirstOrDefault()?.Text;
+
+                var resultText = isSuccess
+                    ? "true"
+                    : $"false: {messageText ?? clientResult.Error ?? "Command failed"}";
+
+                functionResult = new FunctionResultContent(pending.CallId, pending.ToolName)
+                {
+                    Result = resultText
+                };
+
                 _logger.LogInformation(
-                    "Conversation '{ConversationKey}' updated with auto-completed Command",
-                    context.ConversationKey);
+                    "✅ Command '{ToolName}' completed with client result - Success: {Success}, Message: {Message}",
+                    pending.ToolName, isSuccess, messageText ?? clientResult.Error ?? "none");
             }
             else
             {
-                _logger.LogWarning(
-                    "Failed to update conversation '{ConversationKey}' after Command auto-completion: {Error}",
-                    context.ConversationKey, updateResult.Message);
+                // No client result - auto-complete with success (default for Commands)
+                functionResult = new FunctionResultContent(pending.CallId, pending.ToolName)
+                {
+                    Result = "true"  // Default success for Commands without explicit result
+                };
+
+                _logger.LogInformation(
+                    "✅ Command '{ToolName}' auto-completed with default success (no client result received)",
+                    pending.ToolName);
             }
+
+            // Add SEPARATE tool message for each command (OpenAI requirement)
+            context.AddToolMessage(new ChatMessage(ChatRole.Tool, [functionResult]));
         }
 
-        _logger.LogDebug("Command auto-completion completed for '{ToolName}'", toolName);
+        // Clear ALL continuation state
+        context.Properties.Remove("_pending_commands");
+        context.Properties.Remove("_continuation_sceneName");
+
+        _logger.LogInformation("🎉 Auto-completed {Count} command(s) successfully", pendingCommands.Count);
     }
 
     /// <summary>

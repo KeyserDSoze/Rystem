@@ -117,11 +117,13 @@ public sealed class ClientInteractionBuilder
     /// <typeparam name="T">Argument model type (must be a class)</typeparam>
     /// <param name="toolName">Unique command name (e.g., "LogAction", "TrackEvent")</param>
     /// <param name="description">Human-readable description of what this command does</param>
+    /// <param name="feedbackMode">When to send feedback (Never, OnError, Always)</param>
     /// <param name="timeoutSeconds">Maximum time for client-side execution (default: 30s)</param>
     /// <returns>Builder for fluent configuration</returns>
     public ClientInteractionBuilder AddCommand<T>(
         string toolName,
         string? description = null,
+        CommandFeedbackMode feedbackMode = CommandFeedbackMode.OnError,
         int timeoutSeconds = 30) where T : class
     {
         if (string.IsNullOrWhiteSpace(toolName))
@@ -140,7 +142,8 @@ public sealed class ClientInteractionBuilder
             TimeoutSeconds = timeoutSeconds,
             ArgumentType = typeof(T),
             JsonSchema = jsonSchema,
-            IsCommand = true
+            IsCommand = true,
+            FeedbackMode = feedbackMode
         });
 
         return this;
@@ -153,11 +156,13 @@ public sealed class ClientInteractionBuilder
     /// </summary>
     /// <param name="toolName">Unique command name</param>
     /// <param name="description">Human-readable description</param>
+    /// <param name="feedbackMode">When to send feedback (Never, OnError, Always)</param>
     /// <param name="timeoutSeconds">Maximum time for client-side execution</param>
     /// <returns>Builder for fluent configuration</returns>
     public ClientInteractionBuilder AddCommand(
         string toolName,
         string? description = null,
+        CommandFeedbackMode feedbackMode = CommandFeedbackMode.OnError,
         int timeoutSeconds = 30)
     {
         if (string.IsNullOrWhiteSpace(toolName))
@@ -171,7 +176,8 @@ public sealed class ClientInteractionBuilder
             ToolName = ToolNameNormalizer.Normalize(toolName),
             Description = description,
             TimeoutSeconds = timeoutSeconds,
-            IsCommand = true
+            IsCommand = true,
+            FeedbackMode = feedbackMode
         });
 
         return this;
@@ -184,12 +190,14 @@ public sealed class ClientInteractionBuilder
     /// <param name="toolName">Unique command name</param>
     /// <param name="jsonSchema">JSON Schema for command arguments</param>
     /// <param name="description">Human-readable description</param>
+    /// <param name="feedbackMode">When to send feedback (Never, OnError, Always)</param>
     /// <param name="timeoutSeconds">Maximum time for client-side execution</param>
     /// <returns>Builder for fluent configuration</returns>
     public ClientInteractionBuilder AddCommand(
         string toolName,
         string jsonSchema,
         string? description = null,
+        CommandFeedbackMode feedbackMode = CommandFeedbackMode.OnError,
         int timeoutSeconds = 30)
     {
         if (string.IsNullOrWhiteSpace(toolName))
@@ -204,7 +212,8 @@ public sealed class ClientInteractionBuilder
             Description = description,
             TimeoutSeconds = timeoutSeconds,
             JsonSchema = jsonSchema,
-            IsCommand = true
+            IsCommand = true,
+            FeedbackMode = feedbackMode
         });
 
         return this;

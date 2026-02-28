@@ -108,41 +108,41 @@ function registerClientTools(client: PlayFrameworkClient) {
 
 const statusColors: Partial<Record<AiResponseStatus, string>> = {
     // Initialization & Loading
-    Initializing: '#888',
-    LoadingCache: '#6c757d',
-    ExecutingMainActors: '#7952b3',
+    initializing: '#888',
+    loadingCache: '#6c757d',
+    executingMainActors: '#7952b3',
 
     // Planning & Execution
-    Planning: '#f0ad4e',
-    ExecutingScene: '#5bc0de',
-    Running: '#17a2b8',
+    planning: '#f0ad4e',
+    executingScene: '#5bc0de',
+    running: '#17a2b8',
 
     // Function/Tool Execution
-    FunctionRequest: '#d9534f',
-    FunctionCompleted: '#5cb85c',
-    ToolSkipped: '#6c757d',
+    functionRequest: '#d9534f',
+    functionCompleted: '#5cb85c',
+    toolSkipped: '#6c757d',
 
     // Streaming & Response Generation
-    Streaming: '#61dafb',
-    GeneratingFinalResponse: '#20c997',
+    streaming: '#61dafb',
+    generatingFinalResponse: '#20c997',
 
     // Director & Summarization
-    DirectorDecision: '#e83e8c',
-    Summarizing: '#fd7e14',
+    directorDecision: '#e83e8c',
+    summarizing: '#fd7e14',
 
     // Saving & Persistence
-    SavingCache: '#6610f2',
-    SavingMemory: '#6f42c1',
+    savingCache: '#6610f2',
+    savingMemory: '#6f42c1',
 
     // Client Interaction
-    AwaitingClient: '#ff6b6b',
-    CommandClient: '#ff9500',
+    awaitingClient: '#ff6b6b',
+    commandClient: '#ff9500',
 
     // Final States
-    Completed: '#5cb85c',
-    Error: '#d9534f',
-    BudgetExceeded: '#f0ad4e',
-    Unauthorized: '#dc3545',
+    completed: '#5cb85c',
+    error: '#d9534f',
+    budgetExceeded: '#f0ad4e',
+    unauthorized: '#dc3545',
 };
 
 function statusBadge(status?: AiResponseStatus) {
@@ -677,7 +677,7 @@ function App() {
             addMessage({
                 role: 'system',
                 text: `Error: ${error.message ?? error}`,
-                status: 'Error',
+                status: 'error',
                 timestamp: new Date()
             });
             setConnection('error');
@@ -696,11 +696,11 @@ function App() {
         }
 
         // AwaitingClient — add a tool message
-        if (step.status === 'AwaitingClient' && step.clientInteractionRequest) {
+        if (step.status === 'awaitingClient' && step.clientInteractionRequest) {
             addMessage({
                 role: 'tool',
                 text: `Executing client tool: ${step.clientInteractionRequest.toolName}...`,
-                status: 'AwaitingClient',
+                status: 'awaitingClient',
                 toolName: step.clientInteractionRequest.toolName,
                 timestamp: new Date()
             });
@@ -708,11 +708,11 @@ function App() {
         }
 
         // CommandClient — add a tool message (fire-and-forget command)
-        if (step.status === 'CommandClient' && step.clientInteractionRequest) {
+        if (step.status === 'commandClient' && step.clientInteractionRequest) {
             addMessage({
                 role: 'tool',
                 text: `Executing command: ${step.clientInteractionRequest.toolName}...`,
-                status: 'CommandClient',
+                status: 'commandClient',
                 toolName: step.clientInteractionRequest.toolName,
                 timestamp: new Date()
             });
@@ -777,8 +777,8 @@ function App() {
         }
 
         // FunctionRequest/Completed — show as system info
-        if (step.status === 'FunctionRequest' || step.status === 'FunctionCompleted') {
-            const label = step.status === 'FunctionRequest' ? 'Calling' : 'Completed';
+        if (step.status === 'functionRequest' || step.status === 'functionCompleted') {
+            const label = step.status === 'functionRequest' ? 'Calling' : 'Completed';
             addMessage({
                 role: 'system',
                 text: `${label}: ${step.functionName ?? 'unknown'}`,

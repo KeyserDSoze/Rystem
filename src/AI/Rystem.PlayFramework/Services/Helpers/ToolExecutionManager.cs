@@ -38,6 +38,11 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
 
     #region Tool Execution
 
+    /// <summary>
+    /// Represents a pending client-side tool or command waiting for execution.
+    /// </summary>
+    private sealed record PendingCommand(ClientInteractionRequest Request, FunctionCallContent Call);
+
     /// <inheritdoc />
     public async IAsyncEnumerable<ToolExecutionResult> ExecuteToolCallsAsync(
         SceneContext context,
@@ -57,7 +62,9 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
         }
 
         var jsonService = new DefaultJsonService();
+        var pendingCommands = new List<PendingCommand>();
 
+        // Process ALL calls - separate Commands from immediate server tools
         for (var i = 0; i < deduplicatedCalls.Count; i++)
         {
             var functionCall = deduplicatedCalls[i];
@@ -75,22 +82,34 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
 
             if (clientRequest != null)
             {
-                // CLIENT TOOL - Save state and yield
-                SaveClientToolState(context, sceneName, clientRequest, functionCall, deduplicatedCalls, i);
-
-                _logger.LogInformation("🎯 Client tool '{ToolName}' detected. Awaiting client execution.",
-                    functionCall.Name);
-
-                yield return new ToolExecutionResult
+                // CLIENT TOOL - Check if Command with feedbackMode='never'
+                if (clientRequest.IsCommand && clientRequest.FeedbackMode == CommandFeedbackMode.Never)
                 {
-                    Status = ToolExecutionStatus.AwaitingClient,
-                    ToolName = functionCall.Name,
-                    Message = $"Awaiting client execution of tool: {functionCall.Name}",
-                    ClientRequest = clientRequest
-                };
+                    // Auto-complete IMMEDIATELY with success
+                    var functionResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
+                    {
+                        Result = "true"  // Commands with 'never' auto-complete immediately
+                    };
+                    context.AddToolMessage(new ChatMessage(ChatRole.Tool, [functionResult]));
 
-                // IMPORTANT: Caller should yield break after receiving AwaitingClient
-                yield break;
+                    _logger.LogInformation(
+                        "✅ Command '{ToolName}' auto-completed immediately (feedbackMode: Never). No client response needed.",
+                        functionCall.Name);
+
+                    // Continue processing other calls
+                    continue;
+                }
+
+                // CLIENT TOOL - Add to pending list (will be processed after server tools)
+                pendingCommands.Add(new PendingCommand(clientRequest, functionCall));
+
+                _logger.LogDebug("📝 Added '{ToolName}' to pending {Type} list (feedbackMode: {FeedbackMode})",
+                    functionCall.Name,
+                    clientRequest.IsCommand ? "Commands" : "Tools",
+                    clientRequest.FeedbackMode);
+
+                // Continue processing other calls (don't yield break here!)
+                continue;
             }
 
             // SERVER TOOL - Execute immediately
@@ -132,6 +151,34 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
             // Execute scene tool and capture result
             var executionResult = await ExecuteSceneToolAsync(sceneTool, functionCall, context, jsonService, cancellationToken);
             yield return executionResult;
+        }
+
+        // After processing all calls, handle pending client tools/commands (if any)
+        if (pendingCommands.Count > 0)
+        {
+            SavePendingCommandsState(context, sceneName, pendingCommands);
+
+            // Yield ALL pending client interactions
+            foreach (var pending in pendingCommands)
+            {
+                _logger.LogInformation("🎯 Client {Type} '{ToolName}' pending execution (feedbackMode: {FeedbackMode})",
+                    pending.Request.IsCommand ? "Command" : "Tool",
+                    pending.Call.Name,
+                    pending.Request.FeedbackMode);
+
+                yield return new ToolExecutionResult
+                {
+                    Status = pending.Request.IsCommand
+                        ? ToolExecutionStatus.CommandClient
+                        : ToolExecutionStatus.AwaitingClient,
+                    ToolName = pending.Call.Name,
+                    Message = $"Awaiting client execution of {(pending.Request.IsCommand ? "command" : "tool")}: {pending.Call.Name}",
+                    ClientRequest = pending.Request
+                };
+            }
+
+            // IMPORTANT: Caller should yield break after receiving AwaitingClient/CommandClient
+            yield break;
         }
     }
 
@@ -238,49 +285,57 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
         ClearContinuationState(context);
     }
 
-    private void SaveClientToolState(
+    /// <summary>
+    /// Saves state for ALL pending client tools/commands that need execution.
+    /// Stores them as a JSON array so AutoCompleteIncompleteCommandAsync can process all of them.
+    /// </summary>
+    private void SavePendingCommandsState(
         SceneContext context,
         string sceneName,
-        ClientInteractionRequest clientRequest,
-        FunctionCallContent currentCall,
-        List<FunctionCallContent> allCalls,
-        int currentIndex)
+        List<PendingCommand> pendingCommands)
     {
-        context.SetProperty("_continuation_sceneName", sceneName);
-        context.SetProperty("_continuation_interactionId", clientRequest.InteractionId);
-        context.SetProperty("_continuation_callId", currentCall.CallId);
-        context.SetProperty("_continuation_toolName", currentCall.Name);
-        context.SetProperty("_continuation_isCommand", clientRequest.IsCommand);
-
-        // Save remaining tools as pending
-        var remainingCalls = allCalls.Skip(currentIndex + 1).ToList();
-        if (remainingCalls.Count > 0)
+        // Serialize ALL pending commands to JSON array
+        var serializedCommands = pendingCommands.Select(pc => new SerializedPendingCommand
         {
-            var serializedCalls = remainingCalls.Select(fc => new SerializedFunctionCall
-            {
-                CallId = fc.CallId,
-                Name = fc.Name,
-                Arguments = fc.Arguments
-            }).ToList();
+            InteractionId = pc.Request.InteractionId,
+            CallId = pc.Call.CallId,
+            ToolName = pc.Call.Name,
+            IsCommand = pc.Request.IsCommand,
+            FeedbackMode = pc.Request.FeedbackMode
+        }).ToList();
 
-            var pendingJson = JsonSerializer.Serialize(serializedCalls);
-            context.SetProperty("_pending_tools", pendingJson);
+        var commandsJson = JsonSerializer.Serialize(serializedCommands);
+        context.SetProperty("_pending_commands", commandsJson);
+        context.SetProperty("_continuation_sceneName", sceneName);
 
-            _logger.LogInformation("Saved {Count} pending tool calls for execution after client response",
-                remainingCalls.Count);
-        }
-
-        // Set phase to AwaitingClient
+        // Set phase to AwaitingClient (will auto-complete on next message)
         context.ExecutionPhase = ExecutionPhase.AwaitingClient;
+
+        _logger.LogInformation(
+            "💾 Saved {Count} pending client {Type} for delayed completion. SceneName: {SceneName}",
+            pendingCommands.Count,
+            pendingCommands.Any(pc => pc.Request.IsCommand) ? "Commands/Tools" : "Tools",
+            sceneName);
+
+        foreach (var cmd in pendingCommands)
+        {
+            _logger.LogDebug("  - '{ToolName}' (CallId: {CallId}, feedbackMode: {FeedbackMode})",
+                cmd.Call.Name, cmd.Call.CallId, cmd.Request.FeedbackMode);
+        }
     }
 
     private void ClearContinuationState(SceneContext context)
     {
         context.Properties.Remove("_continuation_sceneName");
+        context.Properties.Remove("_pending_commands");
+        context.Properties.Remove("_pending_tools");
+
+        // Legacy properties (kept for backward compatibility)
         context.Properties.Remove("_continuation_interactionId");
         context.Properties.Remove("_continuation_callId");
         context.Properties.Remove("_continuation_toolName");
         context.Properties.Remove("_continuation_isCommand");
+
         context.ExecutionPhase = ExecutionPhase.ExecutingScene;
     }
 
@@ -396,4 +451,16 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
     }
 
     #endregion
+}
+
+/// <summary>
+/// Serialized representation of a pending command/tool for JSON storage.
+/// </summary>
+internal sealed record SerializedPendingCommand
+{
+    public required string InteractionId { get; init; }
+    public required string CallId { get; init; }
+    public required string ToolName { get; init; }
+    public required bool IsCommand { get; init; }
+    public required CommandFeedbackMode FeedbackMode { get; init; }
 }

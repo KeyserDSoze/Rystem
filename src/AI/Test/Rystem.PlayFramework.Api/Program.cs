@@ -114,12 +114,15 @@ builder.Services.AddPlayFramework("default", frameworkBuilder =>
                             // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                             .AddCommand<LogActionArgs>("logUserAction",
                                 "Logs a user action silently in the browser console. No response needed.",
+                                feedbackMode: CommandFeedbackMode.Never,
                                 timeoutSeconds: 5)
                             .AddCommand<TrackEventArgs>("trackAnalytics",
                                 "Tracks an analytics event. Sends feedback only if tracking fails.",
+                                feedbackMode: CommandFeedbackMode.OnError,
                                 timeoutSeconds: 10)
                             .AddCommand<SaveDataArgs>("saveToLocalStorage",
                                 "Saves data to browser local storage. Always sends confirmation message.",
+                                feedbackMode: CommandFeedbackMode.Always,
                                 timeoutSeconds: 10);
                     });
             })

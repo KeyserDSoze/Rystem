@@ -192,6 +192,26 @@ public enum ExecutionPhase
     Completed,
 
     /// <summary>
+    /// Execution completed successfully with no response.
+    /// </summary>
+    CompletedNoResponse,
+
+    /// <summary>
+    /// Execution exceeded the budget limit.
+    /// </summary>
+    BudgetExceeded,
+
+    /// <summary>
+    /// Execution failed because the specified scene was not found.
+    /// </summary>
+    SceneNotFound,
+
+    /// <summary>
+    /// Execution failed because too many tool requests were made.
+    /// </summary>
+    TooManyToolRequests,
+
+    /// <summary>
     /// Break the execution for any reason.
     /// </summary>
     Break,

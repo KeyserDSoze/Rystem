@@ -132,7 +132,7 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
                 Message = $"Budget limit of {settings.MaxBudget:F6} {context.ChatClientManager.Currency} exceeded. Total cost: {context.TotalCost:F6}",
                 ErrorMessage = "Maximum budget reached"
             });
-            context.ExecutionPhase = ExecutionPhase.Completed;
+            context.ExecutionPhase = ExecutionPhase.BudgetExceeded;
             yield break;
         }
 
@@ -200,7 +200,7 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
                         Status = AiResponseStatus.Error,
                         Message = $"Scene '{selectedSceneName}' not found"
                     });
-                    context.ExecutionPhase = ExecutionPhase.Completed;
+                    context.ExecutionPhase = ExecutionPhase.SceneNotFound;
                     yield break;
                 }
             }

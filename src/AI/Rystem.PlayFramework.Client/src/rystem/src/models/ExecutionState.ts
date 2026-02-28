@@ -1,11 +1,32 @@
 /**
+ * Execution phase enum (matches C# ExecutionPhase).
+ * Serialized as camelCase from JsonStringEnumConverter.
+ */
+export type ExecutionPhase =
+    | "notStarted"
+    | "initialized"
+    | "sceneSelected"
+    | "executingScene"
+    | "awaitingClient"
+    | "sceneCompleted"
+    | "chaining"
+    | "generatingFinalResponse"
+    | "completed"
+    | "completedNoResponse"
+    | "budgetExceeded"
+    | "sceneNotFound"
+    | "tooManyToolRequests"
+    | "break"
+    | "unauthorized";
+
+/**
  * Execution state for resuming conversations.
  */
 export interface ExecutionState {
     /**
      * Current execution phase.
      */
-    phase: string;
+    phase: ExecutionPhase;
 
     /**
      * Executed scenes in order.

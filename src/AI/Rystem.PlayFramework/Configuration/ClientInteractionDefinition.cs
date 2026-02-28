@@ -39,4 +39,12 @@ public sealed class ClientInteractionDefinition
     /// Commands don't require immediate response from client.
     /// </summary>
     public bool IsCommand { get; init; } = false;
+
+    /// <summary>
+    /// Feedback mode for Commands (only used when IsCommand=true).
+    /// - Never: No feedback sent, auto-complete immediately with 'true'
+    /// - OnError: Send feedback only if command fails (default)
+    /// - Always: Always send feedback (success + message)
+    /// </summary>
+    public CommandFeedbackMode FeedbackMode { get; init; } = CommandFeedbackMode.OnError;
 }

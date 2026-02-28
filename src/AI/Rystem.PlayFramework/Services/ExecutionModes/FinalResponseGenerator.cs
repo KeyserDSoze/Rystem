@@ -31,23 +31,6 @@ internal sealed class FinalResponseGenerator : IFactoryName
     {
         yield return YieldStatus(AiResponseStatus.GeneratingFinalResponse, "Generating final response");
 
-        // Check if any scene already provided a SPECIFIC_COMMAND
-        var directAnswer = context.Responses
-            .Where(r => r.Status == AiResponseStatus.Running &&
-                       r.Message?.Contains("SPECIFIC_COMMAND:") == true)
-            .LastOrDefault();
-
-        if (directAnswer != null)
-        {
-            yield return YieldAndTrack(context, new AiSceneResponse
-            {
-                Status = AiResponseStatus.Running,
-                Message = directAnswer.Message
-            });
-            context.ExecutionPhase = ExecutionPhase.Completed;
-            yield break;
-        }
-
         // Generate final response based on gathered data
         // Use full conversation history (includes user request, scene results, tool calls)
         var messages = context.GetMessagesForLLM();

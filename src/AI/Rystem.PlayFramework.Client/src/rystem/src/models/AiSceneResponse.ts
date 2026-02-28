@@ -2,30 +2,30 @@ import { ClientInteractionRequest } from "./ClientInteractionRequest";
 
 /**
  * Response status from PlayFramework execution.
- * Matches all 20 C# AiResponseStatus enum values (serialized as PascalCase).
+ * Serialized as camelCase from C# JsonStringEnumConverter.
  */
 export type AiResponseStatus =
-    | "Initializing"
-    | "LoadingCache"
-    | "ExecutingMainActors"
-    | "Planning"
-    | "ExecutingScene"
-    | "FunctionRequest"
-    | "FunctionCompleted"
-    | "ToolSkipped"
-    | "Streaming"
-    | "Running"
-    | "Summarizing"
-    | "DirectorDecision"
-    | "GeneratingFinalResponse"
-    | "SavingCache"
-    | "SavingMemory"
-    | "AwaitingClient"
-    | "CommandClient"
-    | "Completed"
-    | "BudgetExceeded"
-    | "Error"
-    | "Unauthorized";
+    | "initializing"
+    | "loadingCache"
+    | "executingMainActors"
+    | "planning"
+    | "executingScene"
+    | "functionRequest"
+    | "functionCompleted"
+    | "toolSkipped"
+    | "streaming"
+    | "running"
+    | "summarizing"
+    | "directorDecision"
+    | "generatingFinalResponse"
+    | "savingCache"
+    | "savingMemory"
+    | "awaitingClient"
+    | "commandClient"
+    | "completed"
+    | "budgetExceeded"
+    | "error"
+    | "unauthorized";
 
 /**
  * Single step response from PlayFramework (used in step-by-step streaming).
