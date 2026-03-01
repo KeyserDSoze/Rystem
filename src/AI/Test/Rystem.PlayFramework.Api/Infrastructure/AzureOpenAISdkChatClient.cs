@@ -48,8 +48,16 @@ public sealed class AzureOpenAISdkChatClient : IChatClient
         var openAiMessages = ConvertMessages(messages);
         var chatOptions = ConvertChatOptions(options, isStreaming: true);
 
+        // OpenAI streaming sends tool calls incrementally across multiple chunks:
+        //   - First chunk for a tool: has ToolCallId + FunctionName (but partial/empty args)
+        //   - Subsequent chunks: only have FunctionArgumentsUpdate (no Id/Name)
+        // We accumulate by Index and emit complete FunctionCallContent only once
+        // all argument fragments have been received.
+        var toolCallAccumulators = new Dictionary<int, (string ToolCallId, string FunctionName, System.Text.StringBuilder Args)>();
+
         await foreach (var streamUpdate in _chatClient.CompleteChatStreamingAsync(openAiMessages, chatOptions, cancellationToken))
         {
+            // Stream text content immediately
             foreach (var contentPart in streamUpdate.ContentUpdate)
             {
                 if (!string.IsNullOrEmpty(contentPart.Text))
@@ -58,28 +66,77 @@ public sealed class AzureOpenAISdkChatClient : IChatClient
                 }
             }
 
+            // Accumulate tool call chunks by index
             foreach (var toolCallUpdate in streamUpdate.ToolCallUpdates)
             {
-                if (!string.IsNullOrEmpty(toolCallUpdate.ToolCallId) && !string.IsNullOrEmpty(toolCallUpdate.FunctionName))
-                {
-                    var argsJson = string.Empty;
-                    if (toolCallUpdate.FunctionArgumentsUpdate != null && !toolCallUpdate.FunctionArgumentsUpdate.ToMemory().IsEmpty)
-                    {
-                        argsJson = toolCallUpdate.FunctionArgumentsUpdate.ToString();
-                    }
+                var index = toolCallUpdate.Index;
 
+                if (!toolCallAccumulators.TryGetValue(index, out var accumulator))
+                {
+                    accumulator = (
+                        toolCallUpdate.ToolCallId ?? string.Empty,
+                        toolCallUpdate.FunctionName ?? string.Empty,
+                        new System.Text.StringBuilder()
+                    );
+                    toolCallAccumulators[index] = accumulator;
+                }
+
+                // Append argument fragment
+                if (toolCallUpdate.FunctionArgumentsUpdate != null && !toolCallUpdate.FunctionArgumentsUpdate.ToMemory().IsEmpty)
+                {
+                    accumulator.Args.Append(toolCallUpdate.FunctionArgumentsUpdate.ToString());
+                    toolCallAccumulators[index] = accumulator; // re-assign since value-tuple is a struct
+                }
+            }
+
+            // When FinishReason arrives, emit all accumulated tool calls then the finish signal
+            if (streamUpdate.FinishReason != null)
+            {
+                foreach (var kvp in toolCallAccumulators.OrderBy(x => x.Key))
+                {
+                    var (toolCallId, functionName, argsBuilder) = kvp.Value;
+                    var argsJson = argsBuilder.ToString();
                     var argsDict = ParseFunctionArguments(argsJson);
 
                     _logger.LogInformation("[LLM STREAMING] Tool call: {ToolName} with args: {Args}",
-                        toolCallUpdate.FunctionName, string.IsNullOrEmpty(argsJson) ? "{}" : argsJson);
+                        functionName, string.IsNullOrEmpty(argsJson) ? "{}" : argsJson);
 
-                    var funcCall = new FunctionCallContent(
-                        toolCallUpdate.ToolCallId,
-                        toolCallUpdate.FunctionName,
-                        argsDict);
-
+                    var funcCall = new FunctionCallContent(toolCallId, functionName, argsDict);
                     yield return new ChatResponseUpdate(ChatRole.Assistant, new[] { funcCall });
                 }
+                toolCallAccumulators.Clear();
+
+                var finishReason = streamUpdate.FinishReason switch
+                {
+                    var fr when fr == OpenAI.Chat.ChatFinishReason.Stop => ChatFinishReason.Stop,
+                    var fr when fr == OpenAI.Chat.ChatFinishReason.ToolCalls => ChatFinishReason.ToolCalls,
+                    var fr when fr == OpenAI.Chat.ChatFinishReason.ContentFilter => ChatFinishReason.ContentFilter,
+                    var fr when fr == OpenAI.Chat.ChatFinishReason.Length => ChatFinishReason.Length,
+                    _ => ChatFinishReason.Stop
+                };
+
+                yield return new ChatResponseUpdate
+                {
+                    Role = ChatRole.Assistant,
+                    FinishReason = finishReason
+                };
+            }
+        }
+
+        // Fallback: if stream ended without a FinishReason chunk, emit any remaining tool calls
+        if (toolCallAccumulators.Count > 0)
+        {
+            foreach (var kvp in toolCallAccumulators.OrderBy(x => x.Key))
+            {
+                var (toolCallId, functionName, argsBuilder) = kvp.Value;
+                var argsJson = argsBuilder.ToString();
+                var argsDict = ParseFunctionArguments(argsJson);
+
+                _logger.LogInformation("[LLM STREAMING] Tool call (fallback): {ToolName} with args: {Args}",
+                    functionName, string.IsNullOrEmpty(argsJson) ? "{}" : argsJson);
+
+                var funcCall = new FunctionCallContent(toolCallId, functionName, argsDict);
+                yield return new ChatResponseUpdate(ChatRole.Assistant, new[] { funcCall });
             }
         }
     }
@@ -92,6 +149,11 @@ public sealed class AzureOpenAISdkChatClient : IChatClient
         {
             if (msg.Contents is { Count: > 0 })
             {
+                // Collect all tool calls from a single message to group them
+                // in one assistant message (OpenAI requires all tool calls from
+                // the same turn to be in a single assistant message).
+                var toolCalls = new List<OpenAI.Chat.ChatToolCall>();
+
                 foreach (var content in msg.Contents)
                 {
                     switch (content)
@@ -101,11 +163,10 @@ public sealed class AzureOpenAISdkChatClient : IChatClient
                             break;
 
                         case FunctionCallContent funcCall:
-                            var toolCall = OpenAI.Chat.ChatToolCall.CreateFunctionToolCall(
+                            toolCalls.Add(OpenAI.Chat.ChatToolCall.CreateFunctionToolCall(
                                 funcCall.CallId ?? Guid.NewGuid().ToString(),
                                 funcCall.Name,
-                                BinaryData.FromObjectAsJson(funcCall.Arguments));
-                            openAiMessages.Add(OpenAI.Chat.ChatMessage.CreateAssistantMessage(new[] { toolCall }));
+                                BinaryData.FromObjectAsJson(funcCall.Arguments)));
                             break;
 
                         case FunctionResultContent funcResult:
@@ -114,6 +175,11 @@ public sealed class AzureOpenAISdkChatClient : IChatClient
                                 funcResult.Result?.ToString() ?? ""));
                             break;
                     }
+                }
+
+                if (toolCalls.Count > 0)
+                {
+                    openAiMessages.Add(OpenAI.Chat.ChatMessage.CreateAssistantMessage(toolCalls));
                 }
             }
             else
