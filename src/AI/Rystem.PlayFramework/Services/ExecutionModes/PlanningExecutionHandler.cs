@@ -127,6 +127,14 @@ internal sealed class PlanningExecutionHandler : IExecutionModeHandler
             await foreach (var response in sceneExecutor.ExecuteSceneAsync(context, scene, settings, cancellationToken))
             {
                 yield return response;
+
+                // If scene is awaiting client interaction or command execution,
+                // stop the entire plan — the conversation has an unresolved tool_calls message.
+                if (response.Status == AiResponseStatus.AwaitingClient
+                    || response.Status == AiResponseStatus.CommandClient)
+                {
+                    yield break;
+                }
             }
 
             step.IsCompleted = true;

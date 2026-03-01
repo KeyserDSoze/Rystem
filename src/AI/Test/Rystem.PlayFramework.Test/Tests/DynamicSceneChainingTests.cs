@@ -161,12 +161,13 @@ public sealed class DynamicSceneChainingTests : PlayFrameworkTestBase
     }
 
     /// <summary>
-    /// Test that already executed scenes are excluded from next selection.
+    /// Test that scenes can be re-executed when the LLM decides it needs
+    /// another pass (e.g. fetch → analyze → fetch again with new params).
     /// </summary>
     [Fact]
-    public async Task DynamicChaining_ExcludesExecutedScenes_OnlyOffersRemaining()
+    public async Task DynamicChaining_AllowsSceneReuse_WhenLlmSelectsSameSceneAgain()
     {
-        // Arrange
+        // Arrange: LLM selects DataFetcher, then Analyzer, then DataFetcher again
         var services = new ServiceCollection();
         services.AddLogging();
 
@@ -183,8 +184,12 @@ public sealed class DynamicSceneChainingTests : PlayFrameworkTestBase
                 5 => CreateSceneSelectionResponse("Analyzer"),
                 6 => CreateToolCallResponse("AnalyzeData"),
                 7 => CreateTextResponse("Analysis: Average is 2"),
-                8 => CreateContinueResponse(false),
-                _ => CreateTextResponse("Complete analysis with average")
+                8 => CreateContinueResponse(true),          // continue to re-fetch
+                9 => CreateSceneSelectionResponse("DataFetcher"), // re-execute DataFetcher
+                10 => CreateToolCallResponse("FetchData"),
+                11 => CreateTextResponse("Data: [4,5,6]"),
+                12 => CreateContinueResponse(false),         // done
+                _ => CreateTextResponse("Complete re-analysis")
             };
         }));
 
@@ -205,22 +210,26 @@ public sealed class DynamicSceneChainingTests : PlayFrameworkTestBase
         var settings = new SceneRequestSettings
         {
             ExecutionMode = SceneExecutionMode.DynamicChaining,
-            MaxDynamicScenes = 5
+            MaxDynamicScenes = 10
         };
 
         var results = new List<AiSceneResponse>();
-        await foreach (var response in sceneManager.ExecuteAsync("Fetch and analyze data", metadata: null, settings))
+        await foreach (var response in sceneManager.ExecuteAsync("Fetch, analyze, and re-fetch data", metadata: null, settings))
         {
             results.Add(response);
         }
 
         // Assert
         var sceneExecutions = results.Where(r => r.Status == AiResponseStatus.ExecutingScene).ToList();
-        Assert.Equal(2, sceneExecutions.Count);
+        Assert.Equal(3, sceneExecutions.Count); // 3 total executions
 
-        // Verify DataFetcher was only executed once
+        // DataFetcher was executed TWICE (scene reuse)
         var dataFetcherExecutions = sceneExecutions.Count(r => r.SceneName == "DataFetcher");
-        Assert.Equal(1, dataFetcherExecutions);
+        Assert.Equal(2, dataFetcherExecutions);
+
+        // Analyzer was executed once
+        var analyzerExecutions = sceneExecutions.Count(r => r.SceneName == "Analyzer");
+        Assert.Equal(1, analyzerExecutions);
     }
 
     /// <summary>
@@ -323,8 +332,26 @@ public sealed class DynamicSceneChainingTests : PlayFrameworkTestBase
 
     private static ChatResponse CreateContinueResponse(bool shouldContinue)
     {
-        var text = shouldContinue ? "YES, I need to execute another scene" : "NO, the task is complete";
-        return CreateTextResponse(text);
+        // Must return a function call matching the "decideContinuation" tool
+        // used in AskContinueToNextSceneAsync.
+        var functionCall = new FunctionCallContent(
+            callId: Guid.NewGuid().ToString(),
+            name: "decideContinuation",
+            arguments: new Dictionary<string, object?>
+            {
+                ["shouldContinue"] = shouldContinue,
+                ["reasoning"] = shouldContinue
+                    ? "More scenes are needed to complete the task."
+                    : "The task is complete."
+            });
+
+        var message = new ChatMessage(ChatRole.Assistant, [functionCall]);
+
+        return new ChatResponse([message])
+        {
+            ModelId = "mock-model",
+            Usage = new UsageDetails { InputTokenCount = 50, OutputTokenCount = 30 }
+        };
     }
 
     // Helper services for tests

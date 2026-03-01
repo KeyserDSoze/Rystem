@@ -49,14 +49,14 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
 
         while (sceneExecutionCount < settings.MaxDynamicScenes)
         {
-            // Get available scenes (exclude already executed ones)
-            var availableScenes = dependencies.SceneFactory.Scenes
-                .Where(scene => !context.ExecutedScenes.ContainsKey(scene.Name))
-                .ToList();
+            // All scenes are available for selection — scenes can be re-executed
+            // when the task requires multiple rounds. The LLM decides based on
+            // execution context (BuildChainingContext) whether re-use makes sense.
+            var availableScenes = dependencies.SceneFactory.Scenes.ToList();
 
             if (availableScenes.Count == 0)
             {
-                yield return YieldStatus(AiResponseStatus.Running, "No more scenes available");
+                yield return YieldStatus(AiResponseStatus.Running, "No scenes available");
                 break;
             }
 
@@ -101,6 +101,16 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
                     context.ExecutionPhase = ExecutionPhase.Completed;
                     yield break;
                 }
+
+                // If scene is awaiting client interaction or command execution,
+                // stop the entire chain — the conversation history now contains an
+                // assistant message with tool_calls that has no tool response yet.
+                // Continuing would cause "tool_calls must be followed by tool messages" errors.
+                if (response.Status == AiResponseStatus.AwaitingClient
+                    || response.Status == AiResponseStatus.CommandClient)
+                {
+                    yield break;
+                }
             }
 
             // Store scene result
@@ -110,8 +120,8 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
 
             sceneExecutionCount++;
 
-            // Ask LLM if it needs to continue to another scene
-            if (sceneExecutionCount < settings.MaxDynamicScenes && availableScenes.Count > 1)
+            // Ask LLM if it needs to continue to another scene (or re-execute one)
+            if (sceneExecutionCount < settings.MaxDynamicScenes)
             {
                 yield return YieldStatus(AiResponseStatus.Running, "Evaluating if more scenes are needed");
 
@@ -213,14 +223,12 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
         // Build summary of what has been done
         var executionSummary = BuildExecutionSummary(context);
 
-        // Get remaining available scenes
-        var remainingScenes = dependencies.SceneFactory.SceneNames
-            .Where(name => !context.ExecutedScenes.ContainsKey(name))
-            .ToList();
+        // All scenes are available — scenes can be re-executed if needed
+        var allScenes = dependencies.SceneFactory.SceneNames.ToList();
 
-        if (remainingScenes.Count == 0)
+        if (allScenes.Count == 0)
         {
-            return false; // No more scenes available
+            return false; // No scenes available
         }
 
         var prompt = $@"Based on the user's original request: ""{context.InputMessage}""
@@ -228,10 +236,10 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
 Execution so far:
 {executionSummary}
 
-Available scenes for further execution:
-{string.Join("\n", remainingScenes.Select(s => $"- {s}"))}
+All available scenes (scenes can be re-executed if needed):
+{string.Join("\n", allScenes.Select(s => $"- {s}{(context.ExecutedScenes.ContainsKey(s) ? " [already executed]" : "")}"))}
 
-Decide if you need to execute another scene to complete the user's request.
+Decide if you need to execute another scene (or re-execute a previous one) to complete the user's request.
 Use the decideContinuation tool to indicate your decision.";
 
         // Create a forced tool for the continuation decision

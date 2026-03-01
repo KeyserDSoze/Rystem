@@ -64,10 +64,12 @@ public sealed class SceneRequestSettings
     public bool EnableStreaming { get; set; }
 
     /// <summary>
-    /// Maximum number of scenes that can be executed in dynamic chaining mode.
-    /// Prevents infinite loops. Default: 5.
+    /// Maximum number of scene executions in dynamic chaining mode.
+    /// This is a safety limit to prevent infinite loops — the LLM may stop earlier
+    /// via the continuation check. Scenes can be re-executed within this limit.
+    /// Default: 10.
     /// </summary>
-    public int MaxDynamicScenes { get; set; } = 5;
+    public int MaxDynamicScenes { get; set; } = 10;
 
     /// <summary>
     /// Unique key for this conversation.
