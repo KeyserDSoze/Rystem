@@ -1,6 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Rystem;
 using Rystem.PlayFramework.Configuration;
@@ -27,13 +28,16 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
 {
     private readonly ILogger<ToolExecutionManager> _logger;
     private readonly IClientInteractionHandler _clientInteractionHandler;
+    private readonly IDistributedCache? _cache;
 
     public ToolExecutionManager(
         ILogger<ToolExecutionManager> logger,
-        IClientInteractionHandler clientInteractionHandler)
+        IClientInteractionHandler clientInteractionHandler,
+        IDistributedCache? cache = null)
     {
         _logger = logger;
         _clientInteractionHandler = clientInteractionHandler;
+        _cache = cache;
     }
 
     #region Tool Execution
@@ -156,7 +160,29 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
         // After processing all calls, handle pending client tools/commands (if any)
         if (pendingCommands.Count > 0)
         {
-            SavePendingCommandsState(context, sceneName, pendingCommands);
+            // Save batch state for resumption
+            var batch = new ClientInteractionBatch
+            {
+                SceneName = sceneName,
+                Interactions = pendingCommands.Select(pc => new PendingClientInteraction
+                {
+                    InteractionId = pc.Request.InteractionId,
+                    CallId = pc.Call.CallId,
+                    ToolName = pc.Call.Name,
+                    IsCommand = pc.Request.IsCommand,
+                    FeedbackMode = pc.Request.FeedbackMode
+                }).ToList()
+            };
+
+            var batchJson = JsonSerializer.Serialize(batch);
+            context.SetProperty(ClientInteractionBatchKey, batchJson);
+            // Also persist to distributed cache for cross-request survival
+            await PersistBatchToCacheAsync(context.ConversationKey, batchJson);
+            context.ExecutionPhase = ExecutionPhase.AwaitingClient;
+
+            _logger.LogInformation(
+                "Saved {Count} pending client interaction(s) for scene '{SceneName}'",
+                pendingCommands.Count, sceneName);
 
             // Yield ALL pending client interactions
             foreach (var pending in pendingCommands)
@@ -236,101 +262,176 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
         string sceneName,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var originalCallId = context.Properties.TryGetValue("_continuation_callId", out var cid) ? cid as string : null;
-        var originalToolName = context.Properties.TryGetValue("_continuation_toolName", out var tn) ? tn as string : null;
-
-        // Inject client results into conversation
-        foreach (var clientResult in clientResults)
+        // Delegate to the unified resolve method
+        await foreach (var result in ResolveClientInteractionsAsync(context, clientResults, cancellationToken))
         {
-            var resultText = BuildClientResultText(clientResult);
+            yield return result;
+        }
+    }
 
-            var functionResult = new FunctionResultContent(
-                originalCallId ?? clientResult.InteractionId,
-                originalToolName ?? clientResult.InteractionId)
-            {
-                Result = resultText
-            };
-            context.AddToolMessage(new ChatMessage(ChatRole.Tool, [functionResult]));
-
-            _logger.LogInformation("✅ Injected client result for '{InteractionId}' into conversation",
-                clientResult.InteractionId);
+    /// <inheritdoc />
+    public async IAsyncEnumerable<ToolExecutionResult> ResolveClientInteractionsAsync(
+        SceneContext context,
+        List<ClientInteractionResult>? clientResults,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        // Try to load batch from context Properties first, then fall back to distributed cache
+        string? batchJson = null;
+        if (context.Properties.TryGetValue(ClientInteractionBatchKey, out var batchObj) && batchObj is string propJson)
+        {
+            batchJson = propJson;
+        }
+        else
+        {
+            // Load from distributed cache (cross-request persistence)
+            batchJson = await LoadBatchFromCacheAsync(context.ConversationKey);
         }
 
-        // Execute pending server tools
-        if (context.Properties.TryGetValue("_pending_tools", out var pendingJson) && pendingJson is string pendingToolsJson)
+        if (string.IsNullOrEmpty(batchJson))
         {
-            var pendingToolCalls = JsonSerializer.Deserialize<List<SerializedFunctionCall>>(pendingToolsJson);
-            if (pendingToolCalls != null && pendingToolCalls.Count > 0)
+            _logger.LogDebug("No client interaction batch found for resolution");
+            yield break;
+        }
+
+        ClientInteractionBatch batch;
+        try
+        {
+            batch = JsonSerializer.Deserialize<ClientInteractionBatch>(batchJson)
+                ?? throw new InvalidOperationException("Failed to deserialize client interaction batch");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to deserialize client interaction batch. Skipping resolution.");
+            yield break;
+        }
+
+        if (batch.Interactions.Count == 0)
+        {
+            _logger.LogDebug("Client interaction batch is empty");
+            await ClearBatchStateAsync(context);
+            yield break;
+        }
+
+        _logger.LogInformation("Resolving {Count} client interaction(s) for scene '{SceneName}'",
+            batch.Interactions.Count, batch.SceneName);
+
+        // Index client results by InteractionId for O(1) lookup
+        var clientResultsById = clientResults?
+            .ToDictionary(r => r.InteractionId, r => r)
+            ?? new Dictionary<string, ClientInteractionResult>();
+
+        // Process EACH pending interaction with correct CallId mapping
+        foreach (var pending in batch.Interactions)
+        {
+            FunctionResultContent functionResult;
+
+            if (clientResultsById.TryGetValue(pending.InteractionId, out var clientResult))
             {
-                _logger.LogInformation("Executing {Count} pending server tools after client response",
-                    pendingToolCalls.Count);
+                // Client sent explicit result for this interaction
+                var resultText = BuildClientResultText(clientResult);
 
-                // Convert back to FunctionCallContent
-                var functionCalls = pendingToolCalls.Select(pc => new FunctionCallContent(pc.CallId, pc.Name)
+                // Use the ORIGINAL CallId and ToolName from OpenAI (not the InteractionId)
+                functionResult = new FunctionResultContent(pending.CallId, pending.ToolName)
                 {
-                    Arguments = pc.Arguments
-                }).ToList();
+                    Result = resultText
+                };
 
-                await foreach (var result in ExecuteToolCallsAsync(
-                    context, functionCalls, sceneTools, mcpTools, null, sceneName, cancellationToken))
-                {
-                    yield return result;
-                }
-
-                context.Properties.Remove("_pending_tools");
+                _logger.LogInformation(
+                    "Client interaction '{ToolName}' resolved with client result (CallId: {CallId}, InteractionId: {InteractionId})",
+                    pending.ToolName, pending.CallId, pending.InteractionId);
             }
+            else if (pending.IsCommand && pending.FeedbackMode == CommandFeedbackMode.OnError)
+            {
+                // Command with OnError: no result from client means success - auto-complete
+                functionResult = new FunctionResultContent(pending.CallId, pending.ToolName)
+                {
+                    Result = "true"
+                };
+
+                _logger.LogInformation(
+                    "Command '{ToolName}' auto-completed (OnError, no client result = success) (CallId: {CallId})",
+                    pending.ToolName, pending.CallId);
+            }
+            else if (pending.IsCommand && pending.FeedbackMode == CommandFeedbackMode.Never)
+            {
+                // Never commands should not be in the batch (handled immediately), but handle gracefully
+                functionResult = new FunctionResultContent(pending.CallId, pending.ToolName)
+                {
+                    Result = "true"
+                };
+
+                _logger.LogWarning(
+                    "Command '{ToolName}' with FeedbackMode.Never found in batch (unexpected). Auto-completing. (CallId: {CallId})",
+                    pending.ToolName, pending.CallId);
+            }
+            else if (pending.IsCommand && pending.FeedbackMode == CommandFeedbackMode.Always)
+            {
+                // Command with Always: client MUST send result. Missing = error.
+                functionResult = new FunctionResultContent(pending.CallId, pending.ToolName)
+                {
+                    Result = "false: No feedback received from client (FeedbackMode.Always requires explicit result)"
+                };
+
+                _logger.LogWarning(
+                    "Command '{ToolName}' (Always) missing client result - reporting failure (CallId: {CallId})",
+                    pending.ToolName, pending.CallId);
+
+                yield return new ToolExecutionResult
+                {
+                    Status = ToolExecutionStatus.Error,
+                    ToolName = pending.ToolName,
+                    Error = $"Command '{pending.ToolName}' requires feedback (FeedbackMode.Always) but no result was provided"
+                };
+            }
+            else
+            {
+                // ClientTool (AwaitingClient): client MUST send result. Missing = error.
+                functionResult = new FunctionResultContent(pending.CallId, pending.ToolName)
+                {
+                    Result = "Error: No result received from client for this tool"
+                };
+
+                _logger.LogWarning(
+                    "ClientTool '{ToolName}' missing required client result (CallId: {CallId})",
+                    pending.ToolName, pending.CallId);
+
+                yield return new ToolExecutionResult
+                {
+                    Status = ToolExecutionStatus.Error,
+                    ToolName = pending.ToolName,
+                    Error = $"Client tool '{pending.ToolName}' requires a result but none was provided"
+                };
+            }
+
+            // Add tool message with the ORIGINAL CallId (OpenAI compliance)
+            context.AddToolMessage(new ChatMessage(ChatRole.Tool, [functionResult]));
         }
 
-        // Clear continuation properties
-        ClearContinuationState(context);
+        // Clear batch state
+        await ClearBatchStateAsync(context);
+
+        _logger.LogInformation("Resolved {Count} client interaction(s) successfully", batch.Interactions.Count);
     }
 
     /// <summary>
-    /// Saves state for ALL pending client tools/commands that need execution.
-    /// Stores them as a JSON array so AutoCompleteIncompleteCommandAsync can process all of them.
+    /// The single property key used to store the ClientInteractionBatch in context.
     /// </summary>
-    private void SavePendingCommandsState(
-        SceneContext context,
-        string sceneName,
-        List<PendingCommand> pendingCommands)
+    internal const string ClientInteractionBatchKey = "_clientInteractionBatch";
+
+    private async Task ClearBatchStateAsync(SceneContext context)
     {
-        // Serialize ALL pending commands to JSON array
-        var serializedCommands = pendingCommands.Select(pc => new SerializedPendingCommand
+        context.Properties.Remove(ClientInteractionBatchKey);
+
+        // Remove from distributed cache
+        if (_cache != null && !string.IsNullOrEmpty(context.ConversationKey))
         {
-            InteractionId = pc.Request.InteractionId,
-            CallId = pc.Call.CallId,
-            ToolName = pc.Call.Name,
-            IsCommand = pc.Request.IsCommand,
-            FeedbackMode = pc.Request.FeedbackMode
-        }).ToList();
-
-        var commandsJson = JsonSerializer.Serialize(serializedCommands);
-        context.SetProperty("_pending_commands", commandsJson);
-        context.SetProperty("_continuation_sceneName", sceneName);
-
-        // Set phase to AwaitingClient (will auto-complete on next message)
-        context.ExecutionPhase = ExecutionPhase.AwaitingClient;
-
-        _logger.LogInformation(
-            "💾 Saved {Count} pending client {Type} for delayed completion. SceneName: {SceneName}",
-            pendingCommands.Count,
-            pendingCommands.Any(pc => pc.Request.IsCommand) ? "Commands/Tools" : "Tools",
-            sceneName);
-
-        foreach (var cmd in pendingCommands)
-        {
-            _logger.LogDebug("  - '{ToolName}' (CallId: {CallId}, feedbackMode: {FeedbackMode})",
-                cmd.Call.Name, cmd.Call.CallId, cmd.Request.FeedbackMode);
+            await _cache.RemoveAsync(GetBatchCacheKey(context.ConversationKey));
         }
-    }
 
-    private void ClearContinuationState(SceneContext context)
-    {
+        // Clean up legacy properties (backward compatibility with old cached conversations)
         context.Properties.Remove("_continuation_sceneName");
         context.Properties.Remove("_pending_commands");
         context.Properties.Remove("_pending_tools");
-
-        // Legacy properties (kept for backward compatibility)
         context.Properties.Remove("_continuation_interactionId");
         context.Properties.Remove("_continuation_callId");
         context.Properties.Remove("_continuation_toolName");
@@ -338,6 +439,29 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
 
         context.ExecutionPhase = ExecutionPhase.ExecutingScene;
     }
+
+    private async Task PersistBatchToCacheAsync(string? conversationKey, string batchJson)
+    {
+        if (_cache == null || string.IsNullOrEmpty(conversationKey))
+            return;
+
+        var options = new DistributedCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30)
+        };
+        await _cache.SetStringAsync(GetBatchCacheKey(conversationKey), batchJson, options);
+    }
+
+    public async Task<string?> LoadBatchFromCacheAsync(string? conversationKey)
+    {
+        if (_cache == null || string.IsNullOrEmpty(conversationKey))
+            return null;
+
+        return await _cache.GetStringAsync(GetBatchCacheKey(conversationKey));
+    }
+
+    private static string GetBatchCacheKey(string conversationKey)
+        => $"pf:clientbatch:{conversationKey}";
 
     private static string BuildClientResultText(ClientInteractionResult clientResult)
     {
@@ -442,25 +566,5 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
     /// <summary>
     /// Serializable representation of FunctionCallContent for Properties storage.
     /// Used to save pending tool calls when awaiting client response.
-    /// </summary>
-    private sealed class SerializedFunctionCall
-    {
-        public string CallId { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public IDictionary<string, object?>? Arguments { get; set; }
-    }
-
     #endregion
-}
-
-/// <summary>
-/// Serialized representation of a pending command/tool for JSON storage.
-/// </summary>
-internal sealed record SerializedPendingCommand
-{
-    public required string InteractionId { get; init; }
-    public required string CallId { get; init; }
-    public required string ToolName { get; init; }
-    public required bool IsCommand { get; init; }
-    public required CommandFeedbackMode FeedbackMode { get; init; }
 }

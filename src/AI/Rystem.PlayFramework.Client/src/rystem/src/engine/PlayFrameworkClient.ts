@@ -100,7 +100,9 @@ export class PlayFrameworkClient {
         while (shouldContinue) {
             const headers = await this.settings.enrichHeaders(url, "POST", undefined, currentRequest);
             let reconnectAttempts = 0;
-            let awaitingClientResponse: AiSceneResponse | null = null; // Reset for each request iteration
+            // Collect ALL client interaction responses (server may send multiple in a single batch)
+            const pendingInteractions: AiSceneResponse[] = [];
+            let capturedConversationKey: string | undefined;
 
             let shouldRetry = true;
             while (shouldRetry) {
@@ -157,9 +159,9 @@ export class PlayFrameworkClient {
 
                                     // Check for completion/error markers
                                     if (event.status === "completed") {
-                                        // Don't set shouldContinue = false yet - check if client interaction needed first
+                                        // Don't set shouldContinue = false yet - check if client interactions needed first
                                         shouldRetry = false; // Don't retry, stream closed successfully
-                                        break; // Exit read loop to handle client interaction if needed
+                                        break; // Exit read loop to handle client interactions if needed
                                     }
 
                                     if (event.status === "error") {
@@ -170,10 +172,19 @@ export class PlayFrameworkClient {
 
                                     // Check for AwaitingClient or CommandClient status (camelCase from JsonStringEnumConverter)
                                     if (event.status === "awaitingClient" || event.status === "commandClient") {
-                                        awaitingClientResponse = event as AiSceneResponse;
+                                        const interactionResponse = event as AiSceneResponse;
                                         const isCommand = event.status === "commandClient";
-                                        console.log(isCommand ? '🔥 [PlayFrameworkClient] Received CommandClient (fire-and-forget)' : '⏸️ [PlayFrameworkClient] Received AwaitingClient', ', tool:', awaitingClientResponse.clientInteractionRequest?.toolName);
-                                        yield awaitingClientResponse; // Yield to user
+                                        console.log(isCommand ? '🔥 [PlayFrameworkClient] Received CommandClient (fire-and-forget)' : '⏸️ [PlayFrameworkClient] Received AwaitingClient', ', tool:', interactionResponse.clientInteractionRequest?.toolName);
+
+                                        // Capture conversationKey from the response (server sets it for resume)
+                                        if (interactionResponse.conversationKey) {
+                                            capturedConversationKey = interactionResponse.conversationKey;
+                                        }
+
+                                        // Collect ALL interactions (don't overwrite — the server may send multiple)
+                                        pendingInteractions.push(interactionResponse);
+
+                                        yield interactionResponse; // Yield to user
                                         // Don't break - continue reading until stream closes
                                         continue; // Skip the second yield below to avoid duplication
                                     }
@@ -192,37 +203,55 @@ export class PlayFrameworkClient {
 
                     shouldRetry = false; // Success, no retry
 
-                    // Handle client interaction if AwaitingClient (and stream wasn't closed by completed/error)
-                    if (shouldContinue && awaitingClientResponse?.clientInteractionRequest) {
-                        const clientRequest = awaitingClientResponse.clientInteractionRequest;
+                    // Handle client interactions if any were received during this stream
+                    if (shouldContinue && pendingInteractions.length > 0) {
+                        console.log(`🔧 [PlayFrameworkClient] Executing ${pendingInteractions.length} client interaction(s)`);
 
-                        console.log('🔧 [PlayFrameworkClient] Executing client tool:', clientRequest.toolName);
+                        // Execute ALL pending interactions in parallel
+                        const allResults: ClientInteractionResult[] = [];
+                        let hasNonCommandInteraction = false;
 
-                        // Execute client tool
-                        const result = await this.clientRegistry.execute(clientRequest);
+                        for (const interaction of pendingInteractions) {
+                            const clientRequest = interaction.clientInteractionRequest;
+                            if (!clientRequest) continue;
 
-                        // Check if this is a Command (fire-and-forget)
-                        const isCommand = clientRequest.isCommand === true;
+                            console.log(`🔧 [PlayFrameworkClient] Executing: ${clientRequest.toolName} (${clientRequest.isCommand ? 'command' : 'tool'})`);
 
-                        if (isCommand) {
-                            console.log('✅ [PlayFrameworkClient] Command executed (fire-and-forget). No server response needed.');
+                            const result = await this.clientRegistry.execute(clientRequest);
 
-                            // Commands don't resume - auto-completed on next user message
-                            shouldContinue = false;
-                        } else {
-                            console.log('✅ [PlayFrameworkClient] Client tool completed, resuming with results');
+                            if (clientRequest.isCommand === true) {
+                                // Command: check feedbackMode to decide whether to send result
+                                const feedbackMode = clientRequest.feedbackMode ?? 'onError';
 
-                            // Prepare new request with client interaction results
-                            // The server uses conversationKey + cache to restore context
+                                if (feedbackMode === 'always') {
+                                    allResults.push(result);
+                                } else if (feedbackMode === 'onError' && result.error) {
+                                    allResults.push(result);
+                                }
+                                // feedbackMode === 'never': don't send result
+                            } else {
+                                // Tool (AwaitingClient): always send result
+                                hasNonCommandInteraction = true;
+                                allResults.push(result);
+                            }
+                        }
+
+                        if (hasNonCommandInteraction || allResults.length > 0) {
+                            console.log(`✅ [PlayFrameworkClient] ${allResults.length} result(s) to send back, resuming`);
+
+                            // Prepare resume request with ALL applicable results
+                            // Use captured conversationKey so the server finds the batch in cache
                             currentRequest = {
                                 ...currentRequest,
-                                clientInteractionResults: [result]
+                                clientInteractionResults: allResults,
+                                conversationKey: capturedConversationKey ?? currentRequest.conversationKey
                             };
 
                             console.log('📤 [PlayFrameworkClient] Sending resume request with clientInteractionResults');
-
-                            // Continue loop to resume execution
                             shouldContinue = true;
+                        } else {
+                            console.log('✅ [PlayFrameworkClient] All interactions were fire-and-forget commands. No resume needed.');
+                            shouldContinue = false;
                         }
                     } else {
                         console.log('✅ [PlayFrameworkClient] Stream completed normally (no client interaction)');

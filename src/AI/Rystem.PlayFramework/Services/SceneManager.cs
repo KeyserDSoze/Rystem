@@ -34,9 +34,11 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private readonly IFactory<IExecutionModeHandler> _executionModeHandlerFactory;
     private readonly IPlayFrameworkCache _playFrameworkCache;
     private readonly IClientInteractionHandler _clientInteractionHandler;
+    private readonly IToolExecutionManager _toolExecutionManager;
     private readonly IFactory<IRepository<StoredConversation, string>>? _repositoryFactory;
 
     // Resolved dependencies (set via SetFactoryName)
+    private AnyOf<string?, Enum>? _originalFactoryName;
     private string? _factoryName;
     private ISceneFactory _sceneFactory = null!;
     private IChatClientManager _chatClientManager = null!;
@@ -65,6 +67,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         IFactory<IExecutionModeHandler> executionModeHandlerFactory,
         IPlayFrameworkCache playFrameworkCache,
         IClientInteractionHandler clientInteractionHandler,
+        IToolExecutionManager toolExecutionManager,
         IFactory<IRateLimiter>? rateLimiterFactory = null,
         IFactory<IMemory>? memoryFactory = null,
         IFactory<IMemoryStorage>? memoryStorageFactory = null,
@@ -86,6 +89,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _executionModeHandlerFactory = executionModeHandlerFactory;
         _playFrameworkCache = playFrameworkCache;
         _clientInteractionHandler = clientInteractionHandler;
+        _toolExecutionManager = toolExecutionManager;
         _rateLimiterFactory = rateLimiterFactory;
         _memoryFactory = memoryFactory;
         _memoryStorageFactory = memoryStorageFactory;
@@ -94,6 +98,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     public bool FactoryNameAlreadySetup { get; set; }
     public void SetFactoryName(AnyOf<string?, Enum>? name)
     {
+        _originalFactoryName = name;
         _factoryName = name?.ToString() ?? "default";
 
         _logger.LogDebug("Initializing SceneManager for factory: {FactoryName}", _factoryName);
@@ -465,12 +470,27 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             yield break;
         }
 
-        // Check if resuming from CLIENT TOOL RESPONSE (NOT Command auto-completion)
-        // Standard tools (AwaitingClient) send results immediately and are processed by ResumeAfterClientResponseAsync
-        // Commands (CommandClient) auto-complete in AutoCompleteIncompleteCommandAsync before this check
-        var isResumingFromClientInteraction = settings.ClientInteractionResults is { Count: > 0 }
-            && context.Properties.ContainsKey("_continuation_sceneName")
-            && !context.Properties.ContainsKey("_pending_commands"); // NOT a Command batch
+        // Detect if we're resuming from a client interaction batch
+        // Check Properties first (same-request), then distributed cache (cross-request)
+        var hasBatch = context.Properties.ContainsKey(ToolExecutionManager.ClientInteractionBatchKey)
+            || await _toolExecutionManager.LoadBatchFromCacheAsync(context.ConversationKey) != null;
+        var hasClientResults = settings.ClientInteractionResults is { Count: > 0 };
+        var isResumingFromClientInteraction = hasBatch && hasClientResults;
+
+        // Validate: client sent results but no batch state exists (invalid/expired conversation key)
+        if (hasClientResults && !hasBatch)
+        {
+            var errorMessage = $"No pending client interaction found for conversation '{context.ConversationKey}'. The conversation key may be invalid or expired.";
+            _logger.LogWarning(errorMessage + " (Factory: {FactoryName})", _factoryName);
+            yield return YieldAndTrack(context, new AiSceneResponse
+            {
+                Status = AiResponseStatus.Error,
+                ErrorMessage = errorMessage,
+                Message = errorMessage
+            });
+            context.ExecutionPhase = ExecutionPhase.Break;
+            yield break;
+        }
 
         // Initialize context only if NOT resuming from cache
         if (!loadedFromStorageOrCache)
@@ -479,11 +499,29 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             await InitializeNewContextAsync(context, cancellationToken);
         }
 
-        // Auto-complete incomplete Commands from previous turn (if any)
-        // This happens AFTER context initialization and BEFORE adding new user message
-        await foreach (var autoCompleteResponse in AutoCompleteIncompleteCommandAsync(context, settings, cancellationToken))
+        // Resolve pending client interactions (unified path for Commands and ClientTools)
+        // Read batch scene name BEFORE resolve clears the batch
+        string? batchSceneName = null;
+        if (hasBatch)
         {
-            yield return autoCompleteResponse;
+            batchSceneName = await GetBatchSceneNameAsync(context);
+
+            yield return YieldStatus(AiResponseStatus.Initializing, "Resolving client interactions");
+
+            await foreach (var resolveResult in _toolExecutionManager.ResolveClientInteractionsAsync(
+                context, settings.ClientInteractionResults, cancellationToken))
+            {
+                // Convert ToolExecutionResult to AiSceneResponse for errors
+                if (resolveResult.Status == ToolExecutionStatus.Error)
+                {
+                    yield return YieldAndTrack(context, new AiSceneResponse
+                    {
+                        Status = AiResponseStatus.Error,
+                        ErrorMessage = resolveResult.Error,
+                        Message = resolveResult.Message ?? resolveResult.Error
+                    });
+                }
+            }
         }
 
         // Add user message only if NOT resuming from client interaction
@@ -497,28 +535,12 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         {
             _logger.LogInformation("Resuming from client interaction for conversation '{ConversationKey}'", context.ConversationKey);
 
-            // Validate client interaction results
-            foreach (var result in settings.ClientInteractionResults!)
-            {
-                if (!_clientInteractionHandler.ValidateResult(result))
-                {
-                    yield return YieldAndTrack(context, new AiSceneResponse
-                    {
-                        Status = AiResponseStatus.Error,
-                        ErrorMessage = $"Invalid client interaction result for '{result.InteractionId}': {result.Error}",
-                        Message = "Client interaction failed. Please try again."
-                    });
-                    context.ExecutionPhase = ExecutionPhase.Break;
-                    yield break;
-                }
-
-                _logger.LogInformation("Received client interaction result for '{InteractionId}' with {Count} contents",
-                    result.InteractionId, result.Contents?.Count ?? 0);
-            }
-
             // Route directly to the scene from continuation, bypassing scene selection
             settings.ExecutionMode = SceneExecutionMode.Scene;
-            settings.SceneName = context.GetProperty<string>("_continuation_sceneName");
+            settings.SceneName = batchSceneName;
+
+            // Clear client results so SceneExecutor doesn't try to call ResumeAfterClientResponseAsync again
+            settings.ClientInteractionResults = null;
         }
 
         // Rate limiting check
@@ -783,8 +805,20 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         }
 
         // Execute using the handler, passing the factory name
-        await foreach (var response in handler.ExecuteAsync(_factoryName, context, settings, cancellationToken))
+        await foreach (var response in handler.ExecuteAsync(_originalFactoryName, context, settings, cancellationToken))
         {
+            // When AwaitingClient, save conversation to cache BEFORE yielding to client.
+            // The client may break the iterator (stop consuming responses), which would
+            // prevent FinalizePlayFrameworkAsync from running. Saving here ensures the
+            // conversation history is persisted for the resume phase.
+            if (response.Status is AiResponseStatus.AwaitingClient or AiResponseStatus.CommandClient)
+            {
+                if (_settings.Cache.Enabled && context.ConversationKey != null)
+                {
+                    await SaveConversationAsync(context, cancellationToken);
+                }
+            }
+
             yield return response;
         }
 
@@ -814,102 +848,46 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     }
 
     /// <summary>
-    /// Auto-completes ALL incomplete Command interactions from previous conversation.
-    /// Commands with feedbackMode='always' or 'onError' may send CommandResult with next user message.
-    /// Commands with feedbackMode='never' are auto-completed immediately in ExecuteToolCallsAsync.
-    /// 
-    /// Handles batch Commands: if LLM called multiple Commands, all are auto-completed and
-    /// FunctionResultContent added separately for each (matching OpenAI requirement).
+    /// Reads the SceneName from the ClientInteractionBatch stored in context properties.
+    /// Must be called BEFORE ResolveClientInteractionsAsync clears the batch.
     /// </summary>
-    private async IAsyncEnumerable<AiSceneResponse> AutoCompleteIncompleteCommandAsync(
-        SceneContext context,
-        SceneRequestSettings settings,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+    private async Task<string?> GetBatchSceneNameAsync(SceneContext context)
     {
-        // Load pending commands from JSON array
-        if (!context.Properties.TryGetValue("_pending_commands", out var commandsJsonObj)
-            || commandsJsonObj is not string commandsJson)
+        string? batchJson = null;
+
+        // Try Properties first (same-request)
+        if (context.Properties.TryGetValue(ToolExecutionManager.ClientInteractionBatchKey, out var batchObj)
+            && batchObj is string propJson)
         {
-            _logger.LogDebug("No pending commands found for auto-completion");
-            yield break;
+            batchJson = propJson;
+        }
+        else
+        {
+            // Try distributed cache (cross-request)
+            batchJson = await _toolExecutionManager.LoadBatchFromCacheAsync(context.ConversationKey);
         }
 
-        List<SerializedPendingCommand> pendingCommands;
-        try
+        if (!string.IsNullOrEmpty(batchJson))
         {
-            pendingCommands = JsonSerializer.Deserialize<List<SerializedPendingCommand>>(commandsJson)
-                ?? throw new InvalidOperationException("Failed to deserialize pending commands");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to deserialize pending commands from JSON. Skipping auto-completion.");
-            yield break;
-        }
-
-        if (pendingCommands.Count == 0)
-        {
-            _logger.LogDebug("Pending commands array is empty");
-            yield break;
-        }
-
-        yield return YieldStatus(AiResponseStatus.Initializing, 
-            $"Auto-completing {pendingCommands.Count} command(s): {string.Join(", ", pendingCommands.Select(c => c.ToolName))}");
-
-        // Group client results by InteractionId for lookup
-        var clientResultsById = settings.ClientInteractionResults?
-            .ToDictionary(r => r.InteractionId, r => r)
-            ?? new Dictionary<string, ClientInteractionResult>();
-
-        // Process EACH pending command separately and add FunctionResultContent for each
-        foreach (var pending in pendingCommands)
-        {
-            FunctionResultContent functionResult;
-
-            // Check if client sent explicit result for this command
-            if (clientResultsById.TryGetValue(pending.InteractionId, out var clientResult))
+            try
             {
-                // Client sent explicit result - extract success flag and message from Contents
-                // CommandResult is converted to Contents: [{ text: 'true'|'false' }, { text: message }]
-                var isSuccess = clientResult.Error == null 
-                    && clientResult.Contents?.FirstOrDefault()?.Text == "true";
-
-                var messageText = clientResult.Contents?.Skip(1).FirstOrDefault()?.Text;
-
-                var resultText = isSuccess
-                    ? "true"
-                    : $"false: {messageText ?? clientResult.Error ?? "Command failed"}";
-
-                functionResult = new FunctionResultContent(pending.CallId, pending.ToolName)
-                {
-                    Result = resultText
-                };
-
-                _logger.LogInformation(
-                    "✅ Command '{ToolName}' completed with client result - Success: {Success}, Message: {Message}",
-                    pending.ToolName, isSuccess, messageText ?? clientResult.Error ?? "none");
+                var batch = JsonSerializer.Deserialize<ClientInteractionBatch>(batchJson);
+                return batch?.SceneName;
             }
-            else
+            catch (Exception ex)
             {
-                // No client result - auto-complete with success (default for Commands)
-                functionResult = new FunctionResultContent(pending.CallId, pending.ToolName)
-                {
-                    Result = "true"  // Default success for Commands without explicit result
-                };
-
-                _logger.LogInformation(
-                    "✅ Command '{ToolName}' auto-completed with default success (no client result received)",
-                    pending.ToolName);
+                _logger.LogError(ex, "Failed to deserialize batch for scene name extraction");
             }
-
-            // Add SEPARATE tool message for each command (OpenAI requirement)
-            context.AddToolMessage(new ChatMessage(ChatRole.Tool, [functionResult]));
         }
 
-        // Clear ALL continuation state
-        context.Properties.Remove("_pending_commands");
-        context.Properties.Remove("_continuation_sceneName");
+        // Fallback: try legacy property
+        if (context.Properties.TryGetValue("_continuation_sceneName", out var legacySceneName)
+            && legacySceneName is string sceneName)
+        {
+            return sceneName;
+        }
 
-        _logger.LogInformation("🎉 Auto-completed {Count} command(s) successfully", pendingCommands.Count);
+        return null;
     }
 
     /// <summary>

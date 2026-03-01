@@ -259,21 +259,10 @@ public sealed class SceneContext
             .Select(m => m.Message)
             .ToList();
 
-        // Debug logging - track message structure before sanitization
-        System.Diagnostics.Debug.WriteLine($"[GetMessagesForLLM] ExecutionPhase: {ExecutionPhase}, Message count: {messages.Count}");
-        for (int idx = 0; idx < messages.Count; idx++)
-        {
-            var msg = messages[idx];
-            var toolCalls = msg.Contents?.OfType<FunctionCallContent>().Select(tc => tc.CallId).ToList();
-            var toolResults = msg.Contents?.OfType<FunctionResultContent>().Select(tr => tr.CallId).ToList();
-            System.Diagnostics.Debug.WriteLine($"  [{idx}] Role: {msg.Role}, ToolCalls: [{string.Join(", ", toolCalls ?? [])}], ToolResults: [{string.Join(", ", toolResults ?? [])}]");
-        }
-
         // Skip sanitization if we're awaiting client response
         // In this state, tool_calls are intentionally incomplete (waiting for client execution)
         if (ExecutionPhase == ExecutionPhase.AwaitingClient)
         {
-            System.Diagnostics.Debug.WriteLine("[GetMessagesForLLM] Skipping sanitization (AwaitingClient)");
             return messages;
         }
 
@@ -317,10 +306,6 @@ public sealed class SceneContext
                     // If any tool_call lacks a response, skip this assistant entirely
                     if (!toolCallIds.All(id => respondedCallIds.Contains(id)))
                     {
-                        var missingCallIds = toolCallIds.Where(id => !respondedCallIds.Contains(id)).ToList();
-                        System.Diagnostics.Debug.WriteLine($"[GetMessagesForLLM] SKIPPING assistant at [{i}] - Missing responses for: [{string.Join(", ", missingCallIds)}]");
-                        System.Diagnostics.Debug.WriteLine($"  ToolCallIds: [{string.Join(", ", toolCallIds)}]");
-                        System.Diagnostics.Debug.WriteLine($"  RespondedCallIds: [{string.Join(", ", respondedCallIds)}]");
                         expectedToolCallIds.Clear(); // Don't expect any tools after skipped assistant
                         continue; // Skip this assistant message
                     }
@@ -359,9 +344,8 @@ public sealed class SceneContext
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"[GetMessagesForLLM] SKIPPING orphaned tool message at [{i}] - CallIds: [{string.Join(", ", toolResults.Select(r => r.CallId))}]");
+                        // Otherwise skip this orphaned tool message
                     }
-                    // Otherwise skip this orphaned tool message
                 }
             }
             else
@@ -369,16 +353,6 @@ public sealed class SceneContext
                 // System or other roles - always include
                 sanitized.Add(msg);
             }
-        }
-
-        // Debug: log sanitized result
-        System.Diagnostics.Debug.WriteLine($"[GetMessagesForLLM] After sanitization: {sanitized.Count} messages");
-        for (int idx = 0; idx < sanitized.Count; idx++)
-        {
-            var msg = sanitized[idx];
-            var toolCalls = msg.Contents?.OfType<FunctionCallContent>().Select(tc => tc.CallId).ToList();
-            var toolResults = msg.Contents?.OfType<FunctionResultContent>().Select(tr => tr.CallId).ToList();
-            System.Diagnostics.Debug.WriteLine($"  [{idx}] Role: {msg.Role}, ToolCalls: [{string.Join(", ", toolCalls ?? [])}], ToolResults: [{string.Join(", ", toolResults ?? [])}]");
         }
 
         return sanitized;

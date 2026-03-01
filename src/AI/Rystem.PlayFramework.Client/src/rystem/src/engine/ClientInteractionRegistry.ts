@@ -130,21 +130,26 @@ export class ClientInteractionRegistry {
             const isCommand = this.isCommand(request.toolName);
 
             // Execute tool with timeout (protects against client-side hangs/crashes)
-            const timeoutMs = request.timeoutSeconds * 1000;
-            let timer: ReturnType<typeof setTimeout> | undefined;
-            const timeoutPromise = new Promise<never>((_, reject) => {
-                timer = setTimeout(() => {
-                    reject(new Error(`Tool execution timeout after ${request.timeoutSeconds}s`));
-                }, timeoutMs);
-            });
-
+            const timeoutMs = request.timeoutSeconds > 0 ? request.timeoutSeconds * 1000 : 0;
             const executionPromise = tool(request.arguments);
 
             let result: AIContent[] | CommandResult;
-            try {
-                result = await Promise.race([executionPromise, timeoutPromise]);
-            } finally {
-                if (timer !== undefined) clearTimeout(timer);
+            if (timeoutMs > 0) {
+                let timer: ReturnType<typeof setTimeout> | undefined;
+                const timeoutPromise = new Promise<never>((_, reject) => {
+                    timer = setTimeout(() => {
+                        reject(new Error(`Tool execution timeout after ${request.timeoutSeconds}s`));
+                    }, timeoutMs);
+                });
+
+                try {
+                    result = await Promise.race([executionPromise, timeoutPromise]);
+                } finally {
+                    if (timer !== undefined) clearTimeout(timer);
+                }
+            } else {
+                // No timeout — wait indefinitely for the tool to complete
+                result = await executionPromise;
             }
 
             // If it's a command, convert CommandResult to AIContent[]

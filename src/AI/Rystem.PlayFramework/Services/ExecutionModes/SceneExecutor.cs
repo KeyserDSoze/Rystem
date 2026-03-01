@@ -66,9 +66,8 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
 
         context.ExecutionPhase = ExecutionPhase.ExecutingScene;
 
-        // Check if resuming from client interaction
-        var isResumingFromClientInteraction = settings.ClientInteractionResults != null && settings.ClientInteractionResults.Count > 0
-            && context.Properties.ContainsKey("_continuation_sceneName");
+        // Check if resuming from client interaction (batch was already resolved by SceneManager)
+        var isResumingFromClientInteraction = settings.ClientInteractionResults != null && settings.ClientInteractionResults.Count > 0;
 
         // Execute scene actors only if NOT resuming from client interaction
         if (!isResumingFromClientInteraction)
@@ -149,20 +148,9 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
         _dependencies.Logger.LogDebug("Scene {SceneName} executing with {SceneToolCount} scene tools + {McpToolCount} MCP tools (Factory: {FactoryName})",
             scene.Name, scene.AiTools.Count, mcpTools.Count, _factoryName);
 
-        // STEP 1: If resuming from client interaction, use ToolExecutionManager
-        if (settings.ClientInteractionResults != null && settings.ClientInteractionResults.Count > 0)
-        {
-            await foreach (var result in _toolExecutionManager.ResumeAfterClientResponseAsync(
-                context,
-                settings.ClientInteractionResults,
-                scene.Tools,
-                mcpTools,
-                scene.Name,
-                cancellationToken))
-            {
-                yield return ConvertToolResult(result, scene.Name, context);
-            }
-        }
+        // Client interactions are now resolved by SceneManager.InitializePlayFrameworkAsync
+        // via ToolExecutionManager.ResolveClientInteractionsAsync before entering this method.
+        // No need to call ResumeAfterClientResponseAsync here.
 
         // Tool calling loop - continue until LLM stops calling tools
         const int MaxToolCallIterations = 10;
@@ -358,6 +346,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
             }
 
             // STEP 3: Execute function calls using centralized ToolExecutionManager
+            var hasClientInteraction = false;
             await foreach (var result in _toolExecutionManager.ExecuteToolCallsAsync(
                 context,
                 accumulatedFunctionCalls,
@@ -370,11 +359,18 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                 var response = ConvertToolResult(result, scene.Name, context);
                 yield return response;
 
-                // If awaiting client, check if it's a Command (fire-and-forget)
-                if (result.Status == ToolExecutionStatus.AwaitingClient)
+                // Track any client interaction (both AwaitingClient and CommandClient)
+                if (result.Status is ToolExecutionStatus.AwaitingClient
+                                  or ToolExecutionStatus.CommandClient)
                 {
-                    yield break;
+                    hasClientInteraction = true;
                 }
+            }
+
+            // Break AFTER yielding ALL client interactions to the client
+            if (hasClientInteraction)
+            {
+                yield break;
             }
         }
 
@@ -413,7 +409,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                 message: result.Message ?? $"Tool {result.ToolName} completed",
                 functionName: result.ToolName),
 
-            ToolExecutionStatus.AwaitingClient => new AiSceneResponse
+            ToolExecutionStatus.AwaitingClient or ToolExecutionStatus.CommandClient => new AiSceneResponse
             {
                 Status = result.ClientRequest?.IsCommand == true ? AiResponseStatus.CommandClient : AiResponseStatus.AwaitingClient,
                 ConversationKey = context.ConversationKey,

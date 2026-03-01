@@ -60,6 +60,31 @@ public interface IToolExecutionManager
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Resolves all pending client interactions from a ClientInteractionBatch.
+    /// Unified method that handles Commands (all FeedbackModes) and ClientTools.
+    /// - Maps client results to original OpenAI CallIds
+    /// - Auto-completes Commands with OnError when no client result provided
+    /// - Reports errors for Commands with Always or ClientTools when no result provided
+    /// - Adds FunctionResultContent to conversation history with correct CallId
+    /// </summary>
+    /// <param name="context">Scene context containing the batch</param>
+    /// <param name="clientResults">Results from client (may be null for auto-complete scenarios)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Async enumerable of error/status results</returns>
+    IAsyncEnumerable<ToolExecutionResult> ResolveClientInteractionsAsync(
+        SceneContext context,
+        List<ClientInteractionResult>? clientResults,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Loads the client interaction batch JSON from the distributed cache for the given conversation key.
+    /// Returns null if no batch exists or cache is not available.
+    /// </summary>
+    /// <param name="conversationKey">The conversation key to look up</param>
+    /// <returns>Batch JSON string, or null if not found</returns>
+    Task<string?> LoadBatchFromCacheAsync(string? conversationKey);
+
+    /// <summary>
     /// Deduplicates tool calls in a ChatResponse (for non-streaming).
     /// OpenAI sometimes returns duplicate tool_calls with different CallIds.
     /// </summary>

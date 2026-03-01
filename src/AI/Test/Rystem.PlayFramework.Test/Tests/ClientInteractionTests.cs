@@ -161,7 +161,7 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
 
     /// <summary>
     /// Tests client interaction with error response from client.
-    /// Error is caught during continuation validation (before reaching scene execution).
+    /// The error is forwarded to the LLM as a tool result, allowing the LLM to handle it gracefully.
     /// </summary>
     [Fact]
     public async Task ClientInteraction_ErrorFromClient_ShouldHandleGracefully()
@@ -211,10 +211,11 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
             finalResponses.Add(response);
         }
 
-        // Assert: Should return error (validation catches the client error)
+        // Assert: Error is forwarded to the LLM which completes successfully
+        // The LLM receives the error as a tool result and can explain the failure to the user
         Assert.NotEmpty(finalResponses);
-        var errorResponse = finalResponses.FirstOrDefault(r => r.Status == AiResponseStatus.Error);
-        Assert.NotNull(errorResponse);
+        var completedResponse = finalResponses.FirstOrDefault(r => r.Status == AiResponseStatus.Completed);
+        Assert.NotNull(completedResponse);
     }
 
     /// <summary>
@@ -372,11 +373,11 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
     }
 
     /// <summary>
-    /// Tests resume with empty Contents and no Error (invalid result).
-    /// ValidateResult should return false, causing an Error response.
+    /// Tests resume with empty Contents and no Error.
+    /// Empty contents is auto-completed as "no data returned" and forwarded to the LLM.
     /// </summary>
     [Fact]
-    public async Task ClientInteraction_EmptyContentsNoError_ShouldReturnError()
+    public async Task ClientInteraction_EmptyContentsNoError_ShouldCompleteGracefully()
     {
         // Arrange
         var sceneManager = ServiceProvider.GetRequiredService<ISceneManager>();
@@ -405,7 +406,7 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
         var clientResult = new ClientInteractionResult
         {
             InteractionId = awaitingClientResponse.ClientInteractionRequest!.InteractionId,
-            Contents = new List<ClientContentItem>(), // Empty — invalid
+            Contents = new List<ClientContentItem>(), // Empty — auto-completed as success
             ExecutedAt = DateTime.UtcNow
         };
 
@@ -421,10 +422,10 @@ public sealed class ClientInteractionTests : PlayFrameworkTestBase
             responses.Add(response);
         }
 
-        // Assert: ValidateResult returns false for empty contents → Error
+        // Assert: Empty contents is treated as "no data returned" and forwarded to LLM
         Assert.NotEmpty(responses);
-        var errorResponse = responses.FirstOrDefault(r => r.Status == AiResponseStatus.Error);
-        Assert.NotNull(errorResponse);
+        var completedResponse = responses.FirstOrDefault(r => r.Status == AiResponseStatus.Completed);
+        Assert.NotNull(completedResponse);
     }
 
     /// <summary>
