@@ -224,11 +224,26 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
         var executionSummary = BuildExecutionSummary(context);
 
         // All scenes are available — scenes can be re-executed if needed
-        var allScenes = dependencies.SceneFactory.SceneNames.ToList();
+        var allScenes = dependencies.SceneFactory.Scenes;
 
         if (allScenes.Count == 0)
         {
             return false; // No scenes available
+        }
+
+        // Build a detailed list showing each scene's description and tools
+        // so the LLM can make an informed decision about whether another scene
+        // has the capabilities needed to fulfill the remaining parts of the request.
+        var sceneDescriptions = new StringBuilder();
+        foreach (var scene in allScenes)
+        {
+            var toolNames = scene.Tools.Select(t => t.Name).ToList();
+            var executedTag = context.ExecutedScenes.ContainsKey(scene.Name) ? " [already executed]" : "";
+            sceneDescriptions.AppendLine($"- {scene.Name}{executedTag}: {scene.Description}");
+            if (toolNames.Count > 0)
+            {
+                sceneDescriptions.AppendLine($"  Available tools: {string.Join(", ", toolNames)}");
+            }
         }
 
         var prompt = $@"Based on the user's original request: ""{context.InputMessage}""
@@ -236,10 +251,9 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
 Execution so far:
 {executionSummary}
 
-All available scenes (scenes can be re-executed if needed):
-{string.Join("\n", allScenes.Select(s => $"- {s}{(context.ExecutedScenes.ContainsKey(s) ? " [already executed]" : "")}"))}
-
-Decide if you need to execute another scene (or re-execute a previous one) to complete the user's request.
+All available scenes with their capabilities (scenes can be re-executed if needed):
+{sceneDescriptions}
+If ANY part of the user's original request has not been fulfilled yet and a scene has the tools to do it, you MUST continue.
 Use the decideContinuation tool to indicate your decision.";
 
         // Create a forced tool for the continuation decision
