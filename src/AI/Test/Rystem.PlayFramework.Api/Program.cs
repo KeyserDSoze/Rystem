@@ -98,31 +98,35 @@ builder.Services.AddPlayFramework("default", frameworkBuilder =>
                     .OnClient(clientBuilder =>
                     {
                         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                        // STANDARD TOOLS (require response)
+                        // CLIENT TOOLS (require response — AwaitingClient)
                         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                         clientBuilder
                             .AddTool("getCurrentLocation",
-                                "Gets the user's current geographic location (latitude, longitude) from the browser. Use when the user asks about nearby places, weather, or anything location-dependent.",
+                                "Gets the user's current geographic location (latitude, longitude) from the browser. ALWAYS call this tool when the user mentions 'dove sono', 'posizione', 'location', 'where am I', nearby places, weather, or anything location-dependent.",
                                 timeoutSeconds: 15)
                             .AddTool<UserConfirmationArgs>("getUserConfirmation",
-                                "Asks the user for explicit confirmation before performing a sensitive or irreversible action. Use when the user requests something that needs a yes/no decision.",
+                                "Asks the user for explicit yes/no confirmation via a browser dialog. ALWAYS call this tool when the user says 'conferma', 'confirm', 'chiedi conferma', or asks you to verify before doing something.",
                                 timeoutSeconds: 60)
 
                             // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                            // COMMANDS (fire-and-forget, optional feedback)
-                            // Timeout protects against client-side execution failures
+                            // COMMANDS (fire-and-forget — CommandClient)
+                            // Three feedback modes: Never, OnError, Always
                             // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                             .AddCommand<LogActionArgs>("logUserAction",
-                                "Logs a user action silently in the browser console. No response needed.",
+                                "Logs a user action silently in the browser console for debugging. No feedback is sent back. ALWAYS call this when the user says 'logga', 'log this', or 'registra azione'.",
                                 feedbackMode: CommandFeedbackMode.Never,
                                 timeoutSeconds: 5)
                             .AddCommand<TrackEventArgs>("trackAnalytics",
-                                "Tracks an analytics event. Sends feedback only if tracking fails.",
+                                "Tracks an analytics event on the client. Feedback is sent only if tracking fails. ALWAYS call this when the user says 'traccia', 'track', 'analytics', or 'registra evento'.",
                                 feedbackMode: CommandFeedbackMode.OnError,
                                 timeoutSeconds: 10)
                             .AddCommand<SaveDataArgs>("saveToLocalStorage",
-                                "Saves data to browser local storage. Always sends confirmation message.",
+                                "Saves a key-value pair to browser localStorage. ALWAYS sends confirmation back. ALWAYS call this when the user says 'salva', 'save', 'ricorda', 'memorizza', or asks to store/remember a value.",
                                 feedbackMode: CommandFeedbackMode.Always,
+                                timeoutSeconds: 10)
+                            .AddCommand<NotificationArgs>("showNotification",
+                                "Shows a visual notification/alert in the browser to the user. Feedback is sent only if displaying fails. ALWAYS call this when the user says 'notifica', 'notify', 'avvisa', 'mostra notifica', or 'alert'.",
+                                feedbackMode: CommandFeedbackMode.OnError,
                                 timeoutSeconds: 10);
                     });
             })

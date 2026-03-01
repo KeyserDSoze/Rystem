@@ -97,11 +97,28 @@ function registerClientTools(client: PlayFrameworkClient) {
         try {
             if (!args) throw new Error('Missing arguments');
             localStorage.setItem(args.key, args.value);
+            console.log(`[Command:Always] ✅ Saved "${args.key}" = "${args.value}" to localStorage`);
             return CommandResultHelper.ok(`Saved "${args.key}" to local storage`);
         } catch (error: any) {
+            console.log(`[Command:Always] ❌ Failed to save: ${error.message}`);
             return CommandResultHelper.fail(`Storage error: ${error.message}`);
         }
     }, { feedbackMode: 'always' });
+
+    // Command - ON_ERROR mode: Show notification, feedback only on failure
+    registry.registerCommand('showNotification', async (args?: { title: string; message: string; type: string }) => {
+        try {
+            const title = args?.title ?? 'Notification';
+            const message = args?.message ?? '';
+            const type = args?.type ?? 'info';
+            console.log(`[Command:OnError] 🔔 Notification [${type}]: ${title} - ${message}`);
+            window.alert(`[${type.toUpperCase()}] ${title}\n\n${message}`);
+            return CommandResultHelper.ok(`Notification shown: ${title}`);
+        } catch (error: any) {
+            console.log(`[Command:OnError] ❌ Notification failed: ${error.message}`);
+            return CommandResultHelper.fail(`Notification error: ${error.message}`);
+        }
+    }, { feedbackMode: 'onError' });
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
