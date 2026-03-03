@@ -283,12 +283,12 @@ const request: PlayFrameworkRequest = {
     contents: [
         {
             type: "image",
-            base64Data: "iVBORw0KGgoAAAANSUhEUgAA...",
+            data: "iVBORw0KGgoAAAANSUhEUgAA...",
             mediaType: "image/png"
         },
         {
             type: "data",
-            base64Data: "JVBERi0xLjQKJeLjz9M...",
+            data: "JVBERi0xLjQKJeLjz9M...",
             mediaType: "application/pdf"
         },
         {
@@ -604,7 +604,7 @@ For conversation management to work, the backend must:
 1. **Enable Repository persistence:**
    ```csharp
    builder.Services.AddPlayFramework("default", pb => pb
-       .UseRepository(repo => repo.WithEntityFramework<AppDbContext>()));
+       .UseRepository());
    ```
 
 2. **Enable conversation endpoints:**
@@ -1326,16 +1326,27 @@ setTimeout(() => controller.abort(), 5000);
 
 ```typescript
 type AiResponseStatus =
-    | "initializing"        // Starting execution
-    | "planning"            // Creating execution plan
-    | "executingScene"      // Running scene/actor
-    | "functionRequest"     // Calling server-side tool
-    | "functionCompleted"   // Tool call completed
-    | "streaming"           // Streaming text chunks
-    | "awaitingClient"      // Waiting for client-side tool
-    | "completed"           // Success
-    | "error"               // Failure
-    | "budgetExceeded";     // Max cost exceeded
+    | "initializing"              // Starting execution
+    | "loadingCache"              // Loading cached conversation context
+    | "executingMainActors"       // Running global system prompts
+    | "planning"                  // Creating execution plan
+    | "executingScene"            // Running scene/actor
+    | "functionRequest"           // Calling server-side tool
+    | "functionCompleted"         // Tool call completed
+    | "toolSkipped"               // Tool was skipped
+    | "streaming"                 // Streaming text chunks
+    | "running"                   // General execution in progress
+    | "summarizing"               // Summarizing conversation
+    | "directorDecision"          // Director evaluating results
+    | "generatingFinalResponse"   // Generating final response
+    | "savingCache"               // Saving to cache
+    | "savingMemory"              // Saving conversation memory
+    | "awaitingClient"            // Waiting for client-side tool response
+    | "commandClient"             // Fire-and-forget command sent to client
+    | "completed"                 // Success
+    | "budgetExceeded"            // Max cost exceeded
+    | "error"                     // Failure
+    | "unauthorized";             // Authorization failed
 ```
 
 ---
@@ -1367,50 +1378,88 @@ describe("PlayFramework Client", () => {
 
 ### `PlayFrameworkServices`
 
-#### `configure(name: string, baseUrl: string, configure?: (settings: PlayFrameworkSettings) => void): Promise<PlayFrameworkSettings>`
+Static service locator for managing named `PlayFrameworkClient` instances.
 
-Configure a PlayFramework client factory.
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `configure` | `(name: string, baseUrl: string, configure?: (settings: PlayFrameworkSettings) => void \| Promise<void>): Promise<PlayFrameworkSettings>` | Register and configure a named client factory |
+| `resolve` | `(name?: string): PlayFrameworkClient` | Get client by name (defaults to first registered) |
+| `getClient` | `(name: string): PlayFrameworkClient` | Get client by exact name (throws if not found) |
+| `getDefaultClient` | `(): PlayFrameworkClient` | Get the first registered client |
+| `getSettings` | `(name: string): PlayFrameworkSettings` | Get settings by name (throws if not found) |
+| `isConfigured` | `(name: string): boolean` | Check if a named client exists |
+| `remove` | `(name: string): void` | Remove a named client and its settings |
+| `clear` | `(): void` | Remove all clients and settings |
 
 ```typescript
+// Configure
 await PlayFrameworkServices.configure("chat", "http://localhost:5158/api/ai");
-```
 
-#### `resolve(name: string): PlayFrameworkClient`
-
-Get configured client instance.
-
-```typescript
+// Resolve
 const client = PlayFrameworkServices.resolve("chat");
+
+// Check & remove
+if (PlayFrameworkServices.isConfigured("chat")) {
+    PlayFrameworkServices.remove("chat");
+}
 ```
 
 ---
 
 ### `PlayFrameworkClient`
 
-#### `executeStepByStep(request: PlayFrameworkRequest, signal?: AbortSignal): AsyncIterableIterator<AiSceneResponse>`
+Main client for executing AI requests via SSE streaming.
 
-Execute with **step-by-step streaming** (each scene as separate event).
-
-#### `executeTokenStreaming(request: PlayFrameworkRequest, signal?: AbortSignal): AsyncIterableIterator<AiSceneResponse>`
-
-Execute with **token-level streaming** (each text chunk as separate event).
-
-#### `getClientRegistry(): ClientInteractionRegistry`
-
-Get registry for client-side tools.
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `executeStepByStep` | `(request: PlayFrameworkRequest, signal?: AbortSignal): AsyncIterableIterator<AiSceneResponse>` | Step-by-step streaming (one event per scene completion) |
+| `executeTokenStreaming` | `(request: PlayFrameworkRequest, signal?: AbortSignal): AsyncIterableIterator<AiSceneResponse>` | Token-level streaming (one event per text chunk) |
+| `getClientRegistry` | `(): ClientInteractionRegistry` | Get the client-side tool/command registry |
+| `getConversation` | `(conversationKey: string): Promise<StoredConversation \| null>` | Load a stored conversation by key |
+| `getConversations` | `(sortOrder?: ConversationSortOrder): Promise<StoredConversation[]>` | List conversations for the authenticated user |
+| `deleteConversation` | `(conversationKey: string): Promise<boolean>` | Delete a stored conversation |
 
 ---
 
 ### `ClientInteractionRegistry`
 
-#### `register<TArgs = any>(toolName: string, handler: ClientTool<TArgs>): void`
+Registry for client-side tools and commands invoked by the AI during execution.
 
-Register client-side tool.
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `register` | `<TArgs>(toolName: string, handler: ClientTool<TArgs>): void` | Register a tool (server waits for response) |
+| `registerCommand` | `<TArgs>(toolName: string, handler: ClientCommand<TArgs>, options?: CommandOptions): void` | Register a fire-and-forget command |
+| `execute` | `(request: ClientInteractionRequest): Promise<ClientInteractionResult>` | Execute a registered tool/command |
+| `has` | `(toolName: string): boolean` | Check if a tool/command is registered |
+| `isCommand` | `(toolName: string): boolean` | Check if the registration is a command |
+| `getCommandOptions` | `(toolName: string): CommandOptions \| undefined` | Get the command's feedback options |
+| `getToolNames` | `(): string[]` | List all registered tool/command names |
+| `unregister` | `(toolName: string): boolean` | Remove a registration |
+| `clear` | `(): void` | Remove all registrations |
+
+**Types:**
 
 ```typescript
+type ClientTool<TArgs = any> = (args?: TArgs) => Promise<AIContent[]>;
+type ClientCommand<TArgs = any> = (args?: TArgs) => Promise<CommandResult>;
+type CommandFeedbackMode = 'never' | 'onError' | 'always';
+
+interface CommandOptions {
+    feedbackMode?: CommandFeedbackMode;
+}
+```
+
+```typescript
+// Tool — server waits for the result
 registry.register("myTool", async (args?: { key: string }) => {
     return [AIContentConverter.fromText(args?.key || "default")];
 });
+
+// Command — fire-and-forget, feedback optional
+registry.registerCommand("showNotification", async (args?: { text: string }) => {
+    showToast(args?.text ?? "");
+    return CommandResult.ok();
+}, { feedbackMode: 'onError' });
 ```
 
 ---
@@ -1448,7 +1497,208 @@ function MyComponent() {
 
 ---
 
-## 📁 Where to Place This README
+## � Client Commands (Fire-and-Forget)
+
+Commands are client-side tools that the server invokes but **does not wait for a response**. Use them for UI side effects (toasts, navigation, animations, etc.).
+
+### Registering Commands
+
+```typescript
+const registry = client.getClientRegistry();
+
+// Simple command — no feedback to server
+registry.registerCommand("showToast", async (args?: { text: string }) => {
+    showNotification(args?.text ?? "");
+    return CommandResult.ok();
+});
+
+// Command with error feedback — server receives failure info
+registry.registerCommand("navigateTo", async (args?: { url: string }) => {
+    try {
+        window.location.href = args?.url ?? "/";
+        return CommandResult.ok();
+    } catch (e) {
+        return CommandResult.fail(`Navigation failed: ${e}`);
+    }
+}, { feedbackMode: 'onError' });
+
+// Command with always-feedback — server always gets the result
+registry.registerCommand("playSound", async (args?: { soundId: string }) => {
+    await audioPlayer.play(args?.soundId ?? "notification");
+    return CommandResult.ok("Sound played");
+}, { feedbackMode: 'always' });
+```
+
+### `CommandResult` Helper
+
+```typescript
+interface CommandResult {
+    success: boolean;
+    message?: string;
+}
+
+// Factory methods
+CommandResult.ok();                   // { success: true }
+CommandResult.ok("Done");            // { success: true, message: "Done" }
+CommandResult.fail("Reason");        // { success: false, message: "Reason" }
+```
+
+### `CommandFeedbackMode`
+
+| Mode | Behavior |
+|------|----------|
+| `'never'` | Server ignores the command's result (default) |
+| `'onError'` | Server receives feedback only when `success: false` |
+| `'always'` | Server always receives the command's result |
+
+---
+
+## 📋 `ClientInteractionRequest` Model
+
+When the server invokes a client-side tool or command, it sends this object:
+
+```typescript
+interface ClientInteractionRequest {
+    interactionId: string;                          // Unique ID for this invocation
+    toolName: string;                               // Registered tool/command name
+    description?: string;                           // Human-readable description
+    arguments?: Record<string, any>;                // Arguments from AI
+    argumentsSchema?: string;                       // JSON Schema string
+    timeoutSeconds: number;                         // Max time to wait (tools only)
+    isCommand?: boolean;                            // true = fire-and-forget command
+    feedbackMode?: 'never' | 'onError' | 'always'; // Command feedback mode
+}
+```
+
+---
+
+## 📋 `ClientInteractionResult` Model
+
+The response your tool handler returns to the server:
+
+```typescript
+interface AIContent {
+    type: "text" | "data";
+    text?: string;           // For type "text"
+    data?: string;           // Base64-encoded (for type "data")
+    mediaType?: string;      // e.g., "image/jpeg", "audio/webm"
+}
+
+interface ClientInteractionResult {
+    interactionId: string;   // Must match the request
+    contents: AIContent[];   // Tool output
+    error?: string;          // Error message (if failed)
+    executedAt: string;      // ISO 8601 timestamp
+}
+```
+
+---
+
+## 📋 `ExecutionState` and `ExecutionPhase`
+
+The `ExecutionState` object tracks the AI orchestration progress during execution:
+
+```typescript
+type ExecutionPhase =
+    | "notStarted"
+    | "initialized"
+    | "sceneSelected"
+    | "executingScene"
+    | "awaitingClient"
+    | "sceneCompleted"
+    | "chaining"
+    | "generatingFinalResponse"
+    | "completed"
+    | "completedNoResponse"
+    | "budgetExceeded"
+    | "sceneNotFound"
+    | "tooManyToolRequests"
+    | "break"
+    | "unauthorized";
+
+interface ExecutionState {
+    phase: ExecutionPhase;                          // Current execution phase
+    executedSceneOrder: string[];                   // Scene names in execution order
+    executedScenes: Record<string, any[]>;          // Scene name → results
+    executedTools: string[];                        // Tool names invoked
+    accumulatedCost: number;                        // Total $ cost so far
+    currentSceneName?: string | null;               // Currently running scene
+}
+```
+
+---
+
+## 📋 `AiSceneResponse` Full Model
+
+Each SSE event yields an `AiSceneResponse`:
+
+```typescript
+interface AiSceneResponse {
+    status: AiResponseStatus;
+    sceneName?: string;
+    functionName?: string;
+    functionArguments?: string;
+    message?: string;                // Final response text (step-by-step)
+    streamingChunk?: string;         // Partial text (token streaming)
+    isStreamingComplete?: boolean;
+    errorMessage?: string;
+    inputTokens?: number;
+    cachedInputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+    cost?: number;                   // Cost for this step
+    totalCost?: number;              // Accumulated total cost
+    conversationKey?: string;
+    continuationToken?: string;      // Token for resuming after client tool
+    clientInteractionRequest?: ClientInteractionRequest;
+    timestamp?: string;
+    metadata?: Record<string, any>;
+    contents?: Array<{
+        type: string;
+        text?: string;
+        data?: string;               // Base64 encoded
+        mediaType?: string;
+    }>;
+}
+```
+
+---
+
+## 📋 `StoredMessage` Full Model
+
+Each message in a `StoredConversation.messages` array:
+
+```typescript
+interface StoredMessage {
+    businessType: number;                           // Internal type discriminator
+    label?: string | null;                          // Optional label (e.g., scene name)
+    role: string;                                   // "user" | "assistant" | "system" | "tool"
+    text?: string | null;                           // Plain text content
+    contents?: any[] | null;                        // Multi-modal content items
+    additionalProperties?: Record<string, any> | null; // Extra metadata
+}
+```
+
+---
+
+## 📋 `ContentItem` Full Model
+
+Used in `PlayFrameworkRequest.contents` for multi-modal input:
+
+```typescript
+interface ContentItem {
+    type: "text" | "image" | "audio" | "video" | "file" | "uri";
+    text?: string;           // For type "text"
+    data?: string;           // Base64-encoded binary data
+    uri?: string;            // For type "uri"
+    mediaType?: string;      // MIME type (e.g., "image/png", "audio/webm")
+    name?: string;           // Optional filename
+}
+```
+
+---
+
+## �📁 Where to Place This README
 
 This README should be placed in:
 ```
