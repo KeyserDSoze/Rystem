@@ -1,4 +1,5 @@
-﻿using Rystem.PlayFramework;
+﻿using Azure.AI.OpenAI;
+using Rystem.PlayFramework;
 using Rystem.PlayFramework.Api;
 using Rystem.PlayFramework.Api.Infrastructure;
 using Rystem.PlayFramework.Api.Models;
@@ -6,6 +7,7 @@ using Rystem.PlayFramework.Api.Services;
 using Microsoft.Extensions.AI;
 using Scalar.AspNetCore;
 using RepositoryFramework.InMemory;
+using System.ClientModel;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,12 +47,13 @@ var azureOpenAIDeployment = builder.Configuration["AzureOpenAI:Deployment"] ?? "
 
 if (!string.IsNullOrEmpty(azureOpenAIEndpoint) && !string.IsNullOrEmpty(azureOpenAIKey))
 {
-    // NOTE: keep AzureOpenAIChatClientAdapter in the project for reference/debugging,
-    // but register a direct Azure OpenAI SDK backed IChatClient implementation in DI.
+    // Use Microsoft.Extensions.AI.OpenAI bridge: AzureOpenAIClient → .AsChatClient()
     builder.Services.AddSingleton<IChatClient>(sp =>
     {
-        var logger = sp.GetRequiredService<ILogger<AzureOpenAISdkChatClient>>();
-        return new AzureOpenAISdkChatClient(azureOpenAIEndpoint, azureOpenAIKey, azureOpenAIDeployment, logger);
+        var client = new AzureOpenAIClient(
+            new Uri(azureOpenAIEndpoint),
+            new ApiKeyCredential(azureOpenAIKey));
+        return client.GetChatClient(azureOpenAIDeployment).AsIChatClient();
     });
 }
 else
@@ -149,6 +152,64 @@ builder.Services.AddPlayFramework("default", frameworkBuilder =>
                         .WithMethod<double>(x => x.Multiply(default, default), "Multiply", "Multiplies two numbers together. Use for multiplication operations (e.g., '5 times 7.69', '5*7.69', '5 per 7.69' when 'per' means multiplication).")
                         .WithMethod<double>(x => x.Divide(default, default), "Divide", "Divides the first number by the second. Use for division operations (e.g., '5 divided by 7.69', '5/7.69', '5 diviso 7.69').");
                 });
+        })
+        .AddScene("Technical Documentation Estimator",
+            "Use this scene when the user asks for a work estimate, effort estimation, project sizing, man-days calculation, " +
+            "or sends technical documentation (requirements, specs, architecture docs, RFP, functional docs) and asks to evaluate " +
+            "the effort, time, or cost. Keywords: 'stima', 'estimate', 'giornate uomo', 'man-days', 'effort', 'quanto ci vuole', " +
+            "'sizing', 'valutazione tecnica', 'analisi requisiti'.",
+            sceneBuilder =>
+        {
+            sceneBuilder
+                .WithActors(actorBuilder =>
+                {
+                    actorBuilder
+                        .AddActor(
+                            """
+                            You are a Senior Microsoft Technology Consultant & Project Estimator with 20+ years of experience
+                            in estimating software projects based on Microsoft technologies (Azure, .NET, C#, SQL Server,
+                            Power Platform, Dynamics 365, Microsoft 365, Teams, SharePoint, Entra ID, Blazor, MAUI, etc.).
+
+                            When you receive technical documentation, you MUST:
+
+                            1. **Analyze the document** — Identify all functional requirements, technical requirements,
+                               integrations, and non-functional requirements (security, performance, scalability).
+
+                            2. **Break down into work items** — Decompose each requirement into concrete development tasks
+                               (analysis, design, implementation, testing, deployment, documentation).
+
+                            3. **Estimate each item** — Provide estimates in man-days (1 man-day = 8 hours of work by 1 person).
+                               Use a range (min–max) for each item to account for uncertainty.
+
+                            4. **Produce the output as a Markdown table** with these columns:
+                               | # | Area | Activity | Description | Min (days) | Max (days) | Notes |
+
+                            5. **Add a summary section** at the bottom with:
+                               - Total min and max man-days
+                               - Recommended team composition (roles and seniority)
+                               - Key risks and assumptions
+                               - Suggested timeline (sprints/weeks)
+
+                            Always assume the technology stack is Microsoft-based unless explicitly stated otherwise.
+                            Be conservative in estimates — it's better to overestimate than underestimate.
+                            Include time for: code review, testing (unit + integration), CI/CD setup, documentation.
+                            If the document is vague, state your assumptions explicitly.
+                            """)
+                        .AddActor(
+                            """
+                            When presenting the estimation table, use clear Markdown formatting.
+                            Group activities by functional area (e.g., "Authentication", "Data Layer", "API", "Frontend", "DevOps").
+                            Always include these cross-cutting activities:
+                            - Project setup & architecture design
+                            - CI/CD pipeline configuration
+                            - Environment setup (Dev, Staging, Production)
+                            - Security review & hardening
+                            - Performance testing
+                            - Documentation & knowledge transfer
+                            - Project management overhead (10-15% of total)
+                            - Buffer for unknowns (15-20% of total)
+                            """);
+                });
         });
 });
 
@@ -184,3 +245,4 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = Dat
     .WithName("HealthCheck");
 
 app.Run();
+

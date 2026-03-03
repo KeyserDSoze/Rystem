@@ -12,6 +12,7 @@ import {
     type StoredConversation,
     type StoredMessage,
     type AIContent,
+    type ContentItem,
     ConversationSortOrder
 } from './rystem/src/index';
 import './App.css';
@@ -529,6 +530,13 @@ function App() {
     const [showSidebar, setShowSidebar] = useState(false);
     const [loadingConversations, setLoadingConversations] = useState(false);
 
+    // ─── Attachment State ────────────────────────────────────────────────
+    const [pendingAttachments, setPendingAttachments] = useState<ContentItem[]>([]);
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingSeconds, setRecordingSeconds] = useState(0);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
     // Initialize client
     useEffect(() => {
         clientReady.then(() => {
@@ -560,6 +568,103 @@ function App() {
             return updated;
         });
     }, []);
+
+    // ── File / Audio / Camera helpers ─────────────────────────────────
+
+    /** Map MIME type to ContentItem type */
+    const mimeToContentType = (mime: string): ContentItem['type'] => {
+        if (mime.startsWith('image/')) return 'image';
+        if (mime.startsWith('audio/')) return 'audio';
+        if (mime.startsWith('video/')) return 'video';
+        return 'file';
+    };
+
+    /** Handle file(s) selected from <input type="file"> */
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        for (const file of Array.from(files)) {
+            const reader = new FileReader();
+            const base64 = await new Promise<string>((resolve, reject) => {
+                reader.onload = () => {
+                    const result = reader.result as string;
+                    resolve(result.split(',')[1]); // strip data:...;base64,
+                };
+                reader.onerror = () => reject(new Error('Failed to read file'));
+                reader.readAsDataURL(file);
+            });
+
+            const item: ContentItem = {
+                type: mimeToContentType(file.type),
+                data: base64,
+                mediaType: file.type || 'application/octet-stream',
+                name: file.name,
+            };
+            setPendingAttachments(prev => [...prev, item]);
+        }
+
+        // Reset input so the same file can be re-selected
+        e.target.value = '';
+    };
+
+    /** Record audio from microphone */
+    const handleAudioRecord = async () => {
+        if (isRecording) return; // prevent double-click
+
+        setIsRecording(true);
+        setRecordingSeconds(0);
+
+        // Start countdown timer
+        recordingTimerRef.current = setInterval(() => {
+            setRecordingSeconds(s => s + 1);
+        }, 1000);
+
+        try {
+            const durationMs = 10_000; // 10 seconds max
+            const content = await AIContentConverter.fromMicrophone(durationMs, 'audio/webm');
+
+            const item: ContentItem = {
+                type: 'audio',
+                data: content.data,
+                mediaType: content.mediaType || 'audio/webm',
+                name: `recording-${Date.now()}.webm`,
+            };
+            setPendingAttachments(prev => [...prev, item]);
+        } catch (err: any) {
+            console.error('Microphone error:', err);
+            alert(`Microphone error: ${err.message}`);
+        } finally {
+            setIsRecording(false);
+            setRecordingSeconds(0);
+            if (recordingTimerRef.current) {
+                clearInterval(recordingTimerRef.current);
+                recordingTimerRef.current = null;
+            }
+        }
+    };
+
+    /** Capture photo from camera */
+    const handleCameraCapture = async () => {
+        try {
+            const content = await AIContentConverter.fromCamera();
+            const item: ContentItem = {
+                type: 'image',
+                data: content.data,
+                mediaType: content.mediaType || 'image/jpeg',
+                name: `photo-${Date.now()}.jpg`,
+            };
+            setPendingAttachments(prev => [...prev, item]);
+        } catch (err: any) {
+            console.error('Camera error:', err);
+            alert(`Camera error: ${err.message}`);
+        }
+    };
+
+    /** Remove a pending attachment by index */
+    const removeAttachment = (index: number) => {
+        setPendingAttachments(prev => prev.filter((_, i) => i !== index));
+    };
 
     // ── Load conversations ────────────────────────────────────────────
 
@@ -644,13 +749,20 @@ function App() {
 
     const handleSend = async () => {
         const text = input.trim();
-        if (!text || loading || !clientRef.current) return;
+        const hasAttachments = pendingAttachments.length > 0;
+        if ((!text && !hasAttachments) || loading || !clientRef.current) return;
 
+        // Snapshot attachments before clearing
+        const attachments = [...pendingAttachments];
         setInput('');
+        setPendingAttachments([]);
         setLoading(true);
 
-        // Add user message
-        addMessage({ role: 'user', text, timestamp: new Date() });
+        // Build user message with attachment info
+        const attachLabel = attachments.length > 0
+            ? `\n📎 ${attachments.map(a => a.name || a.type).join(', ')}`
+            : '';
+        addMessage({ role: 'user', text: (text || '') + attachLabel, timestamp: new Date() });
 
         // Generate conversationKey if not already set (first request)
         const key = conversationKey ?? crypto.randomUUID();
@@ -659,7 +771,8 @@ function App() {
         }
 
         const request: PlayFrameworkRequest = {
-            message: text,
+            message: text || undefined,
+            contents: attachments.length > 0 ? attachments : undefined,
             conversationKey: key,
             settings: {
                 executionMode,
@@ -1180,23 +1293,156 @@ function App() {
                     <div ref={messagesEndRef} />
                 </div>
 
+            {/* Attachment preview strip */}
+            {pendingAttachments.length > 0 && (
+                <div style={{
+                    padding: '8px 20px',
+                    backgroundColor: '#282c34',
+                    borderTop: '1px solid #3a3a3a',
+                    display: 'flex',
+                    gap: '8px',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                }}>
+                    {pendingAttachments.map((att, i) => {
+                        // Build a small thumbnail or icon for each attachment
+                        const isImage = att.type === 'image';
+                        const thumbSrc = isImage && att.data
+                            ? `data:${att.mediaType};base64,${att.data}`
+                            : undefined;
+
+                        const icon = att.type === 'audio' ? '🎵'
+                            : att.type === 'video' ? '🎬'
+                            : att.type === 'image' ? '🖼️'
+                            : '📄';
+
+                        return (
+                            <div key={i} style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '4px 10px',
+                                borderRadius: '6px',
+                                backgroundColor: '#1e1e1e',
+                                border: '1px solid #444',
+                                fontSize: '12px',
+                                color: '#ccc',
+                            }}>
+                                {thumbSrc ? (
+                                    <img src={thumbSrc} alt="" style={{
+                                        width: '28px',
+                                        height: '28px',
+                                        objectFit: 'cover',
+                                        borderRadius: '4px',
+                                    }} />
+                                ) : (
+                                    <span>{icon}</span>
+                                )}
+                                <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {att.name || att.type}
+                                </span>
+                                <button
+                                    onClick={() => removeAttachment(i)}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#d9534f',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        padding: '0 2px',
+                                        lineHeight: 1,
+                                    }}
+                                    title="Remove"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Hidden file input */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,audio/*,video/*,application/pdf,.txt,.csv,.json,.xml,.md,.doc,.docx,.xls,.xlsx"
+                onChange={handleFileSelect}
+                style={{ display: 'none' }}
+            />
+
             {/* Input bar */}
             <div style={{
                 padding: '12px 20px',
                 backgroundColor: '#282c34',
-                borderTop: '1px solid #3a3a3a',
+                borderTop: pendingAttachments.length > 0 ? 'none' : '1px solid #3a3a3a',
                 display: 'flex',
-                gap: '10px',
+                gap: '8px',
                 alignItems: 'center',
                 flexShrink: 0,
             }}>
+                {/* Attachment buttons */}
+                <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={loading}
+                    title="Attach file"
+                    style={{
+                        padding: '8px 10px',
+                        fontSize: '16px',
+                        borderRadius: '8px',
+                        border: '1px solid #444',
+                        backgroundColor: '#333',
+                        color: '#aaa',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        lineHeight: 1,
+                    }}
+                >
+                    📎
+                </button>
+                <button
+                    onClick={handleAudioRecord}
+                    disabled={loading || isRecording}
+                    title={isRecording ? `Recording... ${recordingSeconds}s` : 'Record audio (10s)'}
+                    style={{
+                        padding: '8px 10px',
+                        fontSize: '16px',
+                        borderRadius: '8px',
+                        border: '1px solid ' + (isRecording ? '#d9534f' : '#444'),
+                        backgroundColor: isRecording ? '#5a2d2d' : '#333',
+                        color: isRecording ? '#ff6b6b' : '#aaa',
+                        cursor: (loading || isRecording) ? 'not-allowed' : 'pointer',
+                        lineHeight: 1,
+                        minWidth: isRecording ? '70px' : undefined,
+                    }}
+                >
+                    {isRecording ? `⏺ ${recordingSeconds}s` : '🎤'}
+                </button>
+                <button
+                    onClick={handleCameraCapture}
+                    disabled={loading}
+                    title="Capture photo"
+                    style={{
+                        padding: '8px 10px',
+                        fontSize: '16px',
+                        borderRadius: '8px',
+                        border: '1px solid #444',
+                        backgroundColor: '#333',
+                        color: '#aaa',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        lineHeight: 1,
+                    }}
+                >
+                    📷
+                </button>
+
                 <input
                     ref={inputRef}
                     type="text"
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={handleKey}
-                    placeholder={loading ? 'Waiting for response...' : 'Type a message...'}
+                    placeholder={loading ? 'Waiting for response...' : 'Type a message (or attach files)...'}
                     disabled={loading || connection === 'error'}
                     autoFocus
                     style={{
@@ -1212,7 +1458,7 @@ function App() {
                 />
                 <button
                     onClick={handleSend}
-                    disabled={loading || !input.trim() || connection === 'error'}
+                    disabled={loading || (!input.trim() && pendingAttachments.length === 0) || connection === 'error'}
                     style={{
                         padding: '10px 20px',
                         fontSize: '14px',

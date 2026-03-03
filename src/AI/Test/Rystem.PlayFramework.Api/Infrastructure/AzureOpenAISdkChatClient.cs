@@ -149,9 +149,10 @@ public sealed class AzureOpenAISdkChatClient : IChatClient
         {
             if (msg.Contents is { Count: > 0 })
             {
-                // Collect all tool calls from a single message to group them
-                // in one assistant message (OpenAI requires all tool calls from
-                // the same turn to be in a single assistant message).
+                // Collect all content parts and tool calls from a single ChatMessage.
+                // A user message may contain both TextContent and DataContent (e.g., text + image).
+                // They must be grouped into a single OpenAI message with multiple content parts.
+                var contentParts = new List<OpenAI.Chat.ChatMessageContentPart>();
                 var toolCalls = new List<OpenAI.Chat.ChatToolCall>();
 
                 foreach (var content in msg.Contents)
@@ -159,7 +160,12 @@ public sealed class AzureOpenAISdkChatClient : IChatClient
                     switch (content)
                     {
                         case TextContent textContent:
-                            openAiMessages.Add(CreateOpenAIMessage(msg.Role.Value, textContent.Text ?? string.Empty));
+                            contentParts.Add(OpenAI.Chat.ChatMessageContentPart.CreateTextPart(
+                                textContent.Text ?? string.Empty));
+                            break;
+
+                        case DataContent dataContent:
+                            HandleDataContent(dataContent, contentParts);
                             break;
 
                         case FunctionCallContent funcCall:
@@ -177,6 +183,32 @@ public sealed class AzureOpenAISdkChatClient : IChatClient
                     }
                 }
 
+                // Emit grouped content parts as a single message of the appropriate role
+                if (contentParts.Count > 0)
+                {
+                    if (msg.Role == ChatRole.User)
+                    {
+                        // User messages support multi-part (text + images)
+                        openAiMessages.Add(OpenAI.Chat.ChatMessage.CreateUserMessage(contentParts));
+                    }
+                    else if (msg.Role == ChatRole.System)
+                    {
+                        // System messages only support text — concatenate all text parts
+                        var systemText = string.Join("\n", contentParts
+                            .Select(p => p.Text)
+                            .Where(t => !string.IsNullOrEmpty(t)));
+                        openAiMessages.Add(OpenAI.Chat.ChatMessage.CreateSystemMessage(systemText));
+                    }
+                    else if (msg.Role == ChatRole.Assistant && toolCalls.Count == 0)
+                    {
+                        // Assistant text-only messages
+                        var assistantText = string.Join("", contentParts
+                            .Select(p => p.Text)
+                            .Where(t => !string.IsNullOrEmpty(t)));
+                        openAiMessages.Add(OpenAI.Chat.ChatMessage.CreateAssistantMessage(assistantText));
+                    }
+                }
+
                 if (toolCalls.Count > 0)
                 {
                     openAiMessages.Add(OpenAI.Chat.ChatMessage.CreateAssistantMessage(toolCalls));
@@ -190,6 +222,46 @@ public sealed class AzureOpenAISdkChatClient : IChatClient
 
         return openAiMessages;
     }
+
+    /// <summary>
+    /// Converts a DataContent to OpenAI ChatMessageContentPart.
+    /// Images → native vision support. Text-based files → decoded UTF-8. Binary → skipped with note.
+    /// </summary>
+    private void HandleDataContent(DataContent dataContent, List<OpenAI.Chat.ChatMessageContentPart> contentParts)
+    {
+        var mediaType = dataContent.MediaType ?? "application/octet-stream";
+        var fileName = dataContent.AdditionalProperties?.TryGetValue("name", out var nameObj) == true
+            ? nameObj?.ToString()
+            : null;
+        var label = fileName ?? mediaType;
+
+        // Images → send as native image part (GPT-4o vision)
+        if (mediaType.StartsWith("image/"))
+        {
+            contentParts.Add(OpenAI.Chat.ChatMessageContentPart.CreateImagePart(
+                BinaryData.FromBytes(dataContent.Data.ToArray()), mediaType));
+            return;
+        }
+
+        // Text-based files → decode UTF-8 and send as text
+        if (IsTextBased(mediaType))
+        {
+            var text = System.Text.Encoding.UTF8.GetString(dataContent.Data.Span);
+            contentParts.Add(OpenAI.Chat.ChatMessageContentPart.CreateTextPart(
+                $"\n--- {label} ---\n{text}\n--- end ---\n"));
+            return;
+        }
+
+        // Binary files (PDF, audio, video, etc.) → can't be sent as text, add metadata note
+        contentParts.Add(OpenAI.Chat.ChatMessageContentPart.CreateTextPart(
+            $"[Attached binary file: {label}, {dataContent.Data.Length} bytes, type: {mediaType} — this SDK version does not support native file upload, please send text-based formats like .txt, .md, .json, .csv, .xml]"));
+    }
+
+    private static bool IsTextBased(string mediaType)
+        => mediaType.StartsWith("text/")
+        || mediaType is "application/json" or "application/xml" or "application/javascript"
+           or "application/x-yaml" or "application/yaml" or "application/x-sh"
+        || mediaType.EndsWith("+json") || mediaType.EndsWith("+xml");
 
     private OpenAI.Chat.ChatMessage CreateOpenAIMessage(string role, string text)
     {
