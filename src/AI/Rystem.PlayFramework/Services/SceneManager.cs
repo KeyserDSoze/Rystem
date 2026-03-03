@@ -535,9 +535,21 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         {
             _logger.LogInformation("Resuming from client interaction for conversation '{ConversationKey}'", context.ConversationKey);
 
-            // Route directly to the scene from continuation, bypassing scene selection
-            settings.ExecutionMode = SceneExecutionMode.Scene;
-            settings.SceneName = batchSceneName;
+            // Check if the original execution mode was stored (e.g., Planning mode needs to resume its plan)
+            if (context.Properties.TryGetValue("_execution_mode_for_resume", out var modeObj)
+                && modeObj is string modeStr
+                && Enum.TryParse<SceneExecutionMode>(modeStr, out var originalMode))
+            {
+                settings.ExecutionMode = originalMode;
+                settings.SceneName = batchSceneName; // Set for Scene mode fallback
+                _logger.LogInformation("Resuming with original execution mode: {Mode}", originalMode);
+            }
+            else
+            {
+                // Default: route directly to the scene from continuation, bypassing scene selection
+                settings.ExecutionMode = SceneExecutionMode.Scene;
+                settings.SceneName = batchSceneName;
+            }
 
             // Clear client results so SceneExecutor doesn't try to call ResumeAfterClientResponseAsync again
             settings.ClientInteractionResults = null;

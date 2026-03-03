@@ -54,6 +54,12 @@ public sealed class ExecutionState
     public Dictionary<string, string> SerializableProperties { get; set; } = [];
 
     /// <summary>
+    /// Execution plan state (for Planning mode resume after AwaitingClient).
+    /// Null when not in Planning mode or plan not yet created.
+    /// </summary>
+    public ExecutionPlan? ExecutionPlan { get; set; }
+
+    /// <summary>
     /// Timestamp when the state was saved.
     /// </summary>
     public DateTime SavedAt { get; set; } = DateTime.UtcNow;
@@ -94,6 +100,30 @@ public sealed class ExecutionState
                     // Skip non-serializable values
                 }
             }
+        }
+
+        // Persist execution plan for Planning mode resume
+        if (context.ExecutionPlan != null)
+        {
+            state.ExecutionPlan = new ExecutionPlan
+            {
+                NeedsExecution = context.ExecutionPlan.NeedsExecution,
+                Reasoning = context.ExecutionPlan.Reasoning,
+                CreatedAt = context.ExecutionPlan.CreatedAt,
+                // Steps are deep-copied to preserve IsCompleted state
+                Steps = context.ExecutionPlan.Steps.Select(s => new PlanStep
+                {
+                    StepNumber = s.StepNumber,
+                    SceneName = s.SceneName,
+                    Purpose = s.Purpose,
+                    ExpectedTools = [.. s.ExpectedTools],
+                    DependsOnStep = s.DependsOnStep,
+                    IsCompleted = s.IsCompleted,
+                    Result = s.Result
+                    // Contents intentionally excluded - AIContent is not reliably serializable
+                }).ToList()
+                // Contents intentionally excluded - AIContent is not reliably serializable
+            };
         }
 
         return state;
@@ -137,6 +167,9 @@ public sealed class ExecutionState
         {
             context.Properties[key] = value;
         }
+
+        // Restore execution plan for Planning mode resume
+        context.ExecutionPlan = ExecutionPlan;
     }
 }
 

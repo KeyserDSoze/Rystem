@@ -41,6 +41,21 @@ internal sealed class PlanningExecutionHandler : IExecutionModeHandler
         var finalResponseGenerator = _finalResponseGeneratorFactory.Create(factoryName)
             ?? throw new InvalidOperationException($"FinalResponseGenerator not found for factory: {factoryName}");
 
+        // Mark execution mode in properties for resume capability after AwaitingClient
+        context.Properties["_execution_mode_for_resume"] = "Planning";
+
+        // Check if resuming with an existing plan (restored from cache after AwaitingClient)
+        var existingPlan = context.ExecutionPlan;
+        if (existingPlan != null && existingPlan.Steps.Any(s => !s.IsCompleted))
+        {
+            // Resume plan execution from where we left off
+            await foreach (var response in ExecutePlanAsync(dependencies, sceneExecutor, finalResponseGenerator, context, settings, existingPlan, cancellationToken))
+            {
+                yield return response;
+            }
+            yield break;
+        }
+
         var planner = _plannerFactory.Create(factoryName);
 
         if (planner == null)
@@ -62,12 +77,14 @@ internal sealed class PlanningExecutionHandler : IExecutionModeHandler
 
         if (!plan.NeedsExecution)
         {
-            // Direct answer available
+            // Direct answer available - no scenes to execute
             yield return YieldAndTrack(context, new AiSceneResponse
             {
                 Status = AiResponseStatus.Running,
-                Message = plan.Reasoning
+                Message = plan.Reasoning,
+                Contents = plan.Contents?.ToList()
             });
+            context.ExecutionPhase = ExecutionPhase.Completed;
         }
         else
         {
@@ -86,26 +103,27 @@ internal sealed class PlanningExecutionHandler : IExecutionModeHandler
         SceneContext context,
         SceneRequestSettings settings,
         ExecutionPlan plan,
-        [EnumeratorCancellation] CancellationToken cancellationToken,
-        int recursionDepth = 0)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        if (recursionDepth >= settings.MaxRecursionDepth)
-        {
-            yield return YieldAndTrack(context, new AiSceneResponse
-            {
-                Status = AiResponseStatus.Error,
-                ErrorMessage = $"Maximum recursion depth ({settings.MaxRecursionDepth}) reached"
-            });
-            context.ExecutionPhase = ExecutionPhase.Completed;
-            yield break;
-        }
-
         // Execute each step in order
         foreach (var step in plan.Steps.OrderBy(s => s.StepNumber))
         {
             if (step.IsCompleted)
             {
                 continue;
+            }
+
+            // Check budget before executing next step
+            if (settings.MaxBudget.HasValue && context.TotalCost > settings.MaxBudget.Value)
+            {
+                yield return YieldAndTrack(context, new AiSceneResponse
+                {
+                    Status = AiResponseStatus.BudgetExceeded,
+                    Message = $"Budget limit of {settings.MaxBudget:F6} exceeded during plan execution. Total cost: {context.TotalCost:F6}",
+                    ErrorMessage = "Maximum budget reached during plan execution"
+                });
+                context.ExecutionPhase = ExecutionPhase.BudgetExceeded;
+                yield break;
             }
 
             yield return YieldStatus(AiResponseStatus.ExecutingScene, $"Executing step {step.StepNumber}: {step.SceneName}");
@@ -130,6 +148,8 @@ internal sealed class PlanningExecutionHandler : IExecutionModeHandler
 
                 // If scene is awaiting client interaction or command execution,
                 // stop the entire plan — the conversation has an unresolved tool_calls message.
+                // Plan state (step.IsCompleted) is preserved via ExecutionPlan in cache,
+                // so remaining steps will resume after client responds.
                 if (response.Status == AiResponseStatus.AwaitingClient
                     || response.Status == AiResponseStatus.CommandClient)
                 {

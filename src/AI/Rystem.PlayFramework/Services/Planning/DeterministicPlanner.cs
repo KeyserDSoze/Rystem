@@ -1,26 +1,40 @@
 ﻿using System.Text.Json;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Helpers;
 
 namespace Rystem.PlayFramework;
 
 /// <summary>
 /// Deterministic planner that uses LLM to create structured execution plans.
+/// Uses ExecutionPlan directly as the tool schema — no intermediate DTOs.
 /// </summary>
 internal sealed class DeterministicPlanner : IPlanner
 {
     private readonly IChatClientManager _chatClientManager;
     private readonly ISceneFactory _sceneFactory;
     private readonly PlayFrameworkSettings _settings;
+    private readonly ILogger<DeterministicPlanner> _logger;
+
+    /// <summary>
+    /// Static tool definition: LLM fills an ExecutionPlan via forced function calling.
+    /// </summary>
+    private static readonly AIFunction s_planningTool = AIFunctionFactory.Create(
+        (ExecutionPlan plan) => plan,
+        name: "create_execution_plan",
+        description: "Creates a structured execution plan based on the user request and available scenes. Set needsExecution=true and populate steps when scenes need to run. Set needsExecution=false with reasoning when the answer is already available.",
+        JsonHelper.JsonSerializerOptions);
 
     public DeterministicPlanner(
         IChatClientManager chatClientManager,
         ISceneFactory sceneFactory,
-        PlayFrameworkSettings settings)
+        PlayFrameworkSettings settings,
+        ILogger<DeterministicPlanner> logger)
     {
         _chatClientManager = chatClientManager;
         _sceneFactory = sceneFactory;
         _settings = settings;
+        _logger = logger;
     }
 
     public async Task<ExecutionPlan> CreatePlanAsync(
@@ -28,42 +42,31 @@ internal sealed class DeterministicPlanner : IPlanner
         SceneRequestSettings settings,
         CancellationToken cancellationToken = default)
     {
-        // Build planning prompt
-        var planningPrompt = BuildPlanningPrompt(context);
-
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.System, GetPlanningSystemPrompt()),
-            new(ChatRole.User, planningPrompt)
+            new(ChatRole.System, BuildSystemPrompt()),
+            new(ChatRole.User, BuildUserPrompt(context))
         };
 
-        // Create forced tool for ExecutionPlanDto
-        var planningTool = AIFunctionFactory.Create(
-            (ExecutionPlanDto plan) => plan,
-            name: "create_execution_plan",
-            description: "Creates a structured execution plan based on the user request and available scenes.",
-            JsonHelper.JsonSerializerOptions);
-
-        // Get plan from LLM using forced tool
         var options = new ChatOptions
         {
-            Tools = [planningTool],
+            Tools = [s_planningTool],
             ToolMode = ChatToolMode.RequireAny,
-            Temperature = 0.1f // Low temperature for consistent planning
+            Temperature = 0.1f
         };
 
         var responseWithCost = await _chatClientManager.GetResponseAsync(messages, options, cancellationToken);
 
-        // Extract multi-modal contents from planning response
         var planningMessage = responseWithCost.Response.Messages?.FirstOrDefault();
         var planningContents = planningMessage?.Contents?
             .Where(c => c is DataContent or UriContent)
             .ToList();
 
-        // Extract plan from tool call
+        // Extract the tool call
         var toolCall = planningMessage?.Contents?.OfType<FunctionCallContent>().FirstOrDefault();
-        if (toolCall == null)
+        if (toolCall?.Arguments == null)
         {
+            _logger.LogWarning("DeterministicPlanner: LLM did not return a tool call");
             return new ExecutionPlan
             {
                 NeedsExecution = false,
@@ -71,21 +74,46 @@ internal sealed class DeterministicPlanner : IPlanner
             };
         }
 
-        ExecutionPlanDto? plan = null;
+        // Parse: AIFunctionFactory wraps under parameter name "plan",
+        // so arguments = { "plan": { needsExecution, reasoning, steps, ... } }
+        ExecutionPlan? plan = null;
         try
         {
-            plan = new ExecutionPlanDto(
-                (bool)toolCall.Arguments["needs_execution"],
-                toolCall.Arguments["reasoning"].ToString(),
-                JsonSerializer.Deserialize<List<PlanStepDto>>(toolCall.Arguments["steps"].ToString(), JsonHelper.JsonSerializerOptions));
+            // Unwrap the "plan" key if present (single-parameter wrapper)
+            object? target = toolCall.Arguments;
+            if (toolCall.Arguments is { Count: 1 })
+            {
+                target = toolCall.Arguments.Values.First() ?? target;
+            }
+
+            // The value may already be a JSON string (not an object to re-serialize).
+            // If so, use it directly; otherwise serialize to get JSON.
+            string json;
+            if (target is string strValue)
+            {
+                json = strValue;
+            }
+            else if (target is JsonElement je && je.ValueKind == JsonValueKind.String)
+            {
+                json = je.GetString()!;
+            }
+            else
+            {
+                json = JsonSerializer.Serialize(target, JsonHelper.JsonSerializerOptions);
+            }
+
+            _logger.LogDebug("DeterministicPlanner toolCall JSON: {Json}", json);
+
+            plan = JsonSerializer.Deserialize<ExecutionPlan>(json, JsonHelper.JsonSerializerOptions);
         }
         catch (Exception ex)
         {
-            var q = ex.ToString();
+            _logger.LogError(ex, "DeterministicPlanner failed to deserialize ExecutionPlan");
         }
 
-        if (plan == null)
+        if (plan == null || plan.Reasoning == null)
         {
+            _logger.LogWarning("DeterministicPlanner: deserialization returned null or empty plan");
             return new ExecutionPlan
             {
                 NeedsExecution = false,
@@ -93,74 +121,59 @@ internal sealed class DeterministicPlanner : IPlanner
             };
         }
 
-        // Convert to domain model
-        return new ExecutionPlan
-        {
-            NeedsExecution = plan.NeedsExecution,
-            Reasoning = plan.Reasoning,
-            Contents = planningContents,
-            Steps = plan.Steps?.Select(s => new PlanStep
-            {
-                StepNumber = s.StepNumber,
-                SceneName = s.SceneName,
-                Purpose = s.Purpose,
-                ExpectedTools = s.ExpectedTools ?? [],
-                DependsOnStep = s.DependsOnStep
-            }).ToList() ?? []
-        };
+        // Attach multi-modal contents from the planning response
+        plan.Contents = planningContents;
+        plan.CreatedAt = DateTimeOffset.UtcNow;
+
+        _logger.LogInformation(
+            "DeterministicPlanner created plan - NeedsExecution: {NeedsExec}, Steps: {StepCount}, Reasoning: {Reasoning}",
+            plan.NeedsExecution, plan.Steps.Count, plan.Reasoning);
+
+        return plan;
     }
 
-    private string BuildPlanningPrompt(SceneContext context)
+    /// <summary>
+    /// System prompt that explains what the planner must do and lists all available scenes with their tools.
+    /// </summary>
+    private string BuildSystemPrompt()
     {
-        var availableScenes = _sceneFactory.Scenes
-            .Select(scene => new
-            {
-                name = scene.Name,
-                description = scene.Description,
-                available_tools = scene.Tools.Select(t => new
-                {
-                    name = t.Name,
-                    description = t.Description
-                })
-            });
-
-        var promptData = new
+        var scenesDescription = string.Join("\n", _sceneFactory.Scenes.Select(scene =>
         {
-            user_request = context.InputMessage,
-            conversation_history = context.ConversationHistory.Select(m => new { role = m.Message.Role.Value, label = m.Label }),
-            available_scenes = availableScenes
-        };
+            var toolList = scene.Tools.Count > 0
+                ? string.Join(", ", scene.Tools.Select(t => $"{t.Name} ({t.Description})"))
+                : "no tools";
+            return $"- Scene \"{scene.Name}\": {scene.Description ?? "no description"}\n  Tools: {toolList}";
+        }));
 
-        return JsonSerializer.Serialize(promptData, JsonHelper.JsonSerializerOptions);
-    }
+        return $@"You are an execution planner. Analyze the user request and determine which scenes need to execute.
 
-    private static string GetPlanningSystemPrompt()
-    {
-        return @"You are an execution planner. Analyze the user request and conversation history to determine if execution is needed.
+AVAILABLE SCENES:
+{scenesDescription}
 
 RULES:
-1. Check conversation_history FIRST - data may already be available
-2. If data is in context, set needs_execution=false with reasoning
-3. If execution needed, create a logical step-by-step plan
-4. Use EXACT scene names from available_scenes
-5. Specify which tools should be called in each step
-6. Indicate dependencies between steps
+1. Check conversation history FIRST — data may already be available
+2. If the answer is already in context, set needsExecution=false with reasoning
+3. If execution is needed, create a step-by-step plan using EXACT scene names from the list above
+4. Each step must reference a valid scene name and list the expected tools to call
+5. Steps are executed in order; use dependsOnStep to indicate data dependencies
+6. Keep plans minimal — only include necessary steps
 
 USE THE create_execution_plan TOOL to return your structured plan.";
     }
 
-    // DTO for tool-based structured output
-    private sealed record ExecutionPlanDto(
-        bool NeedsExecution,
-        string? Reasoning,
-        List<PlanStepDto>? Steps
-    );
+    /// <summary>
+    /// User prompt with the actual request and conversation history.
+    /// </summary>
+    private static string BuildUserPrompt(SceneContext context)
+    {
+        var promptData = new
+        {
+            userRequest = context.InputMessage,
+            conversationHistory = context.ConversationHistory
+                .Where(m => m.Label != "InitialContext" && m.Label != "MemoryContext")
+                .Select(m => new { role = m.Message.Role.Value, label = m.Label, text = m.Message.Text })
+        };
 
-    private sealed record PlanStepDto(
-        int StepNumber,
-        string SceneName,
-        string? Purpose,
-        List<string>? ExpectedTools,
-        int? DependsOnStep
-    );
+        return JsonSerializer.Serialize(promptData, JsonHelper.JsonSerializerOptions);
+    }
 }
