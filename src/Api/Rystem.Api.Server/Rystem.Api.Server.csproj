@@ -26,7 +26,7 @@
 	</PropertyGroup>
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
-        <PackageReference Include="Scalar.AspNetCore" Version="2.12.46" />
+        <PackageReference Include="Scalar.AspNetCore" Version="2.12.52" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.4" />
     </ItemGroup>
     <Choose>
