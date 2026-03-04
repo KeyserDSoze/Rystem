@@ -37,4 +37,20 @@ public sealed class AdapterSettings
     /// Default: true.
     /// </summary>
     public bool EnableFileUpload { get; set; } = true;
+
+    /// <summary>
+    /// Determines how audio content in chat messages is handled.
+    /// <list type="bullet">
+    ///   <item><see cref="AudioMode.None"/>: audio is passed through as-is (default).</item>
+    ///   <item><see cref="AudioMode.MultiModal"/>: audio is sent inline as <c>input_audio</c> — requires a model that supports it (e.g., <c>gpt-4o-audio-preview</c>).</item>
+    ///   <item><see cref="AudioMode.SpeechToText"/>: audio is transcribed via Whisper and injected as text — requires <see cref="SpeechToTextDeployment"/>.</item>
+    /// </list>
+    /// </summary>
+    public AudioMode AudioMode { get; set; } = AudioMode.None;
+
+    /// <summary>
+    /// Azure OpenAI deployment name for the speech-to-text model (e.g., <c>"whisper"</c>).
+    /// Required when <see cref="AudioMode"/> is <see cref="AudioMode.SpeechToText"/>.
+    /// </summary>
+    public string? SpeechToTextDeployment { get; set; }
 }

@@ -93,7 +93,29 @@ public static class ServiceCollectionExtensions
             new ApiKeyCredential("foundry-local"),
             new OpenAIClientOptions { Endpoint = new Uri(settings.WebServiceUrl + "/v1") });
 
-        return client.GetChatClient(model.Id).AsIChatClient();
+        IChatClient chatClient = client.GetChatClient(model.Id).AsIChatClient();
+
+        // Wrap with SpeechToTextChatClient if audio mode is SpeechToText
+        if (settings.AudioMode == AudioMode.SpeechToText)
+        {
+            // Also download and load the STT model
+            var sttModel = catalog.GetModelAsync(settings.SpeechToTextModel!).GetAwaiter().GetResult()
+                ?? throw new InvalidOperationException(
+                    $"Speech-to-text model '{settings.SpeechToTextModel}' not found in Foundry Local catalog. " +
+                    $"Run 'foundry model list' to see available models.");
+
+            sttModel.DownloadAsync(settings.OnDownloadProgress ?? (_ => { }))
+                .GetAwaiter().GetResult();
+            sttModel.LoadAsync().GetAwaiter().GetResult();
+
+            logger?.LogInformation("Foundry Local: STT model '{SttModel}' loaded", settings.SpeechToTextModel);
+
+            var audioClient = client.GetAudioClient(sttModel.Id);
+            var sttLogger = sp.GetService<ILoggerFactory>()?.CreateLogger<SpeechToTextChatClient>();
+            chatClient = new SpeechToTextChatClient(chatClient, audioClient, sttLogger);
+        }
+
+        return chatClient;
     }
 
     private static void Validate(FoundryLocalSettings settings)
@@ -103,5 +125,10 @@ public static class ServiceCollectionExtensions
 
         if (string.IsNullOrEmpty(settings.WebServiceUrl))
             throw new InvalidOperationException("FoundryLocalSettings.WebServiceUrl is required.");
+
+        if (settings.AudioMode == AudioMode.SpeechToText && string.IsNullOrEmpty(settings.SpeechToTextModel))
+            throw new InvalidOperationException(
+                "FoundryLocalSettings.SpeechToTextModel is required when AudioMode is SpeechToText. " +
+                "Set it to the alias of a speech-to-text model available in Foundry Local.");
     }
 }

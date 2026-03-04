@@ -217,13 +217,17 @@ public sealed class MultiModalChatClient : DelegatingChatClient
     }
 
     /// <summary>
-    /// Returns true for non-image DataContent that should be uploaded via Files API.
-    /// Images are handled natively inline by the bridge.
+    /// Returns true for non-image, non-audio DataContent that should be uploaded via Files API.
+    /// Images and audio are handled natively inline by the bridge or by <see cref="SpeechToTextChatClient"/>.
     /// </summary>
     private static bool IsUploadableFile(DataContent data)
     {
         var mediaType = data.MediaType ?? string.Empty;
-        return !mediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+        if (mediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (mediaType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase))
+            return false;
+        return true;
     }
 
     internal static string GetExtensionFromMediaType(string mediaType) => mediaType.ToLowerInvariant() switch

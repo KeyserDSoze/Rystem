@@ -43,4 +43,21 @@ public sealed class FoundryLocalSettings
     /// If null, download is silent.
     /// </summary>
     public Action<float>? OnDownloadProgress { get; set; }
+
+    /// <summary>
+    /// Determines how audio content in chat messages is handled.
+    /// <list type="bullet">
+    ///   <item><see cref="AudioMode.None"/>: audio is passed through as-is (default).</item>
+    ///   <item><see cref="AudioMode.MultiModal"/>: audio sent inline — requires a model with native audio support.</item>
+    ///   <item><see cref="AudioMode.SpeechToText"/>: audio is transcribed locally and injected as text — requires <see cref="SpeechToTextModel"/>.</item>
+    /// </list>
+    /// </summary>
+    public AudioMode AudioMode { get; set; } = AudioMode.None;
+
+    /// <summary>
+    /// Model alias for the local speech-to-text model.
+    /// Required when <see cref="AudioMode"/> is <see cref="AudioMode.SpeechToText"/>.
+    /// The model will be downloaded and loaded automatically alongside the chat model.
+    /// </summary>
+    public string? SpeechToTextModel { get; set; }
 }

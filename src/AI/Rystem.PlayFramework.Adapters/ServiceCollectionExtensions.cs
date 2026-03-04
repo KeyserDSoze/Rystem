@@ -72,6 +72,14 @@ public static class ServiceCollectionExtensions
             chatClient = new MultiModalChatClient(chatClient, fileClient, distributedCache, memoryCache, logger);
         }
 
+        // Wrap with SpeechToTextChatClient if audio mode is SpeechToText
+        if (settings.AudioMode == AudioMode.SpeechToText)
+        {
+            var audioClient = azureClient.GetAudioClient(settings.SpeechToTextDeployment!);
+            var sttLogger = sp.GetService<ILoggerFactory>()?.CreateLogger<SpeechToTextChatClient>();
+            chatClient = new SpeechToTextChatClient(chatClient, audioClient, sttLogger);
+        }
+
         return chatClient;
     }
 
@@ -99,6 +107,11 @@ public static class ServiceCollectionExtensions
 
         if (string.IsNullOrEmpty(settings.Deployment))
             throw new InvalidOperationException("AdapterSettings.Deployment is required.");
+
+        if (settings.AudioMode == AudioMode.SpeechToText && string.IsNullOrEmpty(settings.SpeechToTextDeployment))
+            throw new InvalidOperationException(
+                "AdapterSettings.SpeechToTextDeployment is required when AudioMode is SpeechToText. " +
+                "Set it to the deployment name of your Whisper model (e.g., \"whisper\").");
     }
 
     #endregion
