@@ -109,6 +109,13 @@ public sealed class PlayFrameworkSettings
     public GuardrailsSettings Guardrails { get; set; } = new();
 
     /// <summary>
+    /// Voice pipeline configuration.
+    /// Enables STT → PlayFramework → TTS for voice-based interactions.
+    /// Disabled by default. Enable via <c>.WithVoice()</c> builder.
+    /// </summary>
+    public VoiceSettings Voice { get; set; } = new();
+
+    /// <summary>
     /// Global RAG configurations (key = factory key or empty for default).
     /// </summary>
     public Dictionary<string, RagSettings> GlobalRagSettings { get; set; } = new();

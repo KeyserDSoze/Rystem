@@ -131,4 +131,105 @@ public static class ServiceCollectionExtensions
                 "FoundryLocalSettings.SpeechToTextModel is required when AudioMode is SpeechToText. " +
                 "Set it to the alias of a speech-to-text model available in Foundry Local.");
     }
+
+    #region Voice Adapter
+
+    /// <summary>
+    /// Registers an <see cref="IVoiceAdapter"/> backed by Foundry Local (local STT + TTS models).
+    /// Use the returned factory name in <c>.WithVoice(name)</c>.
+    /// </summary>
+    public static IServiceCollection AddVoiceAdapterForFoundryLocal(
+        this IServiceCollection services,
+        Action<VoiceAdapterSettings> configure)
+    {
+        return AddVoiceAdapterForFoundryLocal(services, null, configure);
+    }
+
+    /// <summary>
+    /// Registers a named <see cref="IVoiceAdapter"/> backed by Foundry Local (local STT + TTS models).
+    /// Downloads, loads, and starts the models locally via Foundry Local SDK.
+    /// </summary>
+    public static IServiceCollection AddVoiceAdapterForFoundryLocal(
+        this IServiceCollection services,
+        AnyOf<string?, Enum>? name,
+        Action<VoiceAdapterSettings> configure)
+    {
+        var settings = new VoiceAdapterSettings();
+        configure(settings);
+
+        ValidateVoiceSettings(settings);
+
+        services.AddFactory<IVoiceAdapter>(
+            (sp, _) => CreateVoiceAdapter(sp, settings),
+            name,
+            ServiceLifetime.Singleton);
+
+        return services;
+    }
+
+    private static IVoiceAdapter CreateVoiceAdapter(IServiceProvider sp, VoiceAdapterSettings settings)
+    {
+        var logger = sp.GetService<ILoggerFactory>()?.CreateLogger("FoundryLocal.Voice");
+
+        // Ensure Foundry Local manager is initialized
+        var mgr = Microsoft.AI.Foundry.Local.FoundryLocalManager.Instance
+            ?? throw new InvalidOperationException(
+                "Foundry Local manager is not initialized. " +
+                "Call AddAdapterForFoundryLocal() before AddVoiceAdapterForFoundryLocal(), " +
+                "or ensure the manager is initialized.");
+
+        var catalog = mgr.GetCatalogAsync().GetAwaiter().GetResult();
+
+        // Download and load STT model
+        var sttModel = catalog.GetModelAsync(settings.SttModel).GetAwaiter().GetResult()
+            ?? throw new InvalidOperationException(
+                $"STT model '{settings.SttModel}' not found in Foundry Local catalog. " +
+                $"Run 'foundry model list' to see available models.");
+
+        sttModel.DownloadAsync(settings.OnDownloadProgress ?? (_ => { }))
+            .GetAwaiter().GetResult();
+        sttModel.LoadAsync().GetAwaiter().GetResult();
+
+        logger?.LogInformation("Foundry Local: STT model '{SttModel}' loaded for voice adapter", settings.SttModel);
+
+        // Download and load TTS model
+        var ttsModel = catalog.GetModelAsync(settings.TtsModel).GetAwaiter().GetResult()
+            ?? throw new InvalidOperationException(
+                $"TTS model '{settings.TtsModel}' not found in Foundry Local catalog. " +
+                $"Run 'foundry model list' to see available models.");
+
+        ttsModel.DownloadAsync(settings.OnDownloadProgress ?? (_ => { }))
+            .GetAwaiter().GetResult();
+        ttsModel.LoadAsync().GetAwaiter().GetResult();
+
+        logger?.LogInformation("Foundry Local: TTS model '{TtsModel}' loaded for voice adapter", settings.TtsModel);
+
+        // Ensure web service is started
+        mgr.StartWebServiceAsync().GetAwaiter().GetResult();
+
+        // Create OpenAI client pointed at the local web service
+        var client = new OpenAIClient(
+            new ApiKeyCredential("foundry-local"),
+            new OpenAIClientOptions { Endpoint = new Uri(settings.WebServiceUrl + "/v1") });
+
+        var sttClient = client.GetAudioClient(sttModel.Id);
+        var ttsClient = client.GetAudioClient(ttsModel.Id);
+        var adapterLogger = sp.GetService<ILoggerFactory>()?.CreateLogger<FoundryLocalVoiceAdapter>();
+
+        return new FoundryLocalVoiceAdapter(sttClient, ttsClient, settings, adapterLogger);
+    }
+
+    private static void ValidateVoiceSettings(VoiceAdapterSettings settings)
+    {
+        if (string.IsNullOrEmpty(settings.SttModel))
+            throw new InvalidOperationException("VoiceAdapterSettings.SttModel is required.");
+
+        if (string.IsNullOrEmpty(settings.TtsModel))
+            throw new InvalidOperationException("VoiceAdapterSettings.TtsModel is required.");
+
+        if (string.IsNullOrEmpty(settings.WebServiceUrl))
+            throw new InvalidOperationException("VoiceAdapterSettings.WebServiceUrl is required.");
+    }
+
+    #endregion
 }

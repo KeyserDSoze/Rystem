@@ -67,4 +67,18 @@ public sealed class PlayFrameworkApiSettings
     /// Default: 100
     /// </summary>
     public int MaxConversationsPageSize { get; set; } = 100;
+
+    /// <summary>
+    /// Enable voice pipeline endpoints (audio → STT → PlayFramework → TTS → audio streaming).
+    /// Requires <c>.WithVoice()</c> to be configured on the PlayFramework builder
+    /// and an <see cref="IVoiceAdapter"/> to be registered.
+    /// Default: false
+    /// </summary>
+    public bool EnableVoiceEndpoints { get; set; } = false;
+
+    /// <summary>
+    /// Maximum audio upload size in bytes for voice endpoints.
+    /// Default: 25MB (OpenAI Whisper limit).
+    /// </summary>
+    public long MaxAudioUploadSize { get; set; } = 26_214_400; // 25MB
 }

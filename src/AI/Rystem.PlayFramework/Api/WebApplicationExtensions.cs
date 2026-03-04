@@ -8,6 +8,8 @@ using Microsoft.Extensions.Logging;
 using RepositoryFramework;
 using Rystem.PlayFramework.Api.Models;
 using Rystem.PlayFramework.Helpers;
+using Rystem.PlayFramework.Services;
+using Rystem.PlayFramework.Services.Voice;
 
 namespace Rystem.PlayFramework.Api;
 
@@ -195,6 +197,39 @@ public static class WebApplicationExtensions
                 .Produces(404)
                 .Produces(403);
             }
+        }
+
+        // Voice pipeline endpoints (optional, requires IVoiceAdapter + WithVoice)
+        if (settings.EnableVoiceEndpoints)
+        {
+            var voiceRoute = factoryName is null ? "/voice" : $"/{factoryName}/voice";
+            var voiceEndpointName = factoryName is null ? "ExecutePlayFrameworkVoice" : $"Execute{factoryName}Voice";
+            var voiceSummary = factoryName is null
+                ? "Voice pipeline: audio → STT → PlayFramework → TTS → audio streaming"
+                : $"Voice pipeline for {factoryName}: audio → STT → PlayFramework → TTS → audio streaming";
+
+            group.MapPost(voiceRoute, async (
+                HttpRequest httpRequest,
+                [FromServices] IFactory<ISceneManager> sceneManagerFactory,
+                [FromServices] IFactory<PlayFrameworkSettings> settingsFactory,
+                [FromServices] IFactory<IVoiceAdapter> voiceAdapterFactory,
+                [FromServices] ILogger<ISceneManager> logger,
+                HttpContext httpContext,
+                CancellationToken cancellationToken) =>
+            {
+                var routeFactory = httpContext.GetRouteValue("factoryName")?.ToString();
+                var targetFactory = factoryName ?? routeFactory ?? "default";
+
+                await ExecuteVoicePipelineAsync(
+                    targetFactory, httpRequest, sceneManagerFactory, settingsFactory,
+                    voiceAdapterFactory, logger, httpContext, settings, cancellationToken);
+            })
+            .WithName(voiceEndpointName)
+            .WithSummary(voiceSummary)
+            .Accepts<IFormFile>("multipart/form-data")
+            .Produces(200, contentType: "text/event-stream")
+            .Produces(400)
+            .DisableAntiforgery();
         }
 
         return group;
@@ -556,6 +591,186 @@ public static class WebApplicationExtensions
                 title: "Failed to update conversation visibility",
                 detail: ex.Message,
                 statusCode: 500);
+        }
+    }
+
+    /// <summary>
+    /// Handles voice pipeline execution: audio upload → STT → PlayFramework → sentence chunking → TTS → SSE streaming.
+    /// Request: multipart/form-data with "audio" file and optional "conversationKey", "metadata" fields.
+    /// Response: SSE stream of JSON events (transcription, audio chunks as base64, scene events, completion).
+    /// </summary>
+    private static async Task ExecuteVoicePipelineAsync(
+        string factoryName,
+        HttpRequest httpRequest,
+        IFactory<ISceneManager> sceneManagerFactory,
+        IFactory<PlayFrameworkSettings> settingsFactory,
+        IFactory<IVoiceAdapter> voiceAdapterFactory,
+        ILogger logger,
+        HttpContext httpContext,
+        PlayFrameworkApiSettings apiSettings,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Validate content type
+            if (!httpRequest.HasFormContentType)
+            {
+                httpContext.Response.StatusCode = 400;
+                await httpContext.Response.WriteAsJsonAsync(new { error = "Expected multipart/form-data with an 'audio' file." }, cancellationToken);
+                return;
+            }
+
+            var form = await httpRequest.ReadFormAsync(cancellationToken);
+            var audioFile = form.Files.GetFile("audio");
+
+            if (audioFile is null || audioFile.Length == 0)
+            {
+                httpContext.Response.StatusCode = 400;
+                await httpContext.Response.WriteAsJsonAsync(new { error = "Missing or empty 'audio' file in form data." }, cancellationToken);
+                return;
+            }
+
+            if (audioFile.Length > apiSettings.MaxAudioUploadSize)
+            {
+                httpContext.Response.StatusCode = 400;
+                await httpContext.Response.WriteAsJsonAsync(new { error = $"Audio file exceeds maximum size of {apiSettings.MaxAudioUploadSize / 1_048_576}MB." }, cancellationToken);
+                return;
+            }
+
+            // Read audio bytes
+            using var ms = new MemoryStream();
+            await audioFile.CopyToAsync(ms, cancellationToken);
+            var audioData = new ReadOnlyMemory<byte>(ms.ToArray());
+
+            // Extract optional form fields
+            var conversationKey = form.TryGetValue("conversationKey", out var ck) ? ck.ToString() : null;
+            Dictionary<string, object>? metadata = null;
+            if (form.TryGetValue("metadata", out var metaJson) && !string.IsNullOrWhiteSpace(metaJson))
+            {
+                metadata = JsonSerializer.Deserialize<Dictionary<string, object>>(metaJson!, JsonHelper.JsonSerializerOptions);
+            }
+
+            // Build metadata from HTTP context
+            metadata = BuildMetadata(metadata, httpContext, apiSettings);
+
+            // Build request settings
+            var requestSettings = new SceneRequestSettings
+            {
+                EnableStreaming = true,
+                ConversationKey = conversationKey
+            };
+
+            // Resolve PlayFramework settings to get VoiceSettings + voice adapter factory name
+            var pfSettings = settingsFactory.Create(factoryName);
+
+            if (!pfSettings.Voice.Enabled)
+            {
+                httpContext.Response.StatusCode = 400;
+                await httpContext.Response.WriteAsJsonAsync(new { error = $"Voice pipeline is not enabled for factory '{factoryName}'. Call .WithVoice() in the builder." }, cancellationToken);
+                return;
+            }
+
+            // Resolve voice adapter
+            // The voice adapter factory name is stored in PlayFrameworkSettings when WithVoice() is called
+            // But settings don't store the factory name — the builder does. We need a way to find it.
+            // Convention: If no explicit VoiceAdapterFactoryName, use the same factory name as PlayFramework
+            IVoiceAdapter voiceAdapter;
+            try
+            {
+                voiceAdapter = voiceAdapterFactory.Create(factoryName);
+            }
+            catch
+            {
+                // If factory-specific voice adapter is not found, try the default
+                try
+                {
+                    voiceAdapter = voiceAdapterFactory.Create();
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "No IVoiceAdapter registered for factory '{FactoryName}' or as default", factoryName);
+                    httpContext.Response.StatusCode = 400;
+                    await httpContext.Response.WriteAsJsonAsync(new { error = $"No IVoiceAdapter registered. Call AddVoiceAdapterForAzureOpenAI() or similar." }, cancellationToken);
+                    return;
+                }
+            }
+
+            // Resolve SceneManager
+            var sceneManager = sceneManagerFactory.Create(factoryName);
+
+            // Create voice pipeline
+            var pipeline = new VoicePipeline(sceneManager, voiceAdapter, pfSettings.Voice, logger);
+
+            // Set response headers for SSE
+            httpContext.Response.Headers.Append("Content-Type", "text/event-stream");
+            httpContext.Response.Headers.Append("Cache-Control", "no-cache");
+            httpContext.Response.Headers.Append("Connection", "keep-alive");
+
+            // Stream voice pipeline responses as SSE events
+            await foreach (var voiceResponse in pipeline.ProcessAsync(audioData, audioFile.FileName, metadata, requestSettings, cancellationToken))
+            {
+                var eventData = voiceResponse.Type switch
+                {
+                    VoiceResponseType.Transcription => new
+                    {
+                        type = "transcription",
+                        text = voiceResponse.Text
+                    } as object,
+
+                    VoiceResponseType.AudioChunk => new
+                    {
+                        type = "audio",
+                        text = voiceResponse.Text,
+                        audio = Convert.ToBase64String(voiceResponse.AudioData!.Value.Span)
+                    } as object,
+
+                    VoiceResponseType.SceneEvent => new
+                    {
+                        type = "scene",
+                        status = voiceResponse.SceneResponse!.Status.ToString(),
+                        message = voiceResponse.Text,
+                        sceneResponse = voiceResponse.SceneResponse
+                    } as object,
+
+                    VoiceResponseType.Completed => new
+                    {
+                        type = "completed"
+                    } as object,
+
+                    _ => new { type = "unknown" } as object
+                };
+
+                var json = JsonSerializer.Serialize(eventData, JsonHelper.JsonSerializerOptions);
+                await httpContext.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
+                await httpContext.Response.Body.FlushAsync(cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Voice pipeline execution failed for factory '{FactoryName}'", factoryName);
+
+            // If headers haven't been sent yet, respond with error status
+            if (!httpContext.Response.HasStarted)
+            {
+                httpContext.Response.StatusCode = 500;
+                await httpContext.Response.WriteAsJsonAsync(new
+                {
+                    error = "Voice pipeline execution failed",
+                    message = ex.Message
+                }, cancellationToken);
+            }
+            else
+            {
+                // Headers already sent (SSE streaming started) — send error as SSE event
+                var errorJson = JsonSerializer.Serialize(new
+                {
+                    type = "error",
+                    message = ex.Message
+                }, JsonHelper.JsonSerializerOptions);
+
+                await httpContext.Response.WriteAsync($"data: {errorJson}\n\n", cancellationToken);
+                await httpContext.Response.Body.FlushAsync(cancellationToken);
+            }
         }
     }
 }

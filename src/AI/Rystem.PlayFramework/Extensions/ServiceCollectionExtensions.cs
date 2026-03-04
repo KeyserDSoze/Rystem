@@ -70,6 +70,7 @@ public static class ServiceCollectionExtensions
         services.AddEngineFactory<IJsonService>();
         services.AddEngineFactory<IMcpServerManager>();  // Add MCP server manager factory
         services.AddEngineFactory<IRateLimiter>();  // Add rate limiter factory (optional, but DI needs it registered)
+        services.AddEngineFactory<IVoiceAdapter>();  // Add voice adapter factory (optional, registered by adapter packages)
 
         // Add repository factory (optional, registered only if user calls UseRepository())
         if (builder.HasRepository)

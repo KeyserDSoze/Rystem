@@ -89,12 +89,7 @@ public static class ServiceCollectionExtensions
 
     private static AzureOpenAIClient CreateAzureOpenAIClient(AdapterSettings settings)
     {
-        if (settings.UseAzureCredential)
-        {
-            return new AzureOpenAIClient(settings.Endpoint!, new DefaultAzureCredential());
-        }
-
-        return new AzureOpenAIClient(settings.Endpoint!, new ApiKeyCredential(settings.ApiKey!));
+        return CreateAzureOpenAIClient(settings.Endpoint!, settings.ApiKey, settings.UseAzureCredential);
     }
 
     private static void Validate(AdapterSettings settings)
@@ -112,6 +107,81 @@ public static class ServiceCollectionExtensions
             throw new InvalidOperationException(
                 "AdapterSettings.SpeechToTextDeployment is required when AudioMode is SpeechToText. " +
                 "Set it to the deployment name of your Whisper model (e.g., \"whisper\").");
+    }
+
+    #endregion
+
+    #region Azure OpenAI Voice Adapter
+
+    /// <summary>
+    /// Registers an <see cref="IVoiceAdapter"/> backed by Azure OpenAI (Whisper + TTS).
+    /// Use the returned factory name in <c>.WithVoice(name)</c>.
+    /// </summary>
+    public static IServiceCollection AddVoiceAdapterForAzureOpenAI(
+        this IServiceCollection services,
+        Action<VoiceAdapterSettings> configure)
+    {
+        return AddVoiceAdapterForAzureOpenAI(services, null, configure);
+    }
+
+    /// <summary>
+    /// Registers a named <see cref="IVoiceAdapter"/> backed by Azure OpenAI (Whisper + TTS).
+    /// </summary>
+    public static IServiceCollection AddVoiceAdapterForAzureOpenAI(
+        this IServiceCollection services,
+        AnyOf<string?, Enum>? name,
+        Action<VoiceAdapterSettings> configure)
+    {
+        var settings = new VoiceAdapterSettings();
+        configure(settings);
+
+        ValidateVoiceSettings(settings);
+
+        services.AddFactory<IVoiceAdapter>(
+            (sp, _) => CreateVoiceAdapter(sp, settings),
+            name,
+            ServiceLifetime.Singleton);
+
+        return services;
+    }
+
+    private static IVoiceAdapter CreateVoiceAdapter(IServiceProvider sp, VoiceAdapterSettings settings)
+    {
+        var azureClient = CreateAzureOpenAIClient(settings.Endpoint!, settings.ApiKey, settings.UseAzureCredential);
+        var sttClient = azureClient.GetAudioClient(settings.SttDeployment);
+        var ttsClient = azureClient.GetAudioClient(settings.TtsDeployment);
+        var logger = sp.GetService<ILoggerFactory>()?.CreateLogger<AzureOpenAIVoiceAdapter>();
+
+        return new AzureOpenAIVoiceAdapter(sttClient, ttsClient, settings, logger);
+    }
+
+    private static void ValidateVoiceSettings(VoiceAdapterSettings settings)
+    {
+        if (settings.Endpoint is null)
+            throw new InvalidOperationException("VoiceAdapterSettings.Endpoint is required.");
+
+        if (!settings.UseAzureCredential && string.IsNullOrEmpty(settings.ApiKey))
+            throw new InvalidOperationException("Either ApiKey or UseAzureCredential must be set on VoiceAdapterSettings.");
+
+        if (string.IsNullOrEmpty(settings.SttDeployment))
+            throw new InvalidOperationException("VoiceAdapterSettings.SttDeployment is required (e.g., \"whisper\").");
+
+        if (string.IsNullOrEmpty(settings.TtsDeployment))
+            throw new InvalidOperationException("VoiceAdapterSettings.TtsDeployment is required (e.g., \"tts-1\").");
+    }
+
+    #endregion
+
+    #region Shared helpers
+
+    private static AzureOpenAIClient CreateAzureOpenAIClient(Uri endpoint, string? apiKey, bool useAzureCredential)
+    {
+        if (useAzureCredential)
+        {
+            return new AzureOpenAIClient(endpoint, new DefaultAzureCredential());
+        }
+
+        return new AzureOpenAIClient(endpoint, new ApiKeyCredential(apiKey!));
     }
 
     #endregion

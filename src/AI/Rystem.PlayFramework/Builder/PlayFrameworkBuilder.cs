@@ -26,6 +26,12 @@ public sealed class PlayFrameworkBuilder
     internal Type? CustomMemoryStorageType { get; set; }
     internal bool HasRepository { get; set; }
 
+    /// <summary>
+    /// Factory name of the <see cref="IVoiceAdapter"/> to use for the voice pipeline.
+    /// Set via <see cref="PlayFrameworkBuilder_Voice.WithVoice"/>.
+    /// </summary>
+    internal AnyOf<string?, Enum>? VoiceAdapterFactoryName { get; set; }
+
     internal PlayFrameworkBuilder(IServiceCollection services, AnyOf<string?, Enum>? name = null)
     {
         Services = services;
