@@ -1,7 +1,7 @@
 # Rystem.PlayFramework.Adapters
 
 Azure OpenAI adapter for [Rystem.PlayFramework](https://github.com/KeyserDSoze/Rystem).  
-Supports **Responses API**, automatic **file upload** via Files API, and **SHA256-based multi-level caching**.
+Supports **Responses API**, automatic **file upload** via Files API, **SHA256-based multi-level caching**, and **Voice Pipeline** (Whisper STT + TTS-1).
 
 ## Installation
 
@@ -72,6 +72,80 @@ When `UseResponsesApi` and `EnableFileUpload` are both `true` (the default), non
 | 1 | `IDistributedCache` | `services.AddStackExchangeRedisCache(...)` or similar |
 | 2 | `IMemoryCache` | `services.AddMemoryCache()` |
 | 3 | In-memory `Dictionary` | Automatic fallback (no registration needed) |
+
+---
+
+## Voice Adapter (Whisper + TTS-1)
+
+The adapter package also provides an `IVoiceAdapter` implementation for the PlayFramework **voice pipeline** (STT → LLM → TTS). It uses **Whisper** for speech-to-text and **TTS-1** for text-to-speech.
+
+### Basic Usage
+
+```csharp
+builder.Services.AddVoiceAdapterForAzureOpenAI(settings =>
+{
+    settings.Endpoint = new Uri("https://YOUR-RESOURCE.openai.azure.com/");
+    settings.ApiKey = "YOUR-API-KEY";
+    settings.SttDeployment = "whisper";   // Whisper model deployment name
+    settings.TtsDeployment = "tts-1";     // TTS model deployment name
+});
+```
+
+### Named Factory
+
+```csharp
+builder.Services.AddVoiceAdapterForAzureOpenAI("default", settings =>
+{
+    settings.Endpoint = new Uri("https://YOUR-RESOURCE.openai.azure.com/");
+    settings.ApiKey = "YOUR-API-KEY";
+    settings.SttDeployment = "whisper";
+    settings.TtsDeployment = "tts-1";
+    settings.TtsVoice = "nova";           // alloy, echo, fable, onyx, nova, shimmer
+});
+
+// Wire it up in PlayFramework
+builder.Services.AddPlayFramework("default", pb => pb
+    .WithChatClient("gpt-4o")
+    .WithVoice("default")  // matches the voice adapter factory name
+    .AddScene("chat", "Conversation", scene => { }));
+```
+
+### Azure Managed Identity
+
+```csharp
+builder.Services.AddVoiceAdapterForAzureOpenAI("default", settings =>
+{
+    settings.Endpoint = new Uri("https://YOUR-RESOURCE.openai.azure.com/");
+    settings.UseAzureCredential = true;
+    settings.SttDeployment = "whisper";
+    settings.TtsDeployment = "tts-1";
+});
+```
+
+### Configuration
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `Endpoint` | `Uri?` | — | Azure OpenAI endpoint URI (**required**) |
+| `ApiKey` | `string?` | — | API key (required unless `UseAzureCredential = true`) |
+| `UseAzureCredential` | `bool` | `false` | Use `DefaultAzureCredential` (Managed Identity / Azure CLI) |
+| `SttDeployment` | `string` | `"whisper"` | Whisper model deployment name for STT |
+| `TtsDeployment` | `string` | `"tts-1"` | TTS model deployment name |
+| `TtsVoice` | `string` | `"alloy"` | Voice: `alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer` |
+| `TtsOutputFormat` | `string` | `"mp3"` | Output format: `mp3`, `opus`, `aac`, `flac`, `wav`, `pcm` |
+| `TtsSpeed` | `float` | `1.0` | Speech speed multiplier (0.25 – 4.0) |
+
+### How It Works
+
+1. **STT**: Audio bytes are sent to the Whisper deployment → returns transcribed text + detected language
+2. **TTS**: Text is sent to the TTS-1 deployment with the configured voice → returns audio bytes
+
+The PlayFramework voice pipeline orchestrates the complete flow:
+```
+User Audio → Whisper (STT) → PlayFramework Scenes → Sentence Accumulator → TTS-1 → Audio Chunks (SSE)
+```
+
+See the [PlayFramework README](https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework#%EF%B8%8F-voice-pipeline-stt--llm--tts) for full voice pipeline configuration.
 
 ---
 

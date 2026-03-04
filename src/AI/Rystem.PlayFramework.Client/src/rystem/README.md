@@ -15,6 +15,7 @@ Production-ready client with full support for:
 - ✅ **Execution modes** - Direct, Planning, DynamicChaining, Scene
 - ✅ **Configurable** - Headers, retry, error handling, timeouts
 - ✅ **Type-safe** - Full TypeScript definitions
+- ✅ **Browser Voice** - Client-side STT/TTS via Web Speech API (zero-latency, no server needed)
 
 ---
 
@@ -1290,6 +1291,293 @@ useEffect(() => {
     return () => ContentUrlConverter.clearCache();
 }, []);
 ```
+
+---
+
+## 🎙️ Browser Voice (Web Speech API)
+
+The client includes a fully client-side voice pipeline using the **Web Speech API**. This provides zero-latency speech recognition (STT) and text-to-speech (TTS) directly in the browser — no server-side Whisper or TTS-1 required.
+
+> **Note:** Browser voice uses the browser's built-in speech engines. For higher quality (OpenAI Whisper + TTS-1), use the [server-side voice pipeline](#server-side-voice-pipeline) instead.
+
+### Browser Support
+
+| Feature | Chrome | Edge | Safari | Firefox |
+|---|---|---|---|---|
+| SpeechRecognition | ✅ | ✅ | ✅ | ❌ |
+| SpeechSynthesis | ✅ | ✅ | ✅ | ✅ |
+
+### Quick Start
+
+```typescript
+import {
+    PlayFrameworkServices,
+    BrowserVoiceClient,
+} from "@rystem/playframework-client";
+
+// 1. Configure PlayFramework client
+await PlayFrameworkServices.configure("default", "http://localhost:5158/api/ai");
+const client = PlayFrameworkServices.resolve("default");
+
+// 2. Create browser voice client
+const voice = new BrowserVoiceClient(
+    client,
+    { lang: "it-IT" },                    // STT options
+    { lang: "it-IT", rate: 1.0 },          // TTS options
+);
+
+// 3. Full voice loop: listen → LLM → speak
+for await (const event of voice.executeWithBrowserVoice()) {
+    if (event.voiceStatus === "recognized") {
+        console.log("User said:", event.transcript);
+    }
+    if (event.response?.message) {
+        console.log("AI:", event.response.message);
+    }
+    if (event.voiceStatus === "speechComplete") {
+        console.log("Done speaking.");
+    }
+}
+```
+
+### BrowserSpeechRecognizer
+
+Wraps `SpeechRecognition` / `webkitSpeechRecognition` for speech-to-text.
+
+```typescript
+import { BrowserSpeechRecognizer } from "@rystem/playframework-client";
+
+const recognizer = new BrowserSpeechRecognizer({ lang: "en-US" });
+
+// One-shot recognition (returns a Promise)
+const text = await recognizer.listen(10000); // 10s timeout
+console.log("You said:", text);
+
+// Continuous recognition with callbacks
+recognizer.start({
+    onResult: (result) => console.log(result.transcript, result.isFinal),
+    onEnd: () => console.log("Stopped"),
+    onError: (err) => console.error(err),
+});
+
+// Change language at runtime
+recognizer.setLang("it-IT");
+
+// Stop / abort
+recognizer.stop();  // graceful
+recognizer.abort(); // immediate
+```
+
+#### Options
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `lang` | `string` | Browser default | BCP-47 language code (e.g. `'it-IT'`, `'en-US'`) |
+| `interimResults` | `boolean` | `true` | Return partial results while speaking |
+| `continuous` | `boolean` | `false` | Auto-restart recognition on end |
+| `maxAlternatives` | `number` | `1` | Max recognition alternatives |
+
+### BrowserSpeechSynthesizer
+
+Wraps `SpeechSynthesis` for text-to-speech, with built-in **sentence accumulation** for streaming scenarios and **Markdown stripping**.
+
+```typescript
+import { BrowserSpeechSynthesizer } from "@rystem/playframework-client";
+
+const synth = new BrowserSpeechSynthesizer({ lang: "it-IT", rate: 1.1 });
+
+// Simple: speak a complete text
+await synth.speak("Ciao, come stai?");
+
+// Streaming: feed chunks as they arrive from the LLM
+synth.feedChunk("Ciao, ");
+synth.feedChunk("come stai? ");
+synth.feedChunk("Tutto bene.");
+await synth.flushAndWait(); // speak remaining buffer and wait
+
+// Cancel ongoing speech
+synth.cancel();
+
+// Change language at runtime
+synth.setLang("en-US");
+
+// Strip Markdown before speaking
+const clean = BrowserSpeechSynthesizer.stripMarkdown("**Hello** _world_");
+// → "Hello world"
+```
+
+#### Options
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `lang` | `string` | Browser default | BCP-47 language code |
+| `rate` | `number` | `1` | Speech rate (0.1 – 10) |
+| `pitch` | `number` | `1` | Pitch (0 – 2) |
+| `volume` | `number` | `1` | Volume (0 – 1) |
+| `voiceName` | `string` | Auto | Preferred voice name (e.g. `'Google italiano'`) |
+| `sentenceDelimiters` | `string[]` | `['.','!','?','\n']` | Characters that trigger sentence flush |
+| `minCharsBeforeSpeak` | `number` | `20` | Min chars before flushing a sentence |
+
+#### Streaming Sentence Accumulation
+
+When using `feedChunk()`, text is buffered until a sentence delimiter is found and the buffer reaches `minCharsBeforeSpeak`. This prevents TTS from speaking tiny fragments:
+
+```
+feedChunk("Ciao, ")           → buffer: "Ciao, " (no delimiter → wait)
+feedChunk("come stai? ")      → "Ciao, come stai?" → speaks! (delimiter '?' found)
+feedChunk("Bene. Grazie.")    → "Bene." → speaks! then "Grazie." → speaks!
+```
+
+### BrowserVoiceClient
+
+Orchestrates the full voice loop: **STT → PlayFramework → TTS**.
+
+```typescript
+import { BrowserVoiceClient } from "@rystem/playframework-client";
+
+const voice = new BrowserVoiceClient(
+    client,                           // PlayFrameworkClient
+    { lang: "it-IT" },                // BrowserSpeechRecognizerOptions
+    { lang: "it-IT", rate: 1.0 },     // BrowserSpeechSynthesizerOptions
+);
+
+// Step-by-step mode (default) — speaks complete step messages
+for await (const ev of voice.executeWithBrowserVoice({
+    streamingMode: "stepByStep",
+})) {
+    console.log(ev.voiceStatus, ev.response?.status);
+}
+
+// Token streaming mode — speaks tokens as they arrive
+for await (const ev of voice.executeWithBrowserVoice({
+    streamingMode: "tokenStreaming",
+})) {
+    if (ev.response?.streamingChunk) {
+        process.stdout.write(ev.response.streamingChunk);
+    }
+}
+
+// Skip STT — send text directly and speak the response
+for await (const ev of voice.speakResponse("Tell me a joke", "stepByStep")) {
+    // TTS speaks the AI response
+}
+
+// Cancel everything
+voice.cancelAll();
+```
+
+#### Options (`BrowserVoiceOptions`)
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `text` | `string` | — | Skip STT, use this text directly |
+| `streamingMode` | `'stepByStep'` \| `'tokenStreaming'` | `'stepByStep'` | How to stream the LLM interaction |
+| `request` | `Partial<PlayFrameworkRequest>` | — | Base request (settings, conversationKey, etc.) |
+| `recognitionTimeoutMs` | `number` | `15000` | STT listening timeout |
+| `signal` | `AbortSignal` | — | Cancel the entire voice flow |
+| `speakResponse` | `boolean` | `true` | Whether TTS speaks the LLM response |
+
+#### Voice Events
+
+| `voiceStatus` | Description |
+|---|---|
+| `'recognizing'` | STT is listening for speech |
+| `'recognized'` | STT captured the transcript |
+| `'speaking'` | TTS is speaking |
+| `'speechComplete'` | TTS finished all queued speech |
+
+#### Status Filtering
+
+In `stepByStep` mode, the client automatically skips non-speakable statuses (system messages, tool calls, planning, etc.) and only speaks `running`, `completed`, and `streaming` responses.
+
+### React Example: Voice Chat
+
+```tsx
+import { usePlayFramework, BrowserVoiceClient } from "@rystem/playframework-client";
+import { useState, useRef, useEffect } from "react";
+
+function VoiceChat() {
+    const client = usePlayFramework("default");
+    const [listening, setListening] = useState(false);
+    const [transcript, setTranscript] = useState("");
+    const [response, setResponse] = useState("");
+    const [lang, setLang] = useState(navigator.language || "en-US");
+    const voiceRef = useRef<BrowserVoiceClient | null>(null);
+
+    useEffect(() => {
+        voiceRef.current = new BrowserVoiceClient(
+            client,
+            { lang },
+            { lang, rate: 1.0 },
+        );
+    }, [client]);
+
+    // Sync language changes
+    useEffect(() => {
+        if (voiceRef.current) {
+            voiceRef.current.getRecognizer().setLang(lang);
+            voiceRef.current.getSynthesizer().setLang(lang);
+        }
+    }, [lang]);
+
+    const handleVoice = async () => {
+        if (!voiceRef.current) return;
+        setListening(true);
+        setTranscript("");
+        setResponse("");
+
+        try {
+            for await (const event of voiceRef.current.executeWithBrowserVoice({
+                streamingMode: "tokenStreaming",
+            })) {
+                if (event.voiceStatus === "recognized") {
+                    setTranscript(event.transcript ?? "");
+                }
+                if (event.response?.streamingChunk) {
+                    setResponse(prev => prev + event.response!.streamingChunk);
+                }
+            }
+        } finally {
+            setListening(false);
+        }
+    };
+
+    return (
+        <div>
+            <select value={lang} onChange={e => setLang(e.target.value)}>
+                <option value="en-US">English</option>
+                <option value="it-IT">Italiano</option>
+                <option value="es-ES">Español</option>
+                <option value="fr-FR">Français</option>
+                <option value="de-DE">Deutsch</option>
+            </select>
+
+            <button onClick={handleVoice} disabled={listening}>
+                {listening ? "🎤 Listening..." : "🎤 Speak"}
+            </button>
+
+            {transcript && <p><strong>You:</strong> {transcript}</p>}
+            {response && <p><strong>AI:</strong> {response}</p>}
+        </div>
+    );
+}
+```
+
+### Server-Side Voice Pipeline
+
+For production scenarios requiring higher-quality STT/TTS (OpenAI Whisper + TTS-1), the server-side voice pipeline handles everything server-side. See the [backend README](https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework) for the `WithVoice()` builder and `IVoiceAdapter` setup.
+
+### Choosing Between Browser and Server Voice
+
+| Aspect | Browser Voice | Server Voice |
+|---|---|---|
+| **Latency** | Zero (local) | Network round-trip |
+| **Quality** | Browser engine dependent | OpenAI Whisper + TTS-1 (high) |
+| **Languages** | Depends on browser/OS voices | All Whisper-supported languages |
+| **Cost** | Free | OpenAI API costs |
+| **Privacy** | Audio stays on device | Audio sent to server |
+| **Offline** | Works offline (TTS only) | Requires server |
+| **Setup** | Zero config | Requires `IVoiceAdapter` + Azure OpenAI |
 
 ---
 

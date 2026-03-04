@@ -91,4 +91,12 @@ public sealed class SceneRequestSettings
     /// Used to resume execution after AwaitingClient status.
     /// </summary>
     public List<ClientInteractionResult>? ClientInteractionResults { get; set; }
+
+    /// <summary>
+    /// Additional system-level instructions to append to the initial context.
+    /// These are injected into the system prompt alongside main actor outputs,
+    /// giving them high priority. Useful for voice pipeline language instructions
+    /// or other per-request behavioral overrides.
+    /// </summary>
+    public List<string>? AdditionalSystemInstructions { get; set; }
 }

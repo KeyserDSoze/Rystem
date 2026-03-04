@@ -17,6 +17,7 @@ Production-ready framework for building **AI-powered applications** with:
 - 🔐 **Authorization** - Policy-based access control
 - 🛡️ **Guardrails** - Prevent hallucinations and out-of-scope responses
 - 📊 **Observability** - Logging, telemetry, metrics
+- 🎙️ **Voice Pipeline** - STT → LLM → TTS with sentence-level streaming
 
 ---
 
@@ -857,6 +858,150 @@ app.Use(async (context, next) =>
 ```
 
 See [Repository Pattern Documentation](https://rystem.net/mcp/tools/repository-setup.md) for more storage options.
+
+---
+
+## 🎙️ Voice Pipeline (STT → LLM → TTS)
+
+PlayFramework includes a built-in **voice pipeline** that orchestrates the full audio flow:
+
+1. **Speech-to-Text (STT)** — Transcribe user audio (e.g., OpenAI Whisper)
+2. **LLM Execution** — Send transcription through PlayFramework's scene engine with streaming
+3. **Sentence Accumulation** — Buffer streaming tokens into natural sentences
+4. **Text-to-Speech (TTS)** — Synthesize each sentence and stream audio chunks back
+
+The pipeline automatically detects the user's spoken language and instructs the LLM to respond in the same language.
+
+### 1. Register the Voice Adapter
+
+You need an `IVoiceAdapter` implementation. The **Rystem.PlayFramework.Adapters** package provides one for Azure OpenAI (Whisper + TTS-1):
+
+```bash
+dotnet add package Rystem.PlayFramework.Adapters
+```
+
+```csharp
+// Register voice adapter (Whisper for STT, TTS-1 for speech synthesis)
+builder.Services.AddVoiceAdapterForAzureOpenAI("default", voice =>
+{
+    voice.Endpoint = new Uri("https://YOUR-RESOURCE.openai.azure.com/");
+    voice.ApiKey = "YOUR-API-KEY";
+    voice.SttDeployment = "whisper";   // Whisper model deployment
+    voice.TtsDeployment = "tts-1";     // TTS model deployment
+    voice.TtsVoice = "alloy";          // alloy, echo, fable, onyx, nova, shimmer
+    voice.TtsOutputFormat = "mp3";     // mp3, opus, aac, flac, wav, pcm
+    voice.TtsSpeed = 1.0f;             // 0.25 to 4.0
+});
+```
+
+### 2. Enable Voice in PlayFramework Builder
+
+```csharp
+builder.Services.AddPlayFramework("default", pb => pb
+    .WithChatClient("gpt-4o")
+
+    // Enable voice pipeline
+    .WithVoice("default")  // factory name of the IVoiceAdapter
+
+    // Optional: customize voice settings
+    // .WithVoice("default", voice =>
+    // {
+    //     voice.SentenceDelimiters = ".!?\n";
+    //     voice.MinCharsBeforeTts = 20;
+    //     voice.MaxCharsBeforeTts = 500;
+    //     voice.LanguageInstruction = "IMPORTANT: You must respond in {language}.";
+    // })
+
+    .AddScene("chat", "General conversation", scene => { }));
+```
+
+### 3. Map Voice Endpoint
+
+The voice endpoint is automatically mapped when `EnableVoiceEndpoints` is true (default):
+
+```csharp
+app.MapPlayFramework(settings =>
+{
+    settings.BasePath = "/api/ai";
+    settings.EnableVoiceEndpoints = true; // default
+});
+```
+
+This creates a `POST /api/ai/{factoryName}/voice` endpoint that accepts `multipart/form-data` with:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `audio` | file | ✅ | Audio file (MP3, WAV, OGG, FLAC, M4A, WEBM) |
+| `conversationKey` | string | ❌ | Conversation key for context |
+| `metadata` | JSON string | ❌ | Custom metadata |
+
+### 4. Response Format (SSE)
+
+The endpoint streams Server-Sent Events with different event types:
+
+```json
+// 1. Transcription result
+data: { "type": "transcription", "text": "What's the weather?" }
+
+// 2. Scene events (tool calls, status updates)
+data: { "type": "scene", "status": "executingScene", "message": "Checking weather..." }
+
+// 3. Audio chunks (base64-encoded audio for each sentence)
+data: { "type": "audio", "text": "The weather in Rome is sunny.", "audio": "//uQxAA..." }
+
+// 4. Completion
+data: { "type": "completed" }
+```
+
+### VoiceSettings Reference
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `SentenceDelimiters` | `string` | `".!?\n"` | Characters that trigger TTS for accumulated text |
+| `MinCharsBeforeTts` | `int` | `20` | Min chars before sending a sentence to TTS |
+| `MaxCharsBeforeTts` | `int` | `500` | Max chars before forcing a TTS chunk |
+| `LanguageInstruction` | `string?` | `"IMPORTANT: You must respond in {language}."` | System instruction template; `{language}` is replaced with STT-detected language |
+
+### Implementing a Custom Voice Adapter
+
+You can implement `IVoiceAdapter` for any STT/TTS provider:
+
+```csharp
+public class MyVoiceAdapter : IVoiceAdapter
+{
+    public async Task<TranscriptionResult> TranscribeAsync(
+        ReadOnlyMemory<byte> audioData,
+        string? fileName = null,
+        CancellationToken cancellationToken = default)
+    {
+        // Your STT logic here
+        var text = await MySTTService.TranscribeAsync(audioData);
+        var language = "english"; // detected language
+        return new TranscriptionResult(text, language);
+    }
+
+    public async Task<ReadOnlyMemory<byte>> SynthesizeAsync(
+        string text,
+        CancellationToken cancellationToken = default)
+    {
+        // Your TTS logic here
+        return await MyTTSService.SynthesizeAsync(text);
+    }
+}
+
+// Register
+services.AddFactory<IVoiceAdapter>(
+    (sp, _) => new MyVoiceAdapter(),
+    "my-voice",
+    ServiceLifetime.Singleton);
+
+// Use
+frameworkBuilder.WithVoice("my-voice");
+```
+
+### Client-Side Voice Alternative
+
+For zero-latency client-side voice using the browser's Web Speech API (no server-side Whisper/TTS needed), see the [TypeScript client voice documentation](https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework.Client/src/rystem#%EF%B8%8F-browser-voice-web-speech-api).
 
 ---
 

@@ -157,7 +157,7 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
 
                 yield return YieldAndTrack(context, new AiSceneResponse
                 {
-                    Status = AiResponseStatus.Running,
+                    Status = AiResponseStatus.ExecutingScene,
                     Message = $"Selected scene: {selectedSceneName}",
                     SceneName = selectedSceneName,
                     Contents = multiModalContents

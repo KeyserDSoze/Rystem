@@ -27,7 +27,7 @@ internal sealed class FoundryLocalVoiceAdapter : IVoiceAdapter
     }
 
     /// <inheritdoc />
-    public async Task<string> TranscribeAsync(
+    public async Task<TranscriptionResult> TranscribeAsync(
         ReadOnlyMemory<byte> audioData,
         string? fileName = null,
         CancellationToken cancellationToken = default)
@@ -39,14 +39,19 @@ internal sealed class FoundryLocalVoiceAdapter : IVoiceAdapter
         _logger?.LogDebug("Foundry Local: transcribing audio {FileName} ({Bytes} bytes)", fileName, audioData.Length);
 
         using var stream = new MemoryStream(audioData.ToArray());
-        var result = await _sttClient.TranscribeAudioAsync(stream, fileName, cancellationToken: cancellationToken);
+        var options = new AudioTranscriptionOptions
+        {
+            ResponseFormat = AudioTranscriptionFormat.Verbose
+        };
+        var result = await _sttClient.TranscribeAudioAsync(stream, fileName, options, cancellationToken);
 
         var text = result.Value.Text;
+        var language = result.Value.Language;
 
-        _logger?.LogInformation("Foundry Local: transcribed ({Chars} chars): \"{Preview}\"",
-            text.Length, text.Length > 100 ? text[..100] + "..." : text);
+        _logger?.LogInformation("Foundry Local: transcribed ({Chars} chars, lang={Language}): \"{Preview}\"",
+            text.Length, language, text.Length > 100 ? text[..100] + "..." : text);
 
-        return text;
+        return new TranscriptionResult(text, language);
     }
 
     /// <inheritdoc />

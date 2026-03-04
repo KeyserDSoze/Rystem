@@ -52,7 +52,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
         SceneRequestSettings settings,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        yield return YieldStatus(AiResponseStatus.Running, $"Entering scene: {scene.Name}");
+        yield return YieldStatus(AiResponseStatus.ExecutingScene, $"Entering scene: {scene.Name}");
 
         // Track this scene as being executed
         if (!context.ExecutedScenes.ContainsKey(scene.Name))
@@ -323,7 +323,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
             {
                 yield return _dependencies.ResponseHelper.CreateAndTrackResponse(
                     context: context,
-                    status: AiResponseStatus.Running,
+                    status: AiResponseStatus.ExecutingScene,
                     sceneName: scene.Name,
                     message: $"LLM returned {accumulatedFunctionCalls.Count} function call(s)",
                     inputTokens: totalInputTokens,

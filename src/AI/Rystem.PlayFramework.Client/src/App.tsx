@@ -5,6 +5,10 @@ import {
     AIContentConverter,
     ContentUrlConverter,
     CommandResultHelper,
+    VoiceRecorder,
+    BrowserVoiceClient,
+    type VoiceRecordingMode,
+    type BrowserVoiceStreamingMode,
     type PlayFrameworkRequest,
     type AiSceneResponse,
     type AiResponseStatus,
@@ -13,6 +17,7 @@ import {
     type StoredMessage,
     type AIContent,
     type ContentItem,
+    type VoiceEvent,
     ConversationSortOrder
 } from './rystem/src/index';
 import './App.css';
@@ -28,7 +33,8 @@ interface ChatMessage {
     contents?: AIContent[];
 }
 
-type StreamMode = 'step' | 'token';
+type StreamMode = 'step' | 'token' | 'voice';
+type VoiceEngine = 'server' | 'browser';
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 type ExecutionModeOption = SceneExecutionMode;
 
@@ -537,12 +543,33 @@ function App() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+    // ─── Voice Mode State ────────────────────────────────────────────────
+    const [isVoiceProcessing, setIsVoiceProcessing] = useState(false);
+    const [voiceTranscript, setVoiceTranscript] = useState<string | null>(null);
+    const [voiceRecordingMode, setVoiceRecordingMode] = useState<VoiceRecordingMode>('vad');
+    const [voiceEngine, setVoiceEngine] = useState<VoiceEngine>('server');
+    const [browserVoiceStreamingMode, setBrowserVoiceStreamingMode] = useState<BrowserVoiceStreamingMode>('stepByStep');
+    const [browserVoiceLang, setBrowserVoiceLang] = useState(navigator.language || 'en-US');
+    const audioQueueRef = useRef<string[]>([]);
+    const isPlayingAudioRef = useRef(false);
+    const voiceRecorderRef = useRef<VoiceRecorder>(new VoiceRecorder({ mode: 'vad' }));
+    const browserVoiceClientRef = useRef<BrowserVoiceClient | null>(null);
+
     // Initialize client
     useEffect(() => {
         clientReady.then(() => {
             const client = PlayFrameworkServices.resolve(FACTORY_NAME);
             registerClientTools(client);
             clientRef.current = client;
+            // Create BrowserVoiceClient if supported
+            if (BrowserVoiceClient.isSupported()) {
+                const lang = navigator.language || 'en-US';
+                browserVoiceClientRef.current = new BrowserVoiceClient(
+                    client,
+                    { lang },  // STT language — browser default
+                    { lang },  // TTS language — browser default
+                );
+            }
             setConnection('connected');
         }).catch(err => {
             console.error('Failed to configure PlayFramework:', err);
@@ -665,6 +692,268 @@ function App() {
     const removeAttachment = (index: number) => {
         setPendingAttachments(prev => prev.filter((_, i) => i !== index));
     };
+
+    // ── Voice audio playback helpers ──────────────────────────────────
+
+    /** Play queued base64 audio chunks sequentially */
+    const playNextAudio = useCallback(() => {
+        if (isPlayingAudioRef.current || audioQueueRef.current.length === 0) return;
+        isPlayingAudioRef.current = true;
+        const base64 = audioQueueRef.current.shift()!;
+        try {
+            const binary = atob(base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: 'audio/mp3' });
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            audio.onended = () => {
+                URL.revokeObjectURL(url);
+                isPlayingAudioRef.current = false;
+                playNextAudio();
+            };
+            audio.onerror = () => {
+                URL.revokeObjectURL(url);
+                isPlayingAudioRef.current = false;
+                playNextAudio();
+            };
+            audio.play().catch(() => {
+                isPlayingAudioRef.current = false;
+                playNextAudio();
+            });
+        } catch {
+            isPlayingAudioRef.current = false;
+            playNextAudio();
+        }
+    }, []);
+
+    /** Enqueue a base64 audio chunk for playback */
+    const enqueueAudio = useCallback((base64: string) => {
+        audioQueueRef.current.push(base64);
+        playNextAudio();
+    }, [playNextAudio]);
+
+    // ── Voice mode send ───────────────────────────────────────────────
+
+    const handleVoiceSend = useCallback(async (audioBlob: Blob) => {
+        if (!clientRef.current || isVoiceProcessing) return;
+
+        setIsVoiceProcessing(true);
+        setVoiceTranscript(null);
+        audioQueueRef.current = [];
+        isPlayingAudioRef.current = false;
+
+        const key = conversationKey ?? crypto.randomUUID();
+        if (!conversationKey) setConversationKey(key);
+
+        addMessage({ role: 'user', text: '🎤 [Voice message]', timestamp: new Date() });
+        addMessage({ role: 'assistant', text: '', timestamp: new Date() });
+
+        try {
+            setConnection('connecting');
+
+            for await (const event of clientRef.current.executeVoice({
+                audio: audioBlob,
+                conversationKey: key,
+            })) {
+                switch (event.type) {
+                    case 'transcription':
+                        // Update user message with transcribed text
+                        setVoiceTranscript(event.text ?? null);
+                        setMessages(prev => {
+                            const updated = [...prev];
+                            // Find the last user message
+                            for (let i = updated.length - 1; i >= 0; i--) {
+                                if (updated[i].role === 'user') {
+                                    updated[i] = { ...updated[i], text: `🎤 ${event.text}` };
+                                    break;
+                                }
+                            }
+                            return updated;
+                        });
+                        break;
+
+                    case 'audio':
+                        // Display the synthesized text in the assistant message
+                        if (event.text) {
+                            updateLastAssistant(prev => ({
+                                ...prev,
+                                text: prev.text ? prev.text + event.text : event.text,
+                            }));
+                        }
+                        // Queue audio chunk for playback
+                        if (event.audio) enqueueAudio(event.audio);
+                        break;
+
+                    case 'scene':
+                        // Scene events use 'message' field for status text
+                        break;
+
+                    case 'completed':
+                        break;
+
+                    case 'error':
+                        addMessage({
+                            role: 'system',
+                            text: `Voice error: ${event.message ?? 'Unknown error'}`,
+                            status: 'error',
+                            timestamp: new Date(),
+                        });
+                        break;
+                }
+            }
+
+            setConnection('connected');
+        } catch (error: any) {
+            console.error('Voice error:', error);
+            addMessage({
+                role: 'system',
+                text: `Voice error: ${error.message ?? error}`,
+                status: 'error',
+                timestamp: new Date(),
+            });
+            setConnection('error');
+        } finally {
+            setIsVoiceProcessing(false);
+        }
+    }, [conversationKey, isVoiceProcessing, addMessage, updateLastAssistant, enqueueAudio]);
+
+    // ── Browser voice interaction ──────────────────────────────────────
+
+    const handleBrowserVoiceInteraction = useCallback(async () => {
+        const bvc = browserVoiceClientRef.current;
+        if (!bvc || isVoiceProcessing) return;
+
+        setIsVoiceProcessing(true);
+        setVoiceTranscript(null);
+
+        const key = conversationKey ?? crypto.randomUUID();
+        if (!conversationKey) setConversationKey(key);
+
+        try {
+            setConnection('connecting');
+
+            for await (const event of bvc.executeWithBrowserVoice({
+                streamingMode: browserVoiceStreamingMode,
+                request: {
+                    conversationKey: key,
+                    settings: { executionMode, enableStreaming: browserVoiceStreamingMode === 'tokenStreaming' },
+                },
+            })) {
+                // Voice status events
+                if (event.voiceStatus === 'recognized' && event.transcript) {
+                    setVoiceTranscript(event.transcript);
+                    addMessage({ role: 'user', text: `🎤 ${event.transcript}`, timestamp: new Date() });
+                    addMessage({ role: 'assistant', text: '', timestamp: new Date() });
+                }
+
+                // LLM response events
+                if (event.response) {
+                    const resp = event.response;
+
+                    if (resp.conversationKey) setConversationKey(resp.conversationKey);
+
+                    if (resp.streamingChunk) {
+                        updateLastAssistant(prev => ({
+                            ...prev,
+                            text: prev.text + resp.streamingChunk,
+                            status: resp.status,
+                        }));
+                    } else if (resp.message) {
+                        updateLastAssistant(prev => ({
+                            ...prev,
+                            text: prev.text
+                                ? prev.text + '\n' + `[${resp.status}] ${resp.message}`
+                                : `[${resp.status}] ${resp.message}`,
+                            status: resp.status,
+                        }));
+                    }
+                }
+            }
+
+            setConnection('connected');
+        } catch (error: any) {
+            console.error('Browser voice error:', error);
+            addMessage({
+                role: 'system',
+                text: `Browser voice error: ${error.message ?? error}`,
+                status: 'error',
+                timestamp: new Date(),
+            });
+            setConnection('error');
+        } finally {
+            setIsVoiceProcessing(false);
+        }
+    }, [conversationKey, isVoiceProcessing, browserVoiceStreamingMode, executionMode, addMessage, updateLastAssistant]);
+
+    // ── Voice-mode audio recording (record & auto-send) ───────────────
+
+    /** Start or stop voice recording depending on mode and current state */
+    const handleVoiceRecord = useCallback(() => {
+        // Browser voice engine: no VoiceRecorder needed, BrowserVoiceClient handles STT
+        if (voiceEngine === 'browser') {
+            handleBrowserVoiceInteraction();
+            return;
+        }
+
+        // Server voice engine: use VoiceRecorder to capture audio blob
+        const recorder = voiceRecorderRef.current;
+
+        // If already recording → stop (pushToTalk toggle, or manual stop in any mode)
+        if (recorder.isRecording) {
+            recorder.stop();
+            return;
+        }
+
+        if (isVoiceProcessing) return;
+
+        recorder.start({
+            onStart: () => {
+                setIsRecording(true);
+                setRecordingSeconds(0);
+            },
+            onTick: (seconds) => {
+                setRecordingSeconds(seconds);
+            },
+            onRecorded: (blob) => {
+                handleVoiceSend(blob);
+            },
+            onError: (err) => {
+                console.error('Voice recording error:', err);
+                addMessage({
+                    role: 'system',
+                    text: `Mic error: ${err.message}`,
+                    status: 'error',
+                    timestamp: new Date(),
+                });
+            },
+            onStop: () => {
+                setIsRecording(false);
+                setRecordingSeconds(0);
+            },
+        });
+    }, [voiceEngine, isVoiceProcessing, handleVoiceSend, handleBrowserVoiceInteraction, addMessage]);
+
+    /** Stop recording on pointer-up (holdToTalk mode) */
+    const handleVoicePointerUp = useCallback(() => {
+        if (voiceRecordingMode === 'holdToTalk') {
+            voiceRecorderRef.current.stop();
+        }
+    }, [voiceRecordingMode]);
+
+    /** Keep VoiceRecorder mode in sync with UI selection */
+    useEffect(() => {
+        voiceRecorderRef.current.mode = voiceRecordingMode;
+    }, [voiceRecordingMode]);
+
+    /** Sync browser voice language when user changes the selector */
+    useEffect(() => {
+        const bvc = browserVoiceClientRef.current;
+        if (bvc) {
+            bvc.getRecognizer().setLang(browserVoiceLang);
+            bvc.getSynthesizer().setLang(browserVoiceLang);
+        }
+    }, [browserVoiceLang]);
 
     // ── Load conversations ────────────────────────────────────────────
 
@@ -1196,6 +1485,20 @@ function App() {
                         >
                             Token Streaming
                         </button>
+                        <button
+                            onClick={() => setMode('voice')}
+                            style={{
+                                padding: '5px 12px',
+                                fontSize: '12px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                backgroundColor: mode === 'voice' ? '#51cf66' : '#333',
+                                color: mode === 'voice' ? '#1e1e1e' : '#aaa',
+                                fontWeight: mode === 'voice' ? 700 : 400,
+                            }}
+                        >
+                            🎤 Voice
+                        </button>
                     </div>
 
                     {/* Execution mode */}
@@ -1243,12 +1546,26 @@ function App() {
             }}>
                 {messages.length === 0 && (
                     <div style={{ textAlign: 'center', color: '#555', marginTop: '40px', fontSize: '14px' }}>
-                        <p>Send a message to start chatting.</p>
-                        <p style={{ fontSize: '12px', color: '#444' }}>
-                            Try: "Where am I right now?" (triggers <code>getCurrentLocation</code>)
-                            <br />
-                            or: "Delete my account" (triggers <code>getUserConfirmation</code>)
-                        </p>
+                        {mode === 'voice' ? (
+                            <>
+                                <p style={{ fontSize: '32px', marginBottom: '8px' }}>🎤</p>
+                                <p>Voice mode active ({voiceEngine === 'server' ? 'Server' : 'Browser'} engine). Tap the mic button to talk.</p>
+                                <p style={{ fontSize: '12px', color: '#444' }}>
+                                    {voiceEngine === 'server'
+                                        ? 'Audio is sent to server (Whisper STT → LLM → TTS-1).'
+                                        : 'Speech recognition and synthesis run entirely in your browser.'}
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <p>Send a message to start chatting.</p>
+                                <p style={{ fontSize: '12px', color: '#444' }}>
+                                    Try: "Where am I right now?" (triggers <code>getCurrentLocation</code>)
+                                    <br />
+                                    or: "Delete my account" (triggers <code>getUserConfirmation</code>)
+                                </p>
+                            </>
+                        )}
                     </div>
                 )}
 
@@ -1382,7 +1699,8 @@ function App() {
                 alignItems: 'center',
                 flexShrink: 0,
             }}>
-                {/* Attachment buttons */}
+                {/* Attachment buttons (hidden in voice mode) */}
+                {mode !== 'voice' && (
                 <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={loading}
@@ -1400,24 +1718,47 @@ function App() {
                 >
                     📎
                 </button>
+                )}
                 <button
-                    onClick={handleAudioRecord}
-                    disabled={loading || isRecording}
-                    title={isRecording ? `Recording... ${recordingSeconds}s` : 'Record audio (10s)'}
+                    onClick={mode === 'voice' ? handleVoiceRecord : handleAudioRecord}
+                    onPointerUp={mode === 'voice' ? handleVoicePointerUp : undefined}
+                    disabled={loading || (mode !== 'voice' && isRecording) || isVoiceProcessing}
+                    title={
+                        mode === 'voice'
+                            ? (isRecording
+                                ? `Recording... ${recordingSeconds}s${voiceRecordingMode === 'vad' ? ' (auto-stop on silence)' : ''}`
+                                : isVoiceProcessing
+                                    ? 'Processing voice...'
+                                    : voiceRecordingMode === 'vad'
+                                        ? 'Tap to talk (auto-stops on silence)'
+                                        : voiceRecordingMode === 'pushToTalk'
+                                            ? 'Tap to start/stop'
+                                            : 'Hold to talk')
+                            : (isRecording ? `Recording... ${recordingSeconds}s` : 'Record audio (10s)')
+                    }
                     style={{
                         padding: '8px 10px',
                         fontSize: '16px',
                         borderRadius: '8px',
-                        border: '1px solid ' + (isRecording ? '#d9534f' : '#444'),
-                        backgroundColor: isRecording ? '#5a2d2d' : '#333',
-                        color: isRecording ? '#ff6b6b' : '#aaa',
-                        cursor: (loading || isRecording) ? 'not-allowed' : 'pointer',
+                        border: '1px solid ' + (
+                            isRecording ? '#d9534f'
+                            : mode === 'voice' ? (isVoiceProcessing ? '#f0ad4e' : '#51cf66')
+                            : '#444'
+                        ),
+                        backgroundColor: isRecording ? '#5a2d2d'
+                            : mode === 'voice' ? (isVoiceProcessing ? '#4a4a2d' : '#2d5a2d')
+                            : '#333',
+                        color: isRecording ? '#ff6b6b'
+                            : mode === 'voice' ? '#51cf66'
+                            : '#aaa',
+                        cursor: (loading || isVoiceProcessing) ? 'not-allowed' : 'pointer',
                         lineHeight: 1,
-                        minWidth: isRecording ? '70px' : undefined,
+                        minWidth: (isRecording || isVoiceProcessing) ? '70px' : undefined,
                     }}
                 >
-                    {isRecording ? `⏺ ${recordingSeconds}s` : '🎤'}
+                    {isRecording ? `⏺ ${recordingSeconds}s` : isVoiceProcessing ? '⏳' : '🎤'}
                 </button>
+                {mode !== 'voice' && (
                 <button
                     onClick={handleCameraCapture}
                     disabled={loading}
@@ -1435,43 +1776,171 @@ function App() {
                 >
                     📷
                 </button>
+                )}
 
-                <input
-                    ref={inputRef}
-                    type="text"
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    onKeyDown={handleKey}
-                    placeholder={loading ? 'Waiting for response...' : 'Type a message (or attach files)...'}
-                    disabled={loading || connection === 'error'}
-                    autoFocus
-                    style={{
-                        flex: 1,
-                        padding: '10px 14px',
-                        fontSize: '14px',
-                        borderRadius: '8px',
-                        border: '1px solid #444',
-                        backgroundColor: '#1e1e1e',
-                        color: '#eee',
-                        outline: 'none',
-                    }}
-                />
-                <button
-                    onClick={handleSend}
-                    disabled={loading || (!input.trim() && pendingAttachments.length === 0) || connection === 'error'}
-                    style={{
-                        padding: '10px 20px',
-                        fontSize: '14px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        backgroundColor: loading ? '#444' : '#61dafb',
-                        color: loading ? '#888' : '#1e1e1e',
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                        fontWeight: 600,
-                    }}
-                >
-                    {loading ? 'Sending...' : 'Send'}
-                </button>
+                {mode === 'voice' ? (
+                    /* Voice mode: status indicator + engine/mode selectors */
+                    <>
+                        <div style={{
+                            flex: 1,
+                            padding: '10px 14px',
+                            fontSize: '14px',
+                            borderRadius: '8px',
+                            border: '1px solid ' + (isRecording ? '#d9534f' : isVoiceProcessing ? '#51cf66' : '#444'),
+                            backgroundColor: '#1e1e1e',
+                            color: isRecording ? '#ff6b6b' : isVoiceProcessing ? '#51cf66' : '#777',
+                            textAlign: 'center',
+                        }}>
+                            {voiceEngine === 'browser'
+                                ? (isVoiceProcessing ? 'Listening / speaking via browser...' : 'Tap 🎤 — browser STT → LLM → browser TTS')
+                                : (isRecording
+                                    ? `Recording... ${recordingSeconds}s${voiceRecordingMode === 'vad' ? ' · listening for silence' : voiceRecordingMode === 'pushToTalk' ? ' · tap 🎤 to stop' : ' · release to send'}`
+                                    : isVoiceProcessing ? 'Processing voice response...'
+                                    : voiceRecordingMode === 'vad' ? 'Tap 🎤 — auto-stops on silence'
+                                    : voiceRecordingMode === 'pushToTalk' ? 'Tap 🎤 to start, tap again to stop & send'
+                                    : 'Hold 🎤 to talk, release to send')}
+                        </div>
+                        {/* Voice engine selector */}
+                        <select
+                            value={voiceEngine}
+                            onChange={e => setVoiceEngine(e.target.value as VoiceEngine)}
+                            disabled={isRecording || isVoiceProcessing}
+                            title="Voice engine"
+                            style={{
+                                padding: '8px 6px',
+                                fontSize: '11px',
+                                borderRadius: '8px',
+                                border: '1px solid #444',
+                                backgroundColor: '#1e1e1e',
+                                color: '#aaa',
+                                cursor: (isRecording || isVoiceProcessing) ? 'not-allowed' : 'pointer',
+                            }}
+                        >
+                            <option value="server">🖥️ Server</option>
+                            <option value="browser"
+                                disabled={!BrowserVoiceClient.isSupported()}
+                            >
+                                🌐 Browser{!BrowserVoiceClient.isSupported() ? ' (n/a)' : ''}
+                            </option>
+                        </select>
+                        {/* Recording mode (server only) / streaming mode (browser only) */}
+                        {voiceEngine === 'server' ? (
+                            <select
+                                value={voiceRecordingMode}
+                                onChange={e => setVoiceRecordingMode(e.target.value as VoiceRecordingMode)}
+                                disabled={isRecording || isVoiceProcessing}
+                                title="Voice recording mode"
+                                style={{
+                                    padding: '8px 6px',
+                                    fontSize: '11px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #444',
+                                    backgroundColor: '#1e1e1e',
+                                    color: '#aaa',
+                                    cursor: (isRecording || isVoiceProcessing) ? 'not-allowed' : 'pointer',
+                                }}
+                            >
+                                <option value="vad">VAD (auto)</option>
+                                <option value="pushToTalk">Push-to-talk</option>
+                                <option value="holdToTalk">Hold-to-talk</option>
+                            </select>
+                        ) : (
+                            <>
+                                <select
+                                    value={browserVoiceLang}
+                                    onChange={e => setBrowserVoiceLang(e.target.value)}
+                                    disabled={isVoiceProcessing}
+                                    title="Speech language"
+                                    style={{
+                                        padding: '8px 6px',
+                                        fontSize: '11px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #444',
+                                        backgroundColor: '#1e1e1e',
+                                        color: '#aaa',
+                                        cursor: isVoiceProcessing ? 'not-allowed' : 'pointer',
+                                    }}
+                                >
+                                    <option value="it-IT">🇮🇹 Italiano</option>
+                                    <option value="en-US">🇺🇸 English</option>
+                                    <option value="en-GB">🇬🇧 English UK</option>
+                                    <option value="es-ES">🇪🇸 Español</option>
+                                    <option value="fr-FR">🇫🇷 Français</option>
+                                    <option value="de-DE">🇩🇪 Deutsch</option>
+                                    <option value="pt-BR">🇧🇷 Português</option>
+                                    <option value="ja-JP">🇯🇵 日本語</option>
+                                    <option value="zh-CN">🇨🇳 中文</option>
+                                    <option value="ko-KR">🇰🇷 한국어</option>
+                                    <option value="ar-SA">🇸🇦 العربية</option>
+                                    <option value="ru-RU">🇷🇺 Русский</option>
+                                    <option value="hi-IN">🇮🇳 हिन्दी</option>
+                                    <option value="nl-NL">🇳🇱 Nederlands</option>
+                                    <option value="pl-PL">🇵🇱 Polski</option>
+                                    <option value="sv-SE">🇸🇪 Svenska</option>
+                                    <option value="tr-TR">🇹🇷 Türkçe</option>
+                                </select>
+                                <select
+                                    value={browserVoiceStreamingMode}
+                                    onChange={e => setBrowserVoiceStreamingMode(e.target.value as BrowserVoiceStreamingMode)}
+                                    disabled={isVoiceProcessing}
+                                    title="Streaming mode"
+                                    style={{
+                                        padding: '8px 6px',
+                                        fontSize: '11px',
+                                        borderRadius: '8px',
+                                        border: '1px solid #444',
+                                        backgroundColor: '#1e1e1e',
+                                        color: '#aaa',
+                                        cursor: isVoiceProcessing ? 'not-allowed' : 'pointer',
+                                    }}
+                                >
+                                    <option value="stepByStep">Step-by-step</option>
+                                    <option value="tokenStreaming">Token stream</option>
+                                </select>
+                            </>
+                        )}
+                    </>
+                ) : (
+                    /* Normal mode: text input + send button */
+                    <>
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={input}
+                            onChange={e => setInput(e.target.value)}
+                            onKeyDown={handleKey}
+                            placeholder={loading ? 'Waiting for response...' : 'Type a message (or attach files)...'}
+                            disabled={loading || connection === 'error'}
+                            autoFocus
+                            style={{
+                                flex: 1,
+                                padding: '10px 14px',
+                                fontSize: '14px',
+                                borderRadius: '8px',
+                                border: '1px solid #444',
+                                backgroundColor: '#1e1e1e',
+                                color: '#eee',
+                                outline: 'none',
+                            }}
+                        />
+                        <button
+                            onClick={handleSend}
+                            disabled={loading || (!input.trim() && pendingAttachments.length === 0) || connection === 'error'}
+                            style={{
+                                padding: '10px 20px',
+                                fontSize: '14px',
+                                borderRadius: '8px',
+                                border: 'none',
+                                backgroundColor: loading ? '#444' : '#61dafb',
+                                color: loading ? '#888' : '#1e1e1e',
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                                fontWeight: 600,
+                            }}
+                        >
+                            {loading ? 'Sending...' : 'Send'}
+                        </button>
+                    </>
+                )}
             </div>
 
             {/* Footer info */}
@@ -1485,8 +1954,9 @@ function App() {
             }}>
                 <span>API: {API_BASE}/{FACTORY_NAME}</span>
                 <span>
-                    Mode: {mode === 'step' ? 'Step-by-Step' : 'Token Streaming'}
+                    Mode: {mode === 'step' ? 'Step-by-Step' : mode === 'token' ? 'Token Streaming' : `🎤 Voice (${voiceEngine === 'server' ? 'Server' : 'Browser'})`}
                     {conversationKey && ` | Conv: ${conversationKey.substring(0, 8)}...`}
+                    {voiceTranscript && mode === 'voice' && ` | "${voiceTranscript.substring(0, 30)}..."`}
                     </span>
                 </div>
             </div>

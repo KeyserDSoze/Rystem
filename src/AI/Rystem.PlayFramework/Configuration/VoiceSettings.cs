@@ -33,4 +33,14 @@ public sealed class VoiceSettings
     /// Default: 500
     /// </summary>
     public int MaxCharsBeforeTts { get; set; } = 500;
+
+    /// <summary>
+    /// Instruction template appended to the transcribed message to tell the LLM
+    /// which language to respond in. Use <c>{language}</c> as a placeholder for
+    /// the language detected by the STT model (e.g., "italian", "english").
+    /// Set to <c>null</c> or empty to disable.
+    /// Default: <c>"IMPORTANT: You must respond in {language}."</c>
+    /// </summary>
+    public string? LanguageInstruction { get; set; } =
+        "IMPORTANT: You must respond in {language}.";
 }

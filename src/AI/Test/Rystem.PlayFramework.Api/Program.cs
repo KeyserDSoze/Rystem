@@ -52,6 +52,24 @@ if (!string.IsNullOrEmpty(azureOpenAIEndpoint) && !string.IsNullOrEmpty(azureOpe
         settings.ApiKey = azureOpenAIKey;
         settings.Deployment = azureOpenAIDeployment;
     });
+
+    // Register voice adapter (STT + TTS) — reuses the same Azure OpenAI endpoint & key
+    var voiceSttDeployment = builder.Configuration["AzureOpenAI:Voice:SttDeployment"] ?? "whisper";
+    var voiceTtsDeployment = builder.Configuration["AzureOpenAI:Voice:TtsDeployment"] ?? "tts-1";
+    var voiceTtsVoice = builder.Configuration["AzureOpenAI:Voice:TtsVoice"] ?? "alloy";
+    var voiceTtsFormat = builder.Configuration["AzureOpenAI:Voice:TtsOutputFormat"] ?? "mp3";
+    var voiceTtsSpeed = float.TryParse(builder.Configuration["AzureOpenAI:Voice:TtsSpeed"], out var speed) ? speed : 1.0f;
+
+    builder.Services.AddVoiceAdapterForAzureOpenAI("default", voiceSettings =>
+    {
+        voiceSettings.Endpoint = new Uri(azureOpenAIEndpoint);
+        voiceSettings.ApiKey = azureOpenAIKey;
+        voiceSettings.SttDeployment = voiceSttDeployment;
+        voiceSettings.TtsDeployment = voiceTtsDeployment;
+        voiceSettings.TtsVoice = voiceTtsVoice;
+        voiceSettings.TtsOutputFormat = voiceTtsFormat;
+        voiceSettings.TtsSpeed = voiceTtsSpeed;
+    });
 }
 else
 {
@@ -63,6 +81,7 @@ else
 builder.Services.AddPlayFramework("default", frameworkBuilder =>
 {
     frameworkBuilder
+        .WithVoice("default") // Enable voice pipeline (STT → PlayFramework → TTS)
         .UseDefaultGuardrails()
         .AddCache(cacheBuilder =>
         {
@@ -236,6 +255,7 @@ app.MapPlayFramework("default", settings =>
     settings.RequireAuthentication = false; // Set to true for production
     settings.EnableCompression = true;
     settings.EnableConversationEndpoints = true; // Enable conversation management endpoints
+    settings.EnableVoiceEndpoints = true; // Enable voice pipeline endpoints (audio → STT → AI → TTS)
 });
 
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))

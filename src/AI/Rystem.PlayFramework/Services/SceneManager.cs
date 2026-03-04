@@ -332,6 +332,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     /// </summary>
     private async Task InitializeNewContextAsync(
         SceneContext context,
+        SceneRequestSettings settings,
         CancellationToken cancellationToken)
     {
         // 1. Add guardrails prompt first (if enabled)
@@ -347,8 +348,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         object? contextResult = null;
         if (_context != null)
         {
-            var settings = new SceneRequestSettings { ConversationKey = context.ConversationKey };
-            contextResult = await _context.RetrieveAsync(context, settings, cancellationToken);
+            var contextSettings = new SceneRequestSettings { ConversationKey = context.ConversationKey };
+            contextResult = await _context.RetrieveAsync(context, contextSettings, cancellationToken);
         }
 
         // 3. Execute main actors and collect their outputs
@@ -361,6 +362,18 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             if (!string.IsNullOrWhiteSpace(response.Message))
             {
                 mainActorOutputs.Add(response.Message);
+            }
+        }
+
+        // 3b. Append additional system instructions (e.g., voice language instruction)
+        if (settings.AdditionalSystemInstructions is { Count: > 0 })
+        {
+            foreach (var instruction in settings.AdditionalSystemInstructions)
+            {
+                if (!string.IsNullOrWhiteSpace(instruction))
+                {
+                    mainActorOutputs.Add(instruction);
+                }
             }
         }
 
@@ -496,7 +509,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         if (!loadedFromStorageOrCache)
         {
             yield return YieldStatus(AiResponseStatus.Initializing, "Building initial context");
-            await InitializeNewContextAsync(context, cancellationToken);
+            await InitializeNewContextAsync(context, settings, cancellationToken);
         }
 
         // Resolve pending client interactions (unified path for Commands and ClientTools)

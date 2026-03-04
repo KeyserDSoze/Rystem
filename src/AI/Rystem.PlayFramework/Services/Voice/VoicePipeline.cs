@@ -45,9 +45,11 @@ internal sealed class VoicePipeline
         // 1. STT: Transcribe audio to text
         _logger?.LogInformation("Voice pipeline: transcribing audio ({Bytes} bytes)", audioData.Length);
 
-        var transcript = await _voiceAdapter.TranscribeAsync(audioData, fileName, cancellationToken);
+        var transcriptionResult = await _voiceAdapter.TranscribeAsync(audioData, fileName, cancellationToken);
+        var transcript = transcriptionResult.Text;
+        var detectedLanguage = transcriptionResult.DetectedLanguage;
 
-        _logger?.LogInformation("Voice pipeline: transcribed -> \"{Transcript}\"", transcript);
+        _logger?.LogInformation("Voice pipeline: transcribed -> \"{Transcript}\" (lang={Language})", transcript, detectedLanguage);
 
         // Yield transcript event
         yield return VoiceResponse.Transcription(transcript);
@@ -61,6 +63,15 @@ internal sealed class VoicePipeline
         // 2. Execute through PlayFramework with streaming
         settings ??= new SceneRequestSettings();
         settings.EnableStreaming = true;
+
+        // Inject language instruction as a system-level instruction (not in user message)
+        if (!string.IsNullOrWhiteSpace(_voiceSettings.LanguageInstruction)
+            && !string.IsNullOrWhiteSpace(detectedLanguage))
+        {
+            var instruction = _voiceSettings.LanguageInstruction.Replace("{language}", detectedLanguage);
+            settings.AdditionalSystemInstructions ??= [];
+            settings.AdditionalSystemInstructions.Add(instruction);
+        }
 
         var accumulator = new SentenceAccumulator(_voiceSettings);
 

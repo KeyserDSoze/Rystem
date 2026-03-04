@@ -16,8 +16,8 @@ public interface IVoiceAdapter
     /// The extension helps the STT model determine the audio format.
     /// </param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Transcribed text.</returns>
-    Task<string> TranscribeAsync(
+    /// <returns>Transcription result including text and detected language.</returns>
+    Task<TranscriptionResult> TranscribeAsync(
         ReadOnlyMemory<byte> audioData,
         string? fileName = null,
         CancellationToken cancellationToken = default);

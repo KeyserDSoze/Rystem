@@ -4,6 +4,7 @@ import { PlayFrameworkSettings } from "../servicecollection/PlayFrameworkSetting
 import { ClientInteractionRegistry } from "./ClientInteractionRegistry";
 import { ClientInteractionResult } from "../models/ClientInteractionResult";
 import type { StoredConversation, ConversationQueryParameters, UpdateConversationVisibilityRequest } from "../models/StoredConversation";
+import type { VoiceEvent, VoiceRequestOptions } from "../models/VoiceResponse";
 
 /**
  * PlayFramework HTTP client with step-by-step and token-level streaming support.
@@ -445,5 +446,107 @@ export class PlayFrameworkClient {
         queryParams.push(`includeContents=${includeContents}`);
 
         return queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+    }
+
+    // ─── Voice Pipeline Methods ──────────────────────────────────────────────────
+
+    /**
+     * Execute the voice pipeline: audio → STT → PlayFramework → TTS → audio streaming.
+     * Sends audio as multipart/form-data, receives SSE stream of VoiceEvent.
+     *
+     * @param options - Voice request options (audio blob, conversationKey, metadata).
+     * @returns AsyncIterableIterator of VoiceEvent (transcription, audio chunks, scene events, completion).
+     *
+     * @example
+     * ```ts
+     * const audioBlob = await recordAudio();
+     * for await (const event of client.executeVoice({ audio: audioBlob })) {
+     *   if (event.type === 'transcription') console.log('User said:', event.text);
+     *   if (event.type === 'audio') playAudioBase64(event.audio!);
+     *   if (event.type === 'scene') console.log('Scene:', event.status, event.message);
+     * }
+     * ```
+     */
+    public async *executeVoice(
+        options: VoiceRequestOptions
+    ): AsyncIterableIterator<VoiceEvent> {
+        const url = `${this.settings.baseUrl}/${this.settings.factoryName}/voice`;
+        const effectiveSignal = this.createTimeoutSignal(options.signal);
+
+        // Build multipart/form-data
+        const formData = new FormData();
+        const audioFile = options.audio instanceof File
+            ? options.audio
+            : new File([options.audio], 'recording.webm', { type: options.audio.type || 'audio/webm' });
+        formData.append('audio', audioFile);
+
+        if (options.conversationKey) {
+            formData.append('conversationKey', options.conversationKey);
+        }
+
+        if (options.metadata) {
+            formData.append('metadata', JSON.stringify(options.metadata));
+        }
+
+        // Build headers WITHOUT Content-Type (browser sets multipart boundary automatically)
+        const baseHeaders = await this.settings.enrichHeaders(url, "POST", undefined, undefined);
+        const headers = new Headers(baseHeaders);
+        headers.delete('Content-Type'); // Let browser set multipart boundary
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: formData,
+            signal: effectiveSignal || undefined
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text().catch(() => response.statusText);
+            throw new Error(`Voice pipeline error (${response.status}): ${errorText}`);
+        }
+
+        if (!response.body) {
+            throw new Error('Response body is null');
+        }
+
+        // Parse SSE stream
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.substring(6).trim();
+                        if (!data) continue;
+
+                        let event: VoiceEvent;
+                        try {
+                            event = JSON.parse(data);
+                        } catch {
+                            console.error('Failed to parse voice SSE event:', data);
+                            continue;
+                        }
+
+                        yield event;
+
+                        // Stop on completed or error
+                        if (event.type === 'completed' || event.type === 'error') {
+                            return;
+                        }
+                    }
+                }
+            }
+        } finally {
+            reader.releaseLock();
+        }
     }
 }
