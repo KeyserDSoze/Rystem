@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <DebugSymbols>true</DebugSymbols>
+    <EmbedAllSources>true</EmbedAllSources>
+    <DebugType>portable</DebugType>
+    <Authors>Alessandro Rapiti</Authors>
+    <Company>Alessandro Rapiti</Company>
+    <Product>Rystem.PlayFramework.Adapters</Product>
+    <Description>LLM provider adapters for Rystem.PlayFramework. Supports Azure OpenAI and OpenAI with file upload, caching, and Responses API integration.</Description>
+    <Copyright>2024</Copyright>
+    <PackageIcon>rystem.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework.Adapters</RepositoryUrl>
+    <PackageId>Rystem.PlayFramework.Adapters</PackageId>
+    <Version>10.0.1</Version>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <NoWarn>$(NoWarn);OPENAI001;AOAI001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.8.0-beta.1" />
+    <PackageReference Include="Azure.Identity" Version="1.18.0" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.3.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="rystem.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <Choose>
+    <When Condition=" '$(Configuration)'=='Debug' ">
+      <ItemGroup>
+        <ProjectReference Include="..\Rystem.PlayFramework\Rystem.PlayFramework.csproj" />
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'!='Debug' ">
+      <ItemGroup>
+        <PackageReference Include="Rystem.PlayFramework" Version="10.0.11-beta.2" />
+      </ItemGroup>
+    </When>
+  </Choose>
+
+</Project>

@@ -1780,11 +1780,53 @@ Fine-grained observability control:
 
 ---
 
+## � LLM Adapters
+
+PlayFramework requires an `IChatClient` (from **Microsoft.Extensions.AI**) to communicate with an LLM.  
+The companion library **[Rystem.PlayFramework.Adapters](https://www.nuget.org/packages/Rystem.PlayFramework.Adapters/)** provides ready-to-use adapters that register `IChatClient` with the factory pattern — matching your `AddPlayFramework("name", ...)` call.
+
+```bash
+dotnet add package Rystem.PlayFramework.Adapters
+```
+
+### Azure OpenAI Example
+
+```csharp
+// 1. Register the adapter (creates and registers IChatClient under the factory name "default")
+builder.Services.AddAdapterForAzureOpenAI("default", settings =>
+{
+    settings.Endpoint = new Uri("https://YOUR-RESOURCE.openai.azure.com/");
+    settings.ApiKey = "YOUR-API-KEY";
+    settings.Deployment = "gpt-4o";
+    // settings.UseResponsesApi = true;   // Responses API (default) — supports input_file, input_image
+    // settings.EnableFileUpload = true;   // Auto-upload files via Files API (default)
+    // settings.UseAzureCredential = true; // Use DefaultAzureCredential instead of API key
+});
+
+// 2. Register PlayFramework with the same factory name
+builder.Services.AddPlayFramework("default", frameworkBuilder =>
+{
+    frameworkBuilder
+        .AddMainActor("You are a helpful AI assistant.")
+        .AddScene("Chat", "General conversation.", sceneBuilder => { });
+});
+```
+
+The adapter automatically handles:
+- **Responses API** with native `input_file` / `input_image` support
+- **File upload** via the Files API (PDFs, DOCX, XLSX, CSV, etc.) with SHA256-based cache deduplication
+- **Azure Managed Identity** via `DefaultAzureCredential`
+
+For full configuration options and cache strategy details, see the **[Rystem.PlayFramework.Adapters README](https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework.Adapters)**.
+
+---
+
 ## 📚 Additional Resources
 
 - 📖 **Full Documentation**: https://rystem.net/playframework
 - 💻 **GitHub**: https://github.com/KeyserDSoze/Rystem
 - 📦 **NuGet**: https://www.nuget.org/packages/Rystem.PlayFramework
+- 🔌 **LLM Adapters**: https://www.nuget.org/packages/Rystem.PlayFramework.Adapters
 - 🎯 **MCP Tools**: https://rystem.net/mcp
 - 📘 **Client Interaction Guide**: [Docs/CLIENT_INTERACTION_ARCHITECTURE_V2.md](Docs/CLIENT_INTERACTION_ARCHITECTURE_V2.md)
 - 🔐 **Authorization Examples**: [AUTHORIZATION_EXAMPLE.md](AUTHORIZATION_EXAMPLE.md)

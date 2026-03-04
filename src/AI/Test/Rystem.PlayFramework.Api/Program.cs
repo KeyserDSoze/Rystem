@@ -1,15 +1,12 @@
-﻿using Azure.AI.OpenAI;
-using Rystem.PlayFramework;
+﻿using Rystem.PlayFramework;
+using Rystem.PlayFramework.Adapters;
 using Rystem.PlayFramework.Api;
 using Rystem.PlayFramework.Api.Infrastructure;
 using Rystem.PlayFramework.Api.Models;
 using Rystem.PlayFramework.Api.Services;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Caching.Memory;
 using Scalar.AspNetCore;
 using RepositoryFramework.InMemory;
-using System.ClientModel;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,21 +46,11 @@ var azureOpenAIDeployment = builder.Configuration["AzureOpenAI:Deployment"] ?? "
 
 if (!string.IsNullOrEmpty(azureOpenAIEndpoint) && !string.IsNullOrEmpty(azureOpenAIKey))
 {
-    // Use Responses API via Microsoft.Extensions.AI.OpenAI bridge.
-    // Files are uploaded via the Files API and referenced by file_id,
-    // so the Responses API receives {"type":"input_file","file_id":"..."}
-    // instead of inline base64 data.
-    builder.Services.AddSingleton<IChatClient>(sp =>
+    builder.Services.AddAdapterForAzureOpenAI("default", settings =>
     {
-        var client = new AzureOpenAIClient(
-            new Uri(azureOpenAIEndpoint),
-            new ApiKeyCredential(azureOpenAIKey));
-        var responsesClient = client.GetResponsesClient(azureOpenAIDeployment).AsIChatClient();
-        var fileClient = client.GetOpenAIFileClient();
-        var distributedCache = sp.GetService<IDistributedCache>();
-        var memoryCache = sp.GetService<IMemoryCache>();
-        var uploadLogger = sp.GetService<ILoggerFactory>()?.CreateLogger<FileUploadChatClient>();
-        return new FileUploadChatClient(responsesClient, fileClient, distributedCache, memoryCache, uploadLogger);
+        settings.Endpoint = new Uri(azureOpenAIEndpoint);
+        settings.ApiKey = azureOpenAIKey;
+        settings.Deployment = azureOpenAIDeployment;
     });
 }
 else

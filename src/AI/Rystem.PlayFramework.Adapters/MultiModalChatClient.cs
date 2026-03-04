@@ -1,12 +1,11 @@
-using System.Security.Cryptography;
-using System.Text.Json;
+﻿using System.Security.Cryptography;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using OpenAI.Files;
 
-namespace Rystem.PlayFramework.Api.Infrastructure;
+namespace Rystem.PlayFramework.Adapters;
 
 /// <summary>
 /// DelegatingChatClient that uploads non-image binary files via the OpenAI Files API
@@ -17,12 +16,12 @@ namespace Rystem.PlayFramework.Api.Infrastructure;
 ///   3. In-memory Dictionary fallback (always available)
 /// Also checks the remote Files API by filename to avoid re-uploading.
 /// </summary>
-public sealed class FileUploadChatClient : DelegatingChatClient
+public sealed class MultiModalChatClient : DelegatingChatClient
 {
     private readonly OpenAIFileClient _fileClient;
     private readonly IDistributedCache? _distributedCache;
     private readonly IMemoryCache? _memoryCache;
-    private readonly ILogger<FileUploadChatClient>? _logger;
+    private readonly ILogger<MultiModalChatClient>? _logger;
 
     private static readonly TimeSpan CacheExpiration = TimeSpan.FromHours(12);
     private const string CachePrefix = "file_upload:";
@@ -33,12 +32,12 @@ public sealed class FileUploadChatClient : DelegatingChatClient
     /// <summary>Lazily loaded remote file index: fileName → fileId.</summary>
     private Dictionary<string, string>? _remoteIndex;
 
-    public FileUploadChatClient(
+    public MultiModalChatClient(
         IChatClient innerClient,
         OpenAIFileClient fileClient,
         IDistributedCache? distributedCache = null,
         IMemoryCache? memoryCache = null,
-        ILogger<FileUploadChatClient>? logger = null)
+        ILogger<MultiModalChatClient>? logger = null)
         : base(innerClient)
     {
         _fileClient = fileClient;
@@ -50,25 +49,17 @@ public sealed class FileUploadChatClient : DelegatingChatClient
         if (_distributedCache is null && _memoryCache is null)
         {
             _fallbackCache = new();
-            _logger?.LogInformation("📦 FileUploadChatClient: using in-memory Dictionary fallback (no IDistributedCache or IMemoryCache registered)");
+            _logger?.LogInformation("FileUploadChatClient: using in-memory Dictionary fallback (no IDistributedCache or IMemoryCache registered)");
         }
     }
+
     public override async Task<ChatResponse> GetResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         var processed = await UploadFilesInMessagesAsync(messages, cancellationToken);
-        try
-        {
-            return await base.GetResponseAsync(processed, options, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "❌ FileUploadChatClient.GetResponseAsync FAILED. Exception type: {ExType}, Message: {Msg}, StackTrace: {Stack}",
-                ex.GetType().FullName, ex.Message, ex.StackTrace);
-            throw;
-        }
+        return await base.GetResponseAsync(processed, options, cancellationToken);
     }
 
     public override IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
@@ -76,7 +67,6 @@ public sealed class FileUploadChatClient : DelegatingChatClient
         ChatOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        // Upload files synchronously before streaming starts
         var processed = UploadFilesInMessagesAsync(messages, cancellationToken)
             .GetAwaiter().GetResult();
         return base.GetStreamingResponseAsync(processed, options, cancellationToken);
@@ -140,7 +130,7 @@ public sealed class FileUploadChatClient : DelegatingChatClient
         var cachedFileId = await GetFromCacheAsync(cacheKey, cancellationToken);
         if (!string.IsNullOrEmpty(cachedFileId))
         {
-            _logger?.LogDebug("📎 Cache hit (hash), reusing file_id={FileId} ({FileName})", cachedFileId, fileName);
+            _logger?.LogDebug("Cache hit (hash), reusing file_id={FileId} ({FileName})", cachedFileId, fileName);
             return new HostedFileContent(cachedFileId) { Name = fileName };
         }
 
@@ -149,7 +139,7 @@ public sealed class FileUploadChatClient : DelegatingChatClient
         if (remoteFileId is not null)
         {
             await SetInCacheAsync(cacheKey, remoteFileId, cancellationToken);
-            _logger?.LogDebug("📎 Found on Azure by filename, reusing file_id={FileId} ({FileName})", remoteFileId, fileName);
+            _logger?.LogDebug("Found on Azure by filename, reusing file_id={FileId} ({FileName})", remoteFileId, fileName);
             return new HostedFileContent(remoteFileId) { Name = fileName };
         }
 
@@ -161,7 +151,7 @@ public sealed class FileUploadChatClient : DelegatingChatClient
         var fileId = uploaded.Value.Id;
         await SetInCacheAsync(cacheKey, fileId, cancellationToken);
         _remoteIndex?.TryAdd(fileName, fileId);
-        _logger?.LogInformation("📤 Uploaded file {FileName} → file_id={FileId}", fileName, fileId);
+        _logger?.LogInformation("Uploaded file {FileName} -> file_id={FileId}", fileName, fileId);
 
         return new HostedFileContent(fileId) { Name = fileName };
     }
@@ -170,7 +160,6 @@ public sealed class FileUploadChatClient : DelegatingChatClient
 
     private async Task<string?> GetFromCacheAsync(string key, CancellationToken cancellationToken)
     {
-        // 1. IDistributedCache
         if (_distributedCache is not null)
         {
             var value = await _distributedCache.GetStringAsync(key, cancellationToken);
@@ -178,11 +167,9 @@ public sealed class FileUploadChatClient : DelegatingChatClient
                 return value;
         }
 
-        // 2. IMemoryCache
         if (_memoryCache is not null && _memoryCache.TryGetValue<string>(key, out var memValue) && !string.IsNullOrEmpty(memValue))
             return memValue;
 
-        // 3. Dictionary fallback
         if (_fallbackCache is not null && _fallbackCache.TryGetValue(key, out var fallbackValue))
             return fallbackValue;
 
@@ -191,7 +178,6 @@ public sealed class FileUploadChatClient : DelegatingChatClient
 
     private async Task SetInCacheAsync(string key, string fileId, CancellationToken cancellationToken)
     {
-        // 1. IDistributedCache
         if (_distributedCache is not null)
         {
             await _distributedCache.SetStringAsync(key, fileId, new DistributedCacheEntryOptions
@@ -200,10 +186,7 @@ public sealed class FileUploadChatClient : DelegatingChatClient
             }, cancellationToken);
         }
 
-        // 2. IMemoryCache
         _memoryCache?.Set(key, fileId, CacheExpiration);
-
-        // 3. Dictionary fallback
         _fallbackCache?.TryAdd(key, fileId);
     }
 
@@ -221,11 +204,11 @@ public sealed class FileUploadChatClient : DelegatingChatClient
                 {
                     _remoteIndex.TryAdd(f.Filename, f.Id);
                 }
-                _logger?.LogDebug("📋 Loaded {Count} existing files from Azure", _remoteIndex.Count);
+                _logger?.LogDebug("Loaded {Count} existing files from remote storage", _remoteIndex.Count);
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "⚠️ Could not list remote files, skipping remote check");
+                _logger?.LogWarning(ex, "Could not list remote files, skipping remote check");
                 _remoteIndex = new(StringComparer.OrdinalIgnoreCase);
             }
         }
@@ -243,7 +226,7 @@ public sealed class FileUploadChatClient : DelegatingChatClient
         return !mediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string GetExtensionFromMediaType(string mediaType) => mediaType.ToLowerInvariant() switch
+    internal static string GetExtensionFromMediaType(string mediaType) => mediaType.ToLowerInvariant() switch
     {
         "application/pdf" => ".pdf",
         "text/plain" => ".txt",
@@ -253,7 +236,13 @@ public sealed class FileUploadChatClient : DelegatingChatClient
         "application/xml" or "text/xml" => ".xml",
         "audio/mpeg" => ".mp3",
         "audio/wav" => ".wav",
+        "audio/ogg" => ".ogg",
         "video/mp4" => ".mp4",
+        "video/webm" => ".webm",
+        "application/zip" => ".zip",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => ".docx",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" => ".xlsx",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation" => ".pptx",
         _ => string.Empty
     };
 }
