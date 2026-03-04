@@ -2,6 +2,7 @@
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
+        <RuntimeIdentifiers>win-x64;win-arm64;linux-x64;linux-arm64;osx-x64;osx-arm64</RuntimeIdentifiers>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IncludeSymbols>true</IncludeSymbols>
@@ -11,13 +12,13 @@
         <DebugType>portable</DebugType>
         <Authors>Alessandro Rapiti</Authors>
         <Company>Alessandro Rapiti</Company>
-        <Product>Rystem.PlayFramework.Adapters</Product>
-        <Description>Azure OpenAI adapter for Rystem.PlayFramework. Supports Responses API, automatic file upload via Files API, and SHA256-based multi-level caching.</Description>
+        <Product>Rystem.PlayFramework.Adapters.FoundryLocal</Product>
+        <Description>Foundry Local adapter for Rystem.PlayFramework. Runs AI models locally for development and testing using Microsoft.AI.Foundry.Local SDK. Automatically downloads, loads, and starts a local OpenAI-compatible web service.</Description>
         <Copyright>2024</Copyright>
         <PackageIcon>rystem.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework.Adapters</RepositoryUrl>
-        <PackageId>Rystem.PlayFramework.Adapters</PackageId>
+        <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework.Adapters.FoundryLocal</RepositoryUrl>
+        <PackageId>Rystem.PlayFramework.Adapters.FoundryLocal</PackageId>
         <Version>10.0.11-beta.2</Version>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
@@ -25,10 +26,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Azure.AI.OpenAI" Version="2.8.0-beta.1" />
-        <PackageReference Include="Azure.Identity" Version="1.18.0" />
+        <PackageReference Include="Microsoft.AI.Foundry.Local" Version="0.8.2.1" />
         <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.3.0" />
-        <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.3" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
     </ItemGroup>
 

@@ -345,6 +345,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rystem.PlayFramework.Api", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rystem.PlayFramework.Adapters", "src\AI\Rystem.PlayFramework.Adapters\Rystem.PlayFramework.Adapters.csproj", "{A813EC7C-04D6-43C8-B5B6-5D7494AE3B02}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rystem.PlayFramework.Adapters.FoundryLocal", "src\AI\Rystem.PlayFramework.Adapters.FoundryLocal\Rystem.PlayFramework.Adapters.FoundryLocal.csproj", "{DDD2AA0C-5CE7-479B-A4BF-1EEA631C8A42}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1247,6 +1249,18 @@ Global
 		{A813EC7C-04D6-43C8-B5B6-5D7494AE3B02}.Release|x64.Build.0 = Release|Any CPU
 		{A813EC7C-04D6-43C8-B5B6-5D7494AE3B02}.Release|x86.ActiveCfg = Release|Any CPU
 		{A813EC7C-04D6-43C8-B5B6-5D7494AE3B02}.Release|x86.Build.0 = Release|Any CPU
+		{DDD2AA0C-5CE7-479B-A4BF-1EEA631C8A42}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DDD2AA0C-5CE7-479B-A4BF-1EEA631C8A42}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DDD2AA0C-5CE7-479B-A4BF-1EEA631C8A42}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{DDD2AA0C-5CE7-479B-A4BF-1EEA631C8A42}.Debug|x64.Build.0 = Debug|Any CPU
+		{DDD2AA0C-5CE7-479B-A4BF-1EEA631C8A42}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{DDD2AA0C-5CE7-479B-A4BF-1EEA631C8A42}.Debug|x86.Build.0 = Debug|Any CPU
+		{DDD2AA0C-5CE7-479B-A4BF-1EEA631C8A42}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DDD2AA0C-5CE7-479B-A4BF-1EEA631C8A42}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DDD2AA0C-5CE7-479B-A4BF-1EEA631C8A42}.Release|x64.ActiveCfg = Release|Any CPU
+		{DDD2AA0C-5CE7-479B-A4BF-1EEA631C8A42}.Release|x64.Build.0 = Release|Any CPU
+		{DDD2AA0C-5CE7-479B-A4BF-1EEA631C8A42}.Release|x86.ActiveCfg = Release|Any CPU
+		{DDD2AA0C-5CE7-479B-A4BF-1EEA631C8A42}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -1362,6 +1376,7 @@ Global
 		{BB137323-4A2B-431C-A3B7-45F6F5598C15} = {A1797D74-C02D-4BA8-A9AC-FB3161C62649}
 		{E7F9A8B2-6C4D-4E1F-9A3B-8D5C7E2F1A4B} = {A1797D74-C02D-4BA8-A9AC-FB3161C62649}
 		{A813EC7C-04D6-43C8-B5B6-5D7494AE3B02} = {6A7CBA52-6ED9-4FE8-84D2-13216D224B2E}
+		{DDD2AA0C-5CE7-479B-A4BF-1EEA631C8A42} = {6A7CBA52-6ED9-4FE8-84D2-13216D224B2E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {35C6ADE0-7E70-48ED-A810-A71B2BC94F57}

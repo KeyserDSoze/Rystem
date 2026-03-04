@@ -14,6 +14,8 @@ namespace Rystem.PlayFramework.Adapters;
 /// </summary>
 public static class ServiceCollectionExtensions
 {
+    #region Azure OpenAI
+
     /// <summary>
     /// Adds an Azure OpenAI adapter as the default <see cref="IChatClient"/>.
     /// </summary>
@@ -60,7 +62,7 @@ public static class ServiceCollectionExtensions
             chatClient = azureClient.GetChatClient(settings.Deployment).AsIChatClient();
         }
 
-        // Wrap with FileUploadChatClient if using Responses API + file upload enabled
+        // Wrap with MultiModalChatClient if using Responses API + file upload enabled
         if (settings.UseResponsesApi && settings.EnableFileUpload)
         {
             var fileClient = azureClient.GetOpenAIFileClient();
@@ -72,6 +74,10 @@ public static class ServiceCollectionExtensions
 
         return chatClient;
     }
+
+    #endregion
+
+    #region Azure OpenAI helpers
 
     private static AzureOpenAIClient CreateAzureOpenAIClient(AdapterSettings settings)
     {
@@ -94,4 +100,6 @@ public static class ServiceCollectionExtensions
         if (string.IsNullOrEmpty(settings.Deployment))
             throw new InvalidOperationException("AdapterSettings.Deployment is required.");
     }
+
+    #endregion
 }

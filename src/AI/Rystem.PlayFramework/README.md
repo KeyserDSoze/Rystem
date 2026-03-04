@@ -1817,6 +1817,23 @@ The adapter automatically handles:
 - **File upload** via the Files API (PDFs, DOCX, XLSX, CSV, etc.) with SHA256-based cache deduplication
 - **Azure Managed Identity** via `DefaultAzureCredential`
 
+### Foundry Local Example (local models for dev/testing)
+
+```bash
+# Install Foundry Local (the adapter handles model download/load automatically)
+winget install Microsoft.FoundryLocal
+```
+
+```csharp
+builder.Services.AddAdapterForFoundryLocal("default", settings =>
+{
+    settings.Model = "phi-4-mini";
+    // Automatically downloads, loads, and starts the local web service
+});
+```
+
+> **Note:** Foundry Local includes native ONNX runtime dependencies — consuming projects need a `<RuntimeIdentifier>` (e.g., `win-x64`).
+
 For full configuration options and cache strategy details, see the **[Rystem.PlayFramework.Adapters README](https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework.Adapters)**.
 
 ---

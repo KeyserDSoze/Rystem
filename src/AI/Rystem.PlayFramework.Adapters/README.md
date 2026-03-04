@@ -1,7 +1,7 @@
 # Rystem.PlayFramework.Adapters
 
-LLM provider adapters for [Rystem.PlayFramework](https://github.com/KeyserDSoze/Rystem).  
-Supports **Azure OpenAI** (and OpenAI) with automatic file upload, caching, and the Responses API.
+Azure OpenAI adapter for [Rystem.PlayFramework](https://github.com/KeyserDSoze/Rystem).  
+Supports **Responses API**, automatic **file upload** via Files API, and **SHA256-based multi-level caching**.
 
 ## Installation
 
@@ -9,7 +9,9 @@ Supports **Azure OpenAI** (and OpenAI) with automatic file upload, caching, and 
 dotnet add package Rystem.PlayFramework.Adapters
 ```
 
-## Quick Start
+---
+
+## Azure OpenAI
 
 ### Basic Usage (default registration)
 
@@ -19,13 +21,6 @@ builder.Services.AddAdapterForAzureOpenAI(settings =>
     settings.Endpoint = new Uri("https://YOUR-RESOURCE.openai.azure.com/");
     settings.ApiKey = "YOUR-API-KEY";
     settings.Deployment = "gpt-4o";
-});
-
-builder.Services.AddPlayFramework("default", frameworkBuilder =>
-{
-    frameworkBuilder
-        .AddMainActor("You are a helpful AI assistant.")
-        .AddScene("Chat", "General conversation.", sceneBuilder => { });
 });
 ```
 
@@ -51,18 +46,18 @@ builder.Services.AddAdapterForAzureOpenAI("default", settings =>
 });
 ```
 
-## Configuration
+### Configuration
 
 | Property | Type | Default | Description |
 |---|---|---|---|
-| `Endpoint` | `Uri?` | — | Azure OpenAI or OpenAI endpoint URI (**required**) |
+| `Endpoint` | `Uri?` | — | Azure OpenAI endpoint URI (**required**) |
 | `ApiKey` | `string?` | — | API key (required unless `UseAzureCredential = true`) |
 | `UseAzureCredential` | `bool` | `false` | Use `DefaultAzureCredential` (Managed Identity / Azure CLI) |
 | `Deployment` | `string` | `"gpt-4o"` | Model deployment name |
 | `UseResponsesApi` | `bool` | `true` | Use the Responses API (supports `input_file`, `input_image`) |
 | `EnableFileUpload` | `bool` | `true` | Automatically upload non-image files via the Files API |
 
-## File Upload
+### File Upload
 
 When `UseResponsesApi` and `EnableFileUpload` are both `true` (the default), non-image files (PDF, DOCX, CSV, etc.) are automatically:
 
@@ -70,13 +65,19 @@ When `UseResponsesApi` and `EnableFileUpload` are both `true` (the default), non
 2. **Referenced** by `file_id` in the Responses API request
 3. **Cached** to avoid re-uploading the same content (SHA256 hash-based deduplication)
 
-### Cache Strategy (first match wins)
+#### Cache Strategy (first match wins)
 
 | Priority | Provider | Registration |
 |---|---|---|
 | 1 | `IDistributedCache` | `services.AddStackExchangeRedisCache(...)` or similar |
 | 2 | `IMemoryCache` | `services.AddMemoryCache()` |
 | 3 | In-memory `Dictionary` | Automatic fallback (no registration needed) |
+
+---
+
+## Related Packages
+
+- **[Rystem.PlayFramework.Adapters.FoundryLocal](https://www.nuget.org/packages/Rystem.PlayFramework.Adapters.FoundryLocal)** — Run AI models locally for dev/testing using Microsoft.AI.Foundry.Local SDK.
 
 ## Dependencies
 
