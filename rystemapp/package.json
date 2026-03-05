@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "vite",
     "dev:api": "npm run prebuild && tsx server-local.ts",
-    "dev:full": "npm run build-mcp && npm run build-a2a && concurrently --names \"MCP,VITE\" --prefix-colors \"cyan,magenta\" \"tsx server-local.ts\" \"vite\"",
+    "dev:full": "kill-port 3000 && npm run build-mcp && npm run build-a2a && concurrently --names \"MCP,VITE\" --prefix-colors \"cyan,magenta\" \"tsx server-local.ts\" \"vite\"",
     "build-docs": "tsx scripts/build-docs.ts",
     "build-mcp": "tsx scripts/build-mcp.ts",
     "build-a2a": "tsx scripts/build-a2a.ts",
@@ -51,6 +51,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "glob": "^10.3.10",
+    "kill-port": "^2.0.1",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.7.1",

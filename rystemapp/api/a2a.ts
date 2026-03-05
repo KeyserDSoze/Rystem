@@ -177,7 +177,7 @@ function extractSkillAndArgs(params: TaskSendParams): { skillId: string; args: R
     // 1. skillId from params + DataPart args
     if (params.skillId) {
         const dataPart = params.message.parts.find((p): p is DataPart => p.type === 'data');
-        const args = (dataPart?.data as Record<string, string | undefined>) ?? {};
+        const args = ((dataPart?.data?.args ?? dataPart?.data) as Record<string, string | undefined>) ?? {};
         return { skillId: params.skillId, args };
     }
 

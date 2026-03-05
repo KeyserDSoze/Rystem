@@ -440,7 +440,7 @@ app.post('/a2a', async (req, res) => {
             }
         } else {
             const dataPart = params.message.parts.find(p => p.type === 'data') as { type: 'data'; data: Record<string, unknown> } | undefined;
-            args = (dataPart?.data ?? {}) as Record<string, string | undefined>;
+            args = ((dataPart?.data?.args ?? dataPart?.data) ?? {}) as Record<string, string | undefined>;
         }
 
         const { text, isError } = await executeA2ASkill(skillId, args, manifest);
