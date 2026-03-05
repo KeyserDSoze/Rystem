@@ -15,57 +15,80 @@ public static class GenerateCommand
 {
     public static Command Create()
     {
-        var destOption = new Option<string>(
-            aliases: ["--dest", "-d"],
-            description: "Destination folder for generated TypeScript files")
+        var destOption = new Option<string>("--dest", "-d")
         {
-            IsRequired = true
+            Description = "Destination folder for generated TypeScript files"
+        };
+        destOption.Validators.Add(result =>
+        {
+            if (string.IsNullOrWhiteSpace(result.GetValueOrDefault<string>()))
+            {
+                result.AddError("--dest is required");
+            }
+        });
+
+        var modelsOption = new Option<string>("--models", "-m")
+        {
+            Description = "Repository definitions in format: \"{Model,Key,Type,Factory,BackendFactory},{...}\""
+        };
+        modelsOption.Validators.Add(result =>
+        {
+            if (string.IsNullOrWhiteSpace(result.GetValueOrDefault<string>()))
+            {
+                result.AddError("--models is required");
+            }
+        });
+
+        var projectOption = new Option<string?>("--project", "-p")
+        {
+            Description = "Path to the C# project (.csproj) or assembly (.dll). " +
+                         "If not specified, searches for a .csproj in the current directory"
         };
 
-        var modelsOption = new Option<string>(
-            aliases: ["--models", "-m"],
-            description: "Repository definitions in format: \"{Model,Key,Type,Factory,BackendFactory},{...}\"")
+        var overwriteOption = new Option<bool>("--overwrite")
         {
-            IsRequired = true
+            Description = "Overwrite existing files (default: true)",
+            DefaultValueFactory = _ => true
         };
 
-        var projectOption = new Option<string?>(
-            aliases: ["--project", "-p"],
-            description: "Path to the C# project (.csproj) or assembly (.dll). " +
-                         "If not specified, searches for a .csproj in the current directory");
-
-        var overwriteOption = new Option<bool>(
-            aliases: ["--overwrite"],
-            description: "Overwrite existing files (default: true)",
-            getDefaultValue: () => true);
-
-        var includeDepsOption = new Option<bool>(
-            aliases: ["--include-deps"],
-            description: "Include project dependencies (referenced projects and NuGet packages). " +
+        var includeDepsOption = new Option<bool>("--include-deps")
+        {
+            Description = "Include project dependencies (referenced projects and NuGet packages). " +
                          "When true, all DLLs in the output directory will be scanned for types. (default: false)",
-            getDefaultValue: () => false);
-
-        var depsPrefixOption = new Option<string?>(
-            aliases: ["--deps-prefix"],
-            description: "When --include-deps is true, only load dependencies whose name starts with this prefix. " +
-                         "Example: 'MyCompany.' will only load 'MyCompany.Core.dll', 'MyCompany.Models.dll', etc.");
-
-        var command = new Command("generate", "Generate TypeScript types and services from C# models")
-        {
-            destOption,
-            modelsOption,
-            projectOption,
-            overwriteOption,
-            includeDepsOption,
-            depsPrefixOption
+            DefaultValueFactory = _ => false
         };
 
-        command.SetHandler(HandleGenerateAsync, destOption, modelsOption, projectOption, overwriteOption, includeDepsOption, depsPrefixOption);
+        var depsPrefixOption = new Option<string?>("--deps-prefix")
+        {
+            Description = "When --include-deps is true, only load dependencies whose name starts with this prefix. " +
+                         "Example: 'MyCompany.' will only load 'MyCompany.Core.dll', 'MyCompany.Models.dll', etc."
+        };
+
+        var command = new Command("generate", "Generate TypeScript types and services from C# models");
+
+        command.Options.Add(destOption);
+        command.Options.Add(modelsOption);
+        command.Options.Add(projectOption);
+        command.Options.Add(overwriteOption);
+        command.Options.Add(includeDepsOption);
+        command.Options.Add(depsPrefixOption);
+
+        command.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var dest = parseResult.GetValue(destOption)!;
+            var models = parseResult.GetValue(modelsOption)!;
+            var project = parseResult.GetValue(projectOption);
+            var overwrite = parseResult.GetValue(overwriteOption);
+            var includeDeps = parseResult.GetValue(includeDepsOption);
+            var depsPrefix = parseResult.GetValue(depsPrefixOption);
+
+            return await HandleGenerateAsync(dest, models, project, overwrite, includeDeps, depsPrefix);
+        });
 
         return command;
     }
 
-    private static async Task HandleGenerateAsync(
+    private static async Task<int> HandleGenerateAsync(
         string dest,
         string models,
         string? project,
@@ -84,8 +107,7 @@ public static class GenerateCommand
                 Console.ResetColor();
                 Console.WriteLine();
                 PrintUsageExample();
-                Environment.ExitCode = 1;
-                return;
+                return 1;
             }
 
             // Parse models
@@ -114,13 +136,15 @@ public static class GenerateCommand
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("✓ Generation completed successfully!");
             Console.ResetColor();
+
+            return 0;
         }
         catch (Exception ex)
         {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.Error.WriteLine($"Error: {ex.Message}");
             Console.ResetColor();
-            Environment.ExitCode = 1;
+            return 1;
         }
     }
 
