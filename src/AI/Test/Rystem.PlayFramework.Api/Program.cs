@@ -1,5 +1,6 @@
 ﻿using Rystem.PlayFramework;
 using Rystem.PlayFramework.Adapters;
+using Rystem.PlayFramework.Adapters.FoundryLocal;
 using Rystem.PlayFramework.Api;
 using Rystem.PlayFramework.Api.Infrastructure;
 using Rystem.PlayFramework.Api.Models;
@@ -76,6 +77,17 @@ else
     // Fallback to mock implementation for demo purposes
     builder.Services.AddSingleton<IChatClient>(new MockChatClient());
 }
+
+// ── Foundry Local adapter (local AI model) ─────────────────────────────
+var foundryModel = builder.Configuration["FoundryLocal:Model"] ?? "phi-4-mini";
+var foundryUrl = builder.Configuration["FoundryLocal:WebServiceUrl"] ?? "http://127.0.0.1:5272";
+
+builder.Services.AddAdapterForFoundryLocal("foundry", settings =>
+{
+    settings.Model = foundryModel;
+    settings.WebServiceUrl = foundryUrl;
+    settings.AppName = "Rystem.PlayFramework.Test";
+});
 
 // Configure PlayFramework with Chat scene
 builder.Services.AddPlayFramework("default", frameworkBuilder =>
@@ -229,6 +241,45 @@ builder.Services.AddPlayFramework("default", frameworkBuilder =>
         });
 });
 
+// Configure PlayFramework with Foundry Local (local model)
+builder.Services.AddPlayFramework("foundry", frameworkBuilder =>
+{
+    frameworkBuilder
+        .UseDefaultGuardrails()
+        .AddCache(cacheBuilder =>
+        {
+            cacheBuilder
+                .WithMemory()
+                .WithExpiration(TimeSpan.FromMinutes(30));
+        })
+        .UseRepository()
+        .WithPlanning(planningSettings =>
+        {
+            planningSettings.MaxRecursionDepth = 5;
+        })
+        .WithRetry(maxAttempts: 3, baseDelaySeconds: 1.0)
+        .WithTelemetry(telemetryBuilder =>
+        {
+            telemetryBuilder.EnableMetrics = true;
+            telemetryBuilder.TraceSummarization = true;
+            telemetryBuilder.TraceDirector = true;
+            telemetryBuilder.TraceLlmCalls = true;
+        })
+        .AddMainActor("You are a helpful AI assistant running on a local model via Foundry Local. You help users with their questions and tasks in a friendly and professional manner.")
+        .AddScene("General Requests", "Use this scene for every request. General conversation and question answering.", sceneBuilder =>
+        {
+            sceneBuilder
+                .WithDescriptionFromTools()
+                .WithActors(actorBuilder =>
+                {
+                    actorBuilder
+                        .AddActor("Provide clear, concise, and accurate answers.")
+                        .AddActor("Be friendly and engaging in conversation.")
+                        .AddActor("If you don't know something, admit it honestly.");
+                });
+        });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -256,6 +307,15 @@ app.MapPlayFramework("default", settings =>
     settings.EnableCompression = true;
     settings.EnableConversationEndpoints = true; // Enable conversation management endpoints
     settings.EnableVoiceEndpoints = true; // Enable voice pipeline endpoints (audio → STT → AI → TTS)
+});
+
+// Map Foundry Local PlayFramework endpoints (same base path, different factory name)
+app.MapPlayFramework("foundry", settings =>
+{
+    settings.BasePath = "/api/ai";
+    settings.RequireAuthentication = false;
+    settings.EnableCompression = true;
+    settings.EnableConversationEndpoints = true;
 });
 
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))

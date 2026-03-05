@@ -41,14 +41,22 @@ type ExecutionModeOption = SceneExecutionMode;
 // ─── Configuration ───────────────────────────────────────────────────────
 
 const API_BASE = 'http://localhost:5158/api/ai';
-const FACTORY_NAME = 'default';
 
-// Configure PlayFramework client (runs once at module load)
-const clientReady = PlayFrameworkServices.configure(FACTORY_NAME, API_BASE, settings => {
-    settings.timeout = 120_000; // 2 min for long AI responses
-    settings.maxReconnectAttempts = 3;
-    settings.reconnectBaseDelay = 1000;
-});
+type FactoryName = 'default' | 'foundry';
+
+// Configure both PlayFramework clients (runs once at module load)
+const clientsReady = Promise.all([
+    PlayFrameworkServices.configure('default', API_BASE, settings => {
+        settings.timeout = 120_000;
+        settings.maxReconnectAttempts = 3;
+        settings.reconnectBaseDelay = 1000;
+    }),
+    PlayFrameworkServices.configure('foundry', API_BASE, settings => {
+        settings.timeout = 120_000;
+        settings.maxReconnectAttempts = 3;
+        settings.reconnectBaseDelay = 1000;
+    }),
+]);
 
 // ─── Client Tool Implementations ─────────────────────────────────────────
 
@@ -528,6 +536,11 @@ function App() {
     const inputRef = useRef<HTMLInputElement>(null);
     const clientRef = useRef<PlayFrameworkClient | null>(null);
 
+    // ─── Factory Selection ───────────────────────────────────────────
+    const [activeFactory, setActiveFactory] = useState<FactoryName>('default');
+    /** Holds all initialised clients keyed by factory name. */
+    const clientsMapRef = useRef<Map<FactoryName, PlayFrameworkClient>>(new Map());
+
     // ─── Conversation Management State ───────────────────────────────────
     const [conversations, setConversations] = useState<StoredConversation[]>([]);
     const [searchText, setSearchText] = useState('');
@@ -563,17 +576,22 @@ function App() {
 
     // Initialize client
     useEffect(() => {
-        clientReady.then(() => {
-            const client = PlayFrameworkServices.resolve(FACTORY_NAME);
-            registerClientTools(client);
-            clientRef.current = client;
-            // Create BrowserVoiceClient if supported
-            if (BrowserVoiceClient.isSupported()) {
+        clientsReady.then(() => {
+            // Initialise both clients and register tools on each
+            for (const name of ['default', 'foundry'] as FactoryName[]) {
+                const client = PlayFrameworkServices.resolve(name);
+                registerClientTools(client);
+                clientsMapRef.current.set(name, client);
+            }
+            // Set the active client
+            clientRef.current = clientsMapRef.current.get(activeFactory) ?? null;
+            // Create BrowserVoiceClient from active client
+            if (clientRef.current && BrowserVoiceClient.isSupported()) {
                 const lang = navigator.language || 'en-US';
                 browserVoiceClientRef.current = new BrowserVoiceClient(
-                    client,
-                    { lang },  // STT language — browser default
-                    { lang },  // TTS language — browser default
+                    clientRef.current,
+                    { lang },
+                    { lang },
                 );
             }
             setConnection('connected');
@@ -587,6 +605,23 @@ function App() {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
+
+    // Switch active client when factory changes
+    useEffect(() => {
+        const client = clientsMapRef.current.get(activeFactory);
+        if (client) {
+            clientRef.current = client;
+            // Recreate BrowserVoiceClient for the new client
+            if (BrowserVoiceClient.isSupported()) {
+                const lang = browserVoiceLang || navigator.language || 'en-US';
+                browserVoiceClientRef.current = new BrowserVoiceClient(
+                    client,
+                    { lang },
+                    { lang },
+                );
+            }
+        }
+    }, [activeFactory]);
 
     const addMessage = useCallback((msg: ChatMessage) => {
         setMessages(prev => [...prev, msg]);
@@ -1585,6 +1620,43 @@ function App() {
                     }}>
                         Clear
                     </button>
+
+                    {/* Factory (backend) selector */}
+                    <div style={{
+                        display: 'flex',
+                        borderRadius: '6px',
+                        overflow: 'hidden',
+                        border: '1px solid #444',
+                    }}>
+                        <button
+                            onClick={() => setActiveFactory('default')}
+                            style={{
+                                padding: '5px 10px',
+                                fontSize: '11px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                backgroundColor: activeFactory === 'default' ? '#7952b3' : '#333',
+                                color: activeFactory === 'default' ? '#fff' : '#aaa',
+                                fontWeight: activeFactory === 'default' ? 700 : 400,
+                            }}
+                        >
+                            ☁ Azure OpenAI
+                        </button>
+                        <button
+                            onClick={() => setActiveFactory('foundry')}
+                            style={{
+                                padding: '5px 10px',
+                                fontSize: '11px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                backgroundColor: activeFactory === 'foundry' ? '#20c997' : '#333',
+                                color: activeFactory === 'foundry' ? '#1e1e1e' : '#aaa',
+                                fontWeight: activeFactory === 'foundry' ? 700 : 400,
+                            }}
+                        >
+                            💻 Foundry Local
+                        </button>
+                    </div>
                     </div>
                 </header>
 
@@ -2028,7 +2100,7 @@ function App() {
                 display: 'flex',
                 justifyContent: 'space-between',
             }}>
-                <span>API: {API_BASE}/{FACTORY_NAME}</span>
+                <span>API: {API_BASE}/{activeFactory}</span>
                 <span>
                     Mode: {mode === 'step' ? 'Step-by-Step' : mode === 'token' ? 'Token Streaming' : `🎤 Voice (${voiceEngine === 'server' ? 'Server' : 'Browser'})`}
                     {conversationKey && ` | Conv: ${conversationKey.substring(0, 8)}...`}
