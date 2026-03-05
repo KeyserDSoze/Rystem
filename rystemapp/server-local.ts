@@ -140,7 +140,11 @@ async function initializeMcpServer(): Promise<McpServer> {
     }
 
     // ── Static tools from manifest ────────────────────────────────────────────
-    for (const tool of manifest.tools || []) {
+    // Skip tools already registered as dynamic tools (they share the same names)
+    const dynamicToolNames = new Set<string>(
+        (manifest.dynamicTools || []).flatMap((dt: { name: string }) => [dt.name, `${dt.name}-list`, `${dt.name}-search`])
+    );
+    for (const tool of (manifest.tools || []).filter((t: { name: string }) => !dynamicToolNames.has(t.name))) {
         const toolPath = join(process.cwd(), 'public', 'mcp', 'tools', `${tool.name}.md`);
 
         server.registerTool(
