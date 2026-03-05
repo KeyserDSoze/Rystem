@@ -44,7 +44,7 @@
         </When>
         <When Condition=" '$(Configuration)'!='Debug' ">
             <ItemGroup>
-                <PackageReference Include="Rystem.PlayFramework" Version="10.0.11-beta.2" />
+                <PackageReference Include="Rystem.PlayFramework" Version="10.0.11-beta.3" />
             </ItemGroup>
         </When>
     </Choose>
