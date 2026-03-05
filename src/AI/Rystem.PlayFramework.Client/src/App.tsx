@@ -391,78 +391,6 @@ function PDFViewer({ content }: ContentViewerProps) {
 }
 
 function ContentViewer({ content }: ContentViewerProps) {
-    // Handle function calls (tool invocations)
-    if (content.type === 'functionCall') {
-        const args = content.argumentsJson ? JSON.parse(content.argumentsJson) : {};
-        return (
-            <div style={{
-                marginTop: '8px',
-                padding: '10px',
-                backgroundColor: '#2d3a4d',
-                borderRadius: '6px',
-                border: '1px solid #4a5a6d',
-            }}>
-                <div style={{ fontSize: '12px', color: '#61dafb', marginBottom: '6px', fontWeight: 600 }}>
-                    🔧 Tool Call: {content.name}
-                </div>
-                {Object.keys(args).length > 0 && (
-                    <pre style={{
-                        fontSize: '11px',
-                        color: '#aaa',
-                        margin: 0,
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                    }}>
-                        {JSON.stringify(args, null, 2)}
-                    </pre>
-                )}
-            </div>
-        );
-    }
-
-    // Handle function results (tool responses)
-    if (content.type === 'functionResult') {
-        let result = content.resultJson;
-        try {
-            result = JSON.parse(content.resultJson || 'null');
-            if (typeof result === 'string') {
-                // If parsed result is still a string, use it directly
-                result = result;
-            } else if (typeof result === 'number') {
-                result = result.toString();
-            } else {
-                // For objects/arrays, stringify with formatting
-                result = JSON.stringify(result, null, 2);
-            }
-        } catch {
-            // If parsing fails, use raw string
-            result = content.resultJson || 'null';
-        }
-
-        return (
-            <div style={{
-                marginTop: '8px',
-                padding: '10px',
-                backgroundColor: '#2d4d2d',
-                borderRadius: '6px',
-                border: '1px solid #4a6d4a',
-            }}>
-                <div style={{ fontSize: '12px', color: '#5cb85c', marginBottom: '6px', fontWeight: 600 }}>
-                    ✓ Tool Result
-                </div>
-                <pre style={{
-                    fontSize: '11px',
-                    color: '#ddd',
-                    margin: 0,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                }}>
-                    {result}
-                </pre>
-            </div>
-        );
-    }
-
     // Skip text content - it's already displayed in msg.text
     if (content.type === 'text') {
         return null;
@@ -834,10 +762,11 @@ function App() {
 
                     case 'audio':
                         // Display the synthesized text in the assistant message
-                        if (event.text) {
+                        const audioText = event.text;
+                        if (audioText) {
                             updateLastAssistant(prev => ({
                                 ...prev,
-                                text: prev.text ? prev.text + event.text : event.text,
+                                text: prev.text ? prev.text + audioText : audioText,
                             }));
                         }
                         // Queue audio chunk for playback
