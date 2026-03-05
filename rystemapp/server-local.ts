@@ -316,11 +316,7 @@ app.post('/mcp', async (req, res) => {
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-    res.json({
-        status: 'ok',
-        mcp: mcpServer ? 'initialized' : 'not-initialized',
-        timestamp: new Date().toISOString()
-    });
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Landing page redirect
@@ -328,21 +324,150 @@ app.get('/mcp', (req, res) => {
     res.redirect('/mcp-server.html');
 });
 
+// ── A2A /.well-known/agent.json ───────────────────────────────────────────────
+app.get('/.well-known/agent.json', async (req, res) => {
+    try {
+        const card = await readFile(join(process.cwd(), 'public', '.well-known', 'agent.json'), 'utf-8');
+        res.setHeader('Content-Type', 'application/json');
+        res.status(200).send(card);
+    } catch {
+        res.status(404).json({ error: 'Agent card not found. Run npm run build-a2a first.' });
+    }
+});
+
+// ── A2A tasks/send endpoint ───────────────────────────────────────────────────
+
+type A2APart = { type: 'text'; text: string } | { type: 'data'; data: Record<string, unknown> };
+interface A2AMessage { role: string; parts: A2APart[] }
+interface A2ATaskParams { id: string; skillId?: string; message: A2AMessage }
+
+async function executeA2ASkill(
+    skillId: string,
+    args: Record<string, string | undefined>,
+    manifest: ReturnType<typeof JSON.parse>
+): Promise<{ text: string; isError: boolean }> {
+    const baseName = skillId.replace(/-list$/, '').replace(/-search$/, '');
+    const dt = (manifest.dynamicTools ?? []).find((t: { name: string }) => t.name === baseName);
+    if (!dt) {
+        return { text: `❌ Unknown skill: "${skillId}". Available: ${(manifest.dynamicTools ?? []).flatMap((t: { name: string }) => [t.name, `${t.name}-list`, `${t.name}-search`]).join(', ')}`, isError: true };
+    }
+
+    const mapping: Record<string, Record<string, string>> = {};
+    const categoryInfo: Record<string, Array<{ value: string; title?: string; description?: string }>> = {};
+    for (const doc of dt.documents as Array<{ id: string; value: string; filename: string; metadata?: { title?: string; description?: string } }>) {
+        if (!mapping[doc.id]) { mapping[doc.id] = {}; categoryInfo[doc.id] = []; }
+        mapping[doc.id][doc.value] = doc.filename;
+        categoryInfo[doc.id].push({ value: doc.value, title: doc.metadata?.title, description: doc.metadata?.description });
+    }
+
+    if (skillId.endsWith('-list')) {
+        const id = args.id;
+        if (id) {
+            const topics = categoryInfo[id];
+            if (!topics) return { text: `❌ Unknown category "${id}". Available: ${Object.keys(categoryInfo).join(', ')}`, isError: true };
+            return { text: `Topics for "${id}":\n${topics.map(t => `  - ${t.value}${t.title ? ` (${t.title})` : ''}`).join('\n')}`, isError: false };
+        }
+        return { text: Object.entries(categoryInfo).map(([cat, topics]) => `**${cat}**\n${topics.map(t => `  - ${t.value}${t.title ? ` (${t.title})` : ''}`).join('\n')}`).join('\n\n'), isError: false };
+    }
+
+    if (skillId.endsWith('-search')) {
+        const query = args.query ?? '';
+        const keywords = query.toLowerCase().split(/\s+/).filter(k => k.length > 0);
+        if (!keywords.length) return { text: '⚠️ Empty query.', isError: false };
+        const matches: Array<{ id: string; value: string; title?: string; score: number }> = [];
+        for (const [id, topics] of Object.entries(mapping)) {
+            for (const value of Object.keys(topics)) {
+                const info = categoryInfo[id].find(i => i.value === value);
+                const searchText = `${id} ${value} ${info?.title ?? ''} ${info?.description ?? ''}`.toLowerCase();
+                const score = keywords.reduce((s, k) => s + (searchText.includes(k) ? k.length : 0), 0);
+                if (score > 0) matches.push({ id, value, title: info?.title, score });
+            }
+        }
+        matches.sort((a, b) => b.score - a.score);
+        if (!matches.length) return { text: `❌ No matches for "${query}"`, isError: false };
+        return { text: `🔍 ${matches.length} matches:\n\n${matches.slice(0, 10).map((m, i) => `${i + 1}. **${m.id}** → \`${m.value}\`${m.title ? ` (${m.title})` : ''}\n   ${dt.name}(id="${m.id}", value="${m.value}")`).join('\n\n')}`, isError: false };
+    }
+
+    const { id, value } = args;
+    if (!id || !value) return { text: `❌ Missing required args: id and value.`, isError: true };
+    const filename = mapping[id]?.[value];
+    if (!filename) {
+        return { text: mapping[id] ? `❌ Not found: id="${id}", value="${value}"\n\nAvailable:\n${categoryInfo[id].map(i => `  - ${i.value}`).join('\n')}` : `❌ Unknown category "${id}". Available: ${Object.keys(mapping).join(', ')}`, isError: true };
+    }
+    try {
+        const content = await readFile(join(process.cwd(), 'public', 'mcp', 'tools', dt.name, filename), 'utf-8');
+        return { text: content, isError: false };
+    } catch (e) {
+        return { text: `❌ Failed to read: ${e}`, isError: true };
+    }
+}
+
+app.post('/a2a', async (req, res) => {
+    console.log(`🤖 Received A2A request: ${req.body?.method || 'unknown'}`);
+    const rpc = req.body;
+    const id = rpc?.id ?? null;
+
+    if (rpc?.jsonrpc !== '2.0' || !rpc?.method) {
+        res.status(400).json({ jsonrpc: '2.0', id, error: { code: -32600, message: 'Invalid JSON-RPC request' } });
+        return;
+    }
+    if (rpc.method !== 'tasks/send') {
+        res.status(200).json({ jsonrpc: '2.0', id, error: { code: -32601, message: `Method "${rpc.method}" not supported. Supported: tasks/send` } });
+        return;
+    }
+
+    const params = rpc.params as A2ATaskParams;
+    if (!params?.id || !params?.message) {
+        res.status(200).json({ jsonrpc: '2.0', id, error: { code: -32602, message: 'Invalid params: id and message required' } });
+        return;
+    }
+
+    try {
+        const manifest = await getManifest();
+
+        // Extract skillId and args from message
+        let skillId = params.skillId ?? '';
+        let args: Record<string, string | undefined> = {};
+        if (!skillId) {
+            const dataPart = params.message.parts.find(p => p.type === 'data') as { type: 'data'; data: Record<string, unknown> } | undefined;
+            if (dataPart?.data?.skill && typeof dataPart.data.skill === 'string') {
+                skillId = dataPart.data.skill;
+                args = (dataPart.data.args ?? {}) as Record<string, string | undefined>;
+            } else {
+                const textPart = params.message.parts.find(p => p.type === 'text') as { type: 'text'; text: string } | undefined;
+                skillId = 'get-rystem-docs-search';
+                args = { query: textPart?.text?.trim() ?? '' };
+            }
+        } else {
+            const dataPart = params.message.parts.find(p => p.type === 'data') as { type: 'data'; data: Record<string, unknown> } | undefined;
+            args = (dataPart?.data ?? {}) as Record<string, string | undefined>;
+        }
+
+        const { text, isError } = await executeA2ASkill(skillId, args, manifest);
+        const task = {
+            id: params.id,
+            status: { state: isError ? 'failed' : 'completed', timestamp: new Date().toISOString(), ...(isError ? { message: { role: 'agent', parts: [{ type: 'text', text }] } } : {}) },
+            artifacts: isError ? [] : [{ name: 'result', parts: [{ type: 'text', text }] }],
+        };
+        res.status(200).json({ jsonrpc: '2.0', id, result: task });
+        console.log(`✅ A2A task completed: ${skillId}\n`);
+    } catch (err) {
+        console.error('❌ A2A error:', err);
+        res.status(200).json({ jsonrpc: '2.0', id, error: { code: -32603, message: 'Internal error', data: String(err) } });
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`
 ╔════════════════════════════════════════════════════════╗
 ║                                                        ║
-║   🚀 Rystem MCP Server (Local Development)           ║
+║   🚀 Rystem MCP + A2A Server (Local Development)    ║
 ║                                                        ║
-║   📍 Server:     http://localhost:${PORT}                 ║
 ║   📍 MCP API:    http://localhost:${PORT}/mcp             ║
+║   📍 A2A API:    http://localhost:${PORT}/a2a             ║
+║   📍 Agent Card: http://localhost:${PORT}/.well-known/agent.json ║
 ║   📍 Health:     http://localhost:${PORT}/health          ║
-║   📍 Docs:       http://localhost:${PORT}/                ║
-║                                                        ║
-║   🧪 Test with MCP Inspector:                         ║
-║      npx @modelcontextprotocol/inspector \\            ║
-║          http://localhost:${PORT}/mcp                     ║
 ║                                                        ║
 ╚════════════════════════════════════════════════════════╝
     `);
