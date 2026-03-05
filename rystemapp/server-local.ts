@@ -30,31 +30,37 @@ app.use(express.json());
 // Serve static files from public directory
 app.use(express.static('public'));
 
-// Global MCP server instance (reused across requests)
-let mcpServer: McpServer | null = null;
+// Cache only the parsed manifest (not the server instance)
+let cachedManifest: ReturnType<typeof JSON.parse> | null = null;
+let manifestLogged = false;
 
-// Initialize MCP server with all tools, resources, and prompts
-async function initializeMcpServer(): Promise<McpServer> {
-    if (mcpServer) {
-        return mcpServer;
+async function getManifest() {
+    if (cachedManifest) return cachedManifest;
+    const manifestPath = join(process.cwd(), 'public', 'mcp-manifest.json');
+    const manifestContent = await readFile(manifestPath, 'utf-8');
+    cachedManifest = JSON.parse(manifestContent);
+    return cachedManifest;
+}
+
+// Create a FRESH McpServer per request (stateless HTTP pattern).
+// Reusing the same McpServer across connect() calls causes "already registered" errors
+// because the SDK re-initialises handlers on every connect().
+async function createMcpServer(): Promise<McpServer> {
+    const manifest = await getManifest();
+
+    if (!manifestLogged) {
+        manifestLogged = true;
+        console.log('🔧 MCP Server ready (per-request instances)');
+        console.log(`📦 Found ${manifest.tools?.length || 0} tools`);
+        console.log(`📦 Found ${manifest.resources?.length || 0} resources`);
+        console.log(`📦 Found ${manifest.prompts?.length || 0} prompts`);
+        console.log(`📦 Found ${manifest.dynamicTools?.length || 0} dynamic tools`);
     }
-
-    console.log('🔧 Initializing MCP Server...');
 
     const server = new McpServer({
         name: 'rystem-mcp-server',
         version: '1.0.0'
     });
-
-    // Load manifest to get all available items
-    const manifestPath = join(process.cwd(), 'public', 'mcp-manifest.json');
-    const manifestContent = await readFile(manifestPath, 'utf-8');
-    const manifest = JSON.parse(manifestContent);
-
-    console.log(`📦 Found ${manifest.tools?.length || 0} tools`);
-    console.log(`📦 Found ${manifest.resources?.length || 0} resources`);
-    console.log(`📦 Found ${manifest.prompts?.length || 0} prompts`);
-    console.log(`📦 Found ${manifest.dynamicTools?.length || 0} dynamic tools`);
 
     // ── Dynamic tools (get-rystem-docs, -list, -search) ──────────────────────
     for (const dynamicTool of manifest.dynamicTools || []) {
@@ -140,7 +146,7 @@ async function initializeMcpServer(): Promise<McpServer> {
     }
 
     // ── Static tools from manifest ────────────────────────────────────────────
-    // Skip tools already registered as dynamic tools (they share the same names)
+    // Fresh server per request → no duplicate registration risk, iterate all tools
     const dynamicToolNames = new Set<string>(
         (manifest.dynamicTools || []).flatMap((dt: { name: string }) => [dt.name, `${dt.name}-list`, `${dt.name}-search`])
     );
@@ -262,8 +268,6 @@ async function initializeMcpServer(): Promise<McpServer> {
         console.log(`  ✅ Registered prompt: ${prompt.name}`);
     }
 
-    mcpServer = server;
-    console.log('✨ MCP Server initialized successfully!\n');
     return server;
 }
 
@@ -272,8 +276,8 @@ app.post('/mcp', async (req, res) => {
     console.log(`📥 Received MCP request: ${req.body.method || 'unknown'}`);
 
     try {
-        // Initialize server (cached after first request)
-        const server = await initializeMcpServer();
+        // Fresh server per request (stateless HTTP MCP pattern)
+        const server = await createMcpServer();
 
         // Create a new transport for each request (prevents request ID collisions)
         const transport = new StreamableHTTPServerTransport({
