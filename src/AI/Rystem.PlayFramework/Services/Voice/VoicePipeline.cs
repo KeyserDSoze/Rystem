@@ -64,6 +64,9 @@ internal sealed class VoicePipeline
         settings ??= new SceneRequestSettings();
         settings.EnableStreaming = true;
 
+        // Mark this request as voice mode so the SceneManager injects the voice style instruction
+        settings.IsVoiceMode = true;
+
         // Inject language instruction as a system-level instruction (not in user message)
         if (!string.IsNullOrWhiteSpace(_voiceSettings.LanguageInstruction)
             && !string.IsNullOrWhiteSpace(detectedLanguage))

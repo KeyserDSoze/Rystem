@@ -1464,6 +1464,15 @@ for await (const ev of voice.speakResponse("Tell me a joke", "stepByStep")) {
 
 // Cancel everything
 voice.cancelAll();
+
+// Or cancel just audio (text stream continues)
+voice.cancelSpeech();
+
+// Or cancel the HTTP stream + audio
+voice.cancelStream();
+
+// Check if a flow is active
+console.log(voice.isStreaming);
 ```
 
 #### Options (`BrowserVoiceOptions`)
@@ -1476,6 +1485,7 @@ voice.cancelAll();
 | `recognitionTimeoutMs` | `number` | `15000` | STT listening timeout |
 | `signal` | `AbortSignal` | — | Cancel the entire voice flow |
 | `speakResponse` | `boolean` | `true` | Whether TTS speaks the LLM response |
+| `useVoiceStyle` | `boolean` | `true` | When `true`, tells the server to inject a voice-style system instruction (conversational tone, no tables/markdown). Set to `false` to keep rich formatting even in voice mode |
 
 #### Voice Events
 
@@ -1489,6 +1499,27 @@ voice.cancelAll();
 #### Status Filtering
 
 In `stepByStep` mode, the client automatically skips non-speakable statuses (system messages, tool calls, planning, etc.) and only speaks `running`, `completed`, and `streaming` responses.
+
+#### Voice-Style Responses
+
+By default, the `BrowserVoiceClient` sets `isVoiceMode: true` on every request. This tells the server to inject a system instruction that makes the LLM respond in a **conversational, speech-friendly style**:
+
+- No tables, bullet lists, numbered lists, or markdown formatting
+- Short, clear sentences with natural discourse markers
+- Numbers spelled out when small ("three" instead of "3")
+- Concise responses aimed at ~30 seconds of spoken delivery
+
+If the user explicitly asks for a table or structured format, the LLM will still provide it.
+
+**To disable** (keep rich formatting even in voice mode):
+
+```typescript
+for await (const ev of voice.executeWithBrowserVoice({
+    useVoiceStyle: false,  // voice I/O but formatted responses
+})) { ... }
+```
+
+The voice-style instruction is fully customizable on the server via `VoiceSettings.VoiceStyleInstruction`.
 
 ### React Example: Voice Chat
 
@@ -1583,30 +1614,158 @@ For production scenarios requiring higher-quality STT/TTS (OpenAI Whisper + TTS-
 
 ## 🚫 Cancellation
 
-Use `AbortController` to **cancel ongoing requests**:
+The client provides **three levels of cancellation** that work across all endpoints.
+When the HTTP stream is aborted the .NET server automatically receives a cancelled `CancellationToken` and stops processing.
+
+### 1. Cancel via `AbortController` (all endpoints)
+
+Every method that performs a network call accepts an `AbortSignal`.
+Create an `AbortController`, pass its signal, and call `controller.abort()` to cancel:
 
 ```typescript
 const controller = new AbortController();
 
-// Start streaming
-const promise = (async () => {
-    try {
-        for await (const step of client.executeStepByStep(
-            { message: "Long task..." },
-            controller.signal
-        )) {
-            console.log(step.message);
-        }
-    } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
-            console.log("Request cancelled");
-        }
+// Works with step-by-step, token streaming, voice, and all conversation methods
+const stream = client.executeStepByStep(
+    { message: "Long task..." },
+    controller.signal
+);
+
+try {
+    for await (const step of stream) {
+        console.log(step.message);
     }
-})();
+} catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+        console.log("Request cancelled");
+    }
+}
 
 // Cancel after 5 seconds
 setTimeout(() => controller.abort(), 5000);
 ```
+
+The same pattern applies to every endpoint:
+
+```typescript
+// Token streaming
+client.executeTokenStreaming(request, controller.signal);
+
+// Server voice pipeline
+client.executeVoice({ audio: blob, signal: controller.signal });
+
+// Conversation management
+client.listConversations(params, controller.signal);
+client.getConversation(key, false, controller.signal);
+client.deleteConversation(key, controller.signal);
+```
+
+### 2. BrowserVoiceClient — Granular Cancellation
+
+`BrowserVoiceClient` exposes **four** cancellation methods with different granularity:
+
+| Method | Audio (TTS) | HTTP Stream | Recognition | Use Case |
+|---|---|---|---|---|
+| `cancelSpeech()` | ✅ Stopped | ❌ Continues | ❌ Continues | Mute audio but keep reading text |
+| `cancelStream()` | ✅ Stopped | ✅ Aborted | ❌ — | Stop text + audio (no more data from server) |
+| `stopRecognition()` | ❌ — | ❌ — | ✅ Stopped | Stop listening for speech |
+| `cancelAll()` | ✅ Stopped | ✅ Aborted | ✅ Stopped | Stop everything at once |
+
+#### Stop audio only (keep text streaming)
+
+```typescript
+const voice = new BrowserVoiceClient(client, { lang: 'en-US' });
+
+// Start voice flow
+const flowPromise = (async () => {
+    for await (const event of voice.executeWithBrowserVoice({ text: "Tell me a story" })) {
+        // You still receive text events even after cancelSpeech()
+        if (event.response?.message) {
+            appendToUI(event.response.message);
+        }
+    }
+})();
+
+// Stop audio after 3 seconds, but keep receiving text
+setTimeout(() => voice.cancelSpeech(), 3000);
+```
+
+#### Stop the API call (cancel HTTP stream)
+
+```typescript
+// Cancel via the built-in method — aborts the HTTP/SSE connection
+voice.cancelStream();
+
+// Or pass an AbortSignal via options for external control
+const controller = new AbortController();
+const flow = voice.executeWithBrowserVoice({ signal: controller.signal });
+// ...
+controller.abort(); // Same effect as cancelStream()
+```
+
+#### Stop everything at once
+
+```typescript
+// Stops recognition + aborts HTTP stream + cancels TTS
+voice.cancelAll();
+```
+
+#### Check if a flow is active
+
+```typescript
+if (voice.isStreaming) {
+    // A voice flow is in progress
+    voice.cancelAll();
+}
+```
+
+#### React example — Stop buttons
+
+```tsx
+function VoiceChat() {
+    const voiceRef = useRef<BrowserVoiceClient>(null);
+    const [messages, setMessages] = useState<string[]>([]);
+
+    const start = async () => {
+        for await (const event of voiceRef.current!.executeWithBrowserVoice()) {
+            if (event.response?.message) {
+                setMessages(prev => [...prev, event.response!.message!]);
+            }
+        }
+    };
+
+    return (
+        <div>
+            <button onClick={start}>🎤 Speak</button>
+            {/* Stop audio only — text still streams */}
+            <button onClick={() => voiceRef.current?.cancelSpeech()}>🔇 Mute</button>
+            {/* Stop the API call + audio */}
+            <button onClick={() => voiceRef.current?.cancelStream()}>⏹ Stop</button>
+            {/* Stop everything including recognition */}
+            <button onClick={() => voiceRef.current?.cancelAll()}>🚫 Cancel All</button>
+
+            {messages.map((m, i) => <p key={i}>{m}</p>)}
+        </div>
+    );
+}
+```
+
+### 3. Timeout-Based Cancellation
+
+Timeouts are configured globally via `PlayFrameworkSettings.timeout` (in ms).
+When set, every request is automatically aborted after the timeout expires:
+
+```typescript
+const settings: PlayFrameworkSettings = {
+    baseUrl: '/api/play',
+    factoryName: 'assistant',
+    timeout: 30000, // 30-second timeout for ALL requests
+    // ...
+};
+```
+
+When a user-provided `AbortSignal` and a timeout are both present, the client combines them
+so that whichever fires first cancels the request.
 
 ---
 

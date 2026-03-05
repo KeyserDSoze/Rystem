@@ -377,6 +377,13 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             }
         }
 
+        // 3c. Inject voice-style instruction when voice mode is active
+        if (settings.IsVoiceMode
+            && !string.IsNullOrWhiteSpace(_settings.Voice.VoiceStyleInstruction))
+        {
+            mainActorOutputs.Add(_settings.Voice.VoiceStyleInstruction);
+        }
+
         // 4. Build the initial context system message (Context + MainActors combined)
         context.BuildInitialContext(contextResult, mainActorOutputs);
 

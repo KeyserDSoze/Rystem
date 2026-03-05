@@ -961,6 +961,36 @@ data: { "type": "completed" }
 | `MinCharsBeforeTts` | `int` | `20` | Min chars before sending a sentence to TTS |
 | `MaxCharsBeforeTts` | `int` | `500` | Max chars before forcing a TTS chunk |
 | `LanguageInstruction` | `string?` | `"IMPORTANT: You must respond in {language}."` | System instruction template; `{language}` is replaced with STT-detected language |
+| `VoiceStyleInstruction` | `string?` | *(built-in conversational prompt)* | System instruction injected when voice mode is active. Tells the LLM to respond conversationally (no tables, no markdown). Set to `null` to disable |
+
+### Voice-Style Responses (`IsVoiceMode`)
+
+When voice mode is active, PlayFramework automatically injects a **voice-style system instruction** that tells the LLM to:
+
+- Respond in a natural, conversational tone
+- Avoid tables, lists, markdown, and special characters
+- Use discourse markers and natural connectors
+- Keep responses concise (~30 seconds spoken)
+- Still provide structured output if explicitly requested by the user
+
+This is triggered automatically by:
+- **Server voice** (`VoicePipeline`) — sets `IsVoiceMode = true` internally
+- **Browser voice** (client sends `isVoiceMode: true` in the request settings)
+
+The instruction text is fully customizable:
+
+```csharp
+frameworkBuilder.WithVoice("default", voice =>
+{
+    // Custom voice style instruction
+    voice.VoiceStyleInstruction = "Respond as if you are a radio presenter. Be energetic and concise.";
+
+    // Or disable it entirely
+    // voice.VoiceStyleInstruction = null;
+});
+```
+
+Clients can also opt out per-request by sending `isVoiceMode: false` in the settings (the TypeScript client exposes this as `useVoiceStyle: false`).
 
 ### Implementing a Custom Voice Adapter
 

@@ -44,6 +44,14 @@ export interface BrowserVoiceOptions {
      * Default: `true`.
      */
     speakResponse?: boolean;
+
+    /**
+     * If `false`, disables the server-side voice-style system instruction
+     * that tells the LLM to respond conversationally (no tables, no markdown).
+     * Useful when you want voice I/O but still want rich formatted responses.
+     * Default: `true`.
+     */
+    useVoiceStyle?: boolean;
 }
 
 /**
@@ -99,6 +107,13 @@ export class BrowserVoiceClient {
     private readonly recognizer: BrowserSpeechRecognizer;
     private readonly synthesizer: BrowserSpeechSynthesizer;
 
+    /**
+     * Internal AbortController created for each `executeWithBrowserVoice()` invocation.
+     * Used by `cancelStream()` and `cancelAll()` to programmatically abort the HTTP/SSE stream.
+     * Set to `null` when no voice flow is in progress.
+     */
+    private currentAbortController: AbortController | null = null;
+
     constructor(
         client: PlayFrameworkClient,
         recognizerOptions?: BrowserSpeechRecognizerOptions,
@@ -141,74 +156,98 @@ export class BrowserVoiceClient {
             recognitionTimeoutMs = 15000,
             signal,
             speakResponse = true,
+            useVoiceStyle = true,
         } = options ?? {};
 
-        // ── 1. Speech Recognition (if no text provided) ────────────────
-        let transcript: string;
+        // ── 0. Create internal AbortController for this invocation ─────
+        //    Links to the user-provided signal so external abort propagates.
+        const controller = new AbortController();
+        this.currentAbortController = controller;
 
-        if (text != null) {
-            transcript = text;
-        } else {
-            yield { response: null, voiceStatus: 'recognizing' };
-
-            try {
-                transcript = await this.recognizer.listen(recognitionTimeoutMs);
-            } catch (err) {
-                throw new Error(`Speech recognition failed: ${err instanceof Error ? err.message : String(err)}`);
-            }
-
-            if (!transcript.trim()) {
-                // No speech detected
-                return;
+        if (signal) {
+            if (signal.aborted) {
+                controller.abort(signal.reason);
+            } else {
+                signal.addEventListener('abort', () => controller.abort(signal.reason), { once: true });
             }
         }
 
-        yield { response: null, voiceStatus: 'recognized', transcript };
+        const effectiveSignal = controller.signal;
 
-        // ── 2. Send text to PlayFramework via streaming ────────────────
-        const fullRequest: PlayFrameworkRequest = {
-            ...request,
-            message: transcript,
-        };
+        try {
+            // ── 1. Speech Recognition (if no text provided) ────────────────
+            let transcript: string;
 
-        const stream = streamingMode === 'tokenStreaming'
-            ? this.client.executeTokenStreaming(fullRequest, signal)
-            : this.client.executeStepByStep(fullRequest, signal);
+            if (text != null) {
+                transcript = text;
+            } else {
+                yield { response: null, voiceStatus: 'recognizing' };
 
-        // ── 3. Stream responses and optionally speak them ──────────────
-        for await (const response of stream) {
-            // Forward the raw LLM event
-            yield { response };
+                try {
+                    transcript = await this.recognizer.listen(recognitionTimeoutMs);
+                } catch (err) {
+                    throw new Error(`Speech recognition failed: ${err instanceof Error ? err.message : String(err)}`);
+                }
 
-            if (!speakResponse) continue;
-
-            // For token streaming, feed chunks incrementally
-            if (streamingMode === 'tokenStreaming' && response.streamingChunk) {
-                this.synthesizer.feedChunk(response.streamingChunk);
-            }
-
-            // For step-by-step, speak complete messages
-            if (streamingMode === 'stepByStep' && response.message) {
-                // Speak any status that carries meaningful text; skip system/noise statuses
-                const nonSpeakableStatuses = [
-                    'initializing', 'loadingCache', 'savingCache', 'savingMemory',
-                    'executingMainActors', 'executingScene', 'planning',
-                    'functionRequest', 'functionCompleted', 'toolSkipped',
-                    'awaitingClient', 'commandClient',
-                    'directorDecision', 'summarizing', 'generatingFinalResponse',
-                    'error', 'budgetExceeded', 'unauthorized',
-                ];
-                if (!nonSpeakableStatuses.includes(response.status)) {
-                    this.synthesizer.feedChunk(response.message);
+                if (!transcript.trim()) {
+                    // No speech detected
+                    return;
                 }
             }
-        }
 
-        // ── 4. Flush remaining buffered text and wait for TTS to finish ─
-        if (speakResponse) {
-            yield { response: null, voiceStatus: 'speaking' };
-            await this.synthesizer.flushAndWait();
-            yield { response: null, voiceStatus: 'speechComplete' };
+            yield { response: null, voiceStatus: 'recognized', transcript };
+
+            // ── 2. Send text to PlayFramework via streaming ────────────────
+            const fullRequest: PlayFrameworkRequest = {
+                ...request,
+                message: transcript,
+                settings: {
+                    ...request.settings,
+                    isVoiceMode: useVoiceStyle,
+                },
+            };
+
+            const stream = streamingMode === 'tokenStreaming'
+                ? this.client.executeTokenStreaming(fullRequest, effectiveSignal)
+                : this.client.executeStepByStep(fullRequest, effectiveSignal);
+
+            // ── 3. Stream responses and optionally speak them ──────────────
+            for await (const response of stream) {
+                // Forward the raw LLM event
+                yield { response };
+
+                if (!speakResponse) continue;
+
+                // For token streaming, feed chunks incrementally
+                if (streamingMode === 'tokenStreaming' && response.streamingChunk) {
+                    this.synthesizer.feedChunk(response.streamingChunk);
+                }
+
+                // For step-by-step, speak complete messages
+                if (streamingMode === 'stepByStep' && response.message) {
+                    // Speak any status that carries meaningful text; skip system/noise statuses
+                    const nonSpeakableStatuses = [
+                        'initializing', 'loadingCache', 'savingCache', 'savingMemory',
+                        'executingMainActors', 'executingScene', 'planning',
+                        'functionRequest', 'functionCompleted', 'toolSkipped',
+                        'awaitingClient', 'commandClient',
+                        'directorDecision', 'summarizing', 'generatingFinalResponse',
+                        'error', 'budgetExceeded', 'unauthorized',
+                    ];
+                    if (!nonSpeakableStatuses.includes(response.status)) {
+                        this.synthesizer.feedChunk(response.message);
+                    }
+                }
+            }
+
+            // ── 4. Flush remaining buffered text and wait for TTS to finish ─
+            if (speakResponse) {
+                yield { response: null, voiceStatus: 'speaking' };
+                await this.synthesizer.flushAndWait();
+                yield { response: null, voiceStatus: 'speechComplete' };
+            }
+        } finally {
+            this.currentAbortController = null;
         }
     }
 
@@ -233,7 +272,10 @@ export class BrowserVoiceClient {
         });
     }
 
-    /** Cancel any ongoing speech. */
+    /**
+     * Cancel only the audio (TTS). The HTTP/SSE text stream continues
+     * so you can still read the LLM response in your `for await` loop.
+     */
     cancelSpeech(): void {
         this.synthesizer.cancel();
     }
@@ -243,9 +285,31 @@ export class BrowserVoiceClient {
         this.recognizer.stop();
     }
 
-    /** Cancel everything (recognition + speech). */
+    /**
+     * Cancel the HTTP/SSE stream (abort the API call).
+     * The .NET server receives a cancelled `CancellationToken` and stops processing.
+     * TTS is also cancelled since no more text will arrive.
+     */
+    cancelStream(): void {
+        if (this.currentAbortController) {
+            this.currentAbortController.abort(new DOMException('The voice stream was cancelled', 'AbortError'));
+        }
+        this.synthesizer.cancel();
+    }
+
+    /**
+     * Cancel everything: recognition + HTTP stream + audio.
+     * Equivalent to calling `stopRecognition()`, `cancelStream()`, and `cancelSpeech()` together.
+     */
     cancelAll(): void {
         this.recognizer.abort();
-        this.synthesizer.cancel();
+        this.cancelStream();
+    }
+
+    /**
+     * Whether a voice flow is currently in progress (stream is active).
+     */
+    get isStreaming(): boolean {
+        return this.currentAbortController !== null;
     }
 }

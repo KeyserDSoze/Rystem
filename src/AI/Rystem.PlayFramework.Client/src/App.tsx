@@ -555,6 +555,12 @@ function App() {
     const voiceRecorderRef = useRef<VoiceRecorder>(new VoiceRecorder({ mode: 'vad' }));
     const browserVoiceClientRef = useRef<BrowserVoiceClient | null>(null);
 
+    // ─── Cancellation ────────────────────────────────────────────────
+    /** AbortController for the current text-mode (step/token) request. */
+    const textAbortRef = useRef<AbortController | null>(null);
+    /** AbortController for the current server-voice request. */
+    const voiceAbortRef = useRef<AbortController | null>(null);
+
     // Initialize client
     useEffect(() => {
         clientReady.then(() => {
@@ -735,13 +741,30 @@ function App() {
 
     // ── Voice mode send ───────────────────────────────────────────────
 
+    /** Cancel the current server-voice request (if any). */
+    const cancelServerVoice = useCallback(() => {
+        if (voiceAbortRef.current) {
+            voiceAbortRef.current.abort();
+            voiceAbortRef.current = null;
+        }
+        // Stop any queued audio playback
+        audioQueueRef.current = [];
+        isPlayingAudioRef.current = false;
+    }, []);
+
     const handleVoiceSend = useCallback(async (audioBlob: Blob) => {
-        if (!clientRef.current || isVoiceProcessing) return;
+        if (!clientRef.current) return;
+
+        // If already processing, cancel old flow first
+        cancelServerVoice();
 
         setIsVoiceProcessing(true);
         setVoiceTranscript(null);
         audioQueueRef.current = [];
         isPlayingAudioRef.current = false;
+
+        const controller = new AbortController();
+        voiceAbortRef.current = controller;
 
         const key = conversationKey ?? crypto.randomUUID();
         if (!conversationKey) setConversationKey(key);
@@ -755,6 +778,7 @@ function App() {
             for await (const event of clientRef.current.executeVoice({
                 audio: audioBlob,
                 conversationKey: key,
+                signal: controller.signal,
             })) {
                 switch (event.type) {
                     case 'transcription':
@@ -805,24 +829,30 @@ function App() {
 
             setConnection('connected');
         } catch (error: any) {
-            console.error('Voice error:', error);
-            addMessage({
-                role: 'system',
-                text: `Voice error: ${error.message ?? error}`,
-                status: 'error',
-                timestamp: new Date(),
-            });
-            setConnection('error');
+            // Ignore abort errors (user cancelled)
+            if (error instanceof DOMException && error.name === 'AbortError') {
+                setConnection('connected');
+            } else {
+                console.error('Voice error:', error);
+                addMessage({
+                    role: 'system',
+                    text: `Voice error: ${error.message ?? error}`,
+                    status: 'error',
+                    timestamp: new Date(),
+                });
+                setConnection('error');
+            }
         } finally {
+            voiceAbortRef.current = null;
             setIsVoiceProcessing(false);
         }
-    }, [conversationKey, isVoiceProcessing, addMessage, updateLastAssistant, enqueueAudio]);
+    }, [conversationKey, addMessage, updateLastAssistant, enqueueAudio, cancelServerVoice]);
 
     // ── Browser voice interaction ──────────────────────────────────────
 
     const handleBrowserVoiceInteraction = useCallback(async () => {
         const bvc = browserVoiceClientRef.current;
-        if (!bvc || isVoiceProcessing) return;
+        if (!bvc) return;
 
         setIsVoiceProcessing(true);
         setVoiceTranscript(null);
@@ -873,24 +903,41 @@ function App() {
 
             setConnection('connected');
         } catch (error: any) {
-            console.error('Browser voice error:', error);
-            addMessage({
-                role: 'system',
-                text: `Browser voice error: ${error.message ?? error}`,
-                status: 'error',
-                timestamp: new Date(),
-            });
-            setConnection('error');
+            // Ignore abort errors (user cancelled to restart)
+            if (error instanceof DOMException && error.name === 'AbortError') {
+                setConnection('connected');
+            } else {
+                console.error('Browser voice error:', error);
+                addMessage({
+                    role: 'system',
+                    text: `Browser voice error: ${error.message ?? error}`,
+                    status: 'error',
+                    timestamp: new Date(),
+                });
+                setConnection('error');
+            }
         } finally {
             setIsVoiceProcessing(false);
         }
-    }, [conversationKey, isVoiceProcessing, browserVoiceStreamingMode, executionMode, addMessage, updateLastAssistant]);
+    }, [conversationKey, browserVoiceStreamingMode, executionMode, addMessage, updateLastAssistant]);
 
     // ── Voice-mode audio recording (record & auto-send) ───────────────
 
     /** Start or stop voice recording depending on mode and current state */
     const handleVoiceRecord = useCallback(() => {
-        // Browser voice engine: no VoiceRecorder needed, BrowserVoiceClient handles STT
+        // ── Stop current flow (any engine) ──────────────────────────
+        if (isVoiceProcessing) {
+            if (voiceEngine === 'browser') {
+                browserVoiceClientRef.current?.cancelAll();
+            } else {
+                cancelServerVoice();
+            }
+            setIsVoiceProcessing(false);
+            return;
+        }
+
+        // ── Start new flow ──────────────────────────────────────────
+        // Browser voice engine: BrowserVoiceClient handles STT
         if (voiceEngine === 'browser') {
             handleBrowserVoiceInteraction();
             return;
@@ -904,8 +951,6 @@ function App() {
             recorder.stop();
             return;
         }
-
-        if (isVoiceProcessing) return;
 
         recorder.start({
             onStart: () => {
@@ -932,7 +977,7 @@ function App() {
                 setRecordingSeconds(0);
             },
         });
-    }, [voiceEngine, isVoiceProcessing, handleVoiceSend, handleBrowserVoiceInteraction, addMessage]);
+    }, [voiceEngine, isVoiceProcessing, handleVoiceSend, handleBrowserVoiceInteraction, addMessage, cancelServerVoice]);
 
     /** Stop recording on pointer-up (holdToTalk mode) */
     const handleVoicePointerUp = useCallback(() => {
@@ -1070,6 +1115,8 @@ function App() {
         };
 
         const client = clientRef.current;
+        const controller = new AbortController();
+        textAbortRef.current = controller;
 
         try {
             setConnection('connecting');
@@ -1078,29 +1125,35 @@ function App() {
                 // Step-by-step streaming
                 addMessage({ role: 'assistant', text: '', timestamp: new Date() });
 
-                for await (const step of client.executeStepByStep(request)) {
+                for await (const step of client.executeStepByStep(request, controller.signal)) {
                     handleStep(step);
                 }
             } else {
                 // Token-level streaming
                 addMessage({ role: 'assistant', text: '', timestamp: new Date() });
 
-                for await (const chunk of client.executeTokenStreaming(request)) {
+                for await (const chunk of client.executeTokenStreaming(request, controller.signal)) {
                     handleStep(chunk);
                 }
             }
 
             setConnection('connected');
         } catch (error: any) {
-            console.error('Execution error:', error);
-            addMessage({
-                role: 'system',
-                text: `Error: ${error.message ?? error}`,
-                status: 'error',
-                timestamp: new Date()
-            });
-            setConnection('error');
+            // Ignore abort errors (user clicked stop)
+            if (error instanceof DOMException && error.name === 'AbortError') {
+                setConnection('connected');
+            } else {
+                console.error('Execution error:', error);
+                addMessage({
+                    role: 'system',
+                    text: `Error: ${error.message ?? error}`,
+                    status: 'error',
+                    timestamp: new Date()
+                });
+                setConnection('error');
+            }
         } finally {
+            textAbortRef.current = null;
             setLoading(false);
             inputRef.current?.focus();
         }
@@ -1722,13 +1775,13 @@ function App() {
                 <button
                     onClick={mode === 'voice' ? handleVoiceRecord : handleAudioRecord}
                     onPointerUp={mode === 'voice' ? handleVoicePointerUp : undefined}
-                    disabled={loading || (mode !== 'voice' && isRecording) || isVoiceProcessing}
+                    disabled={loading || (mode !== 'voice' && isRecording)}
                     title={
                         mode === 'voice'
                             ? (isRecording
                                 ? `Recording... ${recordingSeconds}s${voiceRecordingMode === 'vad' ? ' (auto-stop on silence)' : ''}`
                                 : isVoiceProcessing
-                                    ? 'Processing voice...'
+                                    ? 'Tap 🎤 to stop and start over'
                                     : voiceRecordingMode === 'vad'
                                         ? 'Tap to talk (auto-stops on silence)'
                                         : voiceRecordingMode === 'pushToTalk'
@@ -1742,21 +1795,21 @@ function App() {
                         borderRadius: '8px',
                         border: '1px solid ' + (
                             isRecording ? '#d9534f'
-                            : mode === 'voice' ? (isVoiceProcessing ? '#f0ad4e' : '#51cf66')
+                            : mode === 'voice' ? (isVoiceProcessing ? '#ff6b6b' : '#51cf66')
                             : '#444'
                         ),
                         backgroundColor: isRecording ? '#5a2d2d'
-                            : mode === 'voice' ? (isVoiceProcessing ? '#4a4a2d' : '#2d5a2d')
+                            : mode === 'voice' ? (isVoiceProcessing ? '#5a2d2d' : '#2d5a2d')
                             : '#333',
                         color: isRecording ? '#ff6b6b'
-                            : mode === 'voice' ? '#51cf66'
+                            : mode === 'voice' ? (isVoiceProcessing ? '#ff6b6b' : '#51cf66')
                             : '#aaa',
-                        cursor: (loading || isVoiceProcessing) ? 'not-allowed' : 'pointer',
+                        cursor: loading ? 'not-allowed' : 'pointer',
                         lineHeight: 1,
                         minWidth: (isRecording || isVoiceProcessing) ? '70px' : undefined,
                     }}
                 >
-                    {isRecording ? `⏺ ${recordingSeconds}s` : isVoiceProcessing ? '⏳' : '🎤'}
+                    {isRecording ? `⏺ ${recordingSeconds}s` : isVoiceProcessing ? '⏹' : '🎤'}
                 </button>
                 {mode !== 'voice' && (
                 <button
@@ -1792,10 +1845,10 @@ function App() {
                             textAlign: 'center',
                         }}>
                             {voiceEngine === 'browser'
-                                ? (isVoiceProcessing ? 'Listening / speaking via browser...' : 'Tap 🎤 — browser STT → LLM → browser TTS')
+                                ? (isVoiceProcessing ? '🗣️ Speaking... tap 🎤 to stop & restart' : 'Tap 🎤 — browser STT → LLM → browser TTS')
                                 : (isRecording
                                     ? `Recording... ${recordingSeconds}s${voiceRecordingMode === 'vad' ? ' · listening for silence' : voiceRecordingMode === 'pushToTalk' ? ' · tap 🎤 to stop' : ' · release to send'}`
-                                    : isVoiceProcessing ? 'Processing voice response...'
+                                    : isVoiceProcessing ? '🗣️ Responding... tap 🎤 to stop & restart'
                                     : voiceRecordingMode === 'vad' ? 'Tap 🎤 — auto-stops on silence'
                                     : voiceRecordingMode === 'pushToTalk' ? 'Tap 🎤 to start, tap again to stop & send'
                                     : 'Hold 🎤 to talk, release to send')}
@@ -1923,22 +1976,45 @@ function App() {
                                 outline: 'none',
                             }}
                         />
-                        <button
-                            onClick={handleSend}
-                            disabled={loading || (!input.trim() && pendingAttachments.length === 0) || connection === 'error'}
-                            style={{
-                                padding: '10px 20px',
-                                fontSize: '14px',
-                                borderRadius: '8px',
-                                border: 'none',
-                                backgroundColor: loading ? '#444' : '#61dafb',
-                                color: loading ? '#888' : '#1e1e1e',
-                                cursor: loading ? 'not-allowed' : 'pointer',
-                                fontWeight: 600,
-                            }}
-                        >
-                            {loading ? 'Sending...' : 'Send'}
-                        </button>
+                        {loading ? (
+                            <button
+                                onClick={() => {
+                                    if (textAbortRef.current) {
+                                        textAbortRef.current.abort();
+                                        textAbortRef.current = null;
+                                    }
+                                }}
+                                style={{
+                                    padding: '10px 20px',
+                                    fontSize: '14px',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    backgroundColor: '#d9534f',
+                                    color: '#fff',
+                                    cursor: 'pointer',
+                                    fontWeight: 600,
+                                }}
+                            >
+                                ⏹ Stop
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleSend}
+                                disabled={(!input.trim() && pendingAttachments.length === 0) || connection === 'error'}
+                                style={{
+                                    padding: '10px 20px',
+                                    fontSize: '14px',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    backgroundColor: '#61dafb',
+                                    color: '#1e1e1e',
+                                    cursor: 'pointer',
+                                    fontWeight: 600,
+                                }}
+                            >
+                                Send
+                            </button>
+                        )}
                     </>
                 )}
             </div>

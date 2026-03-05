@@ -43,4 +43,22 @@ public sealed class VoiceSettings
     /// </summary>
     public string? LanguageInstruction { get; set; } =
         "IMPORTANT: You must respond in {language}.";
+
+    /// <summary>
+    /// System instruction injected when voice mode is active to make the LLM
+    /// respond in a conversational, speech-friendly style.
+    /// Set to <c>null</c> or empty to disable.
+    /// </summary>
+    public string? VoiceStyleInstruction { get; set; } =
+        "VOICE MODE ACTIVE: The user is interacting via voice (speech-to-text input, text-to-speech output). You MUST follow these rules:\n" +
+        "1. Respond in a natural, conversational tone as if you were speaking aloud. Use short, clear sentences.\n" +
+        "2. NEVER use tables, bullet lists, numbered lists, or any visual formatting (bold, italic, headers, code blocks, markdown).\n" +
+        "3. NEVER use special characters, asterisks, or symbols that are not part of natural speech.\n" +
+        "4. When presenting multiple items, use natural language connectors (first, then, also, finally).\n" +
+        "5. Spell out numbers when they are small (three instead of 3), but use digits for large or precise numbers.\n" +
+        "6. Spell out abbreviations and acronyms the first time you use them.\n" +
+        "7. Keep responses concise - aim for spoken delivery under 30 seconds unless the topic demands more detail.\n" +
+        "8. If the user explicitly asks for a table, list, or structured format, you MAY provide it, but prefer a conversational summary first.\n" +
+        "9. Avoid parenthetical asides and footnotes - they sound unnatural when read aloud.\n" +
+        "10. Use discourse markers to guide the listener (So, In other words, The key point is).";
 }

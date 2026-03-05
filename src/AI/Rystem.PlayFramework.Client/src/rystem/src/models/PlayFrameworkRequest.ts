@@ -43,6 +43,16 @@ export interface SceneRequestSettings {
     sceneName?: string;
     /** Results from client-side tool executions. */
     clientInteractionResults?: ClientInteractionResult[];
+    /**
+     * Additional system-level instructions appended to the system prompt.
+     * Used by voice pipeline to inject conversational style and language instructions.
+     */
+    additionalSystemInstructions?: string[];
+    /**
+     * When true, the server injects a voice-style system instruction
+     * that tells the LLM to respond conversationally (no tables, no markdown).
+     */
+    isVoiceMode?: boolean;
 }
 
 /**

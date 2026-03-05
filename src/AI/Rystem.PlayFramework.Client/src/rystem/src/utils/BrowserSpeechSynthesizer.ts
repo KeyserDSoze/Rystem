@@ -14,14 +14,20 @@ export interface BrowserSpeechSynthesizerOptions {
     voiceName?: string;
     /**
      * Sentence delimiters used to split streaming text into speakable chunks.
-     * Default: `['.', '!', '?', '\n']`.
+     * Includes clause-level boundaries by default for faster TTS with cloud voices.
+     * Default: `['.', '!', '?', '\n', ',', ';', ':', '—', '–']`.
      */
     sentenceDelimiters?: string[];
     /**
      * Minimum character count before flushing a sentence for speech.
-     * Prevents speaking very short fragments. Default: `20`.
+     * Prevents speaking very short fragments. Default: `8`.
      */
     minCharsBeforeSpeak?: number;
+    /**
+     * Maximum characters to buffer before force-flushing even without a delimiter.
+     * Prevents long utterances that cause synthesis lag. Default: `80`.
+     */
+    maxCharsBeforeFlush?: number;
 }
 
 /**
@@ -60,9 +66,9 @@ export class BrowserSpeechSynthesizer {
     private options: Required<BrowserSpeechSynthesizerOptions>;
     private callbacks: BrowserSpeechSynthesizerCallbacks = {};
     private buffer = '';
-    private queue: string[] = [];
     private _isSpeaking = false;
-    private _isProcessingQueue = false;
+    /** Number of utterances currently in the browser's native speech queue. */
+    private _pendingCount = 0;
     private resolvedVoice: SpeechSynthesisVoice | null = null;
     private voiceResolved = false;
     private warmedUp = false;
@@ -74,8 +80,9 @@ export class BrowserSpeechSynthesizer {
             pitch: options?.pitch ?? 1,
             volume: options?.volume ?? 1,
             voiceName: options?.voiceName ?? '',
-            sentenceDelimiters: options?.sentenceDelimiters ?? ['.', '!', '?', '\n'],
-            minCharsBeforeSpeak: options?.minCharsBeforeSpeak ?? 20,
+            sentenceDelimiters: options?.sentenceDelimiters ?? ['.', '!', '?', '\n', ',', ';', ':', '\u2014', '\u2013'],
+            minCharsBeforeSpeak: options?.minCharsBeforeSpeak ?? 8,
+            maxCharsBeforeFlush: options?.maxCharsBeforeFlush ?? 80,
         };
         if (callbacks) this.callbacks = callbacks;
 
@@ -198,11 +205,11 @@ export class BrowserSpeechSynthesizer {
      */
     async flushAndWait(): Promise<void> {
         this.flush();
-        if (this.queue.length === 0 && !this._isSpeaking) return;
+        if (this._pendingCount <= 0 && !this._isSpeaking) return;
 
         return new Promise<void>((resolve) => {
             const check = () => {
-                if (this.queue.length === 0 && !this._isSpeaking && !this._isProcessingQueue) {
+                if (this._pendingCount <= 0 && !this._isSpeaking) {
                     resolve();
                 } else {
                     setTimeout(check, 100);
@@ -215,10 +222,9 @@ export class BrowserSpeechSynthesizer {
     /** Cancel all speech and clear the queue. */
     cancel(): void {
         window.speechSynthesis.cancel();
-        this.queue = [];
         this.buffer = '';
         this._isSpeaking = false;
-        this._isProcessingQueue = false;
+        this._pendingCount = 0;
         this.warmedUp = false; // reset so next speak re-cancels
     }
 
@@ -236,12 +242,14 @@ export class BrowserSpeechSynthesizer {
 
     private extractAndQueueSentences(): void {
         const delimiters = this.options.sentenceDelimiters;
+        const minChars = this.options.minCharsBeforeSpeak;
+        const maxChars = this.options.maxCharsBeforeFlush;
         let lastSplit = 0;
 
         for (let i = 0; i < this.buffer.length; i++) {
             if (delimiters.includes(this.buffer[i])) {
                 const sentence = this.buffer.substring(lastSplit, i + 1).trim();
-                if (sentence.length >= this.options.minCharsBeforeSpeak) {
+                if (sentence.length >= minChars) {
                     this.enqueue(sentence);
                     lastSplit = i + 1;
                 }
@@ -252,26 +260,70 @@ export class BrowserSpeechSynthesizer {
         if (lastSplit > 0) {
             this.buffer = this.buffer.substring(lastSplit);
         }
-    }
 
-    private enqueue(text: string): void {
-        this.queue.push(text);
-        this.processQueue();
-    }
-
-    private async processQueue(): Promise<void> {
-        if (this._isProcessingQueue) return;
-        this._isProcessingQueue = true;
-
-        try {
-            while (this.queue.length > 0) {
-                const text = this.queue.shift()!;
-                await this.speak(text);
+        // Force-flush if the buffer is very long (no delimiter found)
+        // This avoids building up a huge utterance that takes forever to synthesize.
+        if (this.buffer.trim().length >= maxChars) {
+            // Try to split at the last space to avoid cutting words
+            const lastSpace = this.buffer.lastIndexOf(' ');
+            if (lastSpace > minChars) {
+                const chunk = this.buffer.substring(0, lastSpace).trim();
+                this.buffer = this.buffer.substring(lastSpace + 1);
+                if (chunk) this.enqueue(chunk);
+            } else {
+                // No good split point — flush everything
+                const chunk = this.buffer.trim();
+                this.buffer = '';
+                if (chunk) this.enqueue(chunk);
             }
-            this.callbacks.onQueueEmpty?.();
-        } finally {
-            this._isProcessingQueue = false;
         }
+    }
+
+    /**
+     * Submit a sentence directly to the browser's native speech queue.
+     * The browser pre-processes queued utterances so the next one starts
+     * immediately when the current one finishes — no gap between sentences.
+     */
+    private enqueue(text: string): void {
+        if (!BrowserSpeechSynthesizer.isSupported()) return;
+
+        const trimmed = text.trim();
+        if (!trimmed) return;
+
+        // Chrome workaround: cancel any stale/paused state before first speak
+        if (!this.warmedUp) {
+            window.speechSynthesis.cancel();
+            this.warmedUp = true;
+        }
+
+        const utterance = this.createUtterance(trimmed);
+        this._pendingCount++;
+
+        utterance.onstart = () => {
+            this._isSpeaking = true;
+            this.callbacks.onSpeakStart?.(trimmed);
+        };
+
+        utterance.onend = () => {
+            this._pendingCount--;
+            this.callbacks.onSpeakEnd?.(trimmed);
+            if (this._pendingCount <= 0) {
+                this._pendingCount = 0;
+                this._isSpeaking = false;
+                this.callbacks.onQueueEmpty?.();
+            }
+        };
+
+        utterance.onerror = (event: SpeechSynthesisErrorEvent) => {
+            this._pendingCount--;
+            if (this._pendingCount <= 0) {
+                this._pendingCount = 0;
+                this._isSpeaking = false;
+            }
+            this.callbacks.onError?.(new Error(`SpeechSynthesis error: ${event.error}`));
+        };
+
+        window.speechSynthesis.speak(utterance);
     }
 
     private createUtterance(text: string): SpeechSynthesisUtterance {

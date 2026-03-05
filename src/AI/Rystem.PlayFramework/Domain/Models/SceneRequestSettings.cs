@@ -99,4 +99,13 @@ public sealed class SceneRequestSettings
     /// or other per-request behavioral overrides.
     /// </summary>
     public List<string>? AdditionalSystemInstructions { get; set; }
+
+    /// <summary>
+    /// When <c>true</c>, the server injects a voice-style system instruction
+    /// that tells the LLM to respond in a conversational, speech-friendly way
+    /// (no tables, no markdown, no lists unless explicitly requested).
+    /// Automatically set by the server-side <c>VoicePipeline</c> and can be
+    /// set by clients using browser-side voice.
+    /// </summary>
+    public bool IsVoiceMode { get; set; }
 }

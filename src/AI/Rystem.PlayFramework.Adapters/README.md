@@ -145,6 +145,8 @@ The PlayFramework voice pipeline orchestrates the complete flow:
 User Audio → Whisper (STT) → PlayFramework Scenes → Sentence Accumulator → TTS-1 → Audio Chunks (SSE)
 ```
 
+When voice mode is active, a **voice-style system instruction** is automatically injected to make the LLM respond conversationally (no tables, no markdown). This is fully customizable via `VoiceSettings.VoiceStyleInstruction`.
+
 See the [PlayFramework README](https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework#%EF%B8%8F-voice-pipeline-stt--llm--tts) for full voice pipeline configuration.
 
 ---
