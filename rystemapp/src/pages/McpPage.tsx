@@ -155,7 +155,10 @@ export default function McpPage() {
     try {
       const res = await fetch(MCP_ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json, text/event-stream',
+        },
         body: JSON.stringify({
           jsonrpc: '2.0',
           id: Date.now(),
