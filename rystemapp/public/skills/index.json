@@ -1,0 +1,110 @@
+[
+  {
+    "id": "get-rystem-docs-auth",
+    "name": "Rystem - Get Rystem Docs / Auth",
+    "description": "Rystem Framework docs: Social Authentication - Blazor Client, Social Authentication - Server Setup, Social Authentication - TypeScript/React Client. Use for auth questions in Rystem.",
+    "category": "auth",
+    "tool": "get-rystem-docs",
+    "docCount": 3,
+    "zipFile": "/skills/get-rystem-docs-auth.zip"
+  },
+  {
+    "id": "get-rystem-docs-content",
+    "name": "Rystem - Get Rystem Docs / Content",
+    "description": "Rystem Framework docs: Content Repository - Azure Blob Storage, Content Repository - Azure File Storage, Content Repository - In-Memory Storage, Content Repository - SharePoint Online and 6 more. Use…",
+    "category": "content",
+    "tool": "get-rystem-docs",
+    "docCount": 10,
+    "zipFile": "/skills/get-rystem-docs-content.zip"
+  },
+  {
+    "id": "get-rystem-docs-ddd",
+    "name": "Rystem - Get Rystem Docs / Ddd",
+    "description": "Rystem Framework docs: DDD Multi-Domain, DDD Single Domain, DDD Single Domain. Use for ddd questions in Rystem.",
+    "category": "ddd",
+    "tool": "get-rystem-docs",
+    "docCount": 3,
+    "zipFile": "/skills/get-rystem-docs-ddd.zip"
+  },
+  {
+    "id": "get-rystem-docs-install",
+    "name": "Rystem - Get Rystem Docs / Install",
+    "description": "Rystem Framework docs: Install Rystem Packages. Use for install questions in Rystem.",
+    "category": "install",
+    "tool": "get-rystem-docs",
+    "docCount": 1,
+    "zipFile": "/skills/get-rystem-docs-install.zip"
+  },
+  {
+    "id": "get-rystem-docs-repository",
+    "name": "Rystem - Get Rystem Docs / Repository",
+    "description": "Rystem Framework docs: Repository API Client - .NET, Repository API Client - TypeScript, Repository API Server, Repository Pattern Setup and 17 more. Use for repository questions in Rystem.",
+    "category": "repository",
+    "tool": "get-rystem-docs",
+    "docCount": 21,
+    "zipFile": "/skills/get-rystem-docs-repository.zip"
+  },
+  {
+    "id": "get-rystem-docs-rystem",
+    "name": "Rystem - Get Rystem Docs / Rystem",
+    "description": "Rystem Framework docs: Async Lock, Background Jobs, ConcurrentList, CSV and Minimization and 11 more. Use for rystem questions in Rystem.",
+    "category": "rystem",
+    "tool": "get-rystem-docs",
+    "docCount": 15,
+    "zipFile": "/skills/get-rystem-docs-rystem.zip"
+  },
+  {
+    "id": "get-rystem-docs-ai",
+    "name": "Rystem - Get Rystem Docs / Ai",
+    "description": "Rystem Framework docs: 🎮 Rystem PlayFramework, Rystem.PlayFramework.Adapters, Rystem.PlayFramework.Adapters.FoundryLocal. Use for ai questions in Rystem.",
+    "category": "ai",
+    "tool": "get-rystem-docs",
+    "docCount": 3,
+    "zipFile": "/skills/get-rystem-docs-ai.zip"
+  },
+  {
+    "id": "get-rystem-docs-api",
+    "name": "Rystem - Get Rystem Docs / Api",
+    "description": "Rystem Framework docs: api/api-client-authentication-blazorserver, api/api-client-authentication-blazorwasm, api/api, api/api-client and 1 more. Use for api questions in Rystem.",
+    "category": "api",
+    "tool": "get-rystem-docs",
+    "docCount": 5,
+    "zipFile": "/skills/get-rystem-docs-api.zip"
+  },
+  {
+    "id": "get-rystem-docs-authentication",
+    "name": "Rystem - Get Rystem Docs / Authentication",
+    "description": "Rystem Framework docs: authentication/authentication-social, authentication/authentication-social-abstractions, authentication/authentication-social-blazor. Use for authentication questions in Rystem.",
+    "category": "authentication",
+    "tool": "get-rystem-docs",
+    "docCount": 3,
+    "zipFile": "/skills/get-rystem-docs-authentication.zip"
+  },
+  {
+    "id": "get-rystem-docs-core",
+    "name": "Rystem - Get Rystem Docs / Core",
+    "description": "Rystem Framework docs: Table of Contents, core/dependencyinjection, core/dependencyinjection-web. Use for core questions in Rystem.",
+    "category": "core",
+    "tool": "get-rystem-docs",
+    "docCount": 3,
+    "zipFile": "/skills/get-rystem-docs-core.zip"
+  },
+  {
+    "id": "get-rystem-docs-extensions",
+    "name": "Rystem - Get Rystem Docs / Extensions",
+    "description": "Rystem Framework docs: extensions/backgroundjob, extensions/concurrency, extensions/concurrency-redis, extensions/localization-multiple and 2 more. Use for extensions questions in Rystem.",
+    "category": "extensions",
+    "tool": "get-rystem-docs",
+    "docCount": 6,
+    "zipFile": "/skills/get-rystem-docs-extensions.zip"
+  },
+  {
+    "id": "get-rystem-docs-localization",
+    "name": "Rystem - Get Rystem Docs / Localization",
+    "description": "Rystem Framework docs: Rystem Localization Library. Use for localization questions in Rystem.",
+    "category": "localization",
+    "tool": "get-rystem-docs",
+    "docCount": 1,
+    "zipFile": "/skills/get-rystem-docs-localization.zip"
+  }
+]

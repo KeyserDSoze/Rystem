@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Menu, X, Github, BookOpen, Code2 } from 'lucide-react'
+import { Menu, X, Github, BookOpen, Code2, Package } from 'lucide-react'
 import { useState } from 'react'
 
 interface LayoutProps {
@@ -16,6 +16,7 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Documentation', href: '/docs', icon: BookOpen },
     { name: 'MCP Tools', href: '/mcp', icon: Code2 },
     { name: 'A2A Agent', href: '/a2a', icon: Code2 },
+    { name: 'Skills', href: '/skills', icon: Package },
   ]
 
   const isActive = (path: string) => {
@@ -123,7 +124,7 @@ export default function Layout({ children }: LayoutProps) {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-y-auto">
         {children}
       </main>
 

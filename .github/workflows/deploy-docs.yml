@@ -40,6 +40,14 @@ jobs:
         working-directory: ./rystemapp
         run: npm run build-mcp
 
+      - name: Build A2A agent card
+        working-directory: ./rystemapp
+        run: npm run build-a2a
+
+      - name: Build Anthropic Skills ZIPs
+        working-directory: ./rystemapp
+        run: npm run build-skills
+
       - name: Build application
         working-directory: ./rystemapp
         run: npm run build
