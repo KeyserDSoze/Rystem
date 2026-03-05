@@ -10,6 +10,7 @@ interface McpItem {
   path: string;
   title?: string;
   description?: string;
+  inputSchema?: Record<string, { type: string; description: string; required: boolean }>;
 }
 
 interface DynamicToolDocument {
@@ -491,9 +492,9 @@ function main() {  console.log('🔧 Building MCP manifest...\n');
   // so that the MCP UI badge correctly shows a non-zero count
   const derivedTools: McpItem[] = [];
   for (const dt of dynamicTools) {
-    derivedTools.push({ name: dt.name, path: '', title: dt.title, description: dt.description });
-    derivedTools.push({ name: `${dt.name}-list`, path: '', title: `List ${dt.title}`, description: `Get all available categories and topics for ${dt.name}` });
-    derivedTools.push({ name: `${dt.name}-search`, path: '', title: `Search ${dt.title}`, description: `Search documentation by keyword with progressive disambiguation` });
+    derivedTools.push({ name: dt.name, path: '', title: dt.title, description: dt.description, inputSchema: dt.inputSchema });
+    derivedTools.push({ name: `${dt.name}-list`, path: '', title: `List ${dt.title}`, description: `Get all available categories and topics for ${dt.name}`, inputSchema: { id: { type: 'string', description: 'Optional: filter by category', required: false } } });
+    derivedTools.push({ name: `${dt.name}-search`, path: '', title: `Search ${dt.title}`, description: `Search documentation by keyword with progressive disambiguation`, inputSchema: { query: { type: 'string', description: 'Search query (space-separated keywords)', required: true } } });
   }
   const tools = [...staticTools, ...derivedTools];
 
