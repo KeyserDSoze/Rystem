@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
@@ -168,7 +168,6 @@ async function createMcpServer(): Promise<McpServer> {
                     }
                     
                     const availableIds = Object.keys(mapping);
-                    const availableValues = mapping[id] ? Object.keys(mapping[id]) : [];
                     
                     let errorText = `❌ Documentation not found for id="${id}", value="${value}"\n\n`;
                     
