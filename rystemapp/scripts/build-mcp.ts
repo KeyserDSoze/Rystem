@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, writeFileSync, existsSync, statSync, mkdirSync, copyFileSync } from 'fs';
+import { readdirSync, readFileSync, writeFileSync, existsSync, statSync, mkdirSync, copyFileSync, Dirent } from 'fs';
 import { join, relative, dirname, parse, sep } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -318,7 +318,7 @@ function autoDiscoverProjectReadmes(
   const results: Array<{ id: string; value: string; filename: string; filePath: string; metadata: { title?: string; description?: string } }> = [];
 
   function scanDir(dir: string) {
-    let entries: ReturnType<typeof readdirSync>;
+    let entries: Dirent<string>[];
     try {
       entries = readdirSync(dir, { withFileTypes: true });
     } catch {
@@ -483,9 +483,19 @@ function main() {  console.log('🔧 Building MCP manifest...\n');
   }
 
   // Scan regular items
-  const tools = scanMcpDirectory(MCP_DIR, 'tools');
+  const staticTools = scanMcpDirectory(MCP_DIR, 'tools');
   const resources = scanMcpDirectory(MCP_DIR, 'resources');
   const prompts = scanMcpDirectory(MCP_DIR, 'prompts');
+
+  // Populate tools[] with entries for each registered tool (main + list + search companions)
+  // so that the MCP UI badge correctly shows a non-zero count
+  const derivedTools: McpItem[] = [];
+  for (const dt of dynamicTools) {
+    derivedTools.push({ name: dt.name, path: '', title: dt.title, description: dt.description });
+    derivedTools.push({ name: `${dt.name}-list`, path: '', title: `List ${dt.title}`, description: `Get all available categories and topics for ${dt.name}` });
+    derivedTools.push({ name: `${dt.name}-search`, path: '', title: `Search ${dt.title}`, description: `Search documentation by keyword with progressive disambiguation` });
+  }
+  const tools = [...staticTools, ...derivedTools];
 
   const manifest: McpManifest = {
     name: 'rystem-mcp',
@@ -520,10 +530,10 @@ function main() {  console.log('🔧 Building MCP manifest...\n');
       console.log(`     - ${tool.name} (${tool.documents.length} documents${note})`);
     });
   }
-  console.log(`   Tools: ${tools.length}`);
+  console.log(`   Tools: ${tools.length} (${staticTools.length} static + ${derivedTools.length} derived from dynamic)`);
   console.log(`   Resources: ${resources.length}`);
   console.log(`   Prompts: ${prompts.length}`);
-  console.log(`   Total: ${dynamicTools.length + tools.length + resources.length + prompts.length}\n`);
+  console.log(`   Total: ${tools.length + resources.length + prompts.length}\n`);
 }
 
 main();
