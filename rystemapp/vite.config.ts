@@ -12,13 +12,8 @@ export default defineConfig({
     },
   },
   server: {
-    proxy: {
-      // Proxy /mcp to the local Express MCP server in dev
-      '/mcp': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-      },
-    },
+    // MCP server runs separately on port 3000 in dev (npm run dev:full)
+    // Frontend calls http://localhost:3000/mcp directly (VITE_MCP_ENDPOINT)
   },
   build: {
     outDir: 'dist',
