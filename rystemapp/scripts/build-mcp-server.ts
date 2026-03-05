@@ -15,6 +15,21 @@ interface McpItem {
   description?: string;
 }
 
+interface DynamicToolDocument {
+  filename: string;
+  id: string;
+  value: string;
+  metadata?: { title?: string; description?: string };
+}
+
+interface DynamicTool {
+  name: string;
+  title: string;
+  description: string;
+  inputSchema: Record<string, { type: string; description: string; required: boolean }>;
+  documents: DynamicToolDocument[];
+}
+
 interface McpManifest {
   name: string;
   version: string;
@@ -22,6 +37,7 @@ interface McpManifest {
   tools: McpItem[];
   resources: McpItem[];
   prompts: McpItem[];
+  dynamicTools: DynamicTool[];
 }
 
 interface McpServerResponse {
@@ -72,19 +88,35 @@ function main() {
   );
   console.log('✓ Generated mcp-server.json (Initialize response)');
 
+  // Build a lookup map from dynamic tools: name → inputSchema
+  const dynamicSchemaMap = new Map<string, Record<string, { type: string; description: string; required: boolean }>>();
+  for (const dt of manifest.dynamicTools || []) {
+    dynamicSchemaMap.set(dt.name, dt.inputSchema);
+    // companion tools have fixed schemas
+    dynamicSchemaMap.set(`${dt.name}-list`, { id: { type: 'string', description: 'Optional: filter by category', required: false } });
+    dynamicSchemaMap.set(`${dt.name}-search`, { query: { type: 'string', description: 'Search query (space-separated keywords)', required: true } });
+  }
+
   // 2. Generate Tools List response (mcp-tools-list.json)
   const toolsListResponse = {
     jsonrpc: '2.0',
     result: {
-      tools: manifest.tools.map(tool => ({
-        name: tool.name,
-        description: tool.description || tool.title || '',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-          required: [],
-        },
-      })),
+      tools: manifest.tools.map(tool => {
+        const dynSchema = dynamicSchemaMap.get(tool.name);
+        const properties: Record<string, { type: string; description: string }> = {};
+        const required: string[] = [];
+        if (dynSchema) {
+          for (const [key, cfg] of Object.entries(dynSchema)) {
+            properties[key] = { type: cfg.type, description: cfg.description };
+            if (cfg.required) required.push(key);
+          }
+        }
+        return {
+          name: tool.name,
+          description: tool.description || tool.title || '',
+          inputSchema: { type: 'object', properties, required },
+        };
+      }),
     },
     id: 1,
   };
@@ -207,7 +239,10 @@ npx @modelcontextprotocol/inspector https://rystem.cloud/mcp
 ## � Available Content
 
 ### Tools (${manifest.tools.length})
-${manifest.tools.map(t => `- **${t.title || t.name}**: ${t.description || 'Description'}`).join('\n')}
+${(manifest.dynamicTools || []).map(dt =>
+  `- **${dt.title}** (\`${dt.name}\`): ${dt.documents.length} docs — use \`${dt.name}(id, value)\`, \`${dt.name}-list()\`, \`${dt.name}-search(query)\``
+).join('\n')}
+${manifest.tools.filter(t => !(manifest.dynamicTools || []).some(dt => t.name === dt.name || t.name === `${dt.name}-list` || t.name === `${dt.name}-search`)).map(t => `- **${t.title || t.name}**: ${t.description || ''}`).join('\n')}
 
 ### Resources (${manifest.resources.length})
 ${manifest.resources.map(r => `- **${r.title || r.name}**: ${r.description || 'Overview'}`).join('\n')}

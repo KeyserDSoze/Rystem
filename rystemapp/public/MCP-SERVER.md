@@ -66,7 +66,8 @@ npx @modelcontextprotocol/inspector https://rystem.cloud/mcp
 
 ## � Available Content
 
-### Tools (0)
+### Tools (3)
+- **Get Rystem Docs** (`get-rystem-docs`): 74 docs — use `get-rystem-docs(id, value)`, `get-rystem-docs-list()`, `get-rystem-docs-search(query)`
 
 
 ### Resources (3)
@@ -154,7 +155,7 @@ The MCP server content is dynamically loaded from markdown files in `/mcp/{tools
 
 ---
 
-**Last Updated**: 2026-01-27  
+**Last Updated**: 2026-03-05  
 **MCP Protocol Version**: 2024-11-05  
 **Documentation**: https://rystem.net  
 **MCP Server**: https://rystem.cloud/mcp

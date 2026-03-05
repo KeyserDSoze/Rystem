@@ -3,6 +3,7 @@
   "result": {
     "protocolVersion": "2024-11-05",
     "capabilities": {
+      "tools": {},
       "resources": {},
       "prompts": {}
     },
