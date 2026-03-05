@@ -65,7 +65,7 @@ async function createMcpServer(): Promise<McpServer> {
 
         // Build mapping: { id: { value: filename } }
         const mapping: Record<string, Record<string, string>> = {};
-        const categoryInfo: Record<string, Array<{ value: string; title?: string }>> = {};
+        const categoryInfo: Record<string, Array<{ value: string; title?: string; description?: string }>> = {};
         
         for (const doc of dynamicTool.documents) {
             if (!mapping[doc.id]) {
@@ -75,7 +75,8 @@ async function createMcpServer(): Promise<McpServer> {
             mapping[doc.id][doc.value] = doc.filename;
             categoryInfo[doc.id].push({
                 value: doc.value,
-                title: doc.metadata?.title
+                title: doc.metadata?.title,
+                description: doc.metadata?.description
             });
         }
 
@@ -90,7 +91,7 @@ async function createMcpServer(): Promise<McpServer> {
             for (const [id, topics] of Object.entries(mapping)) {
                 for (const value of Object.keys(topics)) {
                     const info = categoryInfo[id].find(i => i.value === value);
-                    const searchText = `${id} ${value} ${info?.title || ''}`.toLowerCase();
+                    const searchText = `${id} ${value} ${info?.title || ''} ${info?.description || ''}`.toLowerCase();
                     
                     let score = 0;
                     let matchedKeywords = 0;
@@ -284,7 +285,7 @@ async function createMcpServer(): Promise<McpServer> {
                 for (const [id, topics] of Object.entries(mapping)) {
                     for (const value of Object.keys(topics)) {
                         const info = categoryInfo[id].find(i => i.value === value);
-                        const searchText = `${id} ${value} ${info?.title || ''}`.toLowerCase();
+                        const searchText = `${id} ${value} ${info?.title || ''} ${info?.description || ''}`.toLowerCase();
                         
                         let score = 0;
                         let matchedKeywords: string[] = [];

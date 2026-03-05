@@ -72,11 +72,11 @@ async function createMcpServer(): Promise<McpServer> {
         }
 
         const mapping: Record<string, Record<string, string>> = {};
-        const categoryInfo: Record<string, Array<{ value: string; title?: string }>> = {};
-        for (const doc of dynamicTool.documents as Array<{ id: string; value: string; filename: string; metadata?: { title?: string } }>) {
+        const categoryInfo: Record<string, Array<{ value: string; title?: string; description?: string }>> = {};
+        for (const doc of dynamicTool.documents as Array<{ id: string; value: string; filename: string; metadata?: { title?: string; description?: string } }>) {
             if (!mapping[doc.id]) { mapping[doc.id] = {}; categoryInfo[doc.id] = []; }
             mapping[doc.id][doc.value] = doc.filename;
-            categoryInfo[doc.id].push({ value: doc.value, title: doc.metadata?.title });
+            categoryInfo[doc.id].push({ value: doc.value, title: doc.metadata?.title, description: doc.metadata?.description });
         }
 
         // Main tool
@@ -128,7 +128,7 @@ async function createMcpServer(): Promise<McpServer> {
                 for (const [id, topics] of Object.entries(mapping)) {
                     for (const value of Object.keys(topics)) {
                         const info = categoryInfo[id].find(i => i.value === value);
-                        const text = `${id} ${value} ${info?.title || ''}`.toLowerCase();
+                        const text = `${id} ${value} ${info?.title || ''} ${info?.description || ''}`.toLowerCase();
                         const score = keywords.reduce((s, k) => s + (text.includes(k) ? k.length : 0), 0);
                         if (score > 0) matches.push({ id, value, title: info?.title, score });
                     }
