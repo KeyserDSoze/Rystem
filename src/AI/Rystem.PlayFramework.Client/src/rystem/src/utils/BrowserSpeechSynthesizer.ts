@@ -14,20 +14,21 @@ export interface BrowserSpeechSynthesizerOptions {
     voiceName?: string;
     /**
      * Sentence delimiters used to split streaming text into speakable chunks.
-     * Includes clause-level boundaries by default for faster TTS with cloud voices.
-     * Default: `['.', '!', '?', '\n', ',', ';', ':', '—', '–']`.
+     * Default: `['.', '!', '?', '\n']`.
      */
     sentenceDelimiters?: string[];
     /**
      * Minimum character count before flushing a sentence for speech.
-     * Prevents speaking very short fragments. Default: `8`.
+     * Prevents speaking very short fragments. Default: `20`.
      */
     minCharsBeforeSpeak?: number;
     /**
-     * Maximum characters to buffer before force-flushing even without a delimiter.
-     * Prevents long utterances that cause synthesis lag. Default: `80`.
+     * When `true`, prefer browser-local voices (no network round-trip) over
+     * cloud/remote voices. Local voices synthesize instantly, eliminating
+     * the audible gap between sentences caused by network latency.
+     * Default: `true`.
      */
-    maxCharsBeforeFlush?: number;
+    preferLocalVoice?: boolean;
 }
 
 /**
@@ -72,6 +73,8 @@ export class BrowserSpeechSynthesizer {
     private resolvedVoice: SpeechSynthesisVoice | null = null;
     private voiceResolved = false;
     private warmedUp = false;
+    /** Chrome keepalive: periodic pause/resume to prevent auto-pause after ~15s. */
+    private keepAliveTimer: ReturnType<typeof setInterval> | null = null;
 
     constructor(options?: BrowserSpeechSynthesizerOptions, callbacks?: BrowserSpeechSynthesizerCallbacks) {
         this.options = {
@@ -80,9 +83,9 @@ export class BrowserSpeechSynthesizer {
             pitch: options?.pitch ?? 1,
             volume: options?.volume ?? 1,
             voiceName: options?.voiceName ?? '',
-            sentenceDelimiters: options?.sentenceDelimiters ?? ['.', '!', '?', '\n', ',', ';', ':', '\u2014', '\u2013'],
-            minCharsBeforeSpeak: options?.minCharsBeforeSpeak ?? 8,
-            maxCharsBeforeFlush: options?.maxCharsBeforeFlush ?? 80,
+            sentenceDelimiters: options?.sentenceDelimiters ?? ['.', '!', '?', '\n'],
+            minCharsBeforeSpeak: options?.minCharsBeforeSpeak ?? 20,
+            preferLocalVoice: options?.preferLocalVoice ?? true,
         };
         if (callbacks) this.callbacks = callbacks;
 
@@ -221,6 +224,7 @@ export class BrowserSpeechSynthesizer {
 
     /** Cancel all speech and clear the queue. */
     cancel(): void {
+        this.stopKeepAlive();
         window.speechSynthesis.cancel();
         this.buffer = '';
         this._isSpeaking = false;
@@ -243,7 +247,6 @@ export class BrowserSpeechSynthesizer {
     private extractAndQueueSentences(): void {
         const delimiters = this.options.sentenceDelimiters;
         const minChars = this.options.minCharsBeforeSpeak;
-        const maxChars = this.options.maxCharsBeforeFlush;
         let lastSplit = 0;
 
         for (let i = 0; i < this.buffer.length; i++) {
@@ -259,23 +262,6 @@ export class BrowserSpeechSynthesizer {
         // Keep un-split remainder in the buffer
         if (lastSplit > 0) {
             this.buffer = this.buffer.substring(lastSplit);
-        }
-
-        // Force-flush if the buffer is very long (no delimiter found)
-        // This avoids building up a huge utterance that takes forever to synthesize.
-        if (this.buffer.trim().length >= maxChars) {
-            // Try to split at the last space to avoid cutting words
-            const lastSpace = this.buffer.lastIndexOf(' ');
-            if (lastSpace > minChars) {
-                const chunk = this.buffer.substring(0, lastSpace).trim();
-                this.buffer = this.buffer.substring(lastSpace + 1);
-                if (chunk) this.enqueue(chunk);
-            } else {
-                // No good split point — flush everything
-                const chunk = this.buffer.trim();
-                this.buffer = '';
-                if (chunk) this.enqueue(chunk);
-            }
         }
     }
 
@@ -301,6 +287,7 @@ export class BrowserSpeechSynthesizer {
 
         utterance.onstart = () => {
             this._isSpeaking = true;
+            this.startKeepAlive();
             this.callbacks.onSpeakStart?.(trimmed);
         };
 
@@ -310,6 +297,7 @@ export class BrowserSpeechSynthesizer {
             if (this._pendingCount <= 0) {
                 this._pendingCount = 0;
                 this._isSpeaking = false;
+                this.stopKeepAlive();
                 this.callbacks.onQueueEmpty?.();
             }
         };
@@ -319,6 +307,7 @@ export class BrowserSpeechSynthesizer {
             if (this._pendingCount <= 0) {
                 this._pendingCount = 0;
                 this._isSpeaking = false;
+                this.stopKeepAlive();
             }
             this.callbacks.onError?.(new Error(`SpeechSynthesis error: ${event.error}`));
         };
@@ -372,13 +361,20 @@ export class BrowserSpeechSynthesizer {
             }
         }
 
-        // Try by language (exact match, then base language match)
+        // Try by language (exact match, then base language match).
+        // When preferLocalVoice is true, search local voices first (no network latency).
         if (this.options.lang) {
             const targetLang = BrowserSpeechSynthesizer.normalizeLang(this.options.lang);
             const targetBase = targetLang.split('-')[0];
+            const preferLocal = this.options.preferLocalVoice;
+
+            // Sort: local voices first when preferred
+            const sorted = preferLocal
+                ? [...voices].sort((a, b) => (b.localService ? 1 : 0) - (a.localService ? 1 : 0))
+                : voices;
 
             // Exact match: it-it === it-it
-            const exact = voices.find(v =>
+            const exact = sorted.find(v =>
                 BrowserSpeechSynthesizer.normalizeLang(v.lang) === targetLang
             );
             if (exact) {
@@ -388,9 +384,9 @@ export class BrowserSpeechSynthesizer {
             }
 
             // Base language match: it-it starts with it, it-ch starts with it
-            const byBase = voices.find(v =>
+            const byBase = sorted.find(v =>
                 BrowserSpeechSynthesizer.normalizeLang(v.lang).startsWith(targetBase + '-')
-            ) ?? voices.find(v =>
+            ) ?? sorted.find(v =>
                 BrowserSpeechSynthesizer.normalizeLang(v.lang) === targetBase
             );
             if (byBase) {
@@ -402,6 +398,29 @@ export class BrowserSpeechSynthesizer {
 
         // Don't cache failure — voices may load later or lang may change
         return null;
+    }
+
+    /**
+     * Chrome workaround: keeps speech synthesis alive.
+     * Chrome auto-pauses `speechSynthesis` after ~15 seconds of continuous speech.
+     * Calling `pause()` then `resume()` periodically resets this internal timer.
+     */
+    private startKeepAlive(): void {
+        if (this.keepAliveTimer) return; // already running
+        this.keepAliveTimer = setInterval(() => {
+            if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+                window.speechSynthesis.pause();
+                window.speechSynthesis.resume();
+            }
+        }, 10_000);
+    }
+
+    /** Stop the Chrome keepalive timer. */
+    private stopKeepAlive(): void {
+        if (this.keepAliveTimer) {
+            clearInterval(this.keepAliveTimer);
+            this.keepAliveTimer = null;
+        }
     }
 
     /**
