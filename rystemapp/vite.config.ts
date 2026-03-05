@@ -11,6 +11,15 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      // Proxy /mcp to the local Express MCP server in dev
+      '/mcp': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',

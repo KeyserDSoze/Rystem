@@ -54,8 +54,92 @@ async function initializeMcpServer(): Promise<McpServer> {
     console.log(`📦 Found ${manifest.tools?.length || 0} tools`);
     console.log(`📦 Found ${manifest.resources?.length || 0} resources`);
     console.log(`📦 Found ${manifest.prompts?.length || 0} prompts`);
+    console.log(`📦 Found ${manifest.dynamicTools?.length || 0} dynamic tools`);
 
-    // Register all tools from manifest
+    // ── Dynamic tools (get-rystem-docs, -list, -search) ──────────────────────
+    for (const dynamicTool of manifest.dynamicTools || []) {
+        const zodSchema: Record<string, z.ZodString | z.ZodOptional<z.ZodString>> = {};
+        for (const [key, config] of Object.entries(dynamicTool.inputSchema as Record<string, { type: string; description: string; required: boolean }>)) {
+            zodSchema[key] = config.required
+                ? z.string().describe(config.description)
+                : z.string().optional().describe(config.description);
+        }
+
+        const mapping: Record<string, Record<string, string>> = {};
+        const categoryInfo: Record<string, Array<{ value: string; title?: string }>> = {};
+        for (const doc of dynamicTool.documents as Array<{ id: string; value: string; filename: string; metadata?: { title?: string } }>) {
+            if (!mapping[doc.id]) { mapping[doc.id] = {}; categoryInfo[doc.id] = []; }
+            mapping[doc.id][doc.value] = doc.filename;
+            categoryInfo[doc.id].push({ value: doc.value, title: doc.metadata?.title });
+        }
+
+        // Main tool
+        server.registerTool(
+            dynamicTool.name,
+            { title: dynamicTool.title, description: dynamicTool.description, inputSchema: zodSchema },
+            async (args: Record<string, string | undefined>) => {
+                const id = args.id!; const value = args.value!;
+                const filename = mapping[id]?.[value];
+                if (!filename) {
+                    const errorText = mapping[id]
+                        ? `❌ Not found: id="${id}", value="${value}"\n\nAvailable:\n${categoryInfo[id].map(i => `  - ${i.value}`).join('\n')}`
+                        : `❌ Unknown category "${id}"\n\nAvailable: ${Object.keys(mapping).join(', ')}`;
+                    return { content: [{ type: 'text' as const, text: errorText }], isError: true };
+                }
+                try {
+                    const content = await readFile(join(process.cwd(), 'public', 'mcp', 'tools', dynamicTool.name, filename), 'utf-8');
+                    return { content: [{ type: 'text' as const, text: content }] };
+                } catch (e) {
+                    return { content: [{ type: 'text' as const, text: `❌ ${e}` }], isError: true };
+                }
+            }
+        );
+
+        // -list companion
+        server.registerTool(
+            `${dynamicTool.name}-list`,
+            { title: `List ${dynamicTool.title}`, description: `List all categories/topics for ${dynamicTool.name}`, inputSchema: { id: z.string().optional().describe('Optional: filter by category') } },
+            async (args: { id?: string }) => {
+                if (args.id) {
+                    const topics = categoryInfo[args.id];
+                    if (!topics) return { content: [{ type: 'text' as const, text: `❌ Unknown category "${args.id}"\n\nAvailable: ${Object.keys(categoryInfo).join(', ')}` }], isError: true };
+                    return { content: [{ type: 'text' as const, text: `Topics for "${args.id}":\n${topics.map(t => `  - ${t.value}${t.title ? ` (${t.title})` : ''}`).join('\n')}` }] };
+                }
+                const text = Object.entries(categoryInfo).map(([cat, topics]) =>
+                    `**${cat}**\n${topics.map(t => `  - ${t.value}${t.title ? ` (${t.title})` : ''}`).join('\n')}`
+                ).join('\n\n');
+                return { content: [{ type: 'text' as const, text }] };
+            }
+        );
+
+        // -search companion
+        server.registerTool(
+            `${dynamicTool.name}-search`,
+            { title: `Search ${dynamicTool.title}`, description: 'Search docs by keyword', inputSchema: { query: z.string().describe('Keywords to search') } },
+            async (args: { query: string }) => {
+                const keywords = args.query.toLowerCase().split(/\s+/).filter(k => k.length > 2);
+                const matches: Array<{ id: string; value: string; title?: string; score: number }> = [];
+                for (const [id, topics] of Object.entries(mapping)) {
+                    for (const value of Object.keys(topics)) {
+                        const info = categoryInfo[id].find(i => i.value === value);
+                        const text = `${id} ${value} ${info?.title || ''}`.toLowerCase();
+                        const score = keywords.reduce((s, k) => s + (text.includes(k) ? k.length : 0), 0);
+                        if (score > 0) matches.push({ id, value, title: info?.title, score });
+                    }
+                }
+                matches.sort((a, b) => b.score - a.score);
+                if (matches.length === 0) return { content: [{ type: 'text' as const, text: `❌ No matches for "${args.query}"` }] };
+                const text = matches.slice(0, 10).map((m, i) =>
+                    `${i + 1}. **${m.id}** → \`${m.value}\`${m.title ? ` (${m.title})` : ''}\n   Usage: ${dynamicTool.name}(id="${m.id}", value="${m.value}")`
+                ).join('\n\n');
+                return { content: [{ type: 'text' as const, text: `🔍 ${matches.length} matches:\n\n${text}` }] };
+            }
+        );
+
+        console.log(`  ✅ Registered dynamic tool: ${dynamicTool.name} (${dynamicTool.documents.length} docs)`);
+    }
+
+    // ── Static tools from manifest ────────────────────────────────────────────
     for (const tool of manifest.tools || []) {
         const toolPath = join(process.cwd(), 'public', 'mcp', 'tools', `${tool.name}.md`);
 

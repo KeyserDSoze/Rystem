@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "vite",
     "dev:api": "npm run prebuild && tsx server-local.ts",
+    "dev:full": "npm run build-mcp && concurrently --names \"MCP,VITE\" --prefix-colors \"cyan,magenta\" \"tsx server-local.ts\" \"vite\"",
     "build-docs": "tsx scripts/build-docs.ts",
     "build-mcp": "tsx scripts/build-mcp.ts",
     "build-mcp-server": "tsx scripts/build-mcp-server.ts",
@@ -44,6 +45,7 @@
     "@typescript-eslint/parser": "^6.21.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.17",
+    "concurrently": "^9.2.1",
     "eslint": "^8.56.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
