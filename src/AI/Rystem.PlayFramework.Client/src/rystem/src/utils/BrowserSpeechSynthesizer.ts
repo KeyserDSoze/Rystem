@@ -187,6 +187,11 @@ export class BrowserSpeechSynthesizer {
      * then the complete sentence is queued for speaking.
      */
     feedChunk(chunk: string): void {
+        // Pre-warm the TTS engine on the very first chunk so Chrome's internal
+        // pipeline is already initialised by the time the first real sentence is ready.
+        if (!this.warmedUp) {
+            this.preWarm();
+        }
         this.buffer += chunk;
         this.extractAndQueueSentences();
     }
@@ -229,7 +234,29 @@ export class BrowserSpeechSynthesizer {
         this.buffer = '';
         this._isSpeaking = false;
         this._pendingCount = 0;
-        this.warmedUp = false; // reset so next speak re-cancels
+        this.warmedUp = false; // reset so next speak/feedChunk re-warms
+    }
+
+    /**
+     * Pre-warm Chrome's TTS engine by speaking a zero-volume silent utterance.
+     * This primes the internal synthesis pipeline (voice loading, audio context
+     * creation, etc.) so that the first real utterance starts faster.
+     */
+    private preWarm(): void {
+        if (this.warmedUp || !BrowserSpeechSynthesizer.isSupported()) return;
+        window.speechSynthesis.cancel(); // clear any stale state
+        const utterance = new SpeechSynthesisUtterance('');
+        utterance.volume = 0;
+        // Resolve and assign the voice now so the engine pre-loads it
+        const voice = this.resolveVoice();
+        if (voice) {
+            utterance.voice = voice;
+            utterance.lang = voice.lang;
+        } else if (this.options.lang) {
+            utterance.lang = this.options.lang;
+        }
+        window.speechSynthesis.speak(utterance);
+        this.warmedUp = true;
     }
 
     /** Pause speech. */
