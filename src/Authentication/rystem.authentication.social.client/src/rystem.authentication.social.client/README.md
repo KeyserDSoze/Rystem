@@ -1,533 +1,38 @@
-### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+﻿# rystem.authentication.social.client
 
-# rystem.authentication.social.client
+[![npm version](https://img.shields.io/npm/v/rystem.authentication.social.client)](https://www.npmjs.com/package/rystem.authentication.social.client)
+[![npm downloads](https://img.shields.io/npm/dm/rystem.authentication.social.client)](https://www.npmjs.com/package/rystem.authentication.social.client)
 
-Framework-agnostic TypeScript library for social authentication with built-in PKCE support for secure OAuth 2.0 flows.
+Framework-agnostic TypeScript client for [Rystem social authentication](https://github.com/KeyserDSoze/Rystem). Handles the OAuth/PKCE flow, token storage, and user resolution for any JavaScript environment.
 
-**Works with**: React, React Native, Next.js, Expo, Remix, and any JavaScript/TypeScript framework.
+Works with: **React**, **Next.js**, **Remix**, **React Native / Expo**, or any TypeScript app.
 
-### ✨ Key Features
+---
 
-- **🔐 PKCE Built-in**: Automatic code_verifier generation for Microsoft OAuth (RFC 7636)
-- **⚛️ React Hooks**: Type-safe hooks for token and user management
-- **🎨 Ready-to-Use Components**: Login buttons, logout, authentication wrapper (React only)
-- **🔄 Automatic Token Refresh**: Handles token expiration seamlessly
-- **📱 Multi-Platform**: Web (React, Next.js), Mobile (React Native, Expo), and any framework via interfaces
-- **🔌 Framework-Agnostic Core**: Inject custom storage and routing services for any platform
-
-## 🆕 What's New - Mobile Platform Support
-
-**All social providers now support mobile platforms!** Configure platform-specific OAuth redirect URIs for seamless authentication across Web, React Native iOS, and React Native Android.
-
-### Supported Platforms & Providers
-
-| Provider | Web (Popup) | Web (Redirect) | React Native iOS | React Native Android | PKCE Support |
-|----------|-------------|----------------|------------------|---------------------|--------------|
-| Microsoft | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Google | ✅ | ✅ | ✅ | ✅ | - |
-| Facebook | ✅ | ✅ | ✅ | ✅ | - |
-| GitHub | ✅ | ✅ | ✅ | ✅ | - |
-| Amazon | ✅ | ✅ | ✅ | ✅ | - |
-| LinkedIn | ✅ | ✅ | ✅ | ✅ | - |
-| X (Twitter) | ✅ | ✅ | ✅ | ✅ | - |
-| TikTok | ✅ | ✅ | ✅ | ✅ | - |
-| Instagram | ✅ | ✅ | ✅ | ✅ | - |
-| Pinterest | ✅ | ✅ | ✅ | ✅ | - |
-
-### How It Works
-
-1. **Auto-Detection**: Library automatically detects platform (Web/iOS/Android) from navigator.userAgent
-2. **Platform-Specific URIs**: Configure custom redirect URIs per platform (e.g., `msauth://` for iOS, `myapp://` for Android)
-3. **Login Modes**: Choose Popup (web) or Redirect (mobile) behavior
-4. **Deep Links**: All buttons support mobile deep link OAuth callbacks
-5. **No Breaking Changes**: Existing web apps work without modification
-
-### Quick Example
-
-```typescript
-import { setupSocialLogin, PlatformType, LoginMode } from 'rystem.authentication.social.client';
-import { Platform } from 'react-native'; // Only in React Native projects
-
-setupSocialLogin(x => {
-    x.apiUri = "https://api.yourdomain.com";
-    
-    // Platform configuration (auto-detects if not specified)
-    x.platform = {
-        type: PlatformType.Auto,
-        
-        // Smart redirect path (auto-detects domain for web)
-        redirectPath: Platform.select({
-            ios: 'msauth://com.yourapp.bundle/auth',      // Complete URI for mobile
-            android: 'myapp://oauth/callback',             // Complete URI for mobile
-            web: '/account/login'                          // Path only (auto-detects domain)
-        }),
-        
-        // Login mode (auto-set based on platform if not specified)
-        loginMode: Platform.select({
-            ios: LoginMode.Redirect,
-            android: LoginMode.Redirect,
-            web: LoginMode.Popup
-        })
-    };
-    
-    x.microsoft.clientId = "your-client-id";
-    x.google.clientId = "your-client-id";
-});
-```
-
-📖 **Full Migration Guide**: See [`PLATFORM_SUPPORT.md`](https://github.com/KeyserDSoze/Rystem/blob/master/src/Authentication/PLATFORM_SUPPORT.md) for detailed setup instructions, OAuth provider configuration, and troubleshooting.
-
-## 📦 Installation
+## Install
 
 ```bash
 npm install rystem.authentication.social.client
-# or
-yarn add rystem.authentication.social.client
-# or
-pnpm add rystem.authentication.social.client
 ```
 
 ---
 
-## 📱 React Native Complete Guide
-
-This library is **100% framework-agnostic** and works perfectly in **React Native**, **Expo**, and any mobile framework! However, setup differs from web because:
-
-1. ❌ **No `window`, `document`, or `localStorage`** in React Native
-2. ❌ **Web SDK scripts** (Google Sign-In SDK, `@azure/msal-browser`) don't work in React Native
-3. ✅ **Native SDKs** must be used instead (`@react-native-google-signin/google-signin`, `@react-native-community/msal`)
-
-### 🎯 Architecture Overview
-
-| Component | Web | React Native |
-|-----------|-----|--------------|
-| **Core Services** (`SocialLoginManager`, `setupSocialLogin`) | ✅ Works | ✅ Works |
-| **React Hooks** (`useSocialToken`, `useSocialUser`) | ✅ Works | ✅ Works |
-| **UI Components** (`MicrosoftButton`, `GoogleButton`) | ✅ Works | ❌ **Web-only** |
-| **Storage** | `LocalStorageService` | Custom `IStorageService` (AsyncStorage) |
-| **Routing** | `WindowRoutingService` | Custom `IRoutingService` (Linking) |
-| **Platform** | `BrowserPlatformService` | Custom `IPlatformService` (Dimensions) |
-
-### 📋 Setup Checklist
-
-- [ ] 1. Install `@react-native-async-storage/async-storage`
-- [ ] 2. Create `ReactNativeStorageService` implementing `IStorageService`
-- [ ] 3. Create `ReactNativeRoutingService` implementing `IRoutingService`
-- [ ] 4. Create `ReactNativePlatformService` implementing `IPlatformService`
-- [ ] 5. Install native OAuth SDKs (`@react-native-community/msal`, `@react-native-google-signin/google-signin`)
-- [ ] 6. Create custom login button components
-- [ ] 7. Use `SocialLoginManager.Instance(null).updateToken()` after successful native login
-
----
-
-### 🔧 Step 1-4: Implementing Platform Services
-
-#### 💾 Storage Service (AsyncStorage)
-
-```bash
-npm install @react-native-async-storage/async-storage
-```
+## Quick Start (Web)
 
 ```typescript
-// services/ReactNativeStorageService.ts
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { IStorageService } from 'rystem.authentication.social.client';
-
-export class ReactNativeStorageService implements IStorageService {
-    get(key: string): string | null {
-        // Note: AsyncStorage is async, but IStorageService expects sync
-        // Use synchronous approach or modify your usage to handle promises
-        let result: string | null = null;
-        AsyncStorage.getItem(key).then(value => result = value);
-        return result;
-    }
-
-    set(key: string, value: string): void {
-        AsyncStorage.setItem(key, value).catch(error =>
-            console.error('AsyncStorage set error:', error)
-        );
-    }
-
-    remove(key: string): void {
-        AsyncStorage.removeItem(key).catch(error =>
-            console.error('AsyncStorage remove error:', error)
-        );
-    }
-
-    has(key: string): boolean {
-        return this.get(key) !== null;
-    }
-
-    clear(): void {
-        AsyncStorage.clear().catch(error =>
-            console.error('AsyncStorage clear error:', error)
-        );
-    }
-}
-```
-
-#### 🧭 Routing Service (Linking API)
-
-```typescript
-// services/ReactNativeRoutingService.ts
-import { Linking } from 'react-native';
-import { IRoutingService } from 'rystem.authentication.social.client';
-
-export class ReactNativeRoutingService implements IRoutingService {
-    private currentUrl: URL | null = null;
-
-    constructor() {
-        Linking.getInitialURL().then(url => {
-            if (url) this.currentUrl = new URL(url);
-        });
-
-        Linking.addEventListener('url', ({ url }) => {
-            this.currentUrl = new URL(url);
-        });
-    }
-
-    getSearchParam(key: string): string | null {
-        return this.currentUrl?.searchParams.get(key) ?? null;
-    }
-
-    getAllSearchParams(): URLSearchParams {
-        return this.currentUrl?.searchParams ?? new URLSearchParams();
-    }
-
-    getCurrentPath(): string {
-        if (!this.currentUrl) return '/';
-        return this.currentUrl.pathname + this.currentUrl.search;
-    }
-
-    navigateTo(url: string): void {
-        Linking.openURL(url);
-    }
-
-    navigateReplace(path: string): void {
-        // Implement with React Navigation or Expo Router
-        console.log('Navigate to:', path);
-    }
-
-    openPopup(url: string, name: string, features: string): Window | null {
-        Linking.openURL(url);
-        return null;
-    }
-}
-```
-
-#### 📐 Platform Service (Dimensions & Events)
-
-```typescript
-// services/ReactNativePlatformService.ts
-import { Dimensions, EventEmitter } from 'react-native';
-import { IPlatformService } from 'rystem.authentication.social.client';
-
-export class ReactNativePlatformService implements IPlatformService {
-    private eventEmitter = new EventEmitter();
-
-    addStorageListener(callback: () => void): void {
-        this.eventEmitter.addListener('storage', callback);
-    }
-
-    removeStorageListener(callback: () => void): void {
-        this.eventEmitter.removeListener('storage', callback);
-    }
-
-    getScreenWidth(): number {
-        return Dimensions.get('window').width;
-    }
-
-    getScreenHeight(): number {
-        return Dimensions.get('window').height;
-    }
-
-    loadScript(id: string, src: string, onLoad: () => void): HTMLScriptElement | null {
-        console.warn('Script loading not supported in React Native');
-        onLoad();
-        return null;
-    }
-
-    scriptExists(id: string): boolean {
-        return false;
-    }
-
-    removeScript(scriptElement: HTMLScriptElement): void {
-        // No-op
-    }
-
-    isPopup(): boolean {
-        return false;
-    }
-
-    closeWindow(): void {
-        // No-op
-    }
-}
-```
-
-#### ⚙️ Complete Setup
-
-```typescript
-// App.tsx
-import { setupSocialLogin, PlatformType, LoginMode } from 'rystem.authentication.social.client';
-import { ReactNativeStorageService } from './services/ReactNativeStorageService';
-import { ReactNativeRoutingService } from './services/ReactNativeRoutingService';
-import { ReactNativePlatformService } from './services/ReactNativePlatformService';
-import { Platform, Alert } from 'react-native';
+import { setupSocialLogin, SocialLoginWrapper, SocialLoginButtons, useSocialToken, useSocialUser } from 'rystem.authentication.social.client';
 
 setupSocialLogin(x => {
-    x.apiUri = "https://api.yourdomain.com";
+    x.useBrowserDefaults(); // configures localStorage + window routing + browser APIs
+    x.apiUri = 'https://api.example.com';
 
-    // ✅ Inject React Native implementations
-    x.storageService = new ReactNativeStorageService();
-    x.routingService = new ReactNativeRoutingService();
-    x.platformService = new ReactNativePlatformService();
+    x.microsoft.clientId = 'your-microsoft-client-id';
+    x.google.clientId    = 'your-google-client-id';
+    x.github.clientId    = 'your-github-client-id';
+    x.facebook.clientId  = 'your-facebook-app-id';
 
-    x.platform = {
-        type: PlatformType.Auto,
-        redirectPath: Platform.select({
-            ios: 'myapp://oauth/callback',
-            android: 'myapp://oauth/callback',
-            default: '/account/login'
-        }),
-        loginMode: LoginMode.Redirect
-    };
-
-    x.microsoft.clientId = "your-client-id";
-    x.google.clientId = "your-client-id";
-
-    x.onLoginFailure = (error) => {
-        Alert.alert('Login Failed', error.message);
-    };
-});
-```
-
----
-
-### 🎨 Step 5-6: Native Login Buttons
-
-#### 📘 Microsoft Login (Native MSAL)
-
-```bash
-npm install @react-native-community/msal
-```
-
-```typescript
-// components/MicrosoftLoginButton.tsx
-import React from 'react';
-import { Pressable, Text, StyleSheet, Alert } from 'react-native';
-import { MSALConfiguration, MSALResult, PublicClientApplication } from '@react-native-community/msal';
-import { SocialLoginManager, ProviderType } from 'rystem.authentication.social.client';
-
-const MSAL_CONFIG: MSALConfiguration = {
-    auth: {
-        clientId: 'your-microsoft-client-id',
-        authority: 'https://login.microsoftonline.com/consumers',
-    },
-};
-
-export const MicrosoftLoginButton = () => {
-    const handleLogin = async () => {
-        try {
-            const pca = new PublicClientApplication(MSAL_CONFIG);
-            await pca.init();
-
-            const result: MSALResult = await pca.acquireToken({
-                scopes: ['openid', 'profile', 'email', 'User.Read'],
-            });
-
-            // ✅ Send token to backend
-            await SocialLoginManager.Instance(null).updateToken(
-                ProviderType.Microsoft,
-                result.idToken
-            );
-
-            console.log('✅ Microsoft login successful');
-        } catch (error: any) {
-            console.error('❌ Microsoft login failed:', error);
-            Alert.alert('Login Failed', error.message || 'Unknown error');
-        }
-    };
-
-    return (
-        <Pressable style={[styles.button, { backgroundColor: '#2f2f2f' }]} onPress={handleLogin}>
-            <Text style={styles.text}>🪟 Sign in with Microsoft</Text>
-        </Pressable>
-    );
-};
-
-const styles = StyleSheet.create({
-    button: { padding: 12, borderRadius: 8, alignItems: 'center', marginVertical: 8 },
-    text: { color: '#fff', fontSize: 16, fontWeight: '600' },
-});
-```
-
-#### 🔴 Google Login (Native SDK)
-
-```bash
-npm install @react-native-google-signin/google-signin
-```
-
-```typescript
-// components/GoogleLoginButton.tsx
-import React from 'react';
-import { Pressable, Text, StyleSheet, Alert } from 'react-native';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { SocialLoginManager, ProviderType } from 'rystem.authentication.social.client';
-
-// Configure once at app startup
-GoogleSignin.configure({
-    webClientId: 'your-google-web-client-id.apps.googleusercontent.com',
-    offlineAccess: true,
-    forceCodeForRefreshToken: true,
-    iosClientId: 'your-ios-client-id.apps.googleusercontent.com',
-});
-
-export const GoogleLoginButton = () => {
-    const handleLogin = async () => {
-        try {
-            await GoogleSignin.hasPlayServices();
-            const userInfo = await GoogleSignin.signIn();
-
-            if (!userInfo.idToken) throw new Error('No ID token received');
-
-            // ✅ Send token to backend
-            await SocialLoginManager.Instance(null).updateToken(
-                ProviderType.Google,
-                userInfo.idToken
-            );
-
-            console.log('✅ Google login successful');
-        } catch (error: any) {
-            if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-                console.log('User cancelled login');
-            } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-                Alert.alert('Error', 'Play Services not available');
-            } else {
-                console.error('❌ Google login failed:', error);
-                Alert.alert('Login Failed', error.message);
-            }
-        }
-    };
-
-    return (
-        <Pressable style={[styles.button, { backgroundColor: '#4285F4' }]} onPress={handleLogin}>
-            <Text style={styles.text}>🔵 Sign in with Google</Text>
-        </Pressable>
-    );
-};
-
-const styles = StyleSheet.create({
-    button: { padding: 12, borderRadius: 8, alignItems: 'center', marginVertical: 8 },
-    text: { color: '#fff', fontSize: 16, fontWeight: '600' },
-});
-```
-
----
-
-### 📱 Step 7: Usage in Your App
-
-```typescript
-// screens/LoginScreen.tsx
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { MicrosoftLoginButton } from '../components/MicrosoftLoginButton';
-import { GoogleLoginButton } from '../components/GoogleLoginButton';
-import { useSocialToken, useSocialUser } from 'rystem.authentication.social.client';
-
-export const LoginScreen = () => {
-    const token = useSocialToken();
-    const user = useSocialUser();
-
-    if (!token.isExpired) {
-        return (
-            <View style={styles.container}>
-                <Text style={styles.welcome}>Welcome, {user.username}!</Text>
-                <Text>Provider: {user.provider}</Text>
-                <Text>Email: {user.email}</Text>
-            </View>
-        );
-    }
-
-    return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Choose Login Method</Text>
-            <MicrosoftLoginButton />
-            <GoogleLoginButton />
-        </View>
-    );
-};
-
-const styles = StyleSheet.create({
-    container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-    title: { fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
-    welcome: { fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
-});
-```
-
----
-
-### ✅ React Native Summary
-
-**What You Need:**
-1. Implement 3 services: `IStorageService`, `IRoutingService`, `IPlatformService`
-2. Install native OAuth SDKs (not web SDKs!)
-3. Create custom UI components
-4. Call `SocialLoginManager.Instance(null).updateToken()` after native login success
-
-**What Works Automatically:**
-- ✅ `useSocialToken()` / `useSocialUser()` hooks
-- ✅ Token storage and refresh logic
-- ✅ Backend communication
-
-**Why No `window` Access Issues:**
-- ✅ Library uses service abstractions (`IStorageService`, `IRoutingService`, `IPlatformService`)
-- ✅ You inject platform-specific implementations
-- ✅ No polyfills needed!
-
----
-
-### ⚠️ Important for React Router / Next.js Users
-
-If you're using **React Router** or **Next.js App Router**, OAuth callbacks and navigation may not work correctly due to client-side routing intercepting native browser APIs.
-
-**👉 Solution**: Implement a custom `IRoutingService` for your framework.
-
-📖 **See full guide**: [🧭 Custom Routing Service](#-custom-routing-service) section below with ready-to-use implementations for:
-- React Router v6+
-- Next.js App Router (v13+)
-- Unit Testing
-
-## 🚀 Quick Start (Web Applications)
-
-### 1. Setup Configuration (main.tsx)
-
-```typescript
-import { SocialLoginWrapper, setupSocialLogin } from 'rystem.authentication.social.client';
-import App from './App';
-
-setupSocialLogin(x => {
-    // 🚀 ONE-LINE SETUP for web applications
-    // This configures localStorage, window routing, and browser platform APIs
-    x.useBrowserDefaults();
-
-    // API server URL
-    x.apiUri = "https://localhost:7017";
-
-    // Configure OAuth providers (only clientId needed for client-side)
-    x.microsoft.clientId = "0b90db07-be9f-4b29-b673-9e8ee9265927";
-    x.google.clientId = "23769141170-lfs24avv5qrj00m4cbmrm202c0fc6gcg.apps.googleusercontent.com";
-    x.facebook.clientId = "345885718092912";
-    x.github.clientId = "97154d062f2bb5d28620";
-
-    // Error handling callback
-    x.onLoginFailure = (error) => {
-        console.error(`Login failed: ${error.message} (Code: ${error.code})`);
-        alert(`Authentication error: ${error.message}`);
-    };
-
-    // Automatic token refresh when expired
     x.automaticRefresh = true;
+    x.onLoginFailure = error => console.error(error.message);
 });
 
 function Root() {
@@ -537,1662 +42,422 @@ function Root() {
         </SocialLoginWrapper>
     );
 }
-
-export default Root;
 ```
 
-#### 🤔 What does `useBrowserDefaults()` do?
+```tsx
+function App() {
+    const token = useSocialToken();
+    const user  = useSocialUser();
 
-This helper method **automatically configures three essential services** for web browsers:
+    if (!token.isExpired && user.isAuthenticated) {
+        return <p>Welcome, {user.username}</p>;
+    }
 
-1. **`storageService`**: `LocalStorageService` → Uses browser `localStorage` to persist tokens, PKCE verifiers, and user data
-2. **`routingService`**: `WindowRoutingService` → Uses `window.location` to read OAuth callback parameters and `window.history` for navigation
-3. **`platformService`**: `BrowserPlatformService` → Uses `window`, `document`, and DOM APIs for popup windows, screen dimensions, and external SDK loading
-
-**Why is this needed?**  
-The library is **framework-agnostic** and works in **React**, **React Native**, **Next.js**, and **Expo**. Each environment has different APIs:
-- **Web**: Uses `window`, `localStorage`, `document`
-- **React Native**: Uses `AsyncStorage`, `Linking`, `Dimensions`
-- **Next.js SSR**: May not have `window` available
-
-By requiring explicit service configuration, the library:
-- ✅ Forces you to think about your environment
-- ✅ Avoids unexpected crashes in non-browser environments
-- ✅ Makes it clear which dependencies are being used
-- ✅ Allows easy customization (e.g., using React Router instead of `window.history`)
-
-**Alternative: Manual configuration**
-
-If you want more control, you can configure services manually:
-
-```typescript
-import { LocalStorageService, WindowRoutingService, BrowserPlatformService } from 'rystem.authentication.social.client';
-
-setupSocialLogin(x => {
-    x.storageService = new LocalStorageService();
-    x.routingService = new WindowRoutingService();
-    x.platformService = new BrowserPlatformService();
-    // ... rest of config
-});
+    return <SocialLoginButtons />;
+}
 ```
-
-**For React Native setup**, see the [📱 React Native Complete Guide](#-react-native-complete-guide) section below.
 
 ---
 
-### 2. Use in Components
+## Setup
+
+### `setupSocialLogin`
+
+Call once at application startup. Returns the `SocialLoginManager` singleton.
 
 ```typescript
-import { useSocialToken, useSocialUser, SocialLoginButtons, SocialLogoutButton } from 'rystem.authentication.social.client';
+const manager = setupSocialLogin(x => {
+    x.apiUri = 'https://api.example.com';
+    // ...
+});
+```
 
-export const App = () => {
-    const token = useSocialToken();
-    const user = useSocialUser();
-    
-    return (
-        <div>
-            {token.isExpired ? (
-                <div>
-                    <h3>Please login</h3>
-                    <SocialLoginButtons />
-                </div>
-            ) : (
-                <div>
-                    <h3>Welcome, {user.username}</h3>
-                    <p>Access Token: {token.accessToken}</p>
-                    <SocialLogoutButton>Logout</SocialLogoutButton>
-                </div>
-            )}
-        </div>
-    );
+### `SocialLoginSettings`
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `apiUri` | `string` | `window.location.origin` | Base URL of the Rystem.Authentication.Social API |
+| `storageService` | `IStorageService` | — | **Required** — token/user persistence |
+| `routingService` | `IRoutingService` | — | **Required** — URL reading + navigation |
+| `platformService` | `IPlatformService` | — | **Required** — browser/native APIs |
+| `platform` | `PlatformConfig` | `{ type: Auto, loginMode: Popup }` | Redirect URI and login mode |
+| `automaticRefresh` | `boolean` | `false` | Auto-refresh expired token via `DotNet` provider |
+| `identityTransformer` | `IIdentityTransformer<T>` | `undefined` | Map raw user object to typed model |
+| `onLoginFailure` | `(e: SocialLoginErrorResponse) => void` | logs `e.code` | Error callback |
+| `google` / `microsoft` / `facebook` / `github` / `amazon` / `linkedin` / `x` / `instagram` / `pinterest` / `tiktok` | `SocialParameter` | `{}` | Per-provider `clientId` |
+
+### `useBrowserDefaults()`
+
+A helper on `SocialLoginSettings` that sets all three required services for web:
+
+```typescript
+setupSocialLogin(x => {
+    x.useBrowserDefaults();
+    // equivalent to:
+    // x.storageService   = new LocalStorageService();
+    // x.routingService   = new WindowRoutingService();
+    // x.platformService  = new BrowserPlatformService();
+});
+```
+
+---
+
+## Providers
+
+```typescript
+import { ProviderType } from 'rystem.authentication.social.client';
+```
+
+```typescript
+export enum ProviderType {
+    DotNet    = 0,  // internal — used for token refresh
+    Google    = 1,
+    Microsoft = 2,
+    Facebook  = 3,
+    GitHub    = 4,
+    Amazon    = 5,
+    Linkedin  = 6,
+    X         = 7,
+    Instagram = 8,
+    Pinterest = 9,
+    TikTok    = 10
+}
+```
+
+Enable a provider by setting its `clientId`:
+
+```typescript
+x.microsoft.clientId = 'your-client-id';
+x.google.clientId    = 'your-client-id';
+```
+
+A provider with a `null` or missing `clientId` renders no button.
+
+---
+
+## Platform Configuration
+
+```typescript
+import { PlatformType, LoginMode } from 'rystem.authentication.social.client';
+```
+
+### `PlatformType`
+
+```typescript
+export enum PlatformType {
+    Web     = 'web',
+    iOS     = 'ios',
+    Android = 'android',
+    Auto    = 'auto'  // auto-detect from navigator.userAgent
+}
+```
+
+### `LoginMode`
+
+```typescript
+export enum LoginMode {
+    Popup    = 'popup',    // opens OAuth in a new window (web default)
+    Redirect = 'redirect'  // navigates in same window (mobile)
+}
+```
+
+### `PlatformConfig`
+
+```typescript
+x.platform = {
+    type: PlatformType.Auto,
+    redirectPath: '/account/login',  // path or full deep link
+    loginMode: LoginMode.Popup
 };
 ```
 
-## 🔐 PKCE Support (Microsoft OAuth)
+**`redirectPath` resolution:**
 
-### Automatic PKCE Implementation
+| Value | Result |
+|---|---|
+| Contains `"://"` | Used as-is (mobile deep link: `myapp://oauth/callback`) |
+| Starts with `"/"` | Prepended with `window.location.origin` |
+| Empty | No `redirectPath` param sent to server |
 
-The library **automatically** implements PKCE for Microsoft OAuth:
+---
 
-1. **Code Verifier Generation**: When user clicks Microsoft login button
-   ```typescript
-   const codeVerifier = await generateCodeVerifier();  // 43-128 chars random string
-   const codeChallenge = await generateCodeChallenge(codeVerifier);  // SHA256 hash
-   ```
+## Hooks
 
-2. **Session Storage**: Stores `code_verifier` for callback retrieval
-   ```typescript
-   storeCodeVerifier('microsoft', codeVerifier);
-   ```
+### `useSocialToken()`
 
-3. **OAuth Request**: Sends `code_challenge` with S256 method
-   ```
-   https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize
-     ?client_id={clientId}
-     &response_type=code
-     &redirect_uri={redirectUri}
-     &code_challenge={codeChallenge}
-     &code_challenge_method=S256
-   ```
-
-4. **Token Exchange**: Sends `code_verifier` to API server
-   ```typescript
-   POST /api/Authentication/Social/Token?provider=Microsoft&code={code}&redirectPath=/account/login
-   Body: { "code_verifier": "original-verifier" }
-   ```
-
-5. **Cleanup**: Removes verifier from sessionStorage after use
-
-### Manual PKCE Usage
-
-For custom implementations:
+Returns the current stored token:
 
 ```typescript
-import { generateCodeVerifier, generateCodeChallenge, storeCodeVerifier, getAndRemoveCodeVerifier } from 'rystem.authentication.social.react';
+import { useSocialToken } from 'rystem.authentication.social.client';
 
-// Generate PKCE values
-const codeVerifier = await generateCodeVerifier();
-const codeChallenge = await generateCodeChallenge(codeVerifier);
-
-// Store for later retrieval
-storeCodeVerifier('custom-provider', codeVerifier);
-
-// Build OAuth URL with code_challenge
-const authUrl = `https://oauth.provider.com/authorize?code_challenge=${codeChallenge}&code_challenge_method=S256`;
-window.location.href = authUrl;
-
-// After OAuth callback, retrieve and remove verifier
-const storedVerifier = getAndRemoveCodeVerifier('custom-provider');
-```
-
-## 🎣 React Hooks
-
-### useSocialToken
-
-Get current JWT token for API requests:
-
-```typescript
 const token = useSocialToken();
 
 interface Token {
-    accessToken: string;    // JWT bearer token
-    refreshToken: string;   // Refresh token for renewal
-    isExpired: boolean;     // True if token expired
-    expiresIn: Date;        // Token expiration timestamp
+    accessToken:  string;
+    refreshToken: string;
+    expiresIn:    Date;
+    isExpired:    boolean;
 }
 
-// Usage in API calls
 if (!token.isExpired) {
-    const response = await fetch('/api/orders', {
-        headers: {
-            'Authorization': `Bearer ${token.accessToken}`
-        }
+    fetch('/api/data', {
+        headers: { Authorization: `Bearer ${token.accessToken}` }
     });
 }
 ```
 
-### useSocialUser
+### `useSocialUser<T>()`
 
-Get authenticated user information:
+Returns the authenticated user, merged with an optional custom type:
 
 ```typescript
-const user = useSocialUser();
+import { useSocialUser } from 'rystem.authentication.social.client';
 
-interface SocialUser {
-    username: string;         // User's email/username
-    isAuthenticated: boolean; // True if user is logged in
-    // Add custom properties from your API
-}
+// Default usage
+const user = useSocialUser();          // SocialUser<{}>
+// user.username, user.isAuthenticated
 
-if (user.isAuthenticated) {
-    console.log(`Logged in as: ${user.username}`);
-}
+// With custom type
+interface AppUser { role: string; email: string; }
+const user = useSocialUser<AppUser>(); // SocialUser<AppUser>
+// user.username, user.isAuthenticated, user.role, user.email
 ```
 
-### useContext(SocialLoginContextRefresh)
-
-Force token refresh:
-
 ```typescript
-import { useContext } from 'react';
-import { SocialLoginContextRefresh } from 'rystem.authentication.social.react';
-
-const forceRefresh = useContext(SocialLoginContextRefresh);
-
-const handleRefresh = async () => {
-    await forceRefresh();
-    console.log('Token refreshed!');
-};
+// SocialUser type definition:
+interface ISocialUser { username: string; isAuthenticated: boolean; }
+type SocialUser<T = {}> = ISocialUser & T;
 ```
 
-### useContext(SocialLoginContextLogout)
+Returns `{ isAuthenticated: false }` when no valid token exists.
 
-Programmatic logout:
+---
+
+## Functions
+
+### `removeSocialLogin()`
+
+Clears the stored token and user data:
 
 ```typescript
-import { useContext } from 'react';
-import { SocialLoginContextLogout } from 'rystem.authentication.social.react';
+import { removeSocialLogin } from 'rystem.authentication.social.client';
 
-const logout = useContext(SocialLoginContextLogout);
-
-const handleLogout = async () => {
-    await logout();
-    window.location.href = '/login';
-};
+removeSocialLogin();
 ```
 
-## 🎨 UI Components
+### `getSocialLoginSettings()`
 
-### SocialLoginButtons
-
-Renders all configured provider buttons:
+Returns the current `SocialLoginSettings` from the singleton:
 
 ```typescript
-import { SocialLoginButtons } from 'rystem.authentication.social.react';
+import { getSocialLoginSettings } from 'rystem.authentication.social.client';
+
+const settings = getSocialLoginSettings();
+console.log(settings.apiUri);
+```
+
+### `SocialLoginManager.Instance(null).updateToken(provider, code)`
+
+Exchanges an OAuth authorization code for a bearer token. Used after native OAuth (e.g. React Native):
+
+```typescript
+import { SocialLoginManager, ProviderType } from 'rystem.authentication.social.client';
+
+await SocialLoginManager.Instance(null).updateToken(ProviderType.Microsoft, authCode);
+```
+
+---
+
+## UI Components (React)
+
+All components are exported from `rystem.authentication.social.client`.
+
+### `<SocialLoginWrapper>`
+
+Context provider. Wrap your app root to enable hooks and automatic OAuth callback handling:
+
+```tsx
+<SocialLoginWrapper>
+    <App />
+</SocialLoginWrapper>
+```
+
+### `<SocialLoginButtons>`
+
+Renders buttons for all configured providers (those with a non-null `clientId`):
+
+```tsx
+import { SocialLoginButtons } from 'rystem.authentication.social.client';
 
 <SocialLoginButtons />
 ```
 
-### Custom Button Order
+Custom button order:
 
-```typescript
-import { 
-    SocialLoginButtons,
-    MicrosoftButton, 
-    GoogleButton, 
-    FacebookButton,
-    GitHubButton,
-    AmazonButton,
-    LinkedinButton,
-    XButton,
-    TikTokButton,
-    InstagramButton,
-    PinterestButton
-} from 'rystem.authentication.social.react';
+```tsx
+import { SocialLoginButtons, MicrosoftButton, GoogleButton, GitHubButton } from 'rystem.authentication.social.client';
 
-const customOrder = [
-    MicrosoftButton,  // Show Microsoft first
-    GoogleButton,
-    GitHubButton,
-    LinkedinButton,
-    FacebookButton,
-    AmazonButton,
-    XButton,
-    TikTokButton,
-    InstagramButton,
-    PinterestButton
-];
-
-<SocialLoginButtons buttons={customOrder} />
+<SocialLoginButtons buttons={[MicrosoftButton, GoogleButton, GitHubButton]} />
 ```
 
-### Individual Provider Buttons
+### `<SocialLogoutButton>`
 
-```typescript
-import { MicrosoftButton, GoogleButton } from 'rystem.authentication.social.react';
-
-<div>
-    <MicrosoftButton />
-    <GoogleButton />
-</div>
-```
-
-### SocialLogoutButton
-
-```typescript
-import { SocialLogoutButton } from 'rystem.authentication.social.react';
+```tsx
+import { SocialLogoutButton } from 'rystem.authentication.social.client';
 
 <SocialLogoutButton>Sign Out</SocialLogoutButton>
 ```
 
-## 🔧 Advanced Configuration
+### Individual Buttons
 
-### Platform Support (Web & Mobile)
+```tsx
+import {
+    MicrosoftButton, GoogleButton, FacebookButton, GitHubButton,
+    AmazonButton, LinkedinButton, XButton, TikTokButton, InstagramButton, PinterestButton
+} from 'rystem.authentication.social.client';
 
-The library now supports **platform-specific configuration** for Web, iOS, and Android (including React Native):
+<MicrosoftButton />
+<GoogleButton />
+```
+
+---
+
+## Services
+
+### `IStorageService`
 
 ```typescript
-import { setupSocialLogin, PlatformType, LoginMode } from 'rystem.authentication.social.react';
+interface IStorageService {
+    get(key: string): string | null;
+    set(key: string, value: string): void;
+    remove(key: string): void;
+    has(key: string): boolean;
+    clear?(): void;
+}
+```
+
+Default: `LocalStorageService` (browser `localStorage`).
+
+### `IRoutingService`
+
+Handles OAuth callback URL parsing and navigation:
+
+```typescript
+interface IRoutingService {
+    getSearchParam(key: string): string | null;
+    getAllSearchParams(): URLSearchParams;
+    getCurrentPath(): string;
+    navigateTo(url: string): void;
+    navigateReplace(path: string): void;
+    openPopup(url: string, name: string, features: string): Window | null;
+}
+```
+
+Default: `WindowRoutingService` (uses `window.location` and `window.history`).
+
+For **React Router** or **Next.js App Router**, implement this interface using the framework's hooks (`useSearchParams`, `useNavigate`, `useRouter`) and inject it via `x.routingService = new MyRoutingService()`.
+
+### `IPlatformService`
+
+Abstracts browser APIs for rendering popups, loading external scripts, and listening to storage events:
+
+```typescript
+interface IPlatformService {
+    addStorageListener(callback: () => void): void;
+    removeStorageListener(callback: () => void): void;
+    getScreenWidth(): number;
+    getScreenHeight(): number;
+    loadScript(id: string, src: string, onLoad: () => void): HTMLScriptElement | null;
+    scriptExists(id: string): boolean;
+    removeScript(scriptElement: HTMLScriptElement): void;
+    isPopup(): boolean;
+    closeWindow(): void;
+}
+```
+
+Default: `BrowserPlatformService`.
+
+---
+
+## Custom Identity Transformer
+
+Map the raw user JSON from the server API to a typed model:
+
+```typescript
+interface AppUser {
+    username: string;
+    email: string;
+    role: string;
+}
 
 setupSocialLogin(x => {
-    x.apiUri = "https://yourdomain.com";
-    
-    // Platform configuration
-    x.platform = {
-        type: PlatformType.Auto,  // Auto-detect platform (Web/iOS/Android)
-        
-        // Smart redirect path (detects if complete URI or relative path)
-        redirectPath: Platform.select({
-            web: '/account/login',                          // Relative path (auto-detects domain)
-            ios: 'msauth://com.yourapp.fantasoccer/auth',   // Complete URI
-            android: 'myapp://oauth/callback',              // Complete URI
-            default: '/account/login'
+    x.useBrowserDefaults();
+    x.apiUri = 'https://api.example.com';
+    x.microsoft.clientId = 'your-client-id';
+
+    x.identityTransformer = {
+        fromPlain: (raw: any): AppUser => ({
+            username: raw.username,
+            email:    raw.email,
+            role:     raw.role ?? 'user'
         }),
-        
-        // Login mode (popup for web, redirect for mobile)
-        loginMode: Platform.select({
-            web: LoginMode.Popup,
-            ios: LoginMode.Redirect,
-            android: LoginMode.Redirect,
-            default: LoginMode.Redirect
-        })
+        toPlain: (user: AppUser) => user,
+        retrieveUsername: (user: AppUser) => user.username
     };
-    
-    // OAuth providers
-    x.microsoft.clientId = "your-client-id";
-    x.google.clientId = "your-client-id";
-});
-```
-
-#### React Native Example
-
-For **React Native** apps, use platform-specific deep links:
-
-```typescript
-import { Platform } from 'react-native';
-import { setupSocialLogin, PlatformType, LoginMode } from 'rystem.authentication.social.react';
-
-setupSocialLogin(x => {
-    x.apiUri = "https://yourdomain.com";
-    
-    x.platform = {
-        type: PlatformType.Auto,  // Will detect iOS/Android automatically
-        
-        // Deep link redirect paths for mobile
-        redirectPath: Platform.select({
-            ios: 'msauth://com.keyserdsoze.fantasoccer/auth',   // Complete URI
-            android: 'fantasoccer://oauth/callback',            // Complete URI
-            default: '/account/login'                           // Relative path for web
-        }),
-        
-        loginMode: LoginMode.Redirect  // Always use redirect for mobile
-    };
-    
-    x.microsoft.clientId = "0b90db07-be9f-4b29-b673-9e8ee9265927";
-});
-```
-
-**Important**: Configure deep links in your app:
-
-**iOS** (`Info.plist`):
-```xml
-<key>CFBundleURLTypes</key>
-<array>
-    <dict>
-        <key>CFBundleURLSchemes</key>
-        <array>
-            <string>msauth</string>
-        </array>
-        <key>CFBundleURLName</key>
-        <string>com.keyserdsoze.fantasoccer</string>
-    </dict>
-</array>
-```
-
-**Android** (`AndroidManifest.xml`):
-```xml
-<intent-filter>
-    <action android:name="android.intent.action.VIEW" />
-    <category android:name="android.intent.category.DEFAULT" />
-    <category android:name="android.intent.category.BROWSABLE" />
-    <data android:scheme="fantasoccer" android:host="oauth" />
-</intent-filter>
-```
-
-### Login Mode (Popup vs Redirect)
-
-Choose between **popup** and **redirect** modes:
-
-```typescript
-// Popup mode (default for web - opens in new window)
-setupSocialLogin(x => {
-    x.loginMode = LoginMode.Popup;  // or x.platform.loginMode
 });
 
-// Redirect mode (default for mobile - navigates in same window)
-setupSocialLogin(x => {
-    x.loginMode = LoginMode.Redirect;
-});
+// In component:
+const user = useSocialUser<AppUser>();
+console.log(user.role); // typed
 ```
 
-**Use Cases:**
-- ✅ **Popup**: Best for desktop web apps (better UX, user stays on page)
-- ✅ **Redirect**: Required for mobile apps, some browsers block popups
-
-### Platform Detection Utilities
-
-Use built-in utilities for platform detection:
-
-```typescript
-import { 
-    detectPlatform, 
-    isMobilePlatform, 
-    isReactNative,
-    PlatformType 
-} from 'rystem.authentication.social.react';
-
-// Detect current platform
-const platform = detectPlatform();  // Returns: PlatformType.Web | iOS | Android
-
-// Check if mobile
-if (isMobilePlatform(platform)) {
-    console.log('Running on mobile');
-}
-
-// Check if React Native
-if (isReactNative()) {
-    console.log('Running in React Native');
-}
-```
-
-### Complete Mobile Setup Example
-
-```typescript
-import { setupSocialLogin, PlatformType, LoginMode, detectPlatform } from 'rystem.authentication.social.react';
-
-// Detect platform automatically
-const currentPlatform = detectPlatform();
-
-setupSocialLogin(x => {
-    x.apiUri = "https://api.yourdomain.com";
-    
-    // Configure based on detected platform
-    x.platform = {
-        type: currentPlatform,
-        
-        redirectUri: (() => {
-            switch (currentPlatform) {
-                case PlatformType.iOS:
-                    return 'msauth://com.yourapp.bundle/auth';
-                case PlatformType.Android:
-                    return 'yourapp://oauth/callback';
-                default:
-                    return typeof window !== 'undefined' 
-                        ? window.location.origin 
-                        : 'http://localhost:3000';
-            }
-        })(),
-        
-        loginMode: currentPlatform === PlatformType.Web 
-            ? LoginMode.Popup 
-            : LoginMode.Redirect
-    };
-    
-    // OAuth providers
-    x.microsoft.clientId = "your-microsoft-client-id";
-    x.google.clientId = "your-google-client-id";
-    
-    // Error handling
-    x.onLoginFailure = (error) => {
-        if (currentPlatform === PlatformType.Web) {
-            alert(`Login failed: ${error.message}`);
-        } else {
-            // Use React Native Alert or Toast
-            console.error('Login error:', error);
-        }
-    };
-    
-    x.automaticRefresh = true;
-});
-```
-
-## 📱 Mobile OAuth Configuration
-
-### Microsoft Entra ID (for Mobile)
-
-1. Register your mobile app redirect URI in Azure Portal
-2. For iOS: `msauth://com.yourapp.bundle/auth`
-3. For Android: `yourapp://oauth/callback`
-4. Enable "Mobile and desktop applications" platform
-5. Make sure PKCE is enabled (library handles this automatically)
-
-### Google (for Mobile)
-
-1. Configure OAuth consent screen for mobile
-2. Add redirect URI: Use reverse client ID for iOS
-3. Example: `com.googleusercontent.apps.YOUR_CLIENT_ID:/oauth2redirect`
-
-### Deep Link Best Practices
-
-**iOS Bundle ID Format:**
-```
-msauth://com.yourcompany.yourapp/auth
-```
-
-**Android Package Name Format:**
-```
-yourapp://oauth/callback
-```
-
-## 🔍 How Platform Configuration Works
-
-### Understanding Redirect URI Resolution
-
-When a user clicks a social login button, the library determines the OAuth redirect URI using this **priority order**:
-
-```typescript
-// Priority 1: Explicit platform.redirectUri (highest priority)
-if (settings.platform?.redirectUri) {
-    redirectUri = settings.platform.redirectUri;
-}
-// Priority 2: Fallback to redirectDomain + redirectPath
-else {
-    redirectUri = `${settings.redirectDomain}${settings.redirectPath || ''}`;
-}
-```
-
-### Example Flow (Microsoft Login on React Native iOS)
-
-1. **Setup Configuration**:
-```typescript
-setupSocialLogin(x => {
-    x.apiUri = "https://api.yourdomain.com";
-    x.redirectDomain = "https://web.yourdomain.com";
-    x.redirectPath = "/account/login";
-    
-    x.platform = {
-        type: PlatformType.iOS,
-        redirectUri: "msauth://com.yourapp.bundle/auth"  // Mobile deep link
-    };
-    
-    x.microsoft.clientId = "your-client-id";
-});
-```
-
-2. **User Clicks MicrosoftButton**:
-   - Library detects `platform.redirectUri` is set
-   - Uses `msauth://com.yourapp.bundle/auth` (NOT `https://web.yourdomain.com/account/login`)
-   - Generates PKCE code_verifier and code_challenge
-   - Constructs OAuth URL:
-     ```
-     https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize
-       ?client_id=your-client-id
-       &redirect_uri=msauth%3A%2F%2Fcom.yourapp.bundle%2Fauth
-       &code_challenge=<generated>
-       &code_challenge_method=S256
-     ```
-
-3. **OAuth Provider Redirects**:
-   - Microsoft redirects to: `msauth://com.yourapp.bundle/auth?code=ABC123&state=XYZ`
-   - iOS deep link handler catches this URL
-   - React Native navigation extracts `code` and `state`
-
-4. **Token Exchange**:
-   - Library calls API: `POST /api/Authentication/Social/Token?provider=Microsoft&code=ABC123&redirectPath=/account/login`
-   - API validates code using PKCE code_verifier
-   - Returns JWT access token
-
-5. **User Logged In**:
-   - Token stored in AsyncStorage (React Native)
-   - `useSocialToken()` and `useSocialUser()` hooks update
-   - App navigates to `/account/login` (or dashboard)
-
-### Platform Auto-Detection Logic
-
-```typescript
-export function detectPlatform(): PlatformType {
-    // Check if React Native environment
-    if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') {
-        // Detect iOS
-        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-            return PlatformType.iOS;
-        }
-        // Detect Android
-        if (/Android/.test(navigator.userAgent)) {
-            return PlatformType.Android;
-        }
-    }
-    
-    // Default to Web
-    return PlatformType.Web;
-}
-```
-
-### When to Use Each Configuration
-
-| Scenario | redirectDomain | redirectPath | platform.redirectUri | platform.type |
-|----------|----------------|--------------|---------------------|---------------|
-| **Web SPA** | `https://app.com` | `/account/login` | `undefined` | `Web` or `Auto` |
-| **React Native iOS** | `https://app.com` (fallback) | `/account/login` | `msauth://com.yourapp.bundle/auth` | `iOS` or `Auto` |
-| **React Native Android** | `https://app.com` (fallback) | `/account/login` | `yourapp://oauth/callback` | `Android` or `Auto` |
-| **Multi-Platform (Recommended)** | `https://app.com` | `/account/login` | `Platform.select({ ios: '...', android: '...', web: undefined })` | `Auto` |
-
-### Configuration Best Practices
-
-✅ **DO**:
-- Use `PlatformType.Auto` for automatic detection
-- Set `platform.redirectUri` explicitly for React Native
-- Keep `redirectDomain` and `redirectPath` as fallbacks for web
-- Use `Platform.select()` for cross-platform apps
-- Encode redirect URIs in OAuth URLs (library does this automatically)
-
-❌ **DON'T**:
-- Hardcode platform detection (use `detectPlatform()` instead)
-- Forget to register redirect URIs in OAuth provider consoles
-- Use web redirect URIs (`https://`) for mobile apps
-- Skip Info.plist/AndroidManifest.xml configuration for deep links
-
-### Debugging Platform Configuration
-
-Check which redirect URI is being used:
-
-```typescript
-import { getSocialLoginSettings } from 'rystem.authentication.social.react';
-
-const settings = getSocialLoginSettings();
-const effectiveRedirectUri = settings.platform?.redirectUri 
-    || `${settings.redirectDomain}${settings.redirectPath || ''}`;
-
-console.log('Platform Type:', settings.platform?.type);
-console.log('Redirect URI:', effectiveRedirectUri);
-console.log('Login Mode:', settings.platform?.loginMode || settings.loginMode);
-```
-
-## 🆚 Popup vs Redirect Comparison
-
-| Feature | Popup Mode | Redirect Mode |
-|---------|-----------|---------------|
-| **Platform** | Web only | Web + Mobile |
-| **User Experience** | Stays on page | Leaves page temporarily |
-| **Browser Support** | May be blocked | Always works |
-| **Mobile Apps** | ❌ Not supported | ✅ Required |
-| **Session Persistence** | ✅ Maintained | ⚠️ Depends on implementation |
-| **Security** | ✅ Same-origin | ✅ PKCE required |
+---
 
 ## Error Handling
 
 ```typescript
 setupSocialLogin(x => {
-    x.onLoginFailure = (error) => {
-        switch (error.code) {
-            case 3:
-                // Error during button click (client-side)
-                console.error('Client error:', error.message);
-                break;
-            case 15:
-                // Error during token retrieval from API
-                console.error('Token exchange failed:', error.message);
-                showNotification('Login failed. Please try again.');
-                break;
-            case 10:
-                // Error fetching user information from API
-                console.error('User fetch failed:', error.message);
-                break;
-            default:
-                console.error('Unknown error:', error);
-        }
+    x.onLoginFailure = (error: SocialLoginErrorResponse) => {
+        console.error(`[${error.code}] ${error.message} (provider: ${error.provider})`);
     };
 });
-```
 
-## 💾 Custom Storage Service
-
-By default, the library uses **localStorage** for persisting tokens, PKCE verifiers, and user data. You can customize this for **secure storage** (mobile), **testing**, or **server-side storage**.
-
-### Architecture
-
-The library uses the **Decorator Pattern** with separation between infrastructure and domain logic:
-
-```
-IStorageService (interface) ← Generic key-value storage
-    ↓
-LocalStorageService (default) ← Browser localStorage
-    ↓
-├── PkceStorageService ← PKCE OAuth logic
-├── TokenStorageService ← Token + expiry logic
-└── UserStorageService ← User data logic
-```
-
-### Using Default Storage (localStorage)
-
-No configuration needed - the library automatically uses `LocalStorageService`:
-
-```typescript
-import { setupSocialLogin } from 'rystem.authentication.social.react';
-
-setupSocialLogin(x => {
-    x.apiUri = "https://api.yourdomain.com";
-    // storageService is automatically initialized with LocalStorageService
-    x.microsoft.clientId = "your-client-id";
-});
-```
-
-### Creating Custom Storage
-
-Implement `IStorageService` for custom storage (secure storage, Redis, etc.):
-
-```typescript
-import { setupSocialLogin, IStorageService } from 'rystem.authentication.social.react';
-
-// Example: Secure Storage for React Native
-class SecureStorageService implements IStorageService {
-    async get(key: string): Promise<string | null> {
-        try {
-            // Use expo-secure-store or react-native-keychain
-            return await SecureStore.getItemAsync(key);
-        } catch (error) {
-            console.error('SecureStorage get error:', error);
-            return null;
-        }
-    }
-    
-    async set(key: string, value: string): Promise<void> {
-        try {
-            await SecureStore.setItemAsync(key, value);
-        } catch (error) {
-            console.error('SecureStorage set error:', error);
-        }
-    }
-    
-    async remove(key: string): Promise<void> {
-        try {
-            await SecureStore.deleteItemAsync(key);
-        } catch (error) {
-            console.error('SecureStorage remove error:', error);
-        }
-    }
-    
-    async has(key: string): Promise<boolean> {
-        const value = await this.get(key);
-        return value !== null;
-    }
-    
-    async clear(): Promise<void> {
-        // Optional: implement if needed
-    }
-}
-
-// Configure custom storage
-setupSocialLogin(x => {
-    x.apiUri = "https://api.yourdomain.com";
-    x.storageService = new SecureStorageService();  // Use secure storage
-    x.microsoft.clientId = "your-client-id";
-});
-```
-
-### Example: In-Memory Storage (Testing)
-
-Perfect for unit tests without persisting data:
-
-```typescript
-import { IStorageService } from 'rystem.authentication.social.react';
-
-class MockStorageService implements IStorageService {
-    private storage = new Map<string, string>();
-    
-    get(key: string): string | null {
-        return this.storage.get(key) ?? null;
-    }
-    
-    set(key: string, value: string): void {
-        this.storage.set(key, value);
-    }
-    
-    remove(key: string): void {
-        this.storage.delete(key);
-    }
-    
-    has(key: string): boolean {
-        return this.storage.has(key);
-    }
-    
-    clear(): void {
-        this.storage.clear();
-    }
-}
-
-// Use in tests
-setupSocialLogin(x => {
-    x.storageService = new MockStorageService();
-    // ... rest of config
-});
-```
-
-### Example: Redis Storage (Server-Side)
-
-For server-side rendering or distributed systems:
-
-```typescript
-import { createClient } from 'redis';
-import { IStorageService } from 'rystem.authentication.social.react';
-
-class RedisStorageService implements IStorageService {
-    private client = createClient({ url: 'redis://localhost:6379' });
-    
-    constructor() {
-        this.client.connect();
-    }
-    
-    async get(key: string): Promise<string | null> {
-        return await this.client.get(key);
-    }
-    
-    async set(key: string, value: string): Promise<void> {
-        await this.client.set(key, value, { EX: 3600 }); // 1 hour expiry
-    }
-    
-    async remove(key: string): Promise<void> {
-        await this.client.del(key);
-    }
-    
-    async has(key: string): Promise<boolean> {
-        const exists = await this.client.exists(key);
-        return exists === 1;
-    }
-    
-    async clear(): Promise<void> {
-        await this.client.flushAll();
-    }
-}
-
-setupSocialLogin(x => {
-    x.storageService = new RedisStorageService();
-    // ... rest of config
-});
-```
-
-### Storage Keys Used
-
-The library stores data with these keys (backward-compatible):
-
-| Key | Description | Service |
-|-----|-------------|---------|
-| `socialUserToken` | JWT access token + expiry | `TokenStorageService` |
-| `socialUserToken_expiry` | Token expiration timestamp | `TokenStorageService` |
-| `socialUser` | User profile data | `UserStorageService` |
-| `rystem_pkce_{provider}_verifier` | PKCE code verifier | `PkceStorageService` |
-| `rystem_pkce_{provider}_challenge` | PKCE code challenge (optional) | `PkceStorageService` |
-
-### When to Use Custom Storage
-
-| Scenario | Recommended Storage |
-|----------|-------------------|
-| **Web SPA** | `LocalStorageService` (default) |
-| **React Native Mobile** | `SecureStorageService` (expo-secure-store) |
-| **Unit Testing** | `MockStorageService` (in-memory) |
-| **Server-Side Rendering** | `RedisStorageService` or `DatabaseStorageService` |
-| **Electron Apps** | Custom storage with encryption |
-
-### Advanced: Encrypted Storage
-
-Add encryption layer on top of any storage:
-
-```typescript
-class EncryptedStorageService implements IStorageService {
-    constructor(
-        private baseStorage: IStorageService,
-        private encryptionKey: string
-    ) {}
-    
-    async get(key: string): Promise<string | null> {
-        const encrypted = await this.baseStorage.get(key);
-        if (!encrypted) return null;
-        return this.decrypt(encrypted, this.encryptionKey);
-    }
-    
-    async set(key: string, value: string): Promise<void> {
-        const encrypted = this.encrypt(value, this.encryptionKey);
-        await this.baseStorage.set(key, encrypted);
-    }
-    
-    async remove(key: string): Promise<void> {
-        await this.baseStorage.remove(key);
-    }
-    
-    async has(key: string): Promise<boolean> {
-        return await this.baseStorage.has(key);
-    }
-    
-    private encrypt(text: string, key: string): string {
-        // Use crypto library (e.g., crypto-js)
-        return CryptoJS.AES.encrypt(text, key).toString();
-    }
-    
-    private decrypt(ciphertext: string, key: string): string {
-        const bytes = CryptoJS.AES.decrypt(ciphertext, key);
-        return bytes.toString(CryptoJS.enc.Utf8);
-    }
-}
-
-// Usage
-const secureStorage = new LocalStorageService();
-const encryptedStorage = new EncryptedStorageService(
-    secureStorage, 
-    'your-encryption-key'
-);
-
-setupSocialLogin(x => {
-    x.storageService = encryptedStorage;
-    // ... rest of config
-});
-```
-
-📖 **Full Storage Architecture Guide**: See [`STORAGE_ARCHITECTURE.md`](./STORAGE_ARCHITECTURE.md) for detailed technical documentation.
-
----
-
-## 🧭 Custom Routing Service
-
-## 🧭 Custom Routing Service
-
-### Why Routing Service?
-
-**Problem**: Client-side routing frameworks (**React Router**, **Next.js App Router**, **Remix**) intercept native browser APIs, causing two critical issues:
-
-1. **OAuth Callback Detection**: `window.location.search` is empty even when URL contains parameters
-2. **Navigation Bypass**: `window.location.href` and `window.history.replaceState()` bypass the router, losing routing state
-
-**Solution**: The `IRoutingService` abstraction provides a unified interface for:
-- **URL Parameter Reading** (OAuth callback detection)
-- **Navigation Operations** (redirects, return URLs, cleanup)
-
-### Default Behavior
-
-By default, the library uses `WindowRoutingService` which uses native browser APIs:
-
-```typescript
-// ✅ Works automatically with:
-// - Vanilla React (no routing library)
-// - Standard browser navigation
-// - Server-side rendered apps
-// - Next.js Pages Router (with server redirects)
-setupSocialLogin(x => {
-    // No routingService config needed - uses WindowRoutingService by default
-    x.apiUri = 'https://api.example.com';
-});
-```
-
-### When to Use Custom Routing Service
-
-| Framework | Needs Custom? | Why? | Implementation |
-|-----------|---------------|------|----------------|
-| **React Router** | ✅ **YES** | Client-side routing intercepts window APIs | `ReactRouterRoutingService` (see below) |
-| **Next.js App Router** | ✅ **YES** | Uses router.push/replace for navigation | `NextAppRouterRoutingService` (see below) |
-| **Next.js Pages Router** | ⚠️ **MAYBE** | Depends on navigation style | Test if return URLs work |
-| **Remix** | ✅ **YES** | Uses @remix-run/react router | Similar to React Router |
-| **Vanilla React** | ❌ No | No routing framework | Default works ✅ |
-| **Server-Side Rendering** | ❌ No | Full page reloads | Default works ✅ |
-
-📁 **Ready-to-use example files** are available in [`src/services/`](./src/services/):
-- [`ReactRouterRoutingService.example.ts`](./src/services/ReactRouterRoutingService.example.ts) - React Router v6+ (unified)
-- [`NextAppRouterRoutingService.example.ts`](./src/services/NextAppRouterRoutingService.example.ts) - Next.js App Router v13+ (unified)
-- [`MockRoutingService.example.ts`](./src/services/MockRoutingService.example.ts) - Unit testing with verification methods
-
-**Copy these files to your project and remove the `.example` extension.**
-
----
-
-### 🔧 React Router Implementation
-
-If you're using **React Router v6+**, use this unified routing service:
-
-```typescript
-import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import { IRoutingService } from 'rystem.authentication.social.react';
-
-/**
- * Unified Routing Service for React Router v6+
- * Handles both URL reading and navigation
- */
-export class ReactRouterRoutingService implements IRoutingService {
-    private searchParamsGetter: (() => URLSearchParams) | null = null;
-    private navigateFunc: ((to: string, options?: any) => void) | null = null;
-    private location: any = null;
-
-    /**
-     * Single initialization with all React Router hooks
-     */
-    initialize(
-        searchParamsGetter: () => URLSearchParams,
-        navigateFunc: (to: string, options?: any) => void,
-        location: any
-    ): void {
-        this.searchParamsGetter = searchParamsGetter;
-        this.navigateFunc = navigateFunc;
-        this.location = location;
-    }
-
-    // URL Parameter Reading (OAuth callbacks)
-    getSearchParam(key: string): string | null {
-        return this.searchParamsGetter?.().get(key) || null;
-    }
-
-    getAllSearchParams(): URLSearchParams {
-        return this.searchParamsGetter?.() || new URLSearchParams();
-    }
-
-    // Navigation Operations
-    getCurrentPath(): string {
-        return this.location 
-            ? this.location.pathname + this.location.search
-            : window.location.pathname + window.location.search;
-    }
-
-    navigateTo(url: string): void {
-        // External OAuth redirects must use window.location
-        if (url.startsWith('http')) {
-            window.location.href = url;
-        } else {
-            this.navigateFunc?.(url);
-        }
-    }
-
-    navigateReplace(path: string): void {
-        this.navigateFunc?.(path, { replace: true });
-    }
-
-    openPopup(url: string, name: string, features: string): Window | null {
-        return window.open(url, name, features);
-    }
-}
-```
-
-#### Usage with React Router
-
-```typescript
-import { BrowserRouter, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import { setupSocialLogin, SocialLoginWrapper, MicrosoftButton } from 'rystem.authentication.social.react';
-import { ReactRouterRoutingService } from './ReactRouterRoutingService';
-
-// Create singleton instance
-const routingService = new ReactRouterRoutingService();
-
-// Setup configuration ONCE at app startup
-setupSocialLogin(x => {
-    x.apiUri = 'https://api.example.com';
-    x.routingService = routingService; // ✅ One service for everything
-    x.providers = [
-        { provider: ProviderType.Microsoft, clientId: 'your-client-id' }
-    ];
-});
-
-// Main App Component
-function App() {
-    const [searchParams] = useSearchParams();
-    const navigate = useNavigate();
-    const location = useLocation();
-
-    // ✅ Single initialization with all hooks
-    useEffect(() => {
-        routingService.initialize(() => searchParams, navigate, location);
-    }, [searchParams, navigate, location]);
-
-    return (
-        <div>
-            <h1>My App</h1>
-            <MicrosoftButton />
-        </div>
-    );
-}
-
-// Wrap with Router
-const Root = () => (
-    <BrowserRouter>
-        <SocialLoginWrapper>
-            <App />
-        </SocialLoginWrapper>
-    </BrowserRouter>
-);
-
-export default Root;
-```
-
----
-
-### 🔧 Next.js App Router Implementation
-
-For **Next.js 13+ App Router** with client components:
-
-```typescript
-'use client';
-
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { IRoutingService } from 'rystem.authentication.social.react';
-
-/**
- * Unified Routing Service for Next.js App Router
- * Handles both URL reading and navigation
- */
-export class NextAppRouterRoutingService implements IRoutingService {
-    private router: any = null;
-    private pathname: string | null = null;
-    private searchParams: URLSearchParams | null = null;
-
-    /**
-     * Single initialization with all Next.js hooks
-     */
-    initialize(router: any, pathname: string, searchParams: URLSearchParams | null): void {
-        this.router = router;
-        this.pathname = pathname;
-        this.searchParams = searchParams;
-    }
-
-    // URL Parameter Reading (OAuth callbacks)
-    getSearchParam(key: string): string | null {
-        return this.searchParams?.get(key) || null;
-    }
-
-    getAllSearchParams(): URLSearchParams {
-        return this.searchParams || new URLSearchParams();
-    }
-
-    // Navigation Operations
-    getCurrentPath(): string {
-        if (!this.pathname) return window.location.pathname + window.location.search;
-        const search = this.searchParams?.toString();
-        return search ? `${this.pathname}?${search}` : this.pathname;
-    }
-
-    navigateTo(url: string): void {
-        // External OAuth redirects must use window.location
-        if (url.startsWith('http')) {
-            window.location.href = url;
-        } else {
-            this.router?.push(url);
-        }
-    }
-
-    navigateReplace(path: string): void {
-        this.router?.replace(path);
-    }
-
-    openPopup(url: string, name: string, features: string): Window | null {
-        return window.open(url, name, features);
-    }
-}
-```
-
-#### Usage with Next.js App Router
-
-```typescript
-'use client'; // ✅ Must be a Client Component
-
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
-import { setupSocialLogin, SocialLoginWrapper, MicrosoftButton } from 'rystem.authentication.social.react';
-import { NextAppRouterRoutingService } from './NextAppRouterRoutingService';
-
-// Create singleton instance
-const routingService = new NextAppRouterRoutingService();
-
-// Setup configuration ONCE
-setupSocialLogin(x => {
-    x.apiUri = 'https://api.example.com';
-    x.routingService = routingService; // ✅ One service for everything
-    x.providers = [
-        { provider: ProviderType.Microsoft, clientId: 'your-client-id' }
-    ];
-});
-
-export default function LoginPage() {
-    const router = useRouter();
-    const pathname = usePathname();
-    const searchParams = useSearchParams();
-
-    // ✅ Single initialization with all hooks
-    useEffect(() => {
-        routingService.initialize(router, pathname, searchParams);
-    }, [router, pathname, searchParams]);
-
-    return (
-        <SocialLoginWrapper>
-            <div>
-                <h1>Login</h1>
-                <MicrosoftButton />
-            </div>
-        </SocialLoginWrapper>
-    );
+interface SocialLoginErrorResponse {
+    code: number;     // 10 = user fetch error, 15 = token exchange error
+    message: string;
+    provider: ProviderType;
 }
 ```
 
 ---
 
-### 🧪 Testing with Mock Routing Service
+## PKCE (Microsoft)
 
-For unit tests, use the mock service with verification methods:
+PKCE is applied automatically for Microsoft OAuth:
 
-```typescript
-import { MockRoutingService } from './MockRoutingService';
+1. A `code_verifier` and `code_challenge` are generated on button click
+2. `code_challenge` is sent in the OAuth authorization URL
+3. `code_verifier` is sent in the `POST /api/Authentication/Social/Token` body
+4. After exchange, PKCE data is cleared from storage
 
-const mockRouting = new MockRoutingService();
-
-// Setup test data
-mockRouting.setSearchParam('code', 'test-auth-code');
-mockRouting.setSearchParam('state', 'microsoft');
-mockRouting.setCurrentPath('/account/login?tab=oauth');
-
-setupSocialLogin(x => {
-    x.routingService = mockRouting;
-    // ... rest of test config
-});
-
-// Run OAuth flow in test
-// ...
-
-// Verify navigation behavior
-expect(mockRouting.wasNavigateToCalledWith('https://oauth.provider.com')).toBe(true);
-expect(mockRouting.wasReplaceCalledWith('/dashboard')).toBe(true);
-expect(mockRouting.getNavigationHistory()).toEqual([
-    'https://oauth.provider.com',
-    '/dashboard'
-]);
-```
+No additional configuration is needed.
 
 ---
 
-### ⚠️ Important Notes
+## Storage Keys
 
-1. **Single Initialization**: Initialize routing service with ALL framework hooks in one call (not separate calls like before).
-
-2. **Singleton Pattern**: Create ONE instance and reuse it. Don't create new instances on every render.
-
-3. **Effect Dependencies**: Always include routing hooks in `useEffect` dependency array:
-   ```typescript
-   useEffect(() => {
-       routingService.initialize(/* hooks */);
-   }, [searchParams, navigate, location]); // ✅ All deps
-   ```
-
-4. **External OAuth URLs**: OAuth redirects to external providers (e.g., `https://login.microsoftonline.com`) MUST use `window.location.href` regardless of framework.
-
-5. **Return URL Feature**: The routing service handles saving the current page before OAuth and returning after login. If this doesn't work, check console for initialization warnings.
+| Key | Description |
+|---|---|
+| `socialUserToken` | JWT access token |
+| `socialUserToken_expiry` | Expiration timestamp |
+| `socialUser` | Serialized user object |
+| `rystem_pkce_{provider}_verifier` | PKCE code verifier |
+| `rystem_pkce_{provider}_challenge` | PKCE code challenge |
 
 ---
 
-### 🔍 Debugging Routing Service
-
-Check your routing service is properly initialized:
-
-```typescript
-console.log('Routing Service:', settings.routingService.constructor.name);
-console.log('Current Path:', settings.routingService.getCurrentPath());
-console.log('OAuth Code:', settings.routingService.getSearchParam('code'));
-```
-
-You'll see these logs in `SocialLoginWrapper` during OAuth callbacks.
-
----
-
-### 📊 What Does This Solve?
-
-**Before (without custom routing service):**
-```typescript
-// ❌ PROBLEM 1: OAuth callback params not found
-const code = new URLSearchParams(window.location.search).get('code');
-// Returns null even though URL is: /login?code=ABC&state=microsoft
-// (React Router intercepts client-side navigation)
-
-// ❌ PROBLEM 2: Navigation bypasses router
-window.location.href = 'https://oauth.provider.com'; // Works but...
-// ... later:
-window.history.replaceState({}, '', '/dashboard'); // ❌ React Router doesn't know!
-// Result: URL changes but component doesn't update, state lost
-```
-
-**After (with custom routing service):**
-```typescript
-// ✅ SOLUTION 1: Framework-aware URL reading
-const code = routingService.getSearchParam('code');
-// Uses React Router's useSearchParams internally
-// Returns 'ABC' correctly!
-
-// ✅ SOLUTION 2: Framework-aware navigation
-routingService.navigateTo('https://oauth.provider.com'); // External, uses window.location
-// ... later:
-routingService.navigateReplace('/dashboard'); // ✅ Calls navigate(path, {replace: true})
-// Result: React Router updates correctly, components re-render!
-```
-
----
-
-### 📋 Architecture Comparison
-
-| Feature | Before (v0.3.x) | After (v0.4.0) |
-|---------|-----------------|----------------|
-| **Services** | `IUrlService` + `INavigationService` | `IRoutingService` (unified) ✅ |
-| **Settings** | 2 fields (`urlService`, `navigationService`) | 1 field (`routingService`) ✅ |
-| **Initialization** | 2 separate calls | 1 unified call ✅ |
-| **Hooks** | Split across 2 services | All in one place ✅ |
-| **Example Files** | 8 files (4 URL + 4 Nav) | 3 files (unified) ✅ |
-| **Complexity** | Higher (duplicate patterns) | Lower (single pattern) ✅ |
-
----
-
-### Custom API Integration
-
-```typescript
-import { useSocialToken } from 'rystem.authentication.social.react';
-
-const MyComponent = () => {
-    const token = useSocialToken();
-
-    const fetchProtectedData = async () => {
-        if (token.isExpired) {
-            alert('Please login first');
-            return;
-        }
-
-        try {
-            const response = await fetch('https://api.example.com/protected', {
-                headers: {
-                    'Authorization': `Bearer ${token.accessToken}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (response.status === 401) {
-                // Token might be expired, force refresh
-                const forceRefresh = useContext(SocialLoginContextRefresh);
-                await forceRefresh();
-                // Retry request
-            }
-
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            console.error('API error:', error);
-        }
-    };
-
-    return <button onClick={fetchProtectedData}>Load Data</button>;
-};
-```
-
-### TypeScript Custom User Model
-
-```typescript
-interface CustomSocialUser {
-    username: string;
-    isAuthenticated: boolean;
-    displayName: string;
-    avatar: string;
-    roles: string[];
-}
-
-const MyComponent = () => {
-    const user = useSocialUser<CustomSocialUser>();
-
-    return (
-        <div>
-            <img src={user.avatar} alt={user.displayName} />
-            <p>{user.displayName}</p>
-            <p>Roles: {user.roles.join(', ')}</p>
-        </div>
-    );
-};
-```
-
-## 🎨 Dark Mode & Theming
-
-The modern social login buttons support **automatic dark mode** with three detection methods:
-
-### 1. **Automatic Detection** (Recommended)
-
-The buttons automatically adapt to the user's system preference:
-
-```css
-/* No JavaScript needed - CSS handles it automatically */
-@media (prefers-color-scheme: dark) {
-    /* Dark mode styles applied automatically */
-}
-```
-
-### 2. **Manual Theme Control with `data-theme`**
-
-Control the theme programmatically by setting the `data-theme` attribute on any parent element:
-
-```typescript
-import { MicrosoftButton } from 'rystem.authentication.social.react';
-
-export const ThemedLoginPage = () => {
-    const [isDark, setIsDark] = useState(false);
-
-    return (
-        <div data-theme={isDark ? 'dark' : 'light'}>
-            <button onClick={() => setIsDark(!isDark)}>
-                Toggle Theme 🌓
-            </button>
-            
-            <MicrosoftButton />
-            <GoogleButton />
-            <GitHubButton />
-        </div>
-    );
-};
-```
-
-### 3. **CSS Class Control**
-
-Use CSS classes for framework integration (Tailwind, etc.):
-
-```typescript
-export const TailwindThemedLogin = () => {
-    return (
-        <div className="dark"> {/* Tailwind dark mode */}
-            <MicrosoftButton />
-            <GoogleButton />
-        </div>
-    );
-};
-```
-
-### Theme Priority
-
-The buttons check for dark mode in this order:
-
-1. **`[data-theme="dark"]`** attribute (highest priority)
-2. **`.dark-mode`** CSS class
-3. **`@media (prefers-color-scheme: dark)`** system preference (fallback)
-
-### Custom Theme Colors
-
-Override the default colors using CSS variables:
-
-```css
-/* Light mode customization */
-:root {
-    --rsb-microsoft-bg: #2f2f2f;
-    --rsb-microsoft-color: #ffffff;
-    --rsb-hover-brightness: 1.1;
-}
-
-/* Dark mode customization */
-[data-theme="dark"] {
-    --rsb-microsoft-bg: #404040;
-    --rsb-microsoft-color: #e0e0e0;
-    --rsb-hover-brightness: 1.15;
-}
-
-/* Specific provider override */
-[data-theme="dark"] .rystem-social-button--google {
-    background: linear-gradient(135deg, #434343 0%, #363636 100%);
-}
-```
-
-### Available CSS Variables
-
-| Variable | Default (Light) | Default (Dark) | Description |
-|----------|----------------|----------------|-------------|
-| `--rsb-background` | Provider brand color | Darker shade | Button background |
-| `--rsb-text` | `#ffffff` | `#e0e0e0` | Button text color |
-| `--rsb-hover-brightness` | `1.05` | `1.15` | Hover effect intensity |
-| `--rsb-focus-ring` | Provider color | Lighter shade | Keyboard focus outline |
-| `--rsb-shadow` | `rgba(0,0,0,0.1)` | `rgba(0,0,0,0.3)` | Button shadow |
-| `--rsb-disabled-opacity` | `0.6` | `0.5` | Disabled state opacity |
-
-### Framework Integration Examples
-
-#### **Next.js with `next-themes`**
-
-```typescript
-import { useTheme } from 'next-themes';
-import { SocialLoginButtons } from 'rystem.authentication.social.react';
-
-export const NextJsLogin = () => {
-    const { theme, setTheme } = useTheme();
-
-    return (
-        <div data-theme={theme}>
-            <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-                Toggle Theme
-            </button>
-            <SocialLoginButtons />
-        </div>
-    );
-};
-```
-
-#### **React Context Theme Provider**
-
-```typescript
-const ThemeContext = createContext({ isDark: false, toggle: () => {} });
-
-export const ThemeProvider = ({ children }) => {
-    const [isDark, setIsDark] = useState(
-        () => window.matchMedia('(prefers-color-scheme: dark)').matches
-    );
-
-    useEffect(() => {
-        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        const handler = (e) => setIsDark(e.matches);
-        mediaQuery.addEventListener('change', handler);
-        return () => mediaQuery.removeEventListener('change', handler);
-    }, []);
-
-    return (
-        <ThemeContext.Provider value={{ isDark, toggle: () => setIsDark(!isDark) }}>
-            <div data-theme={isDark ? 'dark' : 'light'}>
-                {children}
-            </div>
-        </ThemeContext.Provider>
-    );
-};
-
-// Usage
-export const App = () => (
-    <ThemeProvider>
-        <LoginPage />
-    </ThemeProvider>
-);
-```
-
-#### **Tailwind CSS Integration**
-
-```typescript
-// tailwind.config.js
-module.exports = {
-    darkMode: 'class', // Enable class-based dark mode
-    // ...
-};
-
-// Component
-export const TailwindLogin = () => {
-    const [darkMode, setDarkMode] = useState(false);
-
-    return (
-        <div className={darkMode ? 'dark' : ''}>
-            <div className="bg-white dark:bg-gray-900 min-h-screen">
-                <button 
-                    onClick={() => setDarkMode(!darkMode)}
-                    className="mb-4 px-4 py-2 bg-gray-200 dark:bg-gray-700"
-                >
-                    Toggle Dark Mode
-                </button>
-                
-                {/* Buttons automatically adapt to .dark class */}
-                <SocialLoginButtons />
-            </div>
-        </div>
-    );
-};
-```
-
-### Accessibility
-
-The buttons maintain **WCAG 2.1 AA contrast ratios** in both light and dark modes:
-
-- ✅ **Light mode**: 4.5:1 minimum contrast
-- ✅ **Dark mode**: 4.5:1 minimum contrast
-- ✅ **Focus indicators**: 3:1 contrast with background
-- ✅ **Hover states**: Clearly visible in both modes
-
-### Testing Dark Mode
-
-```typescript
-import { render } from '@testing-library/react';
-import { MicrosoftButton } from 'rystem.authentication.social.react';
-
-test('button renders correctly in dark mode', () => {
-    const { container } = render(
-        <div data-theme="dark">
-            <MicrosoftButton />
-        </div>
-    );
-    
-    const button = container.querySelector('.rystem-social-button--microsoft');
-    expect(button).toBeInTheDocument();
-    
-    // Check computed styles
-    const styles = window.getComputedStyle(button);
-    expect(styles.backgroundColor).toBeTruthy();
-});
-```
-
-## 📝 Complete Example
-
-```typescript
-import { useState, useContext } from 'react';
-import { 
-    SocialLoginButtons, 
-    SocialLoginContextLogout, 
-    SocialLoginContextRefresh, 
-    SocialLogoutButton, 
-    useSocialToken, 
-    useSocialUser,
-    MicrosoftButton,
-    GoogleButton,
-    GitHubButton
-} from 'rystem.authentication.social.react';
-
-const customButtons = [MicrosoftButton, GoogleButton, GitHubButton];
-
-export const Dashboard = () => {
-    const token = useSocialToken();
-    const user = useSocialUser();
-    const forceRefresh = useContext(SocialLoginContextRefresh);
-    const logout = useContext(SocialLoginContextLogout);
-    const [count, setCount] = useState(0);
-    
-    return (
-        <div className="dashboard">
-            {token.isExpired ? (
-                <div className="login-section">
-                    <h2>Welcome! Please login</h2>
-                    <SocialLoginButtons buttons={customButtons} />
-                </div>
-            ) : (
-                <div className="user-section">
-                    <h2>Welcome back, {user.username}!</h2>
-                    
-                    <div className="token-info">
-                        <p><strong>Access Token:</strong> {token.accessToken.substring(0, 20)}...</p>
-                        <p><strong>Expires:</strong> {token.expiresIn.toLocaleString()}</p>
-                    </div>
-                    
-                    <div className="actions">
-                        <button onClick={() => setCount(count + 1)}>
-                            Counter: {count}
-                        </button>
-                        <button onClick={() => forceRefresh()}>
-                            🔄 Force Refresh Token
-                        </button>
-                        <SocialLogoutButton>
-                            🚪 Logout
-                        </SocialLogoutButton>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
-```
-
-## 🌐 OAuth Provider Configuration
-
-### Microsoft Entra ID (Azure AD)
-
-1. Go to [Azure Portal](https://portal.azure.com) → Azure Active Directory → App registrations
-2. Create new registration (Single-page application)
-3. Set **Redirect URI**: `https://yourdomain.com/account/login`
-4. Under **Authentication**:
-   - Enable "ID tokens"
-   - Enable "Access tokens" 
-   - Add redirect URI with type "Single-page application"
-5. Copy **Application (client) ID**
-6. **No client secret needed** - PKCE handles security
-
-### Google
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create OAuth 2.0 Client ID (Web application)
-3. Add **Authorized redirect URI**: `https://yourdomain.com/account/login`
-4. Copy **Client ID**
-
-### GitHub
-
-1. Go to [GitHub Settings](https://github.com/settings/developers) → OAuth Apps
-2. Create new OAuth App
-3. Set **Authorization callback URL**: `https://yourdomain.com/account/login`
-4. Copy **Client ID**
-
-## 🔗 Related Packages
-
-- **API Server**: `Rystem.Authentication.Social` - Backend OAuth validation with PKCE support
-- **Blazor Client**: `Rystem.Authentication.Social.Blazor` - Blazor Server/WASM components
-- **Abstractions**: `Rystem.Authentication.Social.Abstractions` - Shared models
-
-## 📚 More Information
-
-- **Complete Docs**: [https://rystem.net/mcp/tools/auth-social-typescript.md](https://rystem.net/mcp/tools/auth-social-typescript.md)
-- **OAuth Flow Diagram**: [https://rystem.net/mcp/prompts/auth-flow.md](https://rystem.net/mcp/prompts/auth-flow.md)
-- **PKCE RFC**: [RFC 7636](https://tools.ietf.org/html/rfc7636)
+## Related Packages
+
+- **API Server (.NET)**: [`Rystem.Authentication.Social`](https://www.nuget.org/packages/Rystem.Authentication.Social)
+- **Blazor Client**: [`Rystem.Authentication.Social.Blazor`](https://www.nuget.org/packages/Rystem.Authentication.Social.Blazor)
+- **Abstractions**: [`Rystem.Authentication.Social.Abstractions`](https://www.nuget.org/packages/Rystem.Authentication.Social.Abstractions)
