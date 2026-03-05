@@ -15,6 +15,7 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Home', href: '/', icon: BookOpen },
     { name: 'Documentation', href: '/docs', icon: BookOpen },
     { name: 'MCP Tools', href: '/mcp', icon: Code2 },
+    { name: 'A2A Agent', href: '/a2a', icon: Code2 },
   ]
 
   const isActive = (path: string) => {
