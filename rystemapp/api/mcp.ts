@@ -81,7 +81,7 @@ async function createMcpServer(): Promise<McpServer> {
 
         // Helper: Progressive keyword disambiguation
         const findBestMatch = (query: string): { id: string; value: string; title?: string } | null => {
-            const keywords = query.toLowerCase().split(/\s+/).filter(k => k.length > 2);
+            const keywords = query.toLowerCase().split(/\s+/).filter(k => k.length > 0);
             if (keywords.length === 0) return null;
 
             // Try progressive disambiguation
@@ -268,13 +268,13 @@ async function createMcpServer(): Promise<McpServer> {
                 }
             },
             async (args: { query: string }) => {
-                const keywords = args.query.toLowerCase().split(/\s+/).filter(k => k.length > 2);
+                const keywords = args.query.toLowerCase().split(/\s+/).filter(k => k.length > 0);
                 
                 if (keywords.length === 0) {
                     return {
                         content: [{
                             type: 'text' as const,
-                            text: `⚠️ Query too short. Please provide meaningful keywords (3+ characters).`
+                            text: `⚠️ Empty query. Please provide at least one keyword.`
                         }]
                     };
                 }

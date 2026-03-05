@@ -123,7 +123,7 @@ async function createMcpServer(): Promise<McpServer> {
             `${dynamicTool.name}-search`,
             { title: `Search ${dynamicTool.title}`, description: 'Search docs by keyword', inputSchema: { query: z.string().describe('Keywords to search') } },
             async (args: { query: string }) => {
-                const keywords = args.query.toLowerCase().split(/\s+/).filter(k => k.length > 2);
+                const keywords = args.query.toLowerCase().split(/\s+/).filter(k => k.length > 0);
                 const matches: Array<{ id: string; value: string; title?: string; score: number }> = [];
                 for (const [id, topics] of Object.entries(mapping)) {
                     for (const value of Object.keys(topics)) {
