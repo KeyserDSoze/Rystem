@@ -26,7 +26,7 @@ interface McpManifest {
   prompts: McpItem[]
 }
 
-const MCP_ENDPOINT = (import.meta as any).env?.VITE_MCP_ENDPOINT ?? '/mcp'
+const MCP_ENDPOINT = (import.meta as any).env?.VITE_MCP_ENDPOINT ?? 'https://rystem.cloud/mcp'
 
 export default function McpPage() {
   const [searchParams, setSearchParams] = useSearchParams()
