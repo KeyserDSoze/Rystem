@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, writeFileSync, existsSync, statSync, mkdirSync, copyFileSync } from 'fs';
-import { join, relative, dirname, parse } from 'path';
+import { join, relative, dirname, parse, sep } from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -49,6 +49,10 @@ const MCP_DIR = join(__dirname, '..', 'src', 'mcp');
 const OUTPUT_DIR = join(__dirname, '..', 'public', 'mcp');
 const OUTPUT_FILE = join(__dirname, '..', 'public', 'mcp-manifest.json');
 const PACKAGE_JSON_PATH = join(__dirname, '..', 'package.json');
+const SRC_ROOT = join(__dirname, '..', '..', 'src');
+
+// Directories to skip during auto-discovery
+const SKIP_DIRS = new Set(['node_modules', 'bin', 'obj', '.git', 'dist', 'TestResults', '.vs', 'packages', 'out']);
 
 interface Metadata {
   title?: string;
@@ -305,8 +309,131 @@ function scanMcpDirectory(dir: string, type: 'tools' | 'resources' | 'prompts'):
   return items;
 }
 
-function main() {
-  console.log('🔧 Building MCP manifest...\n');
+// Auto-discover README.md files from projects that have a .csproj or package.json
+// in the same folder. id = first path segment under src/, value = derived from project name.
+function autoDiscoverProjectReadmes(
+  srcRoot: string,
+  existingDocs: Array<{ id: string; value: string }>
+): Array<{ id: string; value: string; filename: string; filePath: string; metadata: { title?: string; description?: string } }> {
+  const results: Array<{ id: string; value: string; filename: string; filePath: string; metadata: { title?: string; description?: string } }> = [];
+
+  function scanDir(dir: string) {
+    let entries: ReturnType<typeof readdirSync>;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    const fileNames = entries.filter(e => e.isFile()).map(e => e.name);
+    const hasReadme = fileNames.some(f => f.toLowerCase() === 'readme.md');
+    const csprojFile = fileNames.find(f => f.endsWith('.csproj'));
+    const hasPackageJson = fileNames.includes('package.json');
+
+    if (hasReadme && (csprojFile || hasPackageJson)) {
+      // Derive id = first path segment under srcRoot (e.g. "AI", "Extensions")
+      const rel = relative(srcRoot, dir);
+      const parts = rel.split(sep);
+      const id = parts[0].toLowerCase();
+
+      // Skip inner TS packages: path has a 'src' segment after the first level
+      if (parts.slice(1).some(p => p.toLowerCase() === 'src')) {
+        // Recurse but don't register
+        for (const entry of entries) {
+          if (entry.isDirectory() && !SKIP_DIRS.has(entry.name)) {
+            scanDir(join(dir, entry.name));
+          }
+        }
+        return;
+      }
+
+      // Skip test projects: any path segment is 'test' or 'tests'
+      if (parts.some(p => p.toLowerCase() === 'test' || p.toLowerCase() === 'tests')) {
+        for (const entry of entries) {
+          if (entry.isDirectory() && !SKIP_DIRS.has(entry.name)) {
+            scanDir(join(dir, entry.name));
+          }
+        }
+        return;
+      }
+
+      // Derive value from .csproj name or package.json name
+      let value: string;
+      if (csprojFile) {
+        value = csprojFile
+          .replace('.csproj', '')
+          .replace(/^Rystem\./i, '')   // strip leading "Rystem."
+          .replace(/\./g, '-')          // dots → dashes
+          .toLowerCase();
+      } else {
+        try {
+          const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf-8'));
+          value = (pkg.name as string || parts[parts.length - 1])
+            .replace(/^@[^/]+\//, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '')
+            .toLowerCase();
+        } catch {
+          value = parts[parts.length - 1].toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        }
+      }
+
+      // Skip test/sample apps by project name (testapp, playground, sample, demo)
+      const valueLower = value.toLowerCase();
+      if (/testapp|playground|sample|\.demo/.test(valueLower)) {
+        // Still recurse into subfolders
+        for (const entry of entries) {
+          if (entry.isDirectory() && !SKIP_DIRS.has(entry.name)) {
+            scanDir(join(dir, entry.name));
+          }
+        }
+        return;
+      }
+
+      // Skip if already covered by a manual doc (manual takes priority)
+      const alreadyExists = existingDocs.some(d => d.id === id && d.value === value);
+      if (!alreadyExists) {
+        const readmePath = join(dir, fileNames.find(f => f.toLowerCase() === 'readme.md')!);
+        const content = readFileSync(readmePath, 'utf-8');
+        const meta = extractMetadata(content);
+
+        // Extract a short description from first non-empty paragraph if no frontmatter
+        let description = meta.description;
+        if (!description) {
+          const firstPara = meta.content
+            .split('\n')
+            .map(l => l.trim())
+            .filter(l => l && !l.startsWith('#') && !l.startsWith('!') && !l.startsWith('<') && !l.startsWith('|') && !l.startsWith('```') && l.length > 20)
+            .find(l => l.length > 0);
+          description = firstPara?.replace(/[*_`[\]]/g, '').substring(0, 160);
+        }
+
+        const title = meta.title
+          || meta.content.split('\n').find(l => l.startsWith('# '))?.replace(/^#\s+/, '').replace(/[*_`]/g, '').trim()
+          || `${id}/${value}`;
+
+        const filename = `${id}-${value}.md`;
+        results.push({ id, value, filename, filePath: readmePath, metadata: { title, description } });
+        console.log(`  ↳ auto: ${filename} — ${title}`);
+      }
+    }
+
+    // Recurse into subdirectories, skipping noise folders
+    for (const entry of entries) {
+      if (entry.isDirectory() && !SKIP_DIRS.has(entry.name)) {
+        scanDir(join(dir, entry.name));
+      }
+    }
+  }
+
+  if (existsSync(srcRoot)) {
+    scanDir(srcRoot);
+  }
+
+  return results;
+}
+
+function main() {  console.log('🔧 Building MCP manifest...\n');
 
   // Read version from package.json
   let version = '1.0.0'; // fallback version
@@ -323,7 +450,38 @@ function main() {
   
   // Copy dynamic tool files to public
   copyDynamicToolFiles(MCP_DIR, OUTPUT_DIR);
-  
+
+  // Auto-discover project READMEs from src/ and inject into get-rystem-docs
+  console.log('\n🔍 Auto-discovering project READMEs from src/...');
+  const getRystemDocsTool = dynamicTools.find(t => t.name === 'get-rystem-docs');
+  if (getRystemDocsTool) {
+    const existingDocs = getRystemDocsTool.documents.map(d => ({ id: d.id, value: d.value }));
+    const autoDiscovered = autoDiscoverProjectReadmes(SRC_ROOT, existingDocs);
+
+    // Copy discovered READMEs to public/mcp/tools/get-rystem-docs/{id}-{value}.md
+    const toolOutputDir = join(OUTPUT_DIR, 'tools', 'get-rystem-docs');
+    if (!existsSync(toolOutputDir)) {
+      mkdirSync(toolOutputDir, { recursive: true });
+    }
+
+    for (const doc of autoDiscovered) {
+      const destPath = join(toolOutputDir, doc.filename);
+      copyFileSync(doc.filePath, destPath);
+      getRystemDocsTool.documents.push({
+        filename: doc.filename,
+        id: doc.id,
+        value: doc.value,
+        metadata: { ...doc.metadata, autoDiscovered: true }
+      });
+    }
+
+    // Regenerate description with the newly added docs
+    getRystemDocsTool.description = generateToolDescription(getRystemDocsTool.name, getRystemDocsTool.documents);
+    console.log(`✅ Auto-discovered ${autoDiscovered.length} project READMEs`);
+  } else {
+    console.warn('⚠️  No "get-rystem-docs" dynamic tool found; skipping auto-discovery');
+  }
+
   // Scan regular items
   const tools = scanMcpDirectory(MCP_DIR, 'tools');
   const resources = scanMcpDirectory(MCP_DIR, 'resources');
@@ -356,7 +514,10 @@ function main() {
   console.log(`   Dynamic Tools: ${dynamicTools.length}`);
   if (dynamicTools.length > 0) {
     dynamicTools.forEach(tool => {
-      console.log(`     - ${tool.name} (${tool.documents.length} documents)`);
+      const manualCount = tool.documents.filter(d => !d.metadata?.autoDiscovered).length;
+      const autoCount = tool.documents.filter(d => d.metadata?.autoDiscovered).length;
+      const note = autoCount > 0 ? ` (${manualCount} manual + ${autoCount} auto)` : '';
+      console.log(`     - ${tool.name} (${tool.documents.length} documents${note})`);
     });
   }
   console.log(`   Tools: ${tools.length}`);
