@@ -7,371 +7,486 @@
 - **💬 Discord Community**: [https://discord.gg/tkWvy4WPjt](https://discord.gg/tkWvy4WPjt)
 - **☕ Support the Project**: [https://www.buymeacoffee.com/keyserdsoze](https://www.buymeacoffee.com/keyserdsoze)
 
-## Get Started
+---
 
-## Dependency injection extensions
+# Table of Contents
 
-### Warm up
+- [Table of Contents](#table-of-contents)
+  - [Warm Up](#warm-up)
+  - [Execute Until Now](#execute-until-now)
+  - [Service Helper](#service-helper)
+    - [AddService](#addservice)
+    - [HasService](#hasservice)
+    - [RemoveService](#removeservice)
+    - [AddOrOverrideService](#addoroverrideservice)
+    - [TryAddService](#tryaddservice)
+    - [TryAddSingletonAndGetService / GetSingletonService](#tryaddsingletonandgetservice--getsingletonservice)
+  - [Keyed Service Helper](#keyed-service-helper)
+    - [AddKeyedService](#addkeyedservice)
+    - [HasKeyedService](#haskeyedservice)
+  - [Abstract Factory](#abstract-factory)
+    - [IFactory Interface](#ifactory-interface)
+    - [Registration](#registration)
+    - [Usage](#usage)
+    - [HasFactory](#hasfactory)
+    - [Factory Fallback](#factory-fallback)
+  - [Decorator](#decorator)
+    - [Decorator with Abstract Factory](#decorator-with-abstract-factory)
+  - [Scan Dependency Injection](#scan-dependency-injection)
+    - [Manual scan with an explicit interface](#manual-scan-with-an-explicit-interface)
+    - [IScannable marker interface](#iscannable-marker-interface)
+    - [Override lifetime per class](#override-lifetime-per-class)
+    - [Assembly source helpers](#assembly-source-helpers)
+  - [Population Service](#population-service)
+
+---
+
+## Warm Up
+
 When you use the DI pattern in your .Net application you could need a warm up after the build of your services. And with Rystem you can simply do it.
 
-	builder.Services.AddWarmUp(() => somethingToDo());
+```csharp
+builder.Services.AddWarmUp(() => somethingToDo());
+// or async
+builder.Services.AddWarmUp(async serviceProvider =>
+{
+    await serviceProvider.GetRequiredService<MyService>().InitAsync();
+});
+```
 
-and after the build use the warm up
+After the build, trigger the warm up:
 
-	var app = builder.Build();
-	await app.Services.WarmUpAsync();
+```csharp
+var app = builder.Build();
+await app.Services.WarmUpAsync();
+```
 
+---
 
-## Population service
-You can use the population service to create a list of random value of a specific Type.
-An example from unit test explains how to use the service.
+## Execute Until Now
 
-    IServiceCollection services = new ServiceCollection();
-    services.AddPopulationService();
-    var serviceProvider = services.BuildServiceProvider().CreateScope().ServiceProvider;
-    var populatedModel = serviceProvider.GetService<IPopulation<PopulationModelTest>>();
-    IPopulation<PopulationModelTest> allPrepopulation = populatedModel!
-        .Setup()
-        .WithPattern(x => x.J!.First().A, "[a-z]{4,5}")
-            .WithPattern(x => x.Y!.First().Value.A, "[a-z]{4,5}")
-            .WithImplementation(x => x.I, typeof(MyInnerInterfaceImplementation))
-            .WithPattern(x => x.I!.A!, "[a-z]{4,5}")
-            .WithPattern(x => x.II!.A!, "[a-z]{4,5}")
-            .WithImplementation<IInnerInterface, MyInnerInterfaceImplementation>(x => x.I!);
-    var all = allPrepopulation.Populate();
+Build a temporary service provider, optionally warm it up, and execute a function against it — all in one call. Useful in test setups or pre-build initialization logic.
 
-## Abstract factory
-You can use this abstract factory solution when you need to setup more than one service of the same kind
-and you need to distinguish them by a name.
+```csharp
+// Build, resolve TService, execute
+string result = await services.ExecuteUntilNowAsync((MyService svc) =>
+    Task.FromResult(svc.DoWork()));
 
-I have an interface 
+// Build, resolve via IServiceProvider
+string result2 = await services.ExecuteUntilNowAsync((IServiceProvider sp) =>
+    Task.FromResult(sp.GetRequiredService<MyService>().DoWork()));
 
-    public interface IMyService
-    {
-        string GetName();
-    }
+// Build + WarmUp, then execute
+string result3 = await services.ExecuteUntilNowWithWarmUpAsync((MyService svc) =>
+    Task.FromResult(svc.DoWork()));
+```
 
-Some options for every service
+---
 
-    public class SingletonOption
-    {
-        public string ServiceName { get; set; }
-    }
-    public class TransientOption
-    {
-        public string ServiceName { get; set; }
-    }
-    public class ScopedOption
-    {
-        public string ServiceName { get; set; }
-    }
+## Service Helper
 
-with built options which is a IServiceOptions, a options class that ends up with another class. Used for example when you have to add a settings like a connection string but you want to use a service like a client that uses that connection string. 
+A set of extension methods on `IServiceCollection` to register, query, and remove services without specifying the lifetime as `AddTransient` / `AddScoped` / `AddSingleton` separately.
 
-    public class BuiltScopedOptions : IServiceOptions<ScopedOption>
-    {
-        public string ServiceName { get; set; }
+### AddService
 
-        public Task<Func<ScopedOption>> BuildAsync()
-        {
-            return Task.FromResult(() => new ScopedOption
-            {
-                ServiceName = ServiceName
-            });
-        }
-    }
+Register a service with a runtime-determined `ServiceLifetime`:
 
-And six different services
+```csharp
+// Implementation = service type
+services.AddService<MyService>(ServiceLifetime.Singleton);
 
-    public class SingletonService : IMyService, IServiceWithOptions<SingletonOption>
-    {
-        public SingletonOption Options { get; set; }
-        public string Id { get; } = Guid.NewGuid().ToString();
-        public string GetName()
-        {
-            return $"{Options.ServiceName} with id {Id}";
-        }
-    }
-    public class TransientService : IMyService, IServiceWithOptions<TransientOption>
-    {
-        public TransientOption Options { get; set; }
-        public string Id { get; } = Guid.NewGuid().ToString();
-        public string GetName()
-        {
-            return $"{Options.ServiceName} with id {Id}";
-        }
-    }
-    public class ScopedService : IMyService, IServiceWithOptions<ScopedOption>
-    {
-        public ScopedOption Options { get; set; }
-        public string Id { get; } = Guid.NewGuid().ToString();
-        public string GetName()
-        {
-            return $"{Options.ServiceName} with id {Id}";
-        }
-    }
-    public class ScopedService2 : IMyService, IServiceWithOptions<ScopedOption>
-    {
-        public ScopedOption Options { get; set; }
-        public string Id { get; } = Guid.NewGuid().ToString();
+// Interface → implementation
+services.AddService<IMyService, MyService>(ServiceLifetime.Scoped);
 
-        public string GetName()
-        {
-            return $"{Options.ServiceName} with id {Id}";
-        }
-    }
-    public class ScopedService3 : IMyService, IServiceWithOptions<ScopedOption>
-    {
-        public ScopedOption Options { get; set; }
-        public string Id { get; } = Guid.NewGuid().ToString();
+// With factory
+services.AddService<IMyService>(sp => new MyService(sp.GetRequiredService<IDep>()), ServiceLifetime.Transient);
 
-        public string GetName()
-        {
-            return $"{Options.ServiceName} with id {Id}";
-        }
-    }
-    public class ScopedService4 : IMyService, IServiceWithOptions<ScopedOption>
-    {
-        public ScopedOption Options { get; set; }
-        public string Id { get; } = Guid.NewGuid().ToString();
+// Interface + factory returning implementation
+services.AddService<IMyService, MyService>(sp => new MyService(), ServiceLifetime.Singleton);
 
-        public string GetName()
-        {
-            return $"{Options.ServiceName} with id {Id}";
-        }
-    }
+// Non-generic overloads
+services.AddService(typeof(IMyService), typeof(MyService), ServiceLifetime.Scoped);
+```
 
-I can setup them in this way
+### HasService
 
-    var services = new ServiceCollection();
-    services.AddFactory<IMyService, SingletonService, SingletonOption>(x =>
-    {
-        x.ServiceName = "singleton";
-    },
+Check whether a service type (optionally requiring a specific implementation) is already registered:
+
+```csharp
+bool registered = services.HasService<IMyService>(out ServiceDescriptor? descriptor);
+
+// Require a specific implementation type
+bool exact = services.HasService<IMyService, MyService>(out ServiceDescriptor? descriptor2);
+```
+
+### RemoveService
+
+Remove all non-keyed registrations for a given service type:
+
+```csharp
+services.RemoveService<IMyService>();
+
+// Non-generic
+services.RemoveService(typeof(IMyService));
+```
+
+### AddOrOverrideService
+
+Remove any existing registration and add the new one atomically:
+
+```csharp
+services.AddOrOverrideService<IMyService, MyServiceV2>(ServiceLifetime.Scoped);
+
+// With factory
+services.AddOrOverrideService<IMyService, MyServiceV2>(sp => new MyServiceV2(), ServiceLifetime.Singleton);
+
+// Singleton with a concrete instance
+services.AddOrOverrideSingleton<IMyService>(new MyService());
+services.AddOrOverrideSingleton<IMyService, MyService>(new MyService());
+```
+
+### TryAddService
+
+Register only if no registration exists yet for the service type:
+
+```csharp
+// Only adds if IMyService is not already registered
+services.TryAddService<IMyService, MyService>(ServiceLifetime.Scoped);
+
+// With a concrete instance
+services.TryAddService<IMyService>(new MyService(), ServiceLifetime.Singleton);
+
+// With a factory
+services.TryAddService<IMyService>(sp => new MyService(), ServiceLifetime.Transient);
+```
+
+### TryAddSingletonAndGetService / GetSingletonService
+
+Add a singleton only if not yet registered, and immediately return the registered instance. Useful during the DI configuration phase.
+
+```csharp
+// Add if absent, return the instance (existing or newly created)
+MyConfig config = services.TryAddSingletonAndGetService(new MyConfig { Setting = "value" });
+
+// Auto-new() if not present
+MyConfig config2 = services.TryAddSingletonAndGetService<MyConfig>();
+
+// Interface + implementation
+IMyConfig cfg = services.TryAddSingletonAndGetService<IMyConfig, MyConfig>(new MyConfig());
+
+// Read an already-registered singleton from IServiceCollection (before Build)
+MyConfig? existing = services.GetSingletonService<MyConfig>();
+```
+
+---
+
+## Keyed Service Helper
+
+Wrappers around the .NET 8 keyed DI API that accept a runtime `ServiceLifetime` parameter.
+
+### AddKeyedService
+
+```csharp
+// Self-registered
+services.AddKeyedService<MyService>("myKey", ServiceLifetime.Singleton);
+
+// Interface → implementation
+services.AddKeyedService<IMyService, MyService>("myKey", ServiceLifetime.Scoped);
+
+// With factory
+services.AddKeyedService<IMyService>("myKey",
+    (sp, key) => new MyService(key?.ToString()),
+    ServiceLifetime.Transient);
+
+// Non-generic
+services.AddKeyedService(typeof(IMyService), "myKey", typeof(MyService), ServiceLifetime.Scoped);
+```
+
+### HasKeyedService
+
+```csharp
+bool exists = services.HasKeyedService<IMyService>("myKey", out ServiceDescriptor? descriptor);
+
+// With implementation constraint
+bool exact = services.HasKeyedService<IMyService, MyService>("myKey", out _);
+
+// Non-generic
+bool raw = services.HasKeyedService(typeof(IMyService), "myKey", out _);
+```
+
+---
+
+## Abstract Factory
+
+Use the abstract factory when you need multiple named instances of the same service type registered with different options and/or lifetimes.
+
+### IFactory Interface
+
+```csharp
+public interface IFactory<out TService>
+{
+    TService? Create(AnyOf<string?, Enum>? name = null);
+    TService? CreateWithoutDecoration(AnyOf<string?, Enum>? name = null);
+    IEnumerable<TService> CreateAll(AnyOf<string?, Enum>? name = null);
+    IEnumerable<TService> CreateAllWithoutDecoration(AnyOf<string?, Enum>? name = null);
+    bool Exists(AnyOf<string?, Enum>? name = null);
+}
+```
+
+- `Create(name)` — resolve the named service (runs through any decorator)
+- `CreateWithoutDecoration(name)` — resolve skipping decorators
+- `CreateAll(name)` — resolve all registrations for that name
+- `Exists(name)` — check whether a registration exists
+
+### Registration
+
+Services implement `IServiceWithOptions<TOptions>` to receive their per-name configuration:
+
+```csharp
+public interface IMyService { string GetName(); }
+
+public class MyOptions { public string ServiceName { get; set; } }
+
+public class MyService : IMyService, IServiceWithOptions<MyOptions>
+{
+    public MyOptions Options { get; set; }
+    public string Id { get; } = Guid.NewGuid().ToString();
+    public string GetName() => $"{Options.ServiceName} with id {Id}";
+}
+```
+
+Register with `AddFactory`:
+
+```csharp
+// Synchronous
+services.AddFactory<IMyService, MyService, MyOptions>(
+    options => { options.ServiceName = "singleton"; },
     "singleton",
     ServiceLifetime.Singleton);
 
-    services.AddFactory<IMyService, TransientService, TransientOption>(x =>
-    {
-        x.ServiceName = "transient";
-    },
+services.AddFactory<IMyService, MyService, MyOptions>(
+    options => { options.ServiceName = "transient"; },
     "transient",
     ServiceLifetime.Transient);
 
-    services.AddFactory<IMyService, ScopedService, ScopedOption>(x =>
-    {
-        x.ServiceName = "scoped";
-    },
+services.AddFactory<IMyService, MyService, MyOptions>(
+    options => { options.ServiceName = "scoped"; },
     "scoped",
     ServiceLifetime.Scoped);
+```
 
-    services.AddFactory<IMyService, ScopedService2, ScopedOption>(x =>
-    {
-        x.ServiceName = "scoped2";
-    },
-    "scoped2",
-    ServiceLifetime.Scoped);
+For async options builders implement `IServiceOptions<TOptions>`:
 
-    await services.AddFactoryAsync<IMyService, ScopedService3, BuiltScopedOptions, ScopedOption>(
-        x =>
-        {
-            x.ServiceName = "scoped3";
-        },
-        "scoped3"
-    );
+```csharp
+public class MyBuiltOptions : IServiceOptions<MyOptions>
+{
+    public string ServiceName { get; set; }
+    public Task<Func<MyOptions>> BuildAsync()
+        => Task.FromResult(() => new MyOptions { ServiceName = ServiceName });
+}
 
-    await services.AddFactoryAsync<IMyService, ScopedService3, BuiltScopedOptions, ScopedOption>(
-        x =>
-        {
-            x.ServiceName = "scoped3_2";
-        },
-        "scoped3_2"
-    );
+await services.AddFactoryAsync<IMyService, MyService, MyBuiltOptions, MyOptions>(
+    opts => { opts.ServiceName = "async-scoped"; },
+    "async-scoped");
+```
 
-    await services.AddFactoryAsync<IMyService, ScopedService4, BuiltScopedOptions, ScopedOption>(
-        x =>
-        {
-            x.ServiceName = "scoped4";
-        },
-        "scoped4"
-    );
+### Usage
 
-and use them in this way
+```csharp
+var factory = serviceProvider.GetRequiredService<IFactory<IMyService>>();
 
-    var serviceProvider = services.BuildServiceProvider().CreateScope().ServiceProvider;
-    var factory = serviceProvider.GetService<IFactory<IMyService>>()!;
-    var factory2 = serviceProvider.GetService<IFactory<IMyService>>()!;
+var singleton = factory.Create("singleton");   // same instance every time
+var transient = factory.Create("transient");   // new instance every time
+var scoped    = factory.Create("scoped");      // same within the scope
 
-    var singletonFromFactory = factory.Create("singleton").Id;
-    var singletonFromFactory2 = factory2.Create("singleton").Id;
-    var transientFromFactory = factory.Create("transient").Id;
-    var transientFromFactory2 = factory2.Create("transient").Id;
-    var scopedFromFactory = factory.Create("scoped").Id;
-    var scopedFromFactory2 = factory2.Create("scoped").Id;
-    var scoped2FromFactory = factory.Create("scoped2").Id;
-    var scoped2FromFactory2 = factory2.Create("scoped2").Id;
-    var scoped3FromFactory = factory.Create("scoped3").Id;
-    var scoped3FromFactory2 = factory2.Create("scoped3").Id;
-    var scoped3_2FromFactory = factory.Create("scoped3_2").Id;
-    var scoped3_2FromFactory2 = factory2.Create("scoped3_2").Id;
-    var scoped4FromFactory = factory.Create("scoped4").Id;
-    var scoped4FromFactory2 = factory2.Create("scoped4").Id;
+bool exists  = factory.Exists("singleton");    // true
+bool missing = factory.Exists("unknown");      // false
 
-    Assert.Equal(singletonFromFactory, singletonFromFactory2);
-    Assert.NotEqual(transientFromFactory, transientFromFactory2);
-    Assert.Equal(scopedFromFactory, scopedFromFactory2);
-    Assert.Equal(scoped2FromFactory, scoped2FromFactory2);
-    Assert.NotEqual(scoped3FromFactory, scoped3FromFactory2);
-    Assert.NotEqual(scoped3_2FromFactory, scoped3_2FromFactory2);
-    Assert.NotEqual(scoped4FromFactory, scoped4FromFactory2);
+// Resolve all services registered under the same name
+IEnumerable<IMyService> all = factory.CreateAll("singleton");
+```
+
+Singleton / transient / scoped lifetime semantics are honoured exactly as in standard DI:
+
+```csharp
+Assert.Equal(factory.Create("singleton").Id, factory.Create("singleton").Id);    // same
+Assert.NotEqual(factory.Create("transient").Id, factory.Create("transient").Id); // different
+Assert.Equal(factory.Create("scoped").Id,    factory.Create("scoped").Id);       // same within scope
+```
+
+### HasFactory
+
+Check whether a named factory registration exists before the service provider is built:
+
+```csharp
+bool registered = services.HasFactory<IMyService>("singleton");
+bool byEnum     = services.HasFactory<IMyService>(MyEnum.Singleton);
+
+// Non-generic
+bool raw = services.HasFactory(typeof(IMyService), "singleton");
+```
+
+### Factory Fallback
+
+A fallback is invoked when `factory.Create(name)` is called with a name that has no registration.
+
+```csharp
+// Implement IFactoryFallback<TService>
+public class MyFallback : IFactoryFallback<IMyService>
+{
+    public IMyService Create(AnyOf<string?, Enum>? name = null)
+        => new DefaultService(name?.AsString() ?? "default");
+}
+
+services.AddFactoryFallback<IMyService, MyFallback>();
+
+// Or use a delegate directly
+services.AddActionAsFallbackWithServiceProvider<IMyService>(builder =>
+    new DefaultService(builder.Name ?? "default"));
+```
+
+---
 
 ## Decorator
-You may add a decoration for your services, based on the abstract factory integration.
-The decorator service replaces the previous version and receives it during the injection.
 
-Setup
-
-    services
-        .AddService<ITestWithoutFactoryService, TestWithoutFactoryService>(lifetime);
-    services
-        .AddDecoration<ITestWithoutFactoryService, TestWithoutFactoryServiceDecorator>(null, lifetime);
-
-Usage
-
-    var decorator = provider.GetRequiredService<ITestWithoutFactoryService>();
-    var previousService = provider.GetRequiredService<IDecoratedService<ITestWithoutFactoryService>>();
-
-In decorator you may find the previousService in the method SetDecoratedService which runs in injection
-
-    public class TestWithoutFactoryServiceDecorator : ITestWithoutFactoryService, IDecoratorService<ITestWithoutFactoryService>
-    {
-        public string Id { get; } = Guid.NewGuid().ToString();
-        public ITestWithoutFactoryService Test { get; private set; }
-        public void SetDecoratedService(ITestWithoutFactoryService service)
-        {
-            Test = service;
-        }
-
-        public void SetFactoryName(string name)
-        {
-            return;
-        }
-    }
-
-### Decorator with Abstract Factory integration
-You may add a decoration only for one service of your factory integration.
-
-Setup
-
-    services.AddFactory<ITestService, TestService, TestOptions>(x =>
-    {
-        x.ClassicName = classicName;
-    },
-    factoryName,
-    lifetime);
-    services
-        .AddDecoration<ITestService, DecoratorTestService>(factoryName, lifetime);
-
-Usage
-
-    var decoratorFactory = provider.GetRequiredService<IFactory<ITestService>>();
-    var decorator = decoratorFactory.Create(factoryName);
-    var previousService = decoratorFactory.CreateWithoutDecoration(factoryName);
-
-## Factory Fallback
-You may add a fallback for your factory integration. The fallback service is called when the factory service key is not found.
+A decorator replaces the registered service and receives the previous registration via `SetDecoratedService`, declared by the `IDecoratorService<TService>` interface.
 
 ```csharp
-services.AddFactoryFallback<TService, TFactoryFallback>();
+public class MyServiceDecorator : IMyService, IDecoratorService<IMyService>
+{
+    public string Id { get; } = Guid.NewGuid().ToString();
+    private IMyService _inner;
+
+    public void SetDecoratedService(IMyService service) => _inner = service;
+    public void SetFactoryName(string name) { }
+
+    public string GetName() => $"[decorated] {_inner.GetName()}";
+}
 ```
 
-where TFactoryFallback is class and an IFactoryFallback<TService>
+Setup:
 
-You may add a fallback with an action fallback too.
-    
 ```csharp
-services.AddActionAsFallbackWithServiceProvider<TService>(Func<FallbackBuilderForServiceProvider, TService> fallbackBuilder);
+services.AddService<IMyService, MyService>(ServiceLifetime.Scoped);
+services.AddDecoration<IMyService, MyServiceDecorator>(null, ServiceLifetime.Scoped);
 ```
 
-## Scan dependency injection
-You may scan your assemblies in search of types you need to add to dependency injection.
-For instance I have an interface IAnything and I need to add all classes which implements it.
+Usage:
 
-    public interface IAnything
+```csharp
+// Resolved service is the decorator
+var decorated = provider.GetRequiredService<IMyService>();
+
+// Access the inner (pre-decoration) service directly
+var inner = provider.GetRequiredService<IDecoratedService<IMyService>>();
+```
+
+### Decorator with Abstract Factory
+
+Decorate only one named factory registration:
+
+```csharp
+services.AddFactory<IMyService, MyService, MyOptions>(
+    opts => { opts.ServiceName = "special"; },
+    "special",
+    ServiceLifetime.Scoped);
+
+services.AddDecoration<IMyService, MyServiceDecorator>("special", ServiceLifetime.Scoped);
+
+// Usage
+var factory = provider.GetRequiredService<IFactory<IMyService>>();
+var decorated = factory.Create("special");                  // goes through decorator
+var raw       = factory.CreateWithoutDecoration("special"); // bypasses decorator
+```
+
+---
+
+## Scan Dependency Injection
+
+Automatically register all implementations of an interface found in one or more assemblies.
+
+### Manual scan with an explicit interface
+
+```csharp
+public interface IAnything { }
+internal class ScanModels : IAnything { }
+
+serviceCollection.Scan<IAnything>(ServiceLifetime.Scoped, typeof(IAnything).Assembly);
+```
+
+### IScannable marker interface
+
+Implement `IScannable<TService>` on the class so it is picked up by the untyped `Scan` overload:
+
+```csharp
+internal class ScanModels : IAnything, IScannable<IAnything> { }
+
+serviceCollection.Scan(ServiceLifetime.Scoped, typeof(IAnything).Assembly);
+```
+
+### Override lifetime per class
+
+Override the scan lifetime for a specific class with `ISingletonScannable`, `IScopedScannable`, or `ITransientScannable`:
+
+```csharp
+// All others are Scoped — ScanModels is registered as Singleton
+internal class ScanModels : IAnything, IScannable<IAnything>, ISingletonScannable { }
+
+serviceCollection.Scan(ServiceLifetime.Scoped, typeof(IAnything).Assembly);
+```
+
+### Assembly source helpers
+
+```csharp
+serviceCollection.ScanDependencyContext(ServiceLifetime.Scoped);
+serviceCollection.ScanCallingAssembly(ServiceLifetime.Scoped);
+serviceCollection.ScanCurrentDomain(ServiceLifetime.Scoped);
+serviceCollection.ScanEntryAssembly(ServiceLifetime.Scoped);
+serviceCollection.ScanExecutingAssembly(ServiceLifetime.Scoped);
+serviceCollection.ScanFromType<T>(ServiceLifetime.Scoped);
+serviceCollection.ScanFromTypes<T1, T2>(ServiceLifetime.Scoped);
+```
+
+With `ScanWithReferences` you can scan a set of assemblies **plus all their transitive references**:
+
+```csharp
+serviceCollection.ScanWithReferences(ServiceLifetime.Scoped, myAssembly);
+```
+
+---
+
+## Population Service
+
+Generate randomly populated instances of any type — useful for testing and seeding data.
+
+```csharp
+IServiceCollection services = new ServiceCollection();
+services.AddPopulationService();
+
+var serviceProvider = services.BuildServiceProvider().CreateScope().ServiceProvider;
+var population = serviceProvider.GetRequiredService<IPopulation<PopulationModelTest>>();
+
+var results = population
+    .Setup()
+    .WithPattern(x => x.J!.First().A, "[a-z]{4,5}")
+    .WithPattern(x => x.Y!.First().Value.A, "[a-z]{4,5}")
+    .WithImplementation(x => x.I, typeof(MyInnerInterfaceImplementation))
+    .WithPattern(x => x.I!.A!, "[a-z]{4,5}")
+    .WithPattern(x => x.II!.A!, "[a-z]{4,5}")
+    .WithImplementation<IInnerInterface, MyInnerInterfaceImplementation>(x => x.I!)
+    .Populate();
+```
+
+You can also set up custom random value providers for specific properties across multiple populations using `AddPopulationSettings`:
+
+```csharp
+services
+    .AddPopulationSettings<MyEntity>()
+    .WithRandomValue(x => x.Groups, async serviceProvider =>
     {
-    }
-    internal class ScanModels : IAnything
-    {
-    }
-
-and in service collection I can add it.
-
-    serviceCollection
-        .Scan<IAnything>(ServiceLifetime.Scoped, typeof(IAnything).Assembly);
-
-I can add to my class the interface IScannable of T to scan automatically. 
-For instance.
-
-    public interface IAnything
-    {
-    }
-    internal class ScanModels : IAnything, IScannable<IAnything>
-    {
-    }
-
-and in service collection I could add it in this way
-
-    serviceCollection
-        .Scan(ServiceLifetime.Scoped, typeof(IAnything).Assembly);
-
-Furthermore with ISingletonScannable, IScopedScannable and ITransientScannable I can override the service lifetime.
-For instance.
-
-    public interface IAnything
-    {
-    }
-    internal class ScanModels : IAnything, IScannable<IAnything>, ISingletonScannable
-    {
-    }
-
-    serviceCollection
-        .Scan(ServiceLifetime.Scoped, typeof(IAnything).Assembly);
-
-ScanModels will be installed as a Singleton service, overwriting the service lifetime from Scan method.
-
-You also automatically use different assembly sources.
-
-    serviceCollection
-        .ScanDependencyContext(ServiceLifetime.Scoped);
-
-or
-
-    serviceCollection
-        .ScanCallingAssembly(ServiceLifetime.Scoped);
-
-or
-
-    serviceCollection
-        .ScanCurrentDomain(ServiceLifetime.Scoped);
-
-or
-
-    serviceCollection
-        .ScanEntryAssembly(ServiceLifetime.Scoped);
-
-or
-
-    serviceCollection
-        .ScanExecutingAssembly(ServiceLifetime.Scoped);
-
-or
-
-    serviceCollection
-        .ScanFromType<T>(ServiceLifetime.Scoped);
-
-or
-
-    serviceCollection
-        .ScanFromTypes<T1, T2>(ServiceLifetime.Scoped);
-
-Finally with ScanWithReferences you may call all the assemblies you want plus all referenced assemblies by them.
+        return new List<Group>
+        {
+            new Group { Id = "2", Name = "admin" },
+            new Group { Id = "3", Name = "user" }
+        };
+    });

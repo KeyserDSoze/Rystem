@@ -1,37 +1,104 @@
 ### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
-## Concurrency
+## Rystem.Concurrency.Redis
 
-### Async Lock
-A lock keyword is used in C# to lock a memory address to have a sort of execution queue. But, unfortunately, you cannot use async methods in the lock statement.
-With async lock you also may have the lock behavior for your async methods.
-In DI you have to add the lock service
+Redis backend for `Rystem.Concurrency`. Replaces the default in-memory `ILockable` with a Redis-backed distributed implementation, so locks and race-condition guards work across **multiple processes and hosts**.
 
-	services.AddRedisLock(x =>
-                {
-                    x.ConnectionString = configuration["ConnectionString:Redis"]!;
-                });
+For full documentation of `ILock`, `IRaceCodition`, and the concurrency model see [Rystem.Concurrency](../Rystem.Concurrency/README.md).
 
-Inject ILock and use it
+## 📦 Installation
 
-	ILock locking = _serviceProvider.CreateScope().ServiceProvider.GetService<ILock>();
-	await locking!.ExecuteAsync(() => CountAsync(2), "SampleKey");
+```bash
+dotnet add package Rystem.Concurrency.Redis
+```
 
-You have the method to execute, a key for more than one concurrent lock.
+## Table of Contents
 
-### Race condition
-First of all, you have to understand the race condition [here](https://en.wikipedia.org/wiki/Race_condition)
-In DI you have to add the lock service
+- [Rystem.Concurrency.Redis](#rystemconcurrencyredis)
+- [📦 Installation](#-installation)
+- [Table of Contents](#table-of-contents)
+- [Distributed Async Lock](#distributed-async-lock)
+- [Distributed Race Condition](#distributed-race-condition)
+- [Redis Lockable Only](#redis-lockable-only)
+- [RedisConfiguration](#redisconfiguration)
 
-	services.AddRaceConditionWithRedis(x =>
-                {
-                    x.ConnectionString = configuration["ConnectionString:Redis"]!;
-                });
-	
-Inject IRaceCodition and use it
+---
 
-	 var raceCondition = _serviceProvider.CreateScope().ServiceProvider.GetService<IRaceCodition>();
-	 raceCondition!.ExecuteAsync(() => CountAsync(2), (i % 2).ToString(), TimeSpan.FromSeconds(2));
+## Distributed Async Lock
 
-You have the method to execute, a key for more than one concurrent race, and a time span for time window, if you put 2 seconds, you block the execution of further methods for 2 seconds from when first method started.
+Registers `ILock` backed by Redis. All application instances sharing the same Redis connection and key compete for the same lock.
+
+```csharp
+services.AddRedisLock(options =>
+{
+    options.ConnectionString = configuration["ConnectionString:Redis"];
+});
+```
+
+Usage is identical to the in-memory version — inject `ILock` and call `ExecuteAsync`:
+
+```csharp
+var response = await _lock.ExecuteAsync(
+    async () => await WriteAsync(),
+    key: "my-resource");
+
+if (response.InException)
+    throw response.Exceptions!;
+```
+
+---
+
+## Distributed Race Condition
+
+Registers `IRaceCodition` backed by Redis. Only the first caller across the entire cluster executes the action within the time window; all others skip.
+
+```csharp
+services.AddRaceConditionWithRedis(options =>
+{
+    options.ConnectionString = configuration["ConnectionString:Redis"];
+});
+```
+
+Usage is identical to the in-memory version — inject `IRaceCodition` and call `ExecuteAsync`:
+
+```csharp
+var response = await _race.ExecuteAsync(
+    async () => await RefreshCacheAsync(),
+    key: "cache-refresh",
+    timeWindow: TimeSpan.FromSeconds(30));
+
+if (response.IsExecuted)
+    Console.WriteLine("Cache refreshed by this instance.");
+else
+    Console.WriteLine("Another instance already handling it.");
+```
+
+---
+
+## Redis Lockable Only
+
+If you want to use the Redis `ILockable` with a custom `ILock` or `IRaceCodition` executor, register only the lockable:
+
+```csharp
+services.AddRedisLockable(options =>
+{
+    options.ConnectionString = configuration["ConnectionString:Redis"];
+});
+```
+
+Then register your own executor separately:
+
+```csharp
+services.AddLockExecutor<MyCustomLock>();
+// or
+services.AddRaceConditionExecutor<MyCustomRaceCondition>();
+```
+
+---
+
+## RedisConfiguration
+
+| Property | Type | Description |
+|---|---|---|
+| `ConnectionString` | `string?` | Standard StackExchange.Redis connection string (e.g. `"localhost:6379"` or `"host:port,password=..."`) |
 	

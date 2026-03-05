@@ -10,33 +10,63 @@
 ---
 # Table of Contents
 
-- [What is Rystem?](#what-is-rystem)
-- [Discriminated Union in C#](#discriminated-union-in-c)
-  - [What is a Discriminated Union?](#what-is-a-discriminated-union)
-  - [AnyOf Classes](#anyof-classes)
-  - [JSON Integration](#json-integration)
+- [Table of Contents](#table-of-contents)
+  - [Discriminated Union in C#](#discriminated-union-in-c)
+    - [What is a Discriminated Union?](#what-is-a-discriminated-union)
+    - [AnyOf Classes](#anyof-classes)
+    - [JSON Integration](#json-integration)
+      - [Serialization and Deserialization](#serialization-and-deserialization)
+      - [How "Signature" Works](#how-signature-works)
   - [Matching and Switching](#matching-and-switching)
-  - [Usage Examples](#usage-examples)
-    - [Defining Unions](#defining-unions)
-    - [Serializing and Deserializing JSON](#serializing-and-deserializing-json)
-    - [Advanced Matching and Switching](#advanced-matching-and-switching)
-    - [Deserialization with Attributes](#deserialization-with-attributes)
-- [Extension Methods](#extension-methods)
+    - [Match Method](#match-method)
+      - [Example:](#example)
+    - [Switch Method](#switch-method)
+      - [Example:](#example-1)
+    - [Async Matching and Switching](#async-matching-and-switching)
+      - [Async Match Example:](#async-match-example)
+      - [Async Switch Example:](#async-switch-example)
+    - [Usage Examples](#usage-examples)
+      - [Defining Unions](#defining-unions)
+      - [Serializing and Deserializing JSON](#serializing-and-deserializing-json)
+        - [Example:](#example-2)
+      - [Deserialization with Attributes](#deserialization-with-attributes)
+        - [Example:](#example-3)
+      - [Further attributes](#further-attributes)
+      - [Benefits of Using It](#benefits-of-using-it)
+- [Extension methods](#extension-methods)
   - [Stopwatch](#stopwatch)
-  - [LINQ Expression Serializer](#linq-expression-serializer)
-  - [Reflection Helper](#reflection-helper)
-    - [Name of Calling Class](#name-of-calling-class)
-    - [Extensions for Type Class](#extensions-for-type-class)
+  - [Try / Retry](#try--retry)
+    - [Retry with TryBehavior](#retry-with-trybehavior)
+  - [Cast Extensions](#cast-extensions)
+  - [Copy Extensions](#copy-extensions)
+  - [Linq expression serializer](#linq-expression-serializer)
+  - [Reflection helper](#reflection-helper)
+    - [Name of calling class](#name-of-calling-class)
+    - [Extensions for Type class](#extensions-for-type-class)
     - [Mock a Type](#mock-a-type)
-    - [Check Nullability for Properties, Fields, and Parameters](#check-nullability-for-properties-fields-and-parameters)
-  - [Text Extensions](#text-extensions)
-  - [Character Separated-Value (CSV)](#character-separated-value-csv)
-  - [Minimization of a Model](#minimization-of-a-model)
-  - [Extensions for JSON](#extensions-for-json)
+  - [Check nullability for properties, fields and parameters.](#check-nullability-for-properties-fields-and-parameters)
+  - [Enum Extensions](#enum-extensions)
+  - [Text extensions](#text-extensions)
+  - [Encoding: Base64 and Base45](#encoding-base64-and-base45)
+    - [Base64](#base64)
+    - [Base45](#base45)
+  - [Cryptography (Hashing)](#cryptography-hashing)
+  - [Character separated-value (CSV)](#character-separated-value-csv)
+  - [Minimization of a model (based on CSV concept)](#minimization-of-a-model-based-on-csv-concept)
+  - [Extensions for json](#extensions-for-json)
+  - [LINQ Extensions](#linq-extensions)
+    - [RemoveWhere](#removewhere)
+    - [Async LINQ: AllAsync and AnyAsync](#async-linq-allasync-and-anyasync)
+  - [Collections Extensions (non-generic IEnumerable)](#collections-extensions-non-generic-ienumerable)
   - [Extensions for Task](#extensions-for-task)
   - [TaskManager](#taskmanager)
-- [Concurrency](#concurrency)
-  - [ConcurrentList](#concurrentlist)
+    - [WhenAll](#whenall)
+    - [WhenAtLeast](#whenatleast)
+  - [Concurrency](#concurrency)
+    - [ConcurrentList](#concurrentlist)
+- [Utilities](#utilities)
+  - [AsyncEnumerable.Empty](#asyncenumerableempty)
+  - [Programming Language Conversion](#programming-language-conversion)
 
 ---
 
@@ -62,12 +92,12 @@ The `value` can hold an integer, a string, or a boolean, but never more than one
 
 ### AnyOf Classes
 
-The `AnyOf` class provides the ability to define a discriminated union of up to 8 types.
+The `AnyOf` class provides the ability to define a discriminated union of up to 10 types.
 
 - `AnyOf<T0, T1>`
 - `AnyOf<T0, T1, T2>`
 - ...
-- `AnyOf<T0, T1, ..., T7>`
+- `AnyOf<T0, T1, ..., T9>`
 
 Each class supports the following features:
 
@@ -359,6 +389,97 @@ or with a return value
         return 3;
     });
 
+## Try / Retry
+The static `Try` class wraps any action or function in a try/catch, returning a `TryResponse<T>` that holds both the result and any exception. You can also configure automatic retry logic.
+
+```csharp
+// Return default on exception (sync)
+TryResponse<int> result = Try.WithDefaultOnCatch(() => int.Parse("abc"));
+bool ok = result;         // false - implicit bool conversion
+int val = result;         // 0 - implicit value conversion
+Exception? ex = result.Exception;
+
+// Return the value on success
+TryResponse<int> result2 = Try.WithDefaultOnCatch(() => 42);
+bool ok2 = result2;       // true
+int val2 = result2;       // 42
+
+// Async variant
+TryResponse<int> result3 = await Try.WithDefaultOnCatchAsync(async () =>
+{
+    await Task.Delay(10);
+    return int.Parse("abc");
+});
+
+// Fire-and-forget action - returns the Exception or null
+Exception? err = await Try.WithDefaultOnCatchAsync(async () =>
+{
+    await DoSomethingRiskyAsync();
+});
+
+// ValueTask variants
+TryResponse<int> result4 = await Try.WithDefaultOnCatchValueTaskAsync(async () =>
+{
+    return await GetValueAsync();
+});
+```
+
+### Retry with TryBehavior
+
+```csharp
+TryResponse<string> result = await Try.WithDefaultOnCatchAsync(
+    async () => await FlakyServiceAsync(),
+    behavior =>
+    {
+        behavior.MaxRetry = 3;
+        behavior.WaitBetweenRetry = 200;           // ms between retries
+        behavior.RetryUntil = ex => ex is HttpRequestException; // only retry on specific exception
+    });
+```
+
+---
+
+## Cast Extensions
+Safe type-casting via extension method. Handles `IConvertible`, inheritance, `string`-to-primitive parsing (`Guid`, `DateTimeOffset`, `TimeSpan`, etc.), and returns `default` for null inputs.
+
+```csharp
+int x = 2;
+decimal d = x.Cast<decimal>();  // 2M
+
+int? nullable = null;
+decimal d2 = nullable.Cast<decimal>();   // 0
+decimal? d3 = nullable.Cast<decimal?>(); // null
+
+string guidStr = Guid.NewGuid().ToString();
+Guid g = guidStr.Cast<Guid>();
+
+// Cast to a runtime type (returns dynamic)
+object casted = entity.Cast(targetType);
+```
+
+---
+
+## Copy Extensions
+Deep copy an object or copy properties between instances.
+
+```csharp
+// Deep copy (serialization-based, new reference)
+MyClass copy = original.ToDeepCopy();
+
+// Non-generic overload
+object copy2 = (object)original.ToDeepCopy();
+
+// Copy all settable properties from source to destination (same reference kept)
+MyClass target = new MyClass();
+target.CopyPropertiesFrom(source);    // non-generic
+
+// Typed overload
+MyClass? typed = null;
+typed.CopyPropertiesFrom(source);     // both T-typed
+```
+
+---
+
 ## Linq expression serializer
 Usually a linq expression is not serializable as string. With this method you can serialize your expression with some limits. Only primitives are allowed in the expression body.
 An example from Unit test.
@@ -503,6 +624,21 @@ Following an example from unit test.
         Assert.False(fields[1].IsNullable());
     }
 
+## Enum Extensions
+Convert strings or other enum types to a target enum, and get the `[Display]` name.
+
+```csharp
+enum Color { Red, Green, Blue }
+
+Color c1 = "green".ToEnum<Color>();     // Color.Green  (case-insensitive)
+Color c2 = SomeOtherEnum.Green.ToEnum<Color>();
+
+// Read [Display(Name = "...")] attribute, falls back to enum member name
+string label = Color.Red.GetDisplayName();
+```
+
+---
+
 ## Text extensions
 You may convert as fast as possible byte[] to string or stream to byte[] or byte[] to stream or stream to string or string to stream.
 For example, string to byte array and viceversa.
@@ -537,6 +673,64 @@ A simple method to check if a char is contained at least X times.
     string value = "abcderfa";
     bool containsAtLeastTwoAChar = value.ContainsAtLeast(2, 'a');
 
+Replace only the first N occurrences of a substring.
+
+    string result = "aaa".Replace("a", "b", 2); // "bba"
+
+---
+
+## Encoding: Base64 and Base45
+
+### Base64
+Convert strings, streams, byte arrays, or any serializable object to/from Base64.
+
+```csharp
+// Encode
+string encoded = "Hello World".ToBase64();         // string → Base64
+string encoded2 = myStream.ToBase64();             // Stream → Base64
+string encoded3 = myBytes.ToBase64();              // byte[] → Base64
+string encoded4 = myObject.ToBase64();             // any T → JSON → Base64
+
+// Decode
+string decoded = encoded.FromBase64();             // Base64 → string
+MyClass obj = encoded4.FromBase64<MyClass>();      // Base64 → JSON → T
+```
+
+### Base45
+Base45 is a compact encoding designed for QR-code-friendly character sets. Same API surface as Base64.
+
+```csharp
+// Encode
+string encoded = "Hello World".ToBase45();
+string encoded2 = myStream.ToBase45();
+string encoded3 = myObject.ToBase45();   // any T → JSON → Base45
+
+// Decode
+string decoded = encoded.FromBase45();
+MyClass obj = encoded.FromBase45<MyClass>();
+```
+
+---
+
+## Cryptography (Hashing)
+Compute a deterministic SHA-512 hex hash of any string or serializable object.
+
+```csharp
+using System.Security.Cryptography;
+
+// Hash a string
+string hash = "my secret".ToHash();
+
+// Hash any serializable type (T → JSON → SHA-512)
+var foo = new Foo { Values = new[] { "aa", "bb" }, X = true };
+string hash2 = foo.ToHash();
+
+// Hashing is deterministic: same input → same output
+Assert.Equal(foo.ToHash(), foo.ToHash());
+```
+
+---
+
 ## Character separated-value (CSV)
 Transform any kind of IEnumerable data in a CSV string.
 
@@ -563,6 +757,60 @@ To deserialize in a class (for instance a class named User)
 
     var value = text.FromJson<User>();
 
+---
+
+## LINQ Extensions
+
+### RemoveWhere
+Remove elements from arrays, `List<T>`, and `ICollection<T>` based on a predicate. Arrays are resized in-place; collections return the removed count.
+
+```csharp
+// Array — returns a new resized array
+int[] numbers = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+numbers = numbers.RemoveWhere(x => x == 8 || x == 9); // length = 8
+
+// IEnumerable<T> — lazy, returns filtered sequence
+var filtered = myEnumerable.RemoveWhere(x => x.IsExpired);
+
+// List<T> / ICollection<T> — mutates the collection, returns removed count
+List<Order> orders = GetOrders();
+int removed = orders.RemoveWhere(o => o.Status == OrderStatus.Cancelled);
+```
+
+### Async LINQ: AllAsync and AnyAsync
+Async predicates for `IEnumerable<T>` — useful when the condition itself is async.
+
+```csharp
+// AllAsync — returns false as soon as one element fails the async predicate
+bool allValid = await myList.AllAsync(async x => await ValidateAsync(x));
+
+// AnyAsync — returns true as soon as one element passes
+bool anyReady = await myList.AnyAsync(async x => await IsReadyAsync(x));
+
+// ValueTask variants are also supported
+bool ok = await myList.AllAsync(x => new ValueTask<bool>(x.IsActive));
+```
+
+---
+
+## Collections Extensions (non-generic IEnumerable)
+Index-based access, update, and removal on `IEnumerable` (non-generic), with support for both arrays and `IList`.
+
+```csharp
+IEnumerable items = GetItems();   // could be a List<T> or Array
+
+// Read element at index (0-based)
+object? val = items.ElementAt(5);
+
+// Update element at index
+items.SetElementAt(5, newValue);
+
+// Remove element at index — out newEntities replaces the original collection
+bool removed = items.RemoveElementAt(5, out IEnumerable newItems, out object? removedValue);
+```
+
+---
+
 ## Extensions for Task
 I don't know if you still are fed up to write .ConfigureAwait(false) to eliminate the context waiting for a task. I do.
 [Why should I set the configure await to false?](https://devblogs.microsoft.com/dotnet/configureawait-faq/)
@@ -583,38 +831,107 @@ When do I need a true? In windows application for example you have to return aft
 ## TaskManager
 When you need to run a list of tasks concurrently you may use this static method.
 
-In the next example with TaskManager.WhenAll you may run a method ExecuteAsync {times} times with {concurrentTasks} times in concurrency, and running them when a time slot is free.
-For example if you run this function with 8 times and 3 concurrentsTasks and true in runEverytimeASlotIsFree
-You will have this behavior: first 3 tasks starts and since the fourth the implementation waits the end of one of the 3 started before. As soon as one of the 3 started is finished the implementation starts to run the fourth.
+### WhenAll
+Run a delegate `{times}` times (or over a list of objects) with a bounded concurrency level. With `runEverytimeASlotIsFree = true` a new task starts as soon as any running task finishes; otherwise tasks are awaited in batches.
 
-    var bag = new ConcurrentBag<int>();
-    await TaskManager.WhenAll(ExecuteAsync, times, concurrentTasks, runEverytimeASlotIsFree).NoContext();
+```csharp
+// Integer-indexed overload
+var bag = new ConcurrentBag<int>();
+await TaskManager.WhenAll(ExecuteAsync, times, concurrentTasks, runEverytimeASlotIsFree).NoContext();
+Assert.Equal(times, bag.Count);
 
-    Assert.Equal(times, bag.Count);
+async Task ExecuteAsync(int i, CancellationToken cancellationToken)
+{
+    await Task.Delay(i * 20, cancellationToken).NoContext();
+    bag.Add(i);
+}
 
-    async Task ExecuteAsync(int i, CancellationToken cancellationToken)
-    {
-        await Task.Delay(i * 20, cancellationToken).NoContext();
-        bag.Add(i);
-    }
+// Typed-list overload
+var orders = GetOrders();   // List<Order>
+var results = new ConcurrentBag<Order>();
+await TaskManager.WhenAll(ProcessAsync, orders, concurrentTasks: 5).NoContext();
 
-You may run a {atLeast} times of tasks and stopping to wait the remaining tasks with TaskManager.WhenAtLeast
+async Task ProcessAsync(Order order, CancellationToken cancellationToken)
+{
+    await SaveAsync(order, cancellationToken).NoContext();
+    results.Add(order);
+}
+```
 
-    var bag = new ConcurrentBag<int>();
-    await TaskManager.WhenAtLeast(ExecuteAsync, times, atLeast, concurrentTasks).NoContext();
+### WhenAtLeast
+Run tasks until at least `{atLeast}` of them have completed, then stop waiting for the rest.
 
-    Assert.True(bag.Count < times);
-    Assert.True(bag.Count >= atLeast);
+```csharp
+var bag = new ConcurrentBag<int>();
+await TaskManager.WhenAtLeast(ExecuteAsync, times, atLeast, concurrentTasks).NoContext();
 
-    async Task ExecuteAsync(int i, CancellationToken cancellationToken)
-    {
-        await Task.Delay(i * 20, cancellationToken).NoContext();
-        bag.Add(i);
-    }
+Assert.True(bag.Count < times);
+Assert.True(bag.Count >= atLeast);
+
+async Task ExecuteAsync(int i, CancellationToken cancellationToken)
+{
+    await Task.Delay(i * 20, cancellationToken).NoContext();
+    bag.Add(i);
+}
+```
 
 ## Concurrency
 
 ### ConcurrentList
-You can use the ConcurrentList implementation to have the List behavior with lock operations.
+You can use the `ConcurrentList<T>` implementation to have the `List<T>` behavior with lock operations. It implements `IList<T>` and locks for every mutating operation (`Add`, `Remove`, `Insert`, `Clear`, etc.).
 
-    var items = new ConcurrentList<ItemClass>();
+```csharp
+var items = new ConcurrentList<MyClass>();
+items.Add(new MyClass());
+items.RemoveAt(0);
+int count = items.Count;
+```
+
+---
+
+# Utilities
+
+## AsyncEnumerable.Empty
+A typed static empty `IAsyncEnumerable<T>` — useful as a default/fallback value without allocating resources.
+
+```csharp
+using System.Collection.Generics;
+
+IAsyncEnumerable<MyClass> empty = AsyncEnumerable<MyClass>.Empty;
+
+await foreach (var item in empty)
+{
+    // loop body never executes
+}
+```
+
+---
+
+## Programming Language Conversion
+Convert C# `Type` definitions to other programming language representations. Currently supports **TypeScript**.
+
+```csharp
+using System.ProgrammingLanguage;
+
+// Convert a single type
+ProgrammingLanguangeResponse ts = typeof(MyDto).ConvertAs(ProgrammingLanguageType.Typescript);
+Console.WriteLine(ts.Text);      // export type MyDto = { ... }
+Console.WriteLine(ts.MimeType);  // application/typescript
+
+// Convert multiple types at once (handles nested/referenced types automatically)
+ProgrammingLanguangeResponse result = new[] { typeof(OrderDto), typeof(ProductDto) }
+    .ConvertAs(ProgrammingLanguageType.Typescript);
+
+// With a custom name for the root type
+ProgrammingLanguangeResponse renamed = typeof(MyInternalClass)
+    .ConvertAs(ProgrammingLanguageType.Typescript, "PublicDto");
+```
+
+The converter maps:
+- Numeric primitives → `number`  
+- `bool` → `boolean`  
+- `DateTime` / `DateTimeOffset` → `Date`  
+- Enums → `export enum { ... }`  
+- Arrays / `IEnumerable<T>` → `Array<T>`  
+- `IDictionary<K,V>` → `Map<K, V>`  
+- Nested class types → referenced by name and emitted separately

@@ -1,362 +1,198 @@
-﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+﻿# Rystem.Authentication.Social
 
-## 📚 Resources
+[![Version](https://img.shields.io/nuget/v/Rystem.Authentication.Social)](https://www.nuget.org/packages/Rystem.Authentication.Social)
+[![Downloads](https://img.shields.io/nuget/dt/Rystem.Authentication.Social)](https://www.nuget.org/packages/Rystem.Authentication.Social)
 
-- **📖 Complete Documentation**: [https://rystem.net](https://rystem.net)
-- **🤖 MCP Server for AI**: [https://rystem.cloud/mcp](https://rystem.cloud/mcp)
-- **💬 Discord Community**: [https://discord.gg/tkWvy4WPjt](https://discord.gg/tkWvy4WPjt)
-- **☕ Support the Project**: [https://www.buymeacoffee.com/keyserdsoze](https://www.buymeacoffee.com/keyserdsoze)
+ASP.NET Core server-side social authentication for Rystem. Exposes OAuth token exchange endpoints, manages per-provider HTTP clients, and integrates with .NET bearer tokens.
 
-## Rystem.Authentication.Social
+Supported providers: **Google**, **Microsoft**, **Facebook**, **GitHub**, **Amazon**, **LinkedIn**, **X (Twitter)**, **Instagram**, **Pinterest**, **TikTok**, and internal **.NET** bearer.
 
-Server-side social authentication library for .NET that provides OAuth 2.0 integration with multiple providers (Microsoft, Google, Facebook, GitHub, Amazon, LinkedIn, X/Twitter, TikTok, Instagram, Pinterest).
+---
 
-### ✨ Key Features
-
-- **🔐 PKCE Support**: Implements RFC 7636 Proof Key for Code Exchange for enhanced security
-- **🌐 Multiple Providers**: Support for 10+ OAuth providers
-- **🎯 Token Management**: Built-in bearer and refresh token handling
-- **🔧 Extensible**: Custom user providers and claim management
-- **⚡ Modern APIs**: Minimal API endpoints with automatic OpenAPI documentation
-
-## 📦 Installation
+## Install
 
 ```bash
 dotnet add package Rystem.Authentication.Social
 ```
 
-## 🚀 Quick Start
+> **Dependencies**: `Rystem.Authentication.Social.Abstractions`, `Rystem.DependencyInjection`
 
-### 1. Configure Services
+---
+
+## Registration
+
+### `AddSocialLogin<TProvider>`
 
 ```csharp
-builder.Services.AddSocialLogin(x =>
+builder.Services.AddSocialLogin<MyUserProvider>(settings =>
 {
-    // Configure OAuth providers
-    x.Microsoft.ClientId = builder.Configuration["SocialLogin:Microsoft:ClientId"];
-    x.Microsoft.ClientSecret = builder.Configuration["SocialLogin:Microsoft:ClientSecret"];
-    x.Microsoft.RedirectDomain = builder.Configuration["SocialLogin:Microsoft:RedirectDomain"];
-    
-    x.Google.ClientId = builder.Configuration["SocialLogin:Google:ClientId"];
-    x.Google.ClientSecret = builder.Configuration["SocialLogin:Google:ClientSecret"];
-    x.Google.RedirectDomain = builder.Configuration["SocialLogin:Google:RedirectDomain"];
-    
-    x.Facebook.ClientId = builder.Configuration["SocialLogin:Facebook:ClientId"];
-    x.Facebook.ClientSecret = builder.Configuration["SocialLogin:Facebook:ClientSecret"];
-    x.Facebook.RedirectDomain = builder.Configuration["SocialLogin:Facebook:RedirectDomain"];
-    
-    // Add other providers as needed (GitHub, Amazon, LinkedIn, X, TikTok, Instagram, Pinterest)
-},
-x =>
-{
-    // Configure token expiration
-    x.BearerTokenExpiration = TimeSpan.FromHours(1);
-    x.RefreshTokenExpiration = TimeSpan.FromDays(10);
+    settings.Google.ClientId = "...";
+    settings.Google.ClientSecret = "...";
+    settings.Google.AddUri("https://app.example.com");
+
+    settings.Microsoft.ClientId = "...";
+    settings.Microsoft.ClientSecret = "...";
+    settings.Microsoft.AddUri("https://app.example.com");
+
+    settings.GitHub.ClientId = "...";
+    settings.GitHub.ClientSecret = "...";
+
+    // Facebook and Amazon use access tokens directly â€” no secrets needed
 });
 ```
 
-### 2. Register Endpoints
+Full signature:
+
+```csharp
+public static IServiceCollection AddSocialLogin<TProvider>(
+    this IServiceCollection services,
+    Action<SocialLoginBuilder> settings,
+    Action<BearerTokenOptions>? action = null,
+    ServiceLifetime userProviderLifeTime = ServiceLifetime.Transient)
+    where TProvider : class, ISocialUserProvider
+```
+
+- `action` â€” configures .NET bearer token options (e.g. token lifetime, sliding expiration)
+- `userProviderLifeTime` â€” DI lifetime for your `ISocialUserProvider` implementation
+
+A provider is only activated (its `HttpClient` registered) when its `IsActive` property returns `true`.
+
+---
+
+## Provider Configuration
+
+Provider settings follow an inheritance hierarchy:
+
+| Class | Properties added | `IsActive` when |
+|---|---|---|
+| `SocialDefaultLoginSettings` | _(none)_ | always `true` |
+| `SocialLoginSettings` | `ClientId` | `ClientId != null` |
+| `SocialLoginWithSecretsSettings` | `ClientId`, `ClientSecret` | both non-null |
+| `SocialLoginWithSecretsAndRedirectSettings` | + allowed redirect domains | all of the above + â‰¥1 domain set |
+
+### `SocialLoginBuilder`
+
+```csharp
+public sealed class SocialLoginBuilder
+{
+    public SocialLoginWithSecretsAndRedirectSettings Google { get; set; }
+    public SocialLoginWithSecretsAndRedirectSettings Microsoft { get; set; }
+    public SocialDefaultLoginSettings Facebook { get; set; }
+    public SocialDefaultLoginSettings Amazon { get; set; }
+    public SocialLoginWithSecretsSettings GitHub { get; set; }
+    public SocialLoginWithSecretsAndRedirectSettings Linkedin { get; set; }
+    public SocialLoginWithSecretsAndRedirectSettings X { get; set; }
+    public SocialLoginWithSecretsAndRedirectSettings Instagram { get; set; }
+    public SocialLoginWithSecretsAndRedirectSettings Pinterest { get; set; }
+    public SocialLoginWithSecretsAndRedirectSettings TikTok { get; set; }
+}
+```
+
+### Adding Allowed Redirect Domains
+
+For providers that use `SocialLoginWithSecretsAndRedirectSettings`, the incoming `Origin` / `Referer` header is validated against a whitelist before the token exchange proceeds. Use the fluent API to add allowed origins:
+
+```csharp
+settings.Google.ClientId = "...";
+settings.Google.ClientSecret = "...";
+settings.Google.AddUri("https://app.example.com");
+settings.Google.AddUri("http://localhost:5173");              // local dev
+settings.Google.AddUris("https://app.example.com", "https://staging.example.com");
+settings.Google.AddDomainWithProtocolAndPort("example.com", "https", 443);
+```
+
+---
+
+## Implement `ISocialUserProvider`
+
+```csharp
+public interface ISocialUserProvider
+{
+    // Called when issuing the bearer token â€” yield custom claims to embed
+    IAsyncEnumerable<Claim> GetClaimsAsync(TokenResponse response, CancellationToken cancellationToken);
+
+    // Called on the /User endpoint â€” return your application user
+    Task<ISocialUser> GetAsync(string username, IEnumerable<Claim> claims, CancellationToken cancellationToken);
+}
+```
+
+Example:
+
+```csharp
+public class MyUserProvider : ISocialUserProvider
+{
+    private readonly IUserRepository _repo;
+    public MyUserProvider(IUserRepository repo) => _repo = repo;
+
+    public async IAsyncEnumerable<Claim> GetClaimsAsync(
+        TokenResponse response,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var user = await _repo.GetOrCreateAsync(response.Username, cancellationToken);
+        yield return new Claim(ClaimTypes.Name, user.Username!);
+        yield return new Claim(ClaimTypes.Role, user.Role);
+    }
+
+    public async Task<ISocialUser> GetAsync(
+        string username, IEnumerable<Claim> claims, CancellationToken cancellationToken)
+    {
+        return await _repo.GetAsync(username, cancellationToken);
+    }
+}
+```
+
+---
+
+## Expose Endpoints
 
 ```csharp
 app.UseSocialLoginEndpoints();
 ```
 
-This registers the following endpoints:
-- `POST /api/Authentication/Social/Token` - Exchange OAuth code for JWT token (with PKCE support)
-- `GET /api/Authentication/Social/Token` - Legacy endpoint (backward compatibility)
-- `GET /api/Authentication/Social/User` - Get authenticated user information
+Calls `UseAuthentication()`, `UseAuthorization()`, and registers the two minimal API endpoints below.
 
-### 3. Custom User Provider
+### `GET/POST api/Authentication/Social/Token`
 
-```csharp
-builder.Services.AddSocialUserProvider<SocialUserProvider>();
-```
+Exchanges an OAuth authorization code for a Rystem bearer token.
 
-Implement `ISocialUserProvider` to integrate with your database:
+| Parameter | Source | Description |
+|---|---|---|
+| `provider` | query | `ProviderType` value (e.g. `Google`, `Microsoft`) |
+| `code` | query | Authorization code from the OAuth provider |
+| `redirectPath` | query (optional) | Path string for the redirect URI |
+| _(body)_ | JSON body (optional) | `Dictionary<string, string>` â€” e.g. `{ "code_verifier": "..." }` for PKCE |
 
-```csharp
-internal sealed class SocialUserProvider : ISocialUserProvider
-{
-    private readonly IRepository<User> _userRepository;
-    
-    public SocialUserProvider(IRepository<User> userRepository)
-    {
-        _userRepository = userRepository;
-    }
+The domain is extracted automatically from the `Origin` or `Referer` request header and validated against the allowed-domains whitelist configured in `SocialLoginBuilder`. The final redirect URI is assembled as `{domain}{redirectPath}`.
 
-    public async Task<SocialUser> GetAsync(string username, IEnumerable<Claim> claims, CancellationToken cancellationToken)
-    {
-        // Fetch user from your database
-        var user = await _userRepository.Query()
-            .Where(x => x.Email == username)
-            .FirstOrDefaultAsync(cancellationToken);
-            
-        if (user == null)
-        {
-            // Create new user on first login
-            user = new User
-            {
-                Email = username,
-                Name = claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value
-            };
-            await _userRepository.InsertAsync(user, cancellationToken);
-        }
-        
-        return new CustomSocialUser
-        {
-            Username = user.Email,
-            DisplayName = user.Name,
-            UserId = user.Id
-        };
-    }
+On success, returns a signed `ClaimsPrincipal` as a bearer token (`Results.SignIn`).  
+On failure, returns `401 Unauthorized` or a `Problem` with the error message.
 
-    public async IAsyncEnumerable<Claim> GetClaimsAsync(string? username, CancellationToken cancellationToken)
-    {
-        var user = await _userRepository.Query()
-            .Where(x => x.Email == username)
-            .FirstOrDefaultAsync(cancellationToken);
-            
-        if (user != null)
-        {
-            yield return new Claim(ClaimTypes.NameIdentifier, user.Id.ToString());
-            yield return new Claim(ClaimTypes.Name, user.Name);
-            yield return new Claim(ClaimTypes.Email, user.Email);
-            yield return new Claim(ClaimTypes.Role, user.Role);
-        }
-    }
-}
+### `GET api/Authentication/Social/User` _(requires authentication)_
 
-public sealed class CustomSocialUser : DefaultSocialUser
-{
-    public string DisplayName { get; set; }
-    public Guid UserId { get; set; }
-}
-```
+Returns the authenticated user object.
 
-## 🔐 PKCE (Proof Key for Code Exchange)
+- With `ISocialUserProvider` registered â†’ calls `GetAsync(username, claims)`
+- Without provider â†’ returns `ISocialUser.OnlyUsername(identity.Name)`
 
-### What is PKCE?
+---
 
-PKCE (RFC 7636) enhances OAuth 2.0 security by preventing authorization code interception attacks. It's **required** for:
-- Single-Page Applications (SPAs)
-- Mobile applications
-- Public clients (where client secrets cannot be safely stored)
-
-### How PKCE Works
-
-1. **Client generates `code_verifier`**: Random 43-128 character string
-2. **Client creates `code_challenge`**: SHA256 hash of code_verifier, base64url encoded
-3. **Authorization request**: Client sends `code_challenge` to OAuth provider
-4. **Token exchange**: Client sends original `code_verifier` to your API
-5. **API validates**: Verifies code_verifier matches code_challenge with OAuth provider
-
-### PKCE Implementation
-
-The library automatically handles PKCE when clients send `code_verifier`:
+## Full Setup Example
 
 ```csharp
-// Endpoint accepts code_verifier in request body
-POST /api/Authentication/Social/Token?provider=Microsoft&code={oauth_code}&redirectPath=/account/login
-Content-Type: application/json
+var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddSocialLogin<MyUserProvider>(settings =>
 {
-    "code_verifier": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-}
+    settings.Google.ClientId     = builder.Configuration["Google:ClientId"];
+    settings.Google.ClientSecret = builder.Configuration["Google:ClientSecret"];
+    settings.Google.AddUri(builder.Configuration["App:Domain"]!);
+
+    settings.Microsoft.ClientId     = builder.Configuration["Microsoft:ClientId"];
+    settings.Microsoft.ClientSecret = builder.Configuration["Microsoft:ClientSecret"];
+    settings.Microsoft.AddUri(builder.Configuration["App:Domain"]!);
+});
+
+var app = builder.Build();
+app.UseSocialLoginEndpoints();
+app.Run();
 ```
-
-The `TokenCheckerSettings` class encapsulates all parameters:
-
-```csharp
-public sealed class TokenCheckerSettings
-{
-    public string? Domain { get; set; }                          // OAuth redirect domain
-    public string RedirectPath { get; set; } = "/";              // Redirect path (for exact URI matching)
-    public Dictionary<string, string>? AdditionalParameters { get; set; }  // Includes code_verifier for PKCE
-    
-    public string GetRedirectUri() => $"{Domain.TrimEnd('/')}{RedirectPath}";
-    public string? GetParameter(string key) => AdditionalParameters?.TryGetValue(key, out var val) == true ? val : null;
-}
-```
-
-### Backward Compatibility
-
-If `code_verifier` is not provided, the library falls back to a default value for backward compatibility:
-
-```csharp
-// Legacy GET request (no PKCE)
-GET /api/Authentication/Social/Token?provider=Microsoft&code={oauth_code}
-```
-
-⚠️ **Security Note**: For production SPAs and mobile apps, always use PKCE.
-
-## 🎯 Token Checker Interface
-
-All OAuth providers implement `ITokenChecker`:
-
-```csharp
-public interface ITokenChecker
-{
-    Task<AnyOf<TokenResponse?, string>> CheckTokenAndGetUsernameAsync(
-        string code, 
-        TokenCheckerSettings settings, 
-        CancellationToken cancellationToken = default);
-}
-```
-
-### Supported Providers
-
-| Provider | PKCE Support | Token Checker |
-|----------|--------------|---------------|
-| Microsoft | ✅ Required | `MicrosoftTokenChecker` |
-| Google | ✅ Optional | `GoogleTokenChecker` |
-| GitHub | ❌ Not supported | `GithubTokenChecker` |
-| Facebook | ❌ Not supported | `FacebookTokenChecker` |
-| Amazon | ❌ Not supported | `AmazonTokenChecker` |
-| LinkedIn | ❌ Not supported | `LinkedinTokenChecker` |
-| X (Twitter) | ❌ Not supported | `XTokenChecker` |
-| TikTok | ❌ Not supported | `TikTokTokenChecker` |
-| Instagram | ❌ Not supported | `InstagramTokenChecker` |
-| Pinterest | ❌ Not supported | `PinterestTokenChecker` |
-
-## 📝 Configuration Example
-
-### appsettings.json
-
-```json
-{
-  "SocialLogin": {
-    "Microsoft": {
-      "ClientId": "your-microsoft-client-id",
-      "ClientSecret": "your-microsoft-client-secret",
-      "RedirectDomain": "https://yourdomain.com"
-    },
-    "Google": {
-      "ClientId": "your-google-client-id",
-      "ClientSecret": "your-google-client-secret",
-      "RedirectDomain": "https://yourdomain.com"
-    }
-  }
-}
-```
-
-### OAuth Provider Setup
-
-#### Microsoft Entra ID (Azure AD)
-1. Go to [Azure Portal](https://portal.azure.com) → Azure Active Directory → App registrations
-2. Create new registration, set redirect URI: `https://yourdomain.com/account/login`
-3. Enable "ID tokens" under Authentication
-4. Copy Application (client) ID and create a client secret
-
-#### Google
-1. Go to [Google Cloud Console](https://console.cloud.google.com) → APIs & Services → Credentials
-2. Create OAuth 2.0 Client ID
-3. Add authorized redirect URI: `https://yourdomain.com/account/login`
-4. Copy Client ID and Client Secret
-
-#### Facebook
-1. Go to [Facebook Developers](https://developers.facebook.com) → My Apps → Create App
-2. Add Facebook Login product
-3. Set Valid OAuth Redirect URI: `https://yourdomain.com/account/login`
-4. Copy App ID and App Secret
-
-## 🔧 Advanced Configuration
-
-### Custom Token Validation
-
-Implement custom `ITokenChecker` for additional providers:
-
-```csharp
-public class CustomTokenChecker : ITokenChecker
-{
-    public async Task<AnyOf<TokenResponse?, string>> CheckTokenAndGetUsernameAsync(
-        string code, 
-        TokenCheckerSettings settings, 
-        CancellationToken cancellationToken)
-    {
-        var codeVerifier = settings.GetParameter("code_verifier");
-        var redirectUri = settings.GetRedirectUri();
-        
-        // Your custom OAuth token exchange logic
-        // ...
-        
-        return new TokenResponse
-        {
-            Username = "user@example.com",
-            Claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Email, "user@example.com")
-            }
-        };
-    }
-}
-```
-
-### Custom Claim Transformation
-
-```csharp
-public async IAsyncEnumerable<Claim> GetClaimsAsync(string? username, CancellationToken cancellationToken)
-{
-    // Add custom claims based on user roles from database
-    var userRoles = await _roleRepository.GetUserRolesAsync(username, cancellationToken);
-    
-    foreach (var role in userRoles)
-    {
-        yield return new Claim(ClaimTypes.Role, role.Name);
-    }
-    
-    // Add custom application-specific claims
-    yield return new Claim("tenant_id", "tenant-123");
-    yield return new Claim("subscription_level", "premium");
-}
-```
-
-## 🌐 API Endpoints Reference
-
-### POST /api/Authentication/Social/Token
-
-**Query Parameters:**
-- `provider` (required): OAuth provider (Microsoft, Google, Facebook, etc.)
-- `code` (required): Authorization code from OAuth provider
-- `redirectPath` (optional): OAuth redirect path (default: `/`)
-
-**Request Body** (JSON):
-```json
-{
-    "code_verifier": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-}
-```
-
-**Response** (200 OK):
-```json
-{
-    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "refreshToken": "refresh-token-here",
-    "expiresIn": 3600
-}
-```
-
-### GET /api/Authentication/Social/User
-
-**Headers:**
-- `Authorization: Bearer {accessToken}`
-
-**Response** (200 OK):
-```json
-{
-    "username": "user@example.com",
-    "displayName": "John Doe",
-    "userId": "guid-here"
-}
-```
-
-## 🔗 Related Packages
-
-- **Blazor Client**: `Rystem.Authentication.Social.Blazor` - UI components for Blazor Server/WASM
-- **React Client**: `rystem.authentication.social.react` - React hooks and components with TypeScript
-- **Abstractions**: `Rystem.Authentication.Social.Abstractions` - Shared models and interfaces
-
-## 📚 More Information
-
-- **Complete Docs**: [https://rystem.net/mcp/tools/auth-social-server.md](https://rystem.net/mcp/tools/auth-social-server.md)
-- **PKCE RFC**: [RFC 7636](https://tools.ietf.org/html/rfc7636)
-- **OAuth 2.0 Flow**: [https://rystem.net/mcp/prompts/auth-flow.md](https://rystem.net/mcp/prompts/auth-flow.md)

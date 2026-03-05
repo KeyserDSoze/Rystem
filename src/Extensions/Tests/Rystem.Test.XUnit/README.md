@@ -1,8 +1,8 @@
 ﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
-# Rystem.Test.XUnit
+## Rystem.Test.XUnit
 
-**Advanced XUnit integration testing framework** with built-in Dependency Injection and ASP.NET Core Test Host support. Perfect for testing APIs, services, and complex application architectures.
+XUnit integration testing framework with built-in **Dependency Injection** and **ASP.NET Core Test Host** support. Based on [Xunit.DependencyInjection](https://github.com/pengweiqhca/Xunit.DependencyInjection), it lets you inject services directly into test class constructors and optionally spin up a real in-process ASP.NET Core server for HTTP integration tests.
 
 ## 📦 Installation
 
@@ -10,687 +10,263 @@
 dotnet add package Rystem.Test.XUnit
 ```
 
-### ⚠️ Important: XUnit v3 Requirements
-
-**Rystem.Test.XUnit requires XUnit v3**. After recent XUnit updates, ensure you have the correct package versions installed.
-
-**Required packages in your test project:**
+**Recommended test project packages:**
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Rystem.Test.XUnit" Version="9.1.3" />
-  <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-  <PackageReference Include="xunit.v3" Version="3.0.1" />
+  <PackageReference Include="Rystem.Test.XUnit" Version="10.0.6" />
+  <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+  <PackageReference Include="xunit.v3" Version="3.2.2" />
   <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4">
-    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    <PrivateAssets>all</PrivateAssets>
-  </PackageReference>
-  <PackageReference Include="coverlet.collector" Version="6.0.4">
     <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     <PrivateAssets>all</PrivateAssets>
   </PackageReference>
 </ItemGroup>
 ```
 
-**Key differences from XUnit v2:**
-- ✅ Use `xunit.v3` instead of `xunit` package
-- ✅ Use `xunit.runner.visualstudio` version 3.1.4+
-- ✅ Constructor injection still works the same way
-- ⚠️ Some breaking changes in assertion APIs (see [XUnit v3 migration guide](https://xunit.net/docs/getting-started/v3/migration))
+> **Requires XUnit v3.** The `xunit.v3` package replaces the old `xunit` package.
 
-**Quick project setup:**
+## Table of Contents
 
-```bash
-# Create test project
-dotnet new xunit -n MyApp.Tests
-
-# Remove old xunit package (if present)
-dotnet remove package xunit
-
-# Add required packages
-dotnet add package Rystem.Test.XUnit
-dotnet add package xunit.v3 --version 3.0.1
-dotnet add package xunit.runner.visualstudio --version 3.1.4
-dotnet add package Microsoft.NET.Test.Sdk --version 17.14.1
-```
+- [Rystem.Test.XUnit](#rystemtestxunit)
+- [📦 Installation](#-installation)
+- [Table of Contents](#table-of-contents)
+- [How it Works](#how-it-works)
+- [Implement a Startup Class](#implement-a-startup-class)
+- [StartupHelper — Reference](#startuphelper--reference)
+  - [Abstract members (must override)](#abstract-members-must-override)
+  - [Virtual members (override if needed)](#virtual-members-override-if-needed)
+- [Scenario 1: DI-only (no HTTP server)](#scenario-1-di-only-no-http-server)
+- [Scenario 2: Full API integration with Test Host](#scenario-2-full-api-integration-with-test-host)
+- [Test Server Behaviour](#test-server-behaviour)
+- [IHttpClientFactory in Tests](#ihttpclientfactory-in-tests)
 
 ---
 
-## 🎯 Features
+## How it Works
 
-- ✅ **Built-in Dependency Injection** for XUnit tests
-- ✅ **ASP.NET Core Test Server** with full middleware pipeline
-- ✅ **Automatic Controller Discovery** and mapping
-- ✅ **User Secrets Integration** for configuration management
-- ✅ **Health Check Support** for server validation
-- ✅ **HTTPS/HTTP Configuration** with customizable options
-- ✅ **Automatic HttpClient Factory** for API testing
+`Rystem.Test.XUnit` builds on `Xunit.DependencyInjection` to wire a standard `IHostBuilder` into the XUnit process. You provide a `Startup` class that extends `StartupHelper`; the framework calls it the same way ASP.NET Core calls a `Startup` at app startup.
+
+- **`ConfigureHost`** — loads `appsettings.json` + User Secrets + environment variables.
+- **`ConfigureServices`** — optionally boots an in-process `TestServer` (one per test run, created lazily once and shared), then calls your `ConfigureClientServices` to populate the DI container that test classes consume.
+- Constructor injection then works automatically in every test class.
 
 ---
 
-## 🚀 Quick Start
+## Implement a Startup Class
 
-### Scenario 1: Testing Without HTTP Server (Business Logic Only)
-
-Perfect for testing services, repositories, and business logic without API layer.
-
-#### 1. Create Startup Class
+Create a `Startup` class in your test project that extends `StartupHelper`:
 
 ```csharp
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Rystem.Test.XUnit;
 
-namespace MyApp.Tests
-{
-    public class Startup : StartupHelper
-    {
-        protected override string? AppSettingsFileName => "appsettings.json";
-        protected override bool HasTestHost => false; // ❌ No HTTP server
-        protected override Type? TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration => typeof(Startup);
-        protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => null; // Not needed
-        
-        protected override IServiceCollection ConfigureClientServices(IServiceCollection services, IConfiguration configuration)
-        {
-            // Add your business services here
-            services.AddMyBusinessLogic();
-            services.AddMyRepositories();
-            services.AddMyTestHelpers();
-            
-            return services;
-        }
-    }
-}
-```
+namespace MyApp.Tests;
 
-#### 2. Write Tests with Constructor Injection
-
-```csharp
-using Xunit;
-
-namespace MyApp.Tests
-{
-    public class BusinessLogicTest
-    {
-        private readonly IBookManager _bookManager;
-        private readonly ITestHelpers _testHelpers;
-
-        // Constructor injection works automatically! 🎉
-        public BusinessLogicTest(IBookManager bookManager, ITestHelpers testHelpers)
-        {
-            _bookManager = bookManager;
-            _testHelpers = testHelpers;
-        }
-
-        [Fact]
-        public async Task CreateBook_ShouldReturnValidBook()
-        {
-            // Arrange
-            var bookId = Guid.NewGuid();
-
-            // Act
-            var book = await _bookManager.CreateBookAsync(bookId);
-
-            // Assert
-            Assert.NotNull(book);
-            Assert.Equal(bookId, book.Id);
-        }
-
-        [Theory]
-        [InlineData("Title 1")]
-        [InlineData("Title 2")]
-        public async Task UpdateBookTitle_ShouldSucceed(string title)
-        {
-            // Arrange
-            var book = await _testHelpers.CreateTestBookAsync();
-
-            // Act
-            await _bookManager.UpdateTitleAsync(book.Id, title);
-            var updated = await _bookManager.GetByIdAsync(book.Id);
-
-            // Assert
-            Assert.Equal(title, updated.Title);
-        }
-    }
-}
-```
-
----
-
-### Scenario 2: Testing With HTTP Server (Full API Integration)
-
-Full integration testing with real HTTP requests to your ASP.NET Core API.
-
-#### 1. Create Startup Class with Test Host
-
-```csharp
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Rystem.Test.XUnit;
-
-namespace MyApp.Api.Tests
-{
-    public class Startup : StartupHelper
-    {
-        protected override string? AppSettingsFileName => "appsettings.test.json";
-        protected override bool HasTestHost => true; // ✅ Enable HTTP server
-        protected override bool WithHttps => true; // HTTPS enabled
-        protected override bool AddHealthCheck => true; // Add /healthz endpoint
-        
-        // Use Startup or any controller class from your API project
-        protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => typeof(Program); // Your API's Program class
-        
-        // Use test project's Startup to load User Secrets
-        protected override Type? TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration => typeof(Startup);
-        
-        // Configure services for TEST CLIENT (HTTP consumers)
-        protected override IServiceCollection ConfigureClientServices(IServiceCollection services, IConfiguration configuration)
-        {
-            // Add HTTP client to call your API
-            services.AddHttpClient<IMyApiClient, MyApiClient>(client =>
-            {
-                client.BaseAddress = new Uri("https://localhost");
-            });
-            
-            return services;
-        }
-        
-        // Configure services for TEST SERVER (API dependencies)
-        protected override async ValueTask ConfigureServerServicesAsync(IServiceCollection services, IConfiguration configuration)
-        {
-            // Add your API services
-            services.AddControllers();
-            services.AddEndpointsApiExplorer();
-            services.AddMyApiServices();
-            services.AddMyRepositories();
-            services.AddMyBusinessLogic();
-            
-            return;
-        }
-        
-        // Configure middleware pipeline for TEST SERVER
-        protected override async ValueTask ConfigureServerMiddlewareAsync(IApplicationBuilder app, IServiceProvider serviceProvider)
-        {
-            // Configure your API middleware chain
-            app.UseRouting();
-            app.UseAuthentication();
-            app.UseAuthorization();
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapControllers();
-            });
-            
-            return;
-        }
-    }
-}
-```
-
-#### 2. Write API Tests with HTTP Calls
-
-```csharp
-using Xunit;
-
-namespace MyApp.Api.Tests
-{
-    public class ApiIntegrationTest
-    {
-        private readonly IMyApiClient _apiClient;
-
-        public ApiIntegrationTest(IMyApiClient apiClient)
-        {
-            _apiClient = apiClient;
-        }
-
-        [Theory]
-        [InlineData("user@example.com")]
-        [InlineData("admin@example.com")]
-        public async Task Login_ShouldReturnUser(string email)
-        {
-            // Act - Real HTTP call to localhost test server
-            var user = await _apiClient.LoginAsync(email);
-
-            // Assert
-            Assert.NotNull(user);
-            Assert.Equal(email, user.Email);
-        }
-
-        [Fact]
-        public async Task GetBooks_ShouldReturnList()
-        {
-            // Arrange
-            await _apiClient.LoginAsync("user@example.com");
-
-            // Act
-            var books = await _apiClient.GetBooksAsync();
-
-            // Assert
-            Assert.NotEmpty(books);
-        }
-
-        [Fact]
-        public async Task CreateBook_ThenGetById_ShouldMatch()
-        {
-            // Arrange
-            var createRequest = new CreateBookRequest
-            {
-                Title = "Test Book",
-                Author = "Test Author"
-            };
-
-            // Act
-            var created = await _apiClient.CreateBookAsync(createRequest);
-            var retrieved = await _apiClient.GetBookByIdAsync(created.Id);
-
-            // Assert
-            Assert.Equal(created.Id, retrieved.Id);
-            Assert.Equal(createRequest.Title, retrieved.Title);
-        }
-    }
-}
-```
-
----
-
-## 📖 Configuration Reference
-
-### StartupHelper Properties
-
-#### `AppSettingsFileName` (Required)
-Path to your appsettings file for test configuration.
-
-```csharp
-protected override string? AppSettingsFileName => "appsettings.test.json";
-```
-
-**Best Practice**: Use separate `appsettings.test.json` for test configurations.
-
----
-
-#### `HasTestHost` (Required)
-Enables or disables the ASP.NET Core Test Server.
-
-```csharp
-protected override bool HasTestHost => true; // Enable test server
-protected override bool HasTestHost => false; // Disable (business logic only)
-```
-
-**When to enable:**
-- ✅ Testing REST APIs, gRPC services, or SignalR hubs
-- ✅ Testing middleware pipeline behavior
-- ✅ Testing authentication/authorization flows
-- ✅ Integration tests requiring real HTTP requests
-
-**When to disable:**
-- ❌ Testing business logic without HTTP layer
-- ❌ Repository pattern tests
-- ❌ Service layer unit tests
-
----
-
-#### `TypeToChooseTheRightAssemblyWithControllersToMap` (Required if `HasTestHost = true`)
-Specifies which assembly contains your API controllers/endpoints.
-
-```csharp
-// Option 1: Use Program class from your API project
-protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => typeof(Program);
-
-// Option 2: Use any controller from your API project
-protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => typeof(BooksController);
-
-// Option 3: Not needed if HasTestHost = false
-protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => null;
-```
-
-**Purpose**: Automatically discovers and maps all controllers/endpoints in that assembly.
-
----
-
-#### `TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration` (Required)
-Specifies which assembly to load User Secrets from (Visual Studio Secret Manager).
-
-```csharp
-// Usually points to your TEST project's Startup class
-protected override Type? TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration => typeof(Startup);
-```
-
-**User Secrets Example:**
-```json
-{
-  "ConnectionStrings:Database": "Server=...;Database=Test;",
-  "ExternalApi:ApiKey": "secret-key-here"
-}
-```
-
-**How to manage secrets:**
-```bash
-# Right-click test project in Visual Studio → Manage User Secrets
-# Or use CLI:
-dotnet user-secrets set "ConnectionStrings:Database" "Server=localhost;..."
-```
-
----
-
-#### `WithHttps` (Optional, default: `true`)
-Configures test server to use HTTPS.
-
-```csharp
-protected override bool WithHttps => true; // https://localhost:443
-protected override bool WithHttps => false; // http://localhost
-```
-
----
-
-#### `PreserveExecutionContext` (Optional, default: `false`)
-Preserves execution context across async operations.
-
-```csharp
-protected override bool PreserveExecutionContext => true;
-```
-
-**When to enable:**
-- Testing code that relies on `AsyncLocal<T>`
-- Testing authentication contexts that flow across async calls
-
----
-
-#### `AddHealthCheck` (Optional, default: `true`)
-Automatically adds `/healthz` endpoint to test server.
-
-```csharp
-protected override bool AddHealthCheck => true; // Adds /healthz endpoint
-```
-
-**Validation**: Test framework automatically calls `/healthz` after server startup to ensure health.
-
----
-
-### Abstract Methods
-
-#### `ConfigureClientServices` (Required)
-Configure dependency injection for **test consumers** (your test classes).
-
-```csharp
-protected override IServiceCollection ConfigureClientServices(IServiceCollection services, IConfiguration configuration)
-{
-    // Add services used by test classes
-    services.AddHttpClient<IMyApiClient, MyApiClient>(client =>
-    {
-        client.BaseAddress = new Uri("https://localhost");
-    });
-    
-    services.AddSingleton<ITestDataGenerator, TestDataGenerator>();
-    
-    return services;
-}
-```
-
----
-
-#### `ConfigureServerServicesAsync` (Virtual, implement if `HasTestHost = true`)
-Configure dependency injection for **test server** (API dependencies).
-
-```csharp
-protected override async ValueTask ConfigureServerServicesAsync(IServiceCollection services, IConfiguration configuration)
-{
-    // Add your API services here
-    services.AddControllers();
-    services.AddMyBusinessLogic();
-    services.AddMyRepositories();
-    
-    // Configure database for testing
-    services.AddDbContext<MyDbContext>(options =>
-        options.UseInMemoryDatabase("TestDb"));
-    
-    return;
-}
-```
-
----
-
-#### `ConfigureServerMiddlewareAsync` (Virtual, implement if `HasTestHost = true`)
-Configure middleware pipeline for **test server**.
-
-```csharp
-protected override async ValueTask ConfigureServerMiddlewareAsync(IApplicationBuilder app, IServiceProvider serviceProvider)
-{
-    app.UseRouting();
-    app.UseAuthentication();
-    app.UseAuthorization();
-    app.UseCors("AllowAll");
-    
-    app.UseEndpoints(endpoints =>
-    {
-        endpoints.MapControllers();
-        endpoints.MapGrpcService<MyGrpcService>();
-    });
-    
-    return;
-}
-```
-
----
-
-## 🏗️ Architecture
-
-### How It Works
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      XUnit Test Runner                       │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 StartupHelper (Abstract Base)                │
-│  - Loads appsettings.json                                    │
-│  - Loads User Secrets                                        │
-│  - Configures Host Builder                                   │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-              ┌─────────────┴─────────────┐
-              ▼                           ▼
-┌─────────────────────────┐   ┌─────────────────────────────┐
-│   ConfigureClientServices│   │ ConfigureServerServicesAsync│
-│   (Test DI Container)    │   │ (API DI Container)          │
-│   - HTTP Clients         │   │ - Controllers               │
-│   - Test Helpers         │   │ - Business Logic            │
-│   - Mocks                │   │ - Repositories              │
-└───────────┬─────────────┘   └──────────┬──────────────────┘
-            │                            │
-            │                ┌───────────┴───────────────┐
-            │                ▼                           │
-            │    ┌────────────────────────────┐          │
-            │    │ ASP.NET Core Test Server   │          │
-            │    │ - Middleware Pipeline      │          │
-            │    │ - Endpoint Routing         │          │
-            │    │ - Authentication           │          │
-            │    └────────────┬───────────────┘          │
-            │                 │                          │
-            ▼                 ▼                          ▼
-┌────────────────────────────────────────────────────────────┐
-│              Constructor Injection in Test Classes          │
-│  public MyTest(IMyService service, IHttpClientFactory http) │
-└────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🧪 Real-World Examples
-
-### Example 1: Repository Pattern Testing
-
-```csharp
 public class Startup : StartupHelper
 {
-    protected override string? AppSettingsFileName => "appsettings.json";
-    protected override bool HasTestHost => false;
+    protected override string? AppSettingsFileName => "appsettings.test.json";
+    protected override bool HasTestHost => false; // set true for HTTP tests
     protected override Type? TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration => typeof(Startup);
-    protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => null;
-    
+    protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => null; // only needed when HasTestHost = true
+
     protected override IServiceCollection ConfigureClientServices(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<TestDbContext>(options =>
-            options.UseInMemoryDatabase("TestDb"));
-        
-        services.AddRepositories();
-        
+        services.AddMyBusinessLogic();
+        services.AddMyRepositories();
         return services;
     }
 }
-
-public class RepositoryTest
-{
-    private readonly IRepository<Book> _bookRepository;
-
-    public RepositoryTest(IRepository<Book> bookRepository)
-    {
-        _bookRepository = bookRepository;
-    }
-
-    [Fact]
-    public async Task InsertAndRetrieve_ShouldWork()
-    {
-        var book = new Book { Id = Guid.NewGuid(), Title = "Test" };
-        await _bookRepository.InsertAsync(book);
-        
-        var retrieved = await _bookRepository.GetAsync(book.Id);
-        Assert.Equal(book.Title, retrieved.Title);
-    }
-}
 ```
 
 ---
 
-### Example 2: Full API Testing with Authentication
+## StartupHelper — Reference
+
+### Abstract members (must override)
+
+| Member | Description |
+|---|---|
+| `AppSettingsFileName` | Path to the appsettings file to load (e.g. `"appsettings.test.json"`) |
+| `HasTestHost` | `true` to start an in-process ASP.NET Core `TestServer`; `false` for DI-only |
+| `TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration` | Type from the assembly whose User Secrets to load; usually `typeof(Startup)` |
+| `TypeToChooseTheRightAssemblyWithControllersToMap` | Type from the API assembly to discover controllers from; `null` when `HasTestHost = false` |
+| `ConfigureClientServices` | Register services consumed by test classes (HTTP clients, helpers, mocks, …) |
+
+### Virtual members (override if needed)
+
+| Member | Default | Description |
+|---|---|---|
+| `WithHttps` | `true` | Use `https://localhost:443` for the test server; `false` for plain HTTP |
+| `PreserveExecutionContext` | `false` | Preserve `AsyncLocal<T>` context across async calls in the test server |
+| `AddHealthCheck` | `true` | Add a `/healthz` endpoint; framework validates it returns `Healthy` after server start |
+| `ConfigureServerServicesAsync` | no-op | Register services for the test server DI container |
+| `ConfigureServerMiddlewareAsync` | no-op | Configure the test server's middleware pipeline |
+
+---
+
+## Scenario 1: DI-only (no HTTP server)
+
+Use this when testing services, repositories, and business logic that don't require HTTP.
 
 ```csharp
 public class Startup : StartupHelper
 {
     protected override string? AppSettingsFileName => "appsettings.test.json";
-    protected override bool HasTestHost => true;
-    protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => typeof(Program);
+    protected override bool HasTestHost => false;
     protected override Type? TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration => typeof(Startup);
-    
+    protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => null;
+
     protected override IServiceCollection ConfigureClientServices(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddHttpClient<IBridgeInspectionApi, BridgeInspectionApi>(client =>
+        services.AddDbContext<MyDbContext>(opt => opt.UseInMemoryDatabase("TestDb"));
+        services.AddMyRepositories();
+        services.AddMyBusinessLogic();
+        return services;
+    }
+}
+
+public class OrderServiceTest
+{
+    private readonly IOrderService _orderService;
+
+    // Constructor injection — works automatically
+    public OrderServiceTest(IOrderService orderService)
+        => _orderService = orderService;
+
+    [Fact]
+    public async Task CreateOrder_ShouldReturnValidOrder()
+    {
+        var order = await _orderService.CreateAsync(new CreateOrderRequest { ProductId = 1 });
+
+        Assert.NotNull(order);
+        Assert.True(order.Id > 0);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task GetOrder_ShouldReturnCorrectProduct(int productId)
+    {
+        var order = await _orderService.CreateAsync(new CreateOrderRequest { ProductId = productId });
+        var retrieved = await _orderService.GetAsync(order.Id);
+
+        Assert.Equal(productId, retrieved.ProductId);
+    }
+}
+```
+
+---
+
+## Scenario 2: Full API integration with Test Host
+
+Use this for end-to-end HTTP testing against a real ASP.NET Core pipeline running in-process.
+
+```csharp
+using Microsoft.AspNetCore.Builder;
+
+public class Startup : StartupHelper
+{
+    protected override string? AppSettingsFileName => "appsettings.test.json";
+    protected override bool HasTestHost => true;
+    protected override bool WithHttps => true;
+    protected override bool AddHealthCheck => true;
+    protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => typeof(Program); // API assembly
+    protected override Type? TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration => typeof(Startup);
+
+    // Services for test classes (HTTP clients, helpers)
+    protected override IServiceCollection ConfigureClientServices(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddHttpClient<IMyApiClient, MyApiClient>(client =>
         {
             client.BaseAddress = new Uri("https://localhost");
         });
         return services;
     }
-    
+
+    // Services for the in-process test server
     protected override async ValueTask ConfigureServerServicesAsync(IServiceCollection services, IConfiguration configuration)
     {
         services.AddControllers();
-        services.AddAuthentication("TestScheme")
-            .AddScheme<TestAuthOptions, TestAuthHandler>("TestScheme", options => { });
-        services.AddAuthorization();
         services.AddMyApiServices();
-        return;
+        services.AddDbContext<MyDbContext>(opt =>
+            opt.UseInMemoryDatabase($"TestDb_{Guid.NewGuid()}"));
     }
-    
+
+    // Middleware pipeline for the in-process test server
     protected override async ValueTask ConfigureServerMiddlewareAsync(IApplicationBuilder app, IServiceProvider serviceProvider)
     {
         app.UseRouting();
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseEndpoints(endpoints => endpoints.MapControllers());
-        return;
     }
 }
 
-public class InspectionTest
+public class BooksApiTest
 {
-    private readonly IBridgeInspectionApi _api;
+    private readonly IMyApiClient _client;
 
-    public InspectionTest(IBridgeInspectionApi api)
+    public BooksApiTest(IMyApiClient client) => _client = client;
+
+    [Fact]
+    public async Task GetBooks_ShouldReturnNonEmptyList()
     {
-        _api = api;
+        var books = await _client.GetBooksAsync();
+        Assert.NotEmpty(books);
     }
 
     [Theory]
-    [InlineData("user@example.com")]
-    public async Task GetBridgesAndInspections_ShouldReturnData(string email)
+    [InlineData("Clean Code")]
+    [InlineData("DDD")]
+    public async Task CreateBook_ThenGet_ShouldMatch(string title)
     {
-        // Login
-        var user = await _api.LoginAsAsync(email);
-        Assert.NotNull(user);
-        
-        // Get bridges
-        var bridges = await _api.BridgeApi.ListAsync();
-        Assert.NotEmpty(bridges);
-        
-        // Get inspections for first bridge
-        var bridge = bridges.First();
-        var inspections = await _api.InspectionApi.ListAsync(bridge.Id);
-        Assert.NotEmpty(inspections);
+        var created = await _client.CreateBookAsync(new CreateBookRequest { Title = title });
+        var retrieved = await _client.GetBookByIdAsync(created.Id);
+
+        Assert.Equal(title, retrieved.Title);
     }
+}
+```
+
+---
+
+## Test Server Behaviour
+
+- The in-process `TestServer` is **created once** per test run and shared across all test classes. A lock ensures only one instance is ever started, even with parallelism.
+- If `AddHealthCheck = true`, the framework performs a `GET /healthz` after startup and throws if it does not return `Healthy`.
+- The test server uses `Microsoft.AspNetCore.TestHost` — no real network port is opened; all HTTP traffic is in-process.
+- Controllers are discovered via `AddApplicationPart` using the assembly of `TypeToChooseTheRightAssemblyWithControllersToMap`.
+
+---
+
+## IHttpClientFactory in Tests
+
+When `HasTestHost = true`, an `IHttpClientFactory` singleton backed by the test server is registered automatically in the client DI container. Any `HttpClient` created through it connects directly to the in-process server with these default headers pre-set:
+
+| Header | Value |
+|---|---|
+| `Origin` | `https://localhost` |
+| `Access-Control-Request-Method` | `POST` |
+| `Access-Control-Request-Headers` | `X-Requested-With` |
+
+Inject `IHttpClientFactory` directly, or use typed clients registered in `ConfigureClientServices`:
+
+```csharp
+public class MyTest
+{
+    private readonly HttpClient _http;
+
+    public MyTest(IHttpClientFactory factory)
+        => _http = factory.CreateClient();
 
     [Fact]
-    public async Task DownloadInspectionZip_ShouldReturnBytes()
+    public async Task HealthCheck_ShouldBeHealthy()
     {
-        await _api.LoginAsAsync("admin@example.com");
-        var bridges = await _api.BridgeApi.ListAsync();
-        var inspections = await _api.InspectionApi.ListAsync(bridges.First().Id);
-        
-        var zipBytes = await _api.InspectionApi.DownloadInspectionsFile(
-            bridges.First().Id, 
-            inspections.First().Id
-        );
-        
-        Assert.NotEmpty(zipBytes);
+        var response = await _http.GetAsync("/healthz");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 }
 ```
-
----
-
-## 🔧 Advanced Configuration
-
-### Custom HTTP Headers for Test Server
-
-```csharp
-services.AddHttpClient<IMyClient, MyClient>((serviceProvider, client) =>
-{
-    client.BaseAddress = new Uri("https://localhost");
-    client.DefaultRequestHeaders.Add("X-Test-Environment", "true");
-    client.DefaultRequestHeaders.Add("X-Api-Key", "test-key");
-});
-```
-
-### Mock External Dependencies
-
-```csharp
-protected override IServiceCollection ConfigureClientServices(IServiceCollection services, IConfiguration configuration)
-{
-    // Replace real external API with mock
-    services.AddSingleton<IExternalApiClient, MockExternalApiClient>();
-    
-    return services;
-}
-```
-
-### In-Memory Database for Tests
-
-```csharp
-protected override async ValueTask ConfigureServerServicesAsync(IServiceCollection services, IConfiguration configuration)
-{
-    services.AddDbContext<MyDbContext>(options =>
-        options.UseInMemoryDatabase($"TestDb_{Guid.NewGuid()}")); // Unique per test run
-    
-    return;
-}
-```
-
----
-
-## 📚 Resources
-
-- **📖 Complete Documentation**: [https://rystem.net](https://rystem.net)
-- **🤖 MCP Server for AI**: [https://rystem.cloud/mcp](https://rystem.cloud/mcp)
-- **💬 Discord Community**: [https://discord.gg/tkWvy4WPjt](https://discord.gg/tkWvy4WPjt)
-- **☕ Support the Project**: [https://www.buymeacoffee.com/keyserdsoze](https://www.buymeacoffee.com/keyserdsoze)
 
