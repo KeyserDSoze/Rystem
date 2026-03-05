@@ -5,8 +5,8 @@ import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { z } from 'zod';
 
-// Global MCP server instance (reused across requests)
-let mcpServer: McpServer | null = null;
+// Cache only the parsed manifest (not the McpServer - see below)
+let cachedManifest: McpManifest | null = null;
 
 interface DynamicToolDocument {
     filename: string;
@@ -37,21 +37,21 @@ interface McpManifest {
     dynamicTools: DynamicTool[];
 }
 
-// Initialize MCP server with all tools, resources, and prompts
-async function initializeMcpServer(): Promise<McpServer> {
-    if (mcpServer) {
-        return mcpServer;
+// Create a FRESH McpServer per request (stateless HTTP pattern).
+// Reusing the same McpServer across connect() calls causes "already registered" errors
+// because the SDK re-registers handlers on every connect().
+async function createMcpServer(): Promise<McpServer> {
+    if (!cachedManifest) {
+        const manifestPath = join(process.cwd(), 'public', 'mcp-manifest.json');
+        const manifestContent = await readFile(manifestPath, 'utf-8');
+        cachedManifest = JSON.parse(manifestContent) as McpManifest;
     }
+    const manifest = cachedManifest!;
 
     const server = new McpServer({
         name: 'rystem-mcp-server',
         version: '1.0.0'
     });
-
-    // Load manifest to get all available items
-    const manifestPath = join(process.cwd(), 'public', 'mcp-manifest.json');
-    const manifestContent = await readFile(manifestPath, 'utf-8');
-    const manifest: McpManifest = JSON.parse(manifestContent);
 
     // 🆕 Register dynamic tools
     for (const dynamicTool of manifest.dynamicTools || []) {
@@ -351,8 +351,11 @@ async function initializeMcpServer(): Promise<McpServer> {
         );
     }
 
-    // Register all tools from manifest
-    for (const tool of manifest.tools || []) {
+    // Register all tools from manifest (skip dynamic tool names already registered above)
+    const dynamicToolNames = new Set<string>(
+        (manifest.dynamicTools || []).flatMap(dt => [dt.name, `${dt.name}-list`, `${dt.name}-search`])
+    );
+    for (const tool of (manifest.tools || []).filter(t => !dynamicToolNames.has(t.name))) {
         const toolPath = join(process.cwd(), 'public', 'mcp', 'tools', `${tool.name}.md`);
         
         server.registerTool(
@@ -466,7 +469,6 @@ async function initializeMcpServer(): Promise<McpServer> {
         );
     }
 
-    mcpServer = server;
     return server;
 }
 
@@ -486,8 +488,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-        // Initialize server (cached after first request)
-        const server = await initializeMcpServer();
+        // Fresh server per request (stateless HTTP MCP pattern)
+        const server = await createMcpServer();
 
         // Create a new transport for each request (prevents request ID collisions)
         const transport = new StreamableHTTPServerTransport({
