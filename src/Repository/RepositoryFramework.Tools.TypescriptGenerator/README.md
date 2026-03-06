@@ -2,6 +2,16 @@
 
 CLI tool that generates TypeScript models and service wrappers from C# Repository/CQRS models.
 
+> **Requires .NET 10 SDK or later.**
+
+## Prerequisites
+
+Install the `rystem.repository.client` npm package in your frontend project:
+
+```bash
+npm install rystem.repository.client
+```
+
 ## Installation
 
 ```bash
@@ -37,33 +47,35 @@ rystem-ts generate --dest <destination> --models <definitions> [options]
 | `--models` | `-m` | Yes | Repository definitions |
 | `--project` | `-p` | No | Path to `.csproj` or `.dll` |
 | `--overwrite` |  | No | Overwrite existing files (default `true`) |
-| `--include-deps` |  | No | Scan referenced dependencies |
+| `--include-deps` |  | No | Scan referenced dependencies (default `false`) |
 | `--deps-prefix` |  | No | Prefix filter when `--include-deps` is enabled |
 
 ## Model definition format
 
 ```text
-"{Model,Key,Type,Factory,BackendFactory},{Model2,Key2,Type2,Factory2,}"
+"{Model,Key,Type[,Factory[,BackendFactory]]},{Model2,Key2,Type2,...}"
 ```
 
-- `Model`: C# entity type name (simple or fully qualified)
-- `Key`: C# key type name
-- `Type`: `Repository`, `Query`, or `Command`
-- `Factory`: client-side name used by generated locator
-- `BackendFactory`: optional backend factory segment used in endpoint path
+- `Model` (**required**): C# entity type name (simple or fully qualified)
+- `Key` (**required**): C# key type name or primitive (`string`, `Guid`, `int`, etc.)
+- `Type` (**required**): `Repository`, `Query`, or `Command`
+- `Factory` (optional): client-side name used by the generated locator — defaults to `Model`
+- `BackendFactory` (optional): backend factory segment used in the endpoint path
+
+Legacy bracket format `[{...},{...}]` is also accepted.
 
 ## Examples
 
 ```bash
 rystem-ts generate \
   --dest ./src/api \
-  --models "{User,Guid,Repository,users,}"
+  --models "{User,Guid,Repository,users}"
 ```
 
 ```bash
 rystem-ts generate \
   --dest ./src/api \
-  --models "{Calendar,LeagueKey,Repository,serieA,serieA},{Team,Guid,Query,teams,}" \
+  --models "{Calendar,LeagueKey,Repository,serieA,serieA},{Team,Guid,Query,teams}" \
   --project ./src/MyApp.Api/MyApp.Api.csproj \
   --include-deps \
   --deps-prefix "MyCompany."
@@ -74,15 +86,31 @@ rystem-ts generate \
 ```text
 <destination>/
   types/
+    DateMappers.ts          # date parse/format utilities (always generated)
+    {ModelName}.ts          # per-model file (see below)
+    index.ts
   transformers/
+    {ModelName}Transformer.ts
+    index.ts
   services/
+    repositoryLocator.ts    # typed RepositoryLocator object
   bootstrap/
-  repositoryLocator.ts
+    repositorySetup.ts      # setupRepositoryServices() configuration
 ```
+
+### Per-model type file contents
+
+Each `types/{ModelName}.ts` file can contain:
+
+- **Enums** — TypeScript `enum` declarations
+- **Raw interfaces** — property names and types that match the JSON wire format exactly (generated only when a model has `[JsonPropertyName]` attributes or `DateTime`/`DateOnly`/`DateTimeOffset` properties)
+- **Clean interfaces** — readable TypeScript interfaces (camelCase names, `Date` instead of `string` for date types)
+- **Mapping functions** — `mapRaw{Name}To{Name}` / `map{Name}ToRaw{Name}` converters between Raw and Clean
+- **Helper classes** — factory/builder helpers for creating model instances
 
 ## Integration with Repository API
 
-Server example:
+### Server (.NET)
 
 ```csharp
 builder.Services.AddRepository<User, Guid>(repositoryBuilder =>
@@ -96,7 +124,9 @@ var app = builder.Build();
 app.UseApiFromRepositoryFramework().WithNoAuthorization();
 ```
 
-Client setup (generated `bootstrap/repositorySetup.ts` pattern):
+### Client setup (generated `bootstrap/repositorySetup.ts`)
+
+Minimal usage:
 
 ```typescript
 import { setupRepositoryServices } from "./bootstrap/repositorySetup";
@@ -106,10 +136,51 @@ setupRepositoryServices({
 });
 ```
 
+Full `RepositoryConfig` options:
+
+```typescript
+setupRepositoryServices({
+  baseUrl: "https://localhost:7058/api/",
+
+  // Optional: enrich request headers (e.g. add Authorization)
+  headersEnricher: async (endpoint, uri, method, headers, body) => ({
+    ...headers,
+    Authorization: `Bearer ${getToken()}`
+  }),
+
+  // Optional: handle errors (return true to retry)
+  errorHandler: async (endpoint, uri, method, headers, body, err) => {
+    if (err?.status === 401) {
+      await refreshToken();
+      return true; // retry the request
+    }
+    return false;
+  }
+});
+```
+
+### Typed repository access (`services/repositoryLocator.ts`)
+
+```typescript
+import { RepositoryLocator } from "./services/repositoryLocator";
+
+// IRepository — full CRUD
+const user = await RepositoryLocator.users.get("some-guid");
+const all   = await RepositoryLocator.users.query().toListAsync();
+await RepositoryLocator.users.insert("id", newUser);
+await RepositoryLocator.users.delete("id");
+
+// IQuery — read-only
+const teams = await RepositoryLocator.teams.query().toListAsync();
+
+// ICommand — write-only
+await RepositoryLocator.orders.insert("id", newOrder);
+```
+
 ## Troubleshooting
 
 - `Project file not found`: verify `--project` path.
 - `Multiple .csproj files found`: pass explicit `--project`.
-- `Model not found in assembly`: build project and verify type names.
-- `Multiple types found`: use fully qualified names in `--models`.
+- `Model not found in assembly`: build the project first and verify type names.
+- `Multiple types found`: use fully qualified names (e.g. `MyApp.Core.User`) in `--models`.
 

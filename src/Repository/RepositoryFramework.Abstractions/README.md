@@ -508,6 +508,147 @@ builder.Services.AddRepository<AppUser, Guid>(repositoryBuilder =>
 
 ---
 
+## Bootstrap pattern
+
+If your storage class needs to run initialisation logic on startup (create tables, seed data, warm up connections), implement `IBootstrapPattern`:
+
+```csharp
+public class AppUserStorage : IRepositoryPattern<AppUser, Guid>, IBootstrapPattern
+{
+    public async ValueTask<bool> BootstrapAsync(CancellationToken cancellationToken = default)
+    {
+        // create schema, seed data, pre-warm connections …
+        await EnsureTableExistsAsync(cancellationToken);
+        return true; // return false to signal failure
+    }
+
+    // … other IRepositoryPattern methods
+}
+```
+
+Bootstrap runs automatically during application startup. The `RepositoryMethods.Bootstrap` flag in `SetExposable` controls whether the bootstrap endpoint is exposed via the REST API.
+
+---
+
+## Dynamic connections (`IConnectionService`)
+
+When the connection string (or client) depends on the request context — for example in multi-tenant apps — implement `IConnectionService<T, TKey, TConnectionClient>` and register it with `SetStorageAndServiceConnection`:
+
+```csharp
+// 1. Connection service: resolves the right client for the given entity type
+public sealed class TenantAwareDbConnectionService : IConnectionService<Order, Guid, DbConnection>
+{
+    private readonly ITenantResolver _tenantResolver;
+
+    public TenantAwareDbConnectionService(ITenantResolver tenantResolver)
+        => _tenantResolver = tenantResolver;
+
+    public DbConnection GetConnection(string entityName, string? factoryName = null)
+    {
+        var connString = _tenantResolver.GetConnectionString(entityName);
+        return new SqlConnection(connString);
+    }
+}
+
+// 2. Storage: receives the connection client via DI
+public sealed class OrderStorage : IRepositoryPattern<Order, Guid>
+{
+    private readonly IConnectionService<Order, Guid, DbConnection> _connectionService;
+
+    public OrderStorage(IConnectionService<Order, Guid, DbConnection> connectionService)
+        => _connectionService = connectionService;
+
+    public async Task<State<Order, Guid>> InsertAsync(Guid key, Order value, CancellationToken ct = default)
+    {
+        using var conn = _connectionService.GetConnection("Order");
+        // … use conn
+        return State.Ok(value, key);
+    }
+    // … other methods
+}
+
+// 3. Registration
+builder.Services.AddRepository<Order, Guid>(repositoryBuilder =>
+{
+    repositoryBuilder.SetStorageAndServiceConnection<
+        OrderStorage,
+        TenantAwareDbConnectionService,
+        DbConnection>();
+});
+```
+
+---
+
+## Post-build callbacks
+
+Run code immediately after the repository is registered (e.g. validate configuration, emit telemetry):
+
+```csharp
+builder.Services.AddRepository<AppUser, Guid>(repositoryBuilder =>
+{
+    repositoryBuilder.SetStorage<AppUserStorage>();
+
+    repositoryBuilder.AfterBuild = () =>
+    {
+        Console.WriteLine("AppUser repository registered.");
+    };
+
+    repositoryBuilder.AfterBuildAsync = async () =>
+    {
+        await ValidateSchemaAsync();
+    };
+});
+```
+
+Both `AfterBuild` (synchronous) and `AfterBuildAsync` are called after the `SetStorage*` call completes.
+
+---
+
+## Runtime registry (`RepositoryFrameworkRegistry`)
+
+`RepositoryFrameworkRegistry` is a singleton registered automatically. Inject it to enumerate every repository registered in the application:
+
+```csharp
+public class RepositoryDiagnosticsService
+{
+    private readonly RepositoryFrameworkRegistry _registry;
+
+    public RepositoryDiagnosticsService(RepositoryFrameworkRegistry registry)
+        => _registry = registry;
+
+    public void PrintAll()
+    {
+        foreach (var (key, service) in _registry.Services)
+        {
+            Console.WriteLine(
+                $"{service.ModelType.Name} ({service.Type}) " +
+                $"→ {service.ImplementationType.Name} " +
+                $"[{service.ExposedMethods}]");
+        }
+    }
+
+    // Get services for a specific model type
+    public IEnumerable<RepositoryFrameworkService> GetForModel<T>()
+        => _registry.GetByModel(typeof(T));
+}
+```
+
+### `RepositoryFrameworkService` properties
+
+| Property | Type | Description |
+|---|---|---|
+| `ModelType` | `Type` | The domain model type (`T`) |
+| `KeyType` | `Type` | The key type (`TKey`) |
+| `InterfaceType` | `Type` | The consumer interface (`IRepository<T,TKey>`, etc.) |
+| `ImplementationType` | `Type` | The concrete storage class |
+| `ExposedMethods` | `RepositoryMethods` | Which operations are exposed via the REST API |
+| `ServiceLifetime` | `ServiceLifetime` | DI lifetime |
+| `Type` | `PatternType` | `Repository`, `Command`, or `Query` |
+| `FactoryName` | `string` | Named factory key (empty = default) |
+| `Policies` | `List<string>` | Authorization policy names (used by the Web UI) |
+
+---
+
 ## Related Packages
 
 | Package | Purpose |
