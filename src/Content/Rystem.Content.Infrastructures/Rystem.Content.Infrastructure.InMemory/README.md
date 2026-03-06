@@ -1,6 +1,86 @@
-﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+﻿# Rystem.Content.Infrastructure.InMemory
 
-## Integration with In Memory and Content Repository
+[![NuGet](https://img.shields.io/nuget/v/Rystem.Content.Infrastructure.InMemory)](https://www.nuget.org/packages/Rystem.Content.Infrastructure.InMemory)
+
+In-memory backend for [Rystem Content Framework](../Rystem.Content.Abstractions). Stores all file data in a thread-safe in-process dictionary. No external dependencies — perfect for unit tests, integration tests, and local development.
+
+## Installation
+
+```bash
+dotnet add package Rystem.Content.Infrastructure.InMemory
+```
+
+---
+
+## Registration
+
+```csharp
+services
+    .AddContentRepository()
+    .WithInMemoryIntegration("inmemory");  // name is optional; omit if single backend
+```
+
+The backend is registered as a **singleton** — state is shared for the lifetime of the application/test host.
+
+---
+
+## Usage
+
+```csharp
+public sealed class FileServiceTests
+{
+    private readonly IContentRepository _repo;
+
+    public FileServiceTests(IContentRepositoryFactory factory)
+        => _repo = factory.Create("inmemory");
+
+    public async Task RoundtripAsync()
+    {
+        var data        = System.Text.Encoding.UTF8.GetBytes("hello world");
+        var contentType = "text/plain";
+        var metadata    = new Dictionary<string, string> { { "author", "test" } };
+
+        // upload
+        var ok = await _repo.UploadAsync("folder/file.txt", data, new ContentRepositoryOptions
+        {
+            HttpHeaders = new ContentRepositoryHttpHeaders { ContentType = contentType },
+            Metadata    = metadata
+        });
+        // ok == true
+
+        // exist
+        var exists = await _repo.ExistAsync("folder/file.txt");  // true
+
+        // properties
+        var props = await _repo.GetPropertiesAsync("folder/file.txt", ContentInformationType.All);
+        // props.Options.HttpHeaders.ContentType == "text/plain"
+        // props.Options.Metadata["author"]      == "test"
+
+        // download
+        var downloaded = await _repo.DownloadAsync("folder/file.txt");
+        // downloaded.Data == data
+
+        // set properties
+        await _repo.SetPropertiesAsync("folder/file.txt", new ContentRepositoryOptions
+        {
+            Metadata = new Dictionary<string, string> { { "author", "test" }, { "revised", "yes" } }
+        });
+
+        // delete
+        await _repo.DeleteAsync("folder/file.txt");
+        exists = await _repo.ExistAsync("folder/file.txt");  // false
+    }
+}
+```
+
+---
+
+## Notes
+
+- **Singleton lifetime**: data persists for the whole process lifetime. Between test cases use `DeleteAsync` or create a fresh host.
+- **No I/O**: all operations are synchronous under the hood — `await` resolves immediately.
+- **Full API support**: unlike real storage backends, `Tags`, `Metadata`, and all `ContentInformationType` flags are fully supported in memory.
+- **Thread-safety**: the store uses a `ConcurrentDictionary` and is safe for parallel tests.
 
     services
     .AddContentRepository()

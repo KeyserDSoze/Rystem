@@ -1,6 +1,119 @@
-﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+﻿# Rystem.Content.Infrastructure.Azure.Storage.File
 
-## Integration with Azure File Storage and Content Repository
+[![NuGet](https://img.shields.io/nuget/v/Rystem.Content.Infrastructure.Azure.Storage.File)](https://www.nuget.org/packages/Rystem.Content.Infrastructure.Azure.Storage.File)
+
+Azure File Share backend for [Rystem Content Framework](../Rystem.Content.Abstractions). Stores files in an Azure Storage file share — ideal for SMB-mounted shares, legacy lift-and-shift applications, or workloads that need directory-style file semantics.
+
+## Installation
+
+```bash
+dotnet add package Rystem.Content.Infrastructure.Azure.Storage.File
+```
+
+---
+
+## Registration
+
+### Connection string
+
+```csharp
+await services
+    .AddContentRepository()
+    .WithFileStorageIntegrationAsync(x =>
+    {
+        x.ShareName        = "documents";
+        x.Prefix           = "site/";    // optional path prefix
+        x.ConnectionString = configuration["Storage:ConnectionString"];
+    }, "filestorage")
+    .NoContext();
+```
+
+### Managed identity (passwordless)
+
+```csharp
+await services
+    .AddContentRepository()
+    .WithFileStorageIntegrationAsync(x =>
+    {
+        x.EndpointUri             = new Uri("https://<account>.file.core.windows.net");
+        x.ManagedIdentityClientId = "<user-assigned-mi-client-id>";
+        x.ShareName               = "documents";
+    }, "filestorage")
+    .NoContext();
+```
+
+### Synchronous variant
+
+```csharp
+services
+    .AddContentRepository()
+    .WithFileStorageIntegration(x =>
+    {
+        x.ShareName        = "documents";
+        x.ConnectionString = configuration["Storage:ConnectionString"];
+    }, "filestorage");
+```
+
+---
+
+## `FileStorageConnectionSettings` reference
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `ConnectionString` | `string?` | Azure Storage connection string |
+| `EndpointUri` | `Uri?` | File service endpoint (used with managed identity) |
+| `ManagedIdentityClientId` | `string?` | Client ID for user-assigned managed identity |
+| `ShareName` | `string?` | Target file share name |
+| `Prefix` | `string?` | Path prefix prepended to every file path |
+| `IsPublic` | `bool` | Whether the share is created with public access |
+| `ClientOptions` | `ShareClientOptions?` | Advanced Azure SDK client options |
+| `ClientCreateOptions` | `ShareCreateOptions?` | Options applied when creating the share |
+| `Permissions` | `List<ShareSignedIdentifier>?` | Stored access policies on the share |
+| `Conditions` | `ShareFileRequestConditions?` | Conditional request headers (ETag, Last-Modified) |
+
+---
+
+## Usage
+
+```csharp
+public sealed class DocumentService
+{
+    private readonly IContentRepository _repo;
+
+    public DocumentService(IContentRepositoryFactory factory)
+        => _repo = factory.Create("filestorage");
+
+    public async Task SaveAsync(string relativePath, byte[] data)
+    {
+        await _repo.UploadAsync(relativePath, data, new ContentRepositoryOptions
+        {
+            HttpHeaders = new ContentRepositoryHttpHeaders { ContentType = "application/pdf" },
+            Metadata    = new Dictionary<string, string> { { "department", "hr" } }
+        });
+    }
+
+    public async Task<byte[]?> ReadAsync(string relativePath)
+    {
+        var result = await _repo.DownloadAsync(relativePath);
+        return result?.Data;
+    }
+
+    public async Task ListFolderAsync(string folder)
+    {
+        await foreach (var item in _repo.ListAsync(prefix: folder))
+            Console.WriteLine(item.Path);
+    }
+}
+```
+
+---
+
+## Notes
+
+- **Share creation**: if the file share does not exist it is created automatically on first use.
+- **Tags**: Azure File Share does not support blob index tags — `Tags` in `ContentRepositoryOptions` is silently ignored.
+- **Prefix**: works identically to the Blob backend — transparently prepended to all paths.
+- **Comparison with Blob**: prefer Blob Storage for internet-facing CDN assets. Prefer File Share when you need SMB mounting or per-directory permissions.
 
     await services
         .AddContentRepository()

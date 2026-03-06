@@ -1,9 +1,125 @@
-﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+﻿# Rystem.Content.Infrastructure.M365.Sharepoint
 
-## Get information
-https://<tenant>.sharepoint.com/sites/<site-url>/_api/site/id
+[![NuGet](https://img.shields.io/nuget/v/Rystem.Content.Infrastructure.M365.Sharepoint)](https://www.nuget.org/packages/Rystem.Content.Infrastructure.M365.Sharepoint)
 
-## Integration with Sharepoint online and Content Repository
+SharePoint Online backend for [Rystem Content Framework](../Rystem.Content.Abstractions). Reads and writes files in a SharePoint document library using a Microsoft 365 app registration (client credentials flow).
+
+## Installation
+
+```bash
+dotnet add package Rystem.Content.Infrastructure.M365.Sharepoint
+```
+
+---
+
+## Prerequisites — App Registration
+
+1. Create an Azure AD app registration.
+2. Under **API permissions** → **Microsoft Graph** → grant **Application** (not delegated) permission: `Files.ReadWrite.All` or `Sites.ReadWrite.All`.
+3. Create a client secret and note the `TenantId`, `ClientId`, `ClientSecret`.
+
+> To get the SharePoint site ID:  
+> `GET https://<tenant>.sharepoint.com/sites/<site-url>/_api/site/id`
+
+---
+
+## Registration
+
+```csharp
+await services
+    .AddContentRepository()
+    .WithSharepointIntegrationAsync(x =>
+    {
+        x.TenantId     = configuration["Sharepoint:TenantId"];
+        x.ClientId     = configuration["Sharepoint:ClientId"];
+        x.ClientSecret = configuration["Sharepoint:ClientSecret"];
+
+        // Choose ONE of the mapping methods below:
+        x.MapWithSiteNameAndDocumentLibraryName("MySite", "Documents");
+    }, "sharepoint")
+    .NoContext();
+```
+
+### Synchronous variant
+
+```csharp
+services
+    .AddContentRepository()
+    .WithSharepointIntegration(x =>
+    {
+        x.TenantId     = configuration["Sharepoint:TenantId"];
+        x.ClientId     = configuration["Sharepoint:ClientId"];
+        x.ClientSecret = configuration["Sharepoint:ClientSecret"];
+        x.MapWithSiteNameAndDocumentLibraryName("MySite", "Documents");
+    }, "sharepoint");
+```
+
+---
+
+## `SharepointConnectionSettings` — site mapping methods
+
+Call **exactly one** of these methods to specify which document library to use:
+
+| Method | When to use |
+|--------|-------------|
+| `MapWithSiteNameAndDocumentLibraryName(siteName, libraryName)` | You know the site name and library name (most common) |
+| `MapWithSiteIdAndDocumentLibraryId(siteId, libraryId)` | You have both GUID IDs (most specific) |
+| `MapWithSiteIdAndDocumentLibraryName(siteId, libraryName)` | You have the site GUID but only the library name |
+| `MapWithRootSiteAndDocumentLibraryName(libraryName)` | Target a library on the root SharePoint site |
+| `MapOnlyDocumentLibraryId(libraryId)` | Target a library by GUID without specifying a site |
+| `MapOnlyDocumentLibraryName(libraryName)` | Target a library by name without specifying a site |
+
+### Other settings
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `TenantId` | `string?` | Azure AD tenant ID |
+| `ClientId` | `string?` | App registration client ID |
+| `ClientSecret` | `string?` | App registration client secret |
+
+---
+
+## Usage
+
+```csharp
+public sealed class SharepointFileSvc
+{
+    private readonly IContentRepository _repo;
+
+    public SharepointFileSvc(IContentRepositoryFactory factory)
+        => _repo = factory.Create("sharepoint");
+
+    public async Task UploadAsync(string relativePath, byte[] data)
+    {
+        await _repo.UploadAsync(relativePath, data, new ContentRepositoryOptions
+        {
+            HttpHeaders = new ContentRepositoryHttpHeaders { ContentType = "application/pdf" },
+            Metadata    = new Dictionary<string, string> { { "department", "legal" } }
+        });
+    }
+
+    public async Task<byte[]?> DownloadAsync(string relativePath)
+    {
+        var result = await _repo.DownloadAsync(relativePath);
+        return result?.Data;
+    }
+
+    public async Task ListFolderAsync(string folderPath)
+    {
+        await foreach (var item in _repo.ListAsync(prefix: folderPath))
+            Console.WriteLine($"{item.Path}  {item.Options?.HttpHeaders?.ContentType}");
+    }
+}
+```
+
+---
+
+## Notes
+
+- **Tags**: SharePoint does not support arbitrary blob index tags — the `Tags` property in `ContentRepositoryOptions` is ignored.
+- **Metadata**: SharePoint column metadata is partially supported via the `Metadata` dictionary; only columns that already exist in the list schema are written.
+- **Path format**: use forward-slash paths like `"Folder/SubFolder/file.pdf"`. The integration maps these to SharePoint folder paths automatically.
+- **Throughput**: SharePoint throttles requests at tenant level. For bulk uploads consider adding retry logic or using the migration tool with `OnErrorContinue = true`.
 
     await services
     .AddContentRepository()
