@@ -1,7 +1,9 @@
-﻿using System.Text.Json;
+﻿using System.Diagnostics;
+using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Helpers;
+using Rystem.PlayFramework.Telemetry;
 
 namespace Rystem.PlayFramework;
 
@@ -42,6 +44,13 @@ internal sealed class DeterministicPlanner : IPlanner
         SceneRequestSettings settings,
         CancellationToken cancellationToken = default)
     {
+        using var activity = PlayFrameworkActivitySource.Instance.StartActivity(
+            PlayFrameworkActivitySource.Activities.PlanningGenerate, ActivityKind.Internal);
+        activity?.AddEvent(new ActivityEvent(PlayFrameworkActivitySource.Events.PlanGenerated));
+
+        var planStartTime = DateTime.UtcNow;
+        _logger.LogDebug("Creating execution plan for: {Request}", context.InputMessage);
+
         var messages = new List<ChatMessage>
         {
             new(ChatRole.System, BuildSystemPrompt()),
@@ -125,9 +134,14 @@ internal sealed class DeterministicPlanner : IPlanner
         plan.Contents = planningContents;
         plan.CreatedAt = DateTimeOffset.UtcNow;
 
+        var planDuration = (DateTime.UtcNow - planStartTime).TotalMilliseconds;
         _logger.LogInformation(
-            "DeterministicPlanner created plan - NeedsExecution: {NeedsExec}, Steps: {StepCount}, Reasoning: {Reasoning}",
-            plan.NeedsExecution, plan.Steps.Count, plan.Reasoning);
+            "Execution plan created in {Duration:F1}ms - NeedsExecution: {NeedsExec}, Steps: {StepCount}, Reasoning: {Reasoning}",
+            planDuration, plan.NeedsExecution, plan.Steps.Count, plan.Reasoning);
+
+        activity?.SetTag(PlayFrameworkActivitySource.Tags.PlanSteps, plan.Steps.Count);
+        activity?.SetTag(PlayFrameworkActivitySource.Tags.PlanEnabled, plan.NeedsExecution);
+        activity?.SetStatus(ActivityStatusCode.Ok);
 
         return plan;
     }

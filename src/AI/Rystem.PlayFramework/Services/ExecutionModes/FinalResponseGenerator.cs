@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 
 namespace Rystem.PlayFramework.Services.ExecutionModes;
@@ -10,11 +11,13 @@ namespace Rystem.PlayFramework.Services.ExecutionModes;
 internal sealed class FinalResponseGenerator : IFactoryName
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<FinalResponseGenerator> _logger;
     private ExecutionModeHandlerDependencies _dependencies = null!;
 
-    public FinalResponseGenerator(IServiceProvider serviceProvider)
+    public FinalResponseGenerator(IServiceProvider serviceProvider, ILogger<FinalResponseGenerator> logger)
     {
         _serviceProvider = serviceProvider;
+        _logger = logger;
     }
 
     public void SetFactoryName(AnyOf<string?, Enum>? name)
@@ -29,6 +32,9 @@ internal sealed class FinalResponseGenerator : IFactoryName
         SceneRequestSettings settings,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        _logger.LogDebug("Generating final response (streaming: {Streaming})", settings.EnableStreaming);
+        var finalGenStart = DateTime.UtcNow;
+
         yield return YieldStatus(AiResponseStatus.GeneratingFinalResponse, "Generating final response");
 
         // Generate final response based on gathered data
@@ -92,6 +98,8 @@ internal sealed class FinalResponseGenerator : IFactoryName
                     currency: context.ChatClientManager.Currency);
             }
         }
+
+        _logger.LogDebug("Final response generated in {Duration:F1}ms", (DateTime.UtcNow - finalGenStart).TotalMilliseconds);
     }
 
     private static AiSceneResponse YieldStatus(AiResponseStatus status, string? message = null)

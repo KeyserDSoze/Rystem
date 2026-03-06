@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Caching.Distributed;
@@ -7,6 +8,7 @@ using Rystem;
 using Rystem.PlayFramework.Configuration;
 using Rystem.PlayFramework.Helpers;
 using Rystem.PlayFramework.Services;
+using Rystem.PlayFramework.Telemetry;
 
 namespace Rystem.PlayFramework.Services.Helpers;
 
@@ -218,38 +220,73 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
         IJsonService jsonService,
         CancellationToken cancellationToken)
     {
+        using var activity = PlayFrameworkActivitySource.Instance.StartActivity(
+            PlayFrameworkActivitySource.Activities.ToolExecute, ActivityKind.Internal);
+        activity?.SetTag(PlayFrameworkActivitySource.Tags.ToolName, functionCall.Name);
+        activity?.SetTag(PlayFrameworkActivitySource.Tags.ToolType, "SceneTool");
+        activity?.AddEvent(new ActivityEvent(PlayFrameworkActivitySource.Events.ToolCalled));
+
+        PlayFrameworkMetrics.IncrementActiveToolCalls();
+        var startTime = DateTime.UtcNow;
+        var success = false;
+
         try
         {
-            var argsJson = jsonService.Serialize(functionCall.Arguments ?? new Dictionary<string, object?>());
-            var toolResult = await sceneTool.ExecuteAsync(argsJson, context, cancellationToken);
-
-            var functionResult = CreateFunctionResult(functionCall, toolResult);
-            context.AddToolMessage(new ChatMessage(ChatRole.Tool, [functionResult]));
-
-            return new ToolExecutionResult
+            ToolExecutionResult result;
+            try
             {
-                Status = ToolExecutionStatus.Completed,
-                ToolName = functionCall.Name,
-                ToolResult = toolResult,
-                Message = $"Tool {functionCall.Name} completed"
-            };
+                var argsJson = jsonService.Serialize(functionCall.Arguments ?? new Dictionary<string, object?>());
+                var toolResult = await sceneTool.ExecuteAsync(argsJson, context, cancellationToken);
+
+                var functionResult = CreateFunctionResult(functionCall, toolResult);
+                context.AddToolMessage(new ChatMessage(ChatRole.Tool, [functionResult]));
+
+                result = new ToolExecutionResult
+                {
+                    Status = ToolExecutionStatus.Completed,
+                    ToolName = functionCall.Name,
+                    ToolResult = toolResult,
+                    Message = $"Tool {functionCall.Name} completed"
+                };
+                success = true;
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                activity?.AddEvent(new ActivityEvent(PlayFrameworkActivitySource.Events.ToolCompleted));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error executing tool {ToolName}", functionCall.Name);
+
+                var errorResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
+                {
+                    Result = $"Error executing tool: {ex.Message}"
+                };
+                context.AddToolMessage(new ChatMessage(ChatRole.Tool, [errorResult]));
+
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                activity?.SetTag("exception.message", ex.Message);
+                activity?.AddEvent(new ActivityEvent(PlayFrameworkActivitySource.Events.ToolFailed));
+
+                result = new ToolExecutionResult
+                {
+                    Status = ToolExecutionStatus.Error,
+                    ToolName = functionCall.Name,
+                    Error = ex.Message
+                };
+            }
+
+            return result;
         }
-        catch (Exception ex)
+        finally
         {
-            _logger.LogError(ex, "Error executing tool {ToolName}", functionCall.Name);
-
-            var errorResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
-            {
-                Result = $"Error executing tool: {ex.Message}"
-            };
-            context.AddToolMessage(new ChatMessage(ChatRole.Tool, [errorResult]));
-
-            return new ToolExecutionResult
-            {
-                Status = ToolExecutionStatus.Error,
-                ToolName = functionCall.Name,
-                Error = ex.Message
-            };
+            var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            PlayFrameworkMetrics.DecrementActiveToolCalls();
+            PlayFrameworkMetrics.RecordToolCall(
+                toolName: functionCall.Name,
+                toolType: "SceneTool",
+                success: success,
+                durationMs: duration);
+            _logger.LogDebug("Tool '{ToolName}' executed in {Duration:F1}ms (success: {Success})",
+                functionCall.Name, duration, success);
         }
     }
 

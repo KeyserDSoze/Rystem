@@ -66,9 +66,13 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
             var selectedScene = await SelectSceneForChainingAsync(dependencies, context, availableScenes, settings, cancellationToken);
             if (selectedScene == null)
             {
+                dependencies.Logger.LogDebug("DynamicChaining: no suitable scene found, ending chain (Factory: {FactoryName})", factoryNameString);
                 yield return YieldStatus(AiResponseStatus.Running, "No suitable scene found, ending chain");
                 break;
             }
+
+            dependencies.Logger.LogInformation("DynamicChaining round {Round}/{Max}: executing scene '{SceneName}' (Factory: {FactoryName})",
+                sceneExecutionCount + 1, settings.MaxDynamicScenes, selectedScene.Name, factoryNameString);
 
             yield return YieldAndTrack(context, new AiSceneResponse
             {
@@ -128,6 +132,8 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
                 var shouldContinue = await AskContinueToNextSceneAsync(dependencies, factoryNameString, context, settings, cancellationToken);
                 if (!shouldContinue)
                 {
+                    dependencies.Logger.LogInformation("DynamicChaining stopped after {Count} round(s) (Factory: {FactoryName})",
+                        sceneExecutionCount, factoryNameString);
                     yield return YieldStatus(AiResponseStatus.Running, "Scene chain complete - generating final response");
                     break;
                 }
@@ -136,6 +142,8 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
 
         if (sceneExecutionCount >= settings.MaxDynamicScenes)
         {
+            dependencies.Logger.LogInformation("DynamicChaining reached maximum scene limit ({Max}) (Factory: {FactoryName})",
+                settings.MaxDynamicScenes, factoryNameString);
             yield return YieldStatus(AiResponseStatus.Running, $"Maximum scene limit ({settings.MaxDynamicScenes}) reached");
         }
 
@@ -325,6 +333,10 @@ Use the decideContinuation tool to indicate your decision.";
             };
             var toolMessage = new ChatMessage(ChatRole.Tool, [toolResult]);
             context.AddToolMessage(toolMessage);
+
+            dependencies.Logger.LogDebug(
+                "DynamicChaining continuation: {Decision}, Reasoning: {Reasoning} (Factory: {FactoryName})",
+                shouldContinue ? "continue" : "stop", reasoning ?? "none", factoryNameString);
 
             return shouldContinue;
         }

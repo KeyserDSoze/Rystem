@@ -1,10 +1,12 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Helpers;
 using Rystem.PlayFramework.Mcp;
 using Rystem.PlayFramework.Services.Helpers;
+using Rystem.PlayFramework.Telemetry;
 
 namespace Rystem.PlayFramework.Services.ExecutionModes;
 
@@ -52,6 +54,15 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
         SceneRequestSettings settings,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        using var activity = PlayFrameworkActivitySource.Instance.StartActivity(
+            PlayFrameworkActivitySource.Activities.SceneExecute, ActivityKind.Internal);
+        activity?.SetTag(PlayFrameworkActivitySource.Tags.SceneName, scene.Name);
+        activity?.SetTag(PlayFrameworkActivitySource.Tags.SceneDescription, scene.Description);
+        activity?.AddEvent(new ActivityEvent(PlayFrameworkActivitySource.Events.SceneStarted));
+
+        var sceneStartTime = DateTime.UtcNow;
+        _dependencies.Logger.LogInformation("Entering scene '{SceneName}' (Factory: {FactoryName})", scene.Name, _factoryName);
+
         yield return YieldStatus(AiResponseStatus.ExecutingScene, $"Entering scene: {scene.Name}");
 
         // Track this scene as being executed

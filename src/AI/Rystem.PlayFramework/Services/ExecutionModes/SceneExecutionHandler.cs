@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 
 namespace Rystem.PlayFramework.Services.ExecutionModes;
@@ -10,13 +11,16 @@ internal sealed class SceneExecutionHandler : IExecutionModeHandler
 {
     private readonly IFactory<ExecutionModeHandlerDependencies> _dependenciesFactory;
     private readonly IFactory<ISceneExecutor> _sceneExecutorFactory;
+    private readonly ILogger<SceneExecutionHandler> _logger;
 
     public SceneExecutionHandler(
         IFactory<ExecutionModeHandlerDependencies> dependenciesFactory,
-        IFactory<ISceneExecutor> sceneExecutorFactory)
+        IFactory<ISceneExecutor> sceneExecutorFactory,
+        ILogger<SceneExecutionHandler> logger)
     {
         _dependenciesFactory = dependenciesFactory;
         _sceneExecutorFactory = sceneExecutorFactory;
+        _logger = logger;
     }
 
     public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(
@@ -44,9 +48,15 @@ internal sealed class SceneExecutionHandler : IExecutionModeHandler
             yield break;
         }
 
+        _logger.LogInformation("Scene mode: routing directly to '{SceneName}' (Factory: {FactoryName})",
+            settings.SceneName, factoryName?.ToString() ?? "default");
+
         var targetScene = dependencies.SceneFactory.TryGetScene(settings.SceneName);
         if (targetScene == null)
         {
+            _logger.LogWarning("Scene '{SceneName}' not found in Scene execution mode (Factory: {FactoryName})",
+                settings.SceneName, factoryName?.ToString() ?? "default");
+
             yield return YieldAndTrack(context, new AiSceneResponse
             {
                 Status = AiResponseStatus.Error,

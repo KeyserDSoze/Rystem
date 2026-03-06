@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Rystem.PlayFramework.Telemetry;
 
 namespace Rystem.PlayFramework;
 
@@ -39,6 +40,7 @@ internal sealed class PlayFrameworkCache : IPlayFrameworkCache
         var storedConversation = context.ToStoredConversation();
         var cacheKey = BuildCacheKey(context.ConversationKey);
         var expiration = _settings.Cache.CacheExpiration;
+        var saveStart = DateTime.UtcNow;
 
         if (_distributedCache != null)
         {
@@ -50,8 +52,10 @@ internal sealed class PlayFrameworkCache : IPlayFrameworkCache
             };
             await _distributedCache.SetAsync(cacheKey, bytes, options, cancellationToken);
 
-            _logger.LogDebug("Saved {Count} messages + execution state (phase: {Phase}) to distributed cache for conversation '{Key}'",
-                storedConversation.Messages.Count, context.ExecutionPhase, context.ConversationKey);
+            var saveDuration = (DateTime.UtcNow - saveStart).TotalMilliseconds;
+            PlayFrameworkMetrics.RecordCacheAccess(hit: true, cacheKey: cacheKey, durationMs: saveDuration);
+            _logger.LogDebug("Saved {Count} messages + execution state (phase: {Phase}) to distributed cache for conversation '{Key}' in {Duration:F1}ms",
+                storedConversation.Messages.Count, context.ExecutionPhase, context.ConversationKey, saveDuration);
         }
         else if (_memoryCache != null)
         {
@@ -62,8 +66,10 @@ internal sealed class PlayFrameworkCache : IPlayFrameworkCache
             // For memory cache, store directly
             _memoryCache.Set(cacheKey, storedConversation, options);
 
-            _logger.LogDebug("Saved {Count} messages + execution state (phase: {Phase}) to memory cache for conversation '{Key}'",
-                storedConversation.Messages.Count, context.ExecutionPhase, context.ConversationKey);
+            var saveDuration = (DateTime.UtcNow - saveStart).TotalMilliseconds;
+            PlayFrameworkMetrics.RecordCacheAccess(hit: true, cacheKey: cacheKey, durationMs: saveDuration);
+            _logger.LogDebug("Saved {Count} messages + execution state (phase: {Phase}) to memory cache for conversation '{Key}' in {Duration:F1}ms",
+                storedConversation.Messages.Count, context.ExecutionPhase, context.ConversationKey, saveDuration);
         }
     }
 
@@ -74,6 +80,7 @@ internal sealed class PlayFrameworkCache : IPlayFrameworkCache
 
         var cacheKey = BuildCacheKey(context.ConversationKey);
         StoredConversation? storedConversation = null;
+        var loadStart = DateTime.UtcNow;
 
         if (_distributedCache != null)
         {
@@ -89,9 +96,13 @@ internal sealed class PlayFrameworkCache : IPlayFrameworkCache
             _memoryCache.TryGetValue(cacheKey, out storedConversation);
         }
 
+        var loadDuration = (DateTime.UtcNow - loadStart).TotalMilliseconds;
+        var cacheHit = storedConversation != null;
+        PlayFrameworkMetrics.RecordCacheAccess(hit: cacheHit, cacheKey: cacheKey, durationMs: loadDuration);
+
         if (storedConversation == null)
         {
-            _logger.LogDebug("No cached conversation found for key '{Key}'", context.ConversationKey);
+            _logger.LogDebug("Cache miss for conversation '{Key}' in {Duration:F1}ms", context.ConversationKey, loadDuration);
             return;
         }
 
@@ -99,8 +110,9 @@ internal sealed class PlayFrameworkCache : IPlayFrameworkCache
         context.LoadFromStoredConversation(storedConversation);
 
         _logger.LogInformation(
-            "Loaded conversation '{Key}' from cache - {Count} messages, Phase: {Phase}, UserId: {UserId}",
+            "Cache hit for conversation '{Key}' in {Duration:F1}ms - {Count} messages, Phase: {Phase}, UserId: {UserId}",
             context.ConversationKey,
+            loadDuration,
             storedConversation.Messages.Count,
             storedConversation.ExecutionState?.Phase,
             storedConversation.UserId ?? "anonymous");

@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework;
+using Rystem.PlayFramework.Telemetry;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Rystem.PlayFramework.Services.Helpers;
@@ -33,6 +35,12 @@ internal sealed class StreamingHelper : IStreamingHelper
         string? sceneName,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        using var llmActivity = PlayFrameworkActivitySource.Instance.StartActivity(
+            PlayFrameworkActivitySource.Activities.LlmStreamingCall, ActivityKind.Client);
+        llmActivity?.SetTag(PlayFrameworkActivitySource.Tags.SceneName, sceneName);
+        PlayFrameworkMetrics.IncrementActiveLlmCalls();
+        var llmStartTime = DateTime.UtcNow;
+
         var accumulatedText = new System.Text.StringBuilder();
         var accumulatedFunctionCalls = new List<FunctionCallContent>();
         var accumulatedOtherContents = new List<AIContent>(); // For DataContent, UriContent, etc.
@@ -43,6 +51,8 @@ internal sealed class StreamingHelper : IStreamingHelper
         int? totalOutputTokens = null;
         int? totalCachedInputTokens = null;
 
+        try
+        {
         await foreach (var streamUpdateWithCost in context.ChatClientManager.GetStreamingResponseAsync(
             conversationMessages,
             chatOptions,
@@ -173,6 +183,23 @@ internal sealed class StreamingHelper : IStreamingHelper
             TotalOutputTokens = totalOutputTokens,
             TotalCachedInputTokens = totalCachedInputTokens
         };
+        } // close try
+        finally
+        {
+            var llmDuration = (DateTime.UtcNow - llmStartTime).TotalMilliseconds;
+            PlayFrameworkMetrics.DecrementActiveLlmCalls();
+            PlayFrameworkMetrics.RecordLlmCall(
+                provider: context.ChatClientManager.GetType().Name,
+                model: "streaming",
+                success: true,
+                durationMs: llmDuration,
+                promptTokens: totalInputTokens ?? 0,
+                completionTokens: totalOutputTokens ?? 0);
+            llmActivity?.SetStatus(ActivityStatusCode.Ok);
+            _logger.LogDebug(
+                "Streaming LLM call completed in {Duration:F1}ms for scene '{SceneName}'. Tokens: {Input}+{Output}",
+                llmDuration, sceneName, totalInputTokens ?? 0, totalOutputTokens ?? 0);
+        }
     }
 
     /// <inheritdoc />

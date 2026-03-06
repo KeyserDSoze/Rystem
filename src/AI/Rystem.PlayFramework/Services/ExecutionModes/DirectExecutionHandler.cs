@@ -1,7 +1,9 @@
 ﻿using System.Runtime.CompilerServices;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Services.Helpers;
+using Rystem.PlayFramework.Telemetry;
 
 namespace Rystem.PlayFramework.Services.ExecutionModes;
 
@@ -12,13 +14,16 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
 {
     private readonly IFactory<ExecutionModeHandlerDependencies> _dependenciesFactory;
     private readonly IFactory<ISceneExecutor> _sceneExecutorFactory;
+    private readonly ILogger<DirectExecutionHandler> _logger;
 
     public DirectExecutionHandler(
         IFactory<ExecutionModeHandlerDependencies> dependenciesFactory,
-        IFactory<ISceneExecutor> sceneExecutorFactory)
+        IFactory<ISceneExecutor> sceneExecutorFactory,
+        ILogger<DirectExecutionHandler> logger)
     {
         _dependenciesFactory = dependenciesFactory;
         _sceneExecutorFactory = sceneExecutorFactory;
+        _logger = logger;
     }
 
     public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(
@@ -33,6 +38,9 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
 
         var sceneExecutor = _sceneExecutorFactory.Create(factoryName)
             ?? throw new InvalidOperationException($"SceneExecutor not found for factory: {factoryName}");
+
+        var factoryNameString = factoryName?.ToString() ?? "default";
+        _logger.LogDebug("Starting Direct execution mode (Factory: {FactoryName})", factoryNameString);
 
         // Configure chat with scene selection tools
         var chatOptions = new ChatOptions
@@ -91,10 +99,23 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
         else
         {
             // NON-STREAMING MODE - fallback to complete response
+            PlayFrameworkMetrics.IncrementActiveLlmCalls();
+            var llmCallStart = DateTime.UtcNow;
             var responseWithCost = await context.ChatClientManager.GetResponseAsync(
                 context.GetMessagesForLLM(),
                 chatOptions,
                 cancellationToken);
+            var llmCallDuration = (DateTime.UtcNow - llmCallStart).TotalMilliseconds;
+            PlayFrameworkMetrics.DecrementActiveLlmCalls();
+            PlayFrameworkMetrics.RecordLlmCall(
+                provider: context.ChatClientManager.GetType().Name,
+                model: "direct",
+                success: true,
+                durationMs: llmCallDuration,
+                promptTokens: responseWithCost.InputTokens,
+                completionTokens: responseWithCost.OutputTokens);
+            _logger.LogDebug("Scene-selection LLM call (non-streaming) completed in {Duration:F1}ms (Factory: {FactoryName})",
+                llmCallDuration, factoryNameString);
 
             finalMessage = responseWithCost.Response.Messages?.FirstOrDefault();
 
@@ -154,6 +175,8 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
             {
                 // Scene selection via function call
                 var selectedSceneName = functionCall.Name;
+                _logger.LogInformation("Scene '{SceneName}' selected via Direct mode (Factory: {FactoryName})",
+                    selectedSceneName, factoryNameString);
 
                 yield return YieldAndTrack(context, new AiSceneResponse
                 {
@@ -195,6 +218,9 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
                     var toolMessage = new ChatMessage(ChatRole.Tool, [toolResult]);
                     context.AddToolMessage(toolMessage);
 
+                    _logger.LogWarning("Scene '{SceneName}' not found in Direct execution mode (Factory: {FactoryName})",
+                        selectedSceneName, factoryNameString);
+
                     yield return YieldAndTrack(context, new AiSceneResponse
                     {
                         Status = AiResponseStatus.Error,
@@ -208,6 +234,7 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
 
         // Fallback: if no function call, return text response with multi-modal contents
         // If streaming was enabled and already streamed, send only completion marker (no message duplication)
+        _logger.LogDebug("Direct execution: no scene selected via function call, returning LLM text response (Factory: {FactoryName})", factoryNameString);
         if (settings.EnableStreaming && streamedToUser)
         {
             yield return dependencies.ResponseHelper.CreateFinalResponse(

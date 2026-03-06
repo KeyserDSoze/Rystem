@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 
 namespace Rystem.PlayFramework.Services.ExecutionModes;
@@ -12,17 +13,20 @@ internal sealed class PlanningExecutionHandler : IExecutionModeHandler
     private readonly IFactory<ISceneExecutor> _sceneExecutorFactory;
     private readonly IFactory<FinalResponseGenerator> _finalResponseGeneratorFactory;
     private readonly IFactory<IPlanner> _plannerFactory;
+    private readonly ILogger<PlanningExecutionHandler> _logger;
 
     public PlanningExecutionHandler(
         IFactory<ExecutionModeHandlerDependencies> dependenciesFactory,
         IFactory<ISceneExecutor> sceneExecutorFactory,
         IFactory<FinalResponseGenerator> finalResponseGeneratorFactory,
-        IFactory<IPlanner> plannerFactory)
+        IFactory<IPlanner> plannerFactory,
+        ILogger<PlanningExecutionHandler> logger)
     {
         _dependenciesFactory = dependenciesFactory;
         _sceneExecutorFactory = sceneExecutorFactory;
         _finalResponseGeneratorFactory = finalResponseGeneratorFactory;
         _plannerFactory = plannerFactory;
+        _logger = logger;
     }
 
     public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(
@@ -40,6 +44,9 @@ internal sealed class PlanningExecutionHandler : IExecutionModeHandler
 
         var finalResponseGenerator = _finalResponseGeneratorFactory.Create(factoryName)
             ?? throw new InvalidOperationException($"FinalResponseGenerator not found for factory: {factoryName}");
+
+        var factoryNameString = factoryName?.ToString() ?? "default";
+        _logger.LogDebug("Starting Planning execution mode (Factory: {FactoryName})", factoryNameString);
 
         // Mark execution mode in properties for resume capability after AwaitingClient
         context.Properties["_execution_mode_for_resume"] = "Planning";
@@ -126,6 +133,8 @@ internal sealed class PlanningExecutionHandler : IExecutionModeHandler
                 yield break;
             }
 
+            _logger.LogInformation("Planning step {Step}/{Total}: executing scene '{SceneName}'",
+                step.StepNumber, plan.Steps.Count, step.SceneName);
             yield return YieldStatus(AiResponseStatus.ExecutingScene, $"Executing step {step.StepNumber}: {step.SceneName}");
 
             // Execute scene for this step
@@ -158,6 +167,7 @@ internal sealed class PlanningExecutionHandler : IExecutionModeHandler
             }
 
             step.IsCompleted = true;
+            _logger.LogDebug("Planning step {Step} ('{SceneName}') completed", step.StepNumber, step.SceneName);
         }
 
         // Check if we need to continue (all steps completed? can we answer now?)
