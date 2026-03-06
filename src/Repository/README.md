@@ -1,97 +1,69 @@
-### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+﻿# Repository Framework
 
-# Repository Framework
+Repository Framework is a set of packages for Repository Pattern and CQRS with auto API generation, API clients, infrastructure providers, caching, migration tools, and UI components.
 
-## [Docs](https://rystem.net)
+## Core package
 
-### Help the project
+- `Rystem.RepositoryFramework.Abstractions`
 
-Reach out us on [Discord](https://discord.gg/tkWvy4WPjt)
+## Install core
 
-### Contribute: https://www.buymeacoffee.com/keyserdsoze
+```bash
+dotnet add package Rystem.RepositoryFramework.Abstractions
+```
 
-## [Showcase (youtube)](https://www.youtube.com/watch?v=quqHoSXNFek&ab_channel=alessandrorapiti)
+## Typical setup
 
-## [Showcase (code)](https://github.com/KeyserDSoze/RepositoryFramework.Showcase)
+```csharp
+builder.Services.AddRepository<User, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithInMemory();
+});
 
-**Rystem.RepositoryFramework allows you to use correctly concepts like repository pattern, CQRS, DDD and automated REPR (Request-Endpoint-Response) Pattern. You have interfaces for your domains, auto-generated api, auto-generated HttpClient to simplify connection "api to front-end", a functionality for auto-population in memory of your models, a functionality to simulate exceptions and waiting time from external sources to improve your implementation/business test and load test.**
+builder.Services.AddApiFromRepositoryFramework().WithPath("api");
 
-**Document to read before using this library:**
-- Repository pattern, useful links: 
-  - [Microsoft docs](https://docs.microsoft.com/en-us/aspnet/mvc/overview/older-versions/getting-started-with-ef-5-using-mvc-4/implementing-the-repository-and-unit-of-work-patterns-in-an-asp-net-mvc-application)
-  - [Repository pattern explained](https://codewithshadman.com/repository-pattern-csharp/)
-- CQRS, useful links:
-  - [Microsoft docs](https://docs.microsoft.com/en-us/azure/architecture/patterns/cqrs)
-  - [Martin Fowler](https://martinfowler.com/bliki/CQRS.html)
-- DDD, useful links:
-  - [Wikipedia](https://en.wikipedia.org/wiki/Domain-driven_design)
-  - [Microsoft docs](https://docs.microsoft.com/en-us/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/ddd-oriented-microservice)
-- REPR (Request-Endpoint-Response) Pattern
-  - [MVC as Dinasours](https://ardalis.com/mvc-controllers-are-dinosaurs-embrace-api-endpoints/)
+var app = builder.Build();
+await app.Services.WarmUpAsync();
+app.UseApiFromRepositoryFramework().WithNoAuthorization();
+app.Run();
+```
 
-## Basic knowledge
+## Package map
 
-### CQRS and Repository are two sides of the same coin.
+### Core
 
-![Framework abstractions](https://raw.githubusercontent.com/KeyserDSoze/Rystem/master/src/Repository/RepositoryFramework.Abstractions.png)
+- [Rystem.RepositoryFramework.Abstractions](./RepositoryFramework.Abstractions/README.md)
 
-### Design and nuget map
+### Infrastructures
 
-![Framework design](https://raw.githubusercontent.com/KeyserDSoze/Rystem/master/src/Repository/RepositoryFramework.png)
+- [Rystem.RepositoryFramework.Infrastructure.InMemory](./RepositoryFramework.Infrastructure.InMemory/README.md)
+- [Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Table](./RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Table/README.md)
+- [Rystem.RepositoryFramework.Infrastructure.Azure.Cosmos.Sql](./RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Cosmos.Sql/README.md)
+- [Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob](./RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Blob/README.md)
+- [Rystem.RepositoryFramework.Infrastructure.Dynamics.Dataverse](./RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Dynamics.Dataverse/README.md)
+- [Rystem.RepositoryFramework.Infrastructure.EntityFramework](./RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.EntityFramework/README.md)
+- [Rystem.RepositoryFramework.Infrastructure.MsSql](./RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.MsSql/README.md)
 
-### Logic design and flow
-The same flow is valid for ICommand/ICommandPattern and IQuery/IQueryPattern
+### API
 
-![Framework logic](https://raw.githubusercontent.com/KeyserDSoze/Rystem/master/src/Repository/RepositoryFramework.CacheFlow.png)
+- [Rystem.RepositoryFramework.Api.Server](./RepositoryFramework.Api.Server/README.md)
+- [Rystem.RepositoryFramework.Api.Client](./RepositoryFramework.Api.Client/README.md)
+- [Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer](./RepositoryFramework.Api.Client.Authentication.BlazorServer/README.md)
+- [Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm](./RepositoryFramework.Api.Client.Authentication.BlazorWasm/README.md)
 
-## Important!!!
-Extends and use ``IRepository<T, TKey>`` and not ``IRepositoryPattern<T>``
+### Cache
 
-Extends and use ``IQuery<T, TKey>`` and not ``IQueryPattern<T>``
+- [Rystem.RepositoryFramework.Cache](./RepositoryFramework.Cache/RepositoryFramework.Cache/README.md)
+- [Rystem.RepositoryFramework.Cache.Azure.Storage.Blob](./RepositoryFramework.Cache/RepositoryFramework.Cache.Azure.Storage.Blob/README.md)
 
-Extends and use ``ICommand<T, TKey>`` and not ``ICommandPattern<T>``
+### Tools and UI
 
-### Abstractions (Domain)
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Abstractions)
+- [Rystem.RepositoryFramework.MigrationTools](./RepositoryFramework.MigrationTools/README.md)
+- [Rystem.RepositoryFramework.Web.Components](./RepositoryFramework.Web/RepositoryFramework.Web.Components/README.md)
+- [Rystem.RepositoryFramework.TypescriptGenerator](./RepositoryFramework.Tools.TypescriptGenerator/README.md)
+- [rystem.repository.client](./repositoryframework.api.client.typescript/src/rystem/README.md)
 
-### In memory integration (Infrastructure for test purpose, load tests or functionality tests)
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Infrastructure.InMemory)
+## Notes
 
-### Migration tools (Tool to help during a data migration)
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.MigrationTools)
-
-### Api.Server (Application for automatic integration of api endpoint for your repository or CQRS)
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Api.Server)
-
-### Api.Client (Application for http client integration of api endpoint for your repository or CQRS)
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Api.Client)
-
-### Azure TableStorage integration (default integration)
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Table)
-
-### Azure CosmosDB SQL integration (default integration)
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Cosmos.Sql)
-
-### Azure BlobStorage integration (default integration)
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Azure.Storage.Blob)
-
-### Dynamics Dataverse integration (default integration)
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.Dynamics.Dataverse)
-
-### Entity Framework integration (default integration)
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.EntityFramework)
-
-### MsSql integration (default integration)
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Infrastructures/RepositoryFramework.Infrastructure.MsSql)
-
-### Cache integration (with in memory default integration)
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Cache/RepositoryFramework.Cache)
-
-### Cache with Azure BlobStorage integration (default integration)
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Cache/RepositoryFramework.Cache.Azure.Storage.Blob)
-
-### Web UI for dashboard
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Web/RepositoryFramework.Web.Components)
-
-### Client Api for Typescript/Javascript solutions
-You may find the documentation at [this link](https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/repositoryframework.api.client.typescript/src/rystem)
+- Use consumer interfaces (`IRepository`, `ICommand`, `IQuery`) instead of pattern interfaces for dependency injection.
+- All infrastructure providers can be combined with API server/client and cache decorators.

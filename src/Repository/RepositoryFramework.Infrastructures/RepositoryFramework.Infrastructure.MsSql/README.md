@@ -1,49 +1,42 @@
-### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+﻿# Rystem.RepositoryFramework.Infrastructure.MsSql
 
-## Integration with MsSql and Repository Framework
-Example from unit test with a business integration too.
+Lightweight Microsoft SQL Server integration for Repository/CQRS services.
 
-     services.
-        AddRepository<Cat, Guid>(settings =>
-        {
-            settings
-            .WithMsSql(builder =>
+## Installation
+
+```bash
+dotnet add package Rystem.RepositoryFramework.Infrastructure.MsSql
+```
+
+## Quick start
+
+```csharp
+builder.Services.AddRepository<Cat, Guid>(repositoryBuilder =>
+{
+    repositoryBuilder.WithMsSql(msSqlBuilder =>
+    {
+        msSqlBuilder.ConnectionString = builder.Configuration["ConnectionStrings:Database"];
+        msSqlBuilder.Schema = "repo";
+
+        msSqlBuilder
+            .WithPrimaryKey(x => x.Id, keyColumn =>
             {
-                builder.Schema = "repo";
-                builder.ConnectionString = configuration["ConnectionString:Database"];
-                builder.WithPrimaryKey(x => x.Id, x =>
-                    {
-                        x.ColumnName = "Key";
-                    })
-                .WithColumn(x => x.Paws, x =>
-                {
-                    x.ColumnName = "Zampe";
-                    x.IsNullable = true;
-                });
+                keyColumn.ColumnName = "Id";
+            })
+            .WithColumn(x => x.Paws, column =>
+            {
+                column.ColumnName = "Paws";
+                column.IsNullable = true;
             });
-        });
+    });
+});
+```
 
-You found the IRepository<Cat, Guid> in DI to play with it.
+## Startup note
 
-## Configure database after build
-You have to run a method after the service collection build during startup. This method creates your tables.
+```csharp
+var app = builder.Build();
+await app.Services.WarmUpAsync();
+```
 
-    var app = builder.Build();
-    await app.Services.WarmUpAsync();
-
-### Automated api with Rystem.RepositoryFramework.Api.Server package
-With automated api, you may have the api implemented with your dataverse integration.
-You need only to add the AddApiFromRepositoryFramework and UseApiForRepositoryFramework
-
-    builder.Services.AddApiFromRepositoryFramework()
-        .WithDescriptiveName("Repository Api")
-        .WithPath(Path)
-        .WithSwagger()
-        .WithVersion(Version)
-        .WithDocumentation()
-        .WithDefaultCors("http://example.com");  
-
-    var app = builder.Build();
-
-    app.UseApiFromRepositoryFramework()
-        .WithNoAuthorization();
+Call `WarmUpAsync()` to create/update SQL artifacts used by the integration.

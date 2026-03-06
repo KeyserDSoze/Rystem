@@ -1,47 +1,60 @@
-### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+﻿# Rystem.RepositoryFramework.MigrationTools
 
-## Migration Tools
+Utilities to migrate data between two repository integrations (source and destination) using `IMigrationManager<T, TKey>`.
 
-You need to create a base model as a bridge for your migration. After that you can use the two repositories with repository pattern to help yourself with the migration from a old storage to a brand new storage.
+## Installation
 
-### Sample with in memory integration (From UnitTest)
-For instance you can create two repositories, one as source and one as target.
-In the example we use an easy test integration with two in memory integrations.
+```bash
+dotnet add package Rystem.RepositoryFramework.MigrationTools
+```
 
-    .AddRepository<SuperMigrationUser, string>(builder =>
+## Quick start
+
+```csharp
+builder.Services
+    .AddRepository<SuperMigrationUser, string>(repositoryBuilder =>
     {
-        builder.WithInMemory(builder =>
+        repositoryBuilder.WithInMemory(inMemoryBuilder =>
         {
-            builder
-                .PopulateWithRandomData(NumberOfItems);
+            inMemoryBuilder.PopulateWithRandomData(1000);
         }, "source");
     })
-    .AddRepository<SuperMigrationUser, string>(builder =>
+    .AddRepository<SuperMigrationUser, string>(repositoryBuilder =>
     {
-        builder.WithInMemory(builder =>
+        repositoryBuilder.WithInMemory(inMemoryBuilder =>
         {
-            builder
-                .PopulateWithRandomData(NumberOfItems);
+            inMemoryBuilder.PopulateWithRandomData(0);
         }, "target");
     })
-        .AddMigrationManager<SuperMigrationUser, string>(settings =>
-        {
-            settings.SourceFactoryName = "source";
-            settings.DestinationFactoryName = "target";
-            settings.NumberOfConcurrentInserts = 10;
-        })
+    .AddMigrationManager<SuperMigrationUser, string>(settings =>
+    {
+        settings.SourceFactoryName = "source";
+        settings.DestinationFactoryName = "target";
+        settings.NumberOfConcurrentInserts = 10;
+    });
+```
 
-Now you may use the interface in DI
+## Run migration
 
-    IMigrationManager<SuperMigrationUser, string> migrationService
+```csharp
+public sealed class MigrationRunner(IMigrationManager<SuperMigrationUser, string> migrationManager)
+{
+    public async Task<bool> ExecuteAsync(CancellationToken cancellationToken)
+    {
+        return await migrationManager.MigrateAsync(
+            x => x.Id!,
+            checkIfExists: true,
+            deleteEverythingBeforeStart: false,
+            cancellationToken: cancellationToken);
+    }
+}
+```
 
-and let the sorcery happens
+## `MigrateAsync` parameters
 
-    var migrationResult = await _migrationService.MigrateAsync(x => x.Id!, true);
-
-### Parameters
-| Name | Description |
-| ------------------------- | ------------------------------ |
-| Expression<Func<T, TKey>> navigationKey | Explain how to create the TKey from the TValue |
-| bool checkIfExists = false | check existence on target before download from source |
-| bool deleteEverythingBeforeStart = false | delete all items before starting the migration from target |
+| Parameter | Meaning |
+| --- | --- |
+| `Expression<Func<T, TKey>> navigationKey` | Maps destination key from model value |
+| `bool checkIfExists` | Checks destination existence before insert/update |
+| `bool deleteEverythingBeforeStart` | Deletes destination data before migration |
+| `CancellationToken cancellationToken` | Cancels the migration flow |

@@ -1,47 +1,37 @@
-### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+﻿# Rystem.RepositoryFramework.Infrastructure.Dynamics.Dataverse
 
-## Integration with Dataverse (Dynamics) and Repository Framework
-Example from unit test with a business integration too.
+Microsoft Dynamics Dataverse integration for Repository/CQRS services.
 
-     services.
-        AddRepository<CalamityUniverseUser, string>(builder =>
-        {
-            builder.WithDataverse(dataverserBuilder =>
-            {
-                dataverserBuilder.Settings.Prefix = "repo_";
-                dataverserBuilder.Settings.SolutionName = "TestAlessandro";
-                if (configuration != null)
-                    dataverserBuilder.Settings.SetConnection(configuration["ConnectionString:Dataverse:Environment"],
-                        new(configuration["ConnectionString:Dataverse:ClientId"],
-                        configuration["ConnectionString:Dataverse:ClientSecret"]));
-            });
-            builder
-                .AddBusiness()
-                .AddBusinessBeforeInsert<CalamityUniverseUserBeforeInsertBusiness>()
-                .AddBusinessBeforeInsert<CalamityUniverseUserBeforeInsertBusiness2>();
-        });
+## Installation
 
-You found the IRepository<CalamityUniverseUser, string> in DI to play with it.
+```bash
+dotnet add package Rystem.RepositoryFramework.Infrastructure.Dynamics.Dataverse
+```
 
-## Configure database after build
-You have to run a method after the service collection build during startup. This method creates your tables.
+## Quick start
 
-    var app = builder.Build();
-    await app.Services.WarmUpAsync();
+```csharp
+builder.Services.AddRepository<AccountModel, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithDataverse(dataverseBuilder =>
+    {
+        dataverseBuilder.Settings.Prefix = "repo_";
+        dataverseBuilder.Settings.SolutionName = "MySolution";
 
-### Automated api with Rystem.RepositoryFramework.Api.Server package
-With automated api, you may have the api implemented with your dataverse integration.
-You need only to add the AddApiFromRepositoryFramework and UseApiForRepositoryFramework
+        dataverseBuilder.Settings.SetConnection(
+            environment: builder.Configuration["Dataverse:Environment"]!,
+            identity: new DataverseAppRegistrationAccount(
+                builder.Configuration["Dataverse:ClientId"]!,
+                builder.Configuration["Dataverse:ClientSecret"]!));
+    });
+});
+```
 
-     builder.Services.AddApiFromRepositoryFramework()
-        .WithDescriptiveName("Repository Api")
-        .WithPath(Path)
-        .WithSwagger()
-        .WithVersion(Version)
-        .WithDocumentation()
-        .WithDefaultCors("http://example.com");  
+## Startup note
 
-    var app = builder.Build();
+```csharp
+var app = builder.Build();
+await app.Services.WarmUpAsync();
+```
 
-    app.UseApiFromRepositoryFramework()
-        .WithNoAuthorization();
+Call `WarmUpAsync()` to provision/check Dataverse metadata used by the repository.

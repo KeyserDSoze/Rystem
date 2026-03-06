@@ -1,75 +1,56 @@
-### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+﻿# Rystem.RepositoryFramework.Web.Components
 
-## Add to service collection the UI service in your blazor DI
+Blazor UI components and endpoint helpers for Repository Framework management dashboards.
 
-You have to add a service for UI
+## Installation
 
-    builder.Services
-        .AddRepositoryUI();
+```bash
+dotnet add package Rystem.RepositoryFramework.Web.Components
+```
 
-and add the endpoint for your repository
+## Service registration
 
-    app
-        .AddDefaultRepositoryEndpoints();
+```csharp
+builder.Services
+    .AddRepositoryUi(settings =>
+    {
+        settings.Name = "Repository Dashboard";
+    })
+    .AddDefaultSkinForUi()
+    .AddDefaultLocalization();
+```
 
+Optional authenticated UI:
 
-### Demand everything to the framework        
+```csharp
+builder.Services
+    .AddRepositoryUi(settings =>
+    {
+        settings.Name = "Repository Dashboard";
+    })
+    .WithAuthenticatedUi();
+```
 
-In the Host.cshtml you have to add style, javascript files and the RepositoryApp.
+## Endpoint registration
 
-    <html>
-        <head>
-          <!-- inside of head section -->
-          <partial name="RepositoryStyle" />
-        </head>
-        <body>
-          <component type="typeof(RepositoryApp<App>)" render-mode="ServerPrerendered" />
-          <!-- inside of body section and after the div/app tag  -->
-          <partial name="RepositoryScript" />
-        </body>
-    </html>
+```csharp
+var app = builder.Build();
+app.AddDefaultRepositoryEndpoints();
+```
 
-Instead of "App" class you can use every class in your DLL, but remember the class needs to be inside your blazor/razor application.
+## Host page integration
 
-### Demand everything to the framework with authentication
+```cshtml
+<head>
+    <partial name="RepositoryStyle" />
+</head>
+<body>
+    <component type="typeof(RepositoryApp)" render-mode="ServerPrerendered" />
+    <partial name="RepositoryScript" />
+</body>
+```
 
-In the Host.cshtml you have to add style, javascript files and the RepositoryAuthenticatedApp.
+## Notes
 
-    <html>
-        <head>
-          <!-- inside of head section -->
-          <partial name="RepositoryStyle" />
-        </head>
-        <body>
-          <component type="typeof(RepositoryAuthenticatedApp<App>)" render-mode="ServerPrerendered" />
-          <!-- inside of body section and after the div/app tag  -->
-          <partial name="RepositoryScript" />
-        </body>
-    </html>
-
-Instead of "App" class you can use every class in your DLL, but remember the class needs to be inside your blazor/razor application.
-
-### Use razor component instead to build your mixed custom repository UI
-
-In the Host.cshtml you have to add style, javascript files
- 
-    <html>
-        <head>
-          <!-- inside of head section -->
-          <partial name="RepositoryStyle" />
-        </head>
-        <body>
-          <component type="typeof(App)" render-mode="ServerPrerendered" />
-          <!-- inside of body section and after the div/app tag  -->
-          <partial name="RepositoryScript" />
-        </body>
-    </html>
-
-In your app you can use
-
-Component          | Usage
------------------- | --------------------------------------------------
-RepositoryManager  | A component to manage your repository in one page
-
-    
-
+- Use `AddRepositoryUi` (lowercase `Ui`), not `AddRepositoryUI`.
+- Combine with `Rystem.RepositoryFramework.Api.Client` or other integrations for repository data sources.

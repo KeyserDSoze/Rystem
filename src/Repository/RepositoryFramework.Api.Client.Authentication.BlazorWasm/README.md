@@ -1,30 +1,39 @@
-﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+﻿# Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm
 
-## Services extensions
+Default JWT/Bearer interceptor integration for Repository Api.Client in Blazor WebAssembly applications.
 
-### HttpClient to use your API (example)
-You can add a client for a specific url
+## Installation
 
-    builder.Services.AddRepository<User, string>(builder =>
+```bash
+dotnet add package Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm
+```
+
+## Prerequisites
+
+- `Rystem.RepositoryFramework.Api.Client`
+- Blazor WebAssembly auth configured with access tokens
+
+## Quick start
+
+```csharp
+builder.Services.AddRepository<User, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithApiClient(apiBuilder =>
     {
-        builder
-            .WithApiClient()
-            .WithHttpClient("localhost:7058");
+        apiBuilder.WithHttpClient("https://localhost:7058");
     });
+});
 
-### Default interceptor for Authentication with JWT
-You may use the default interceptor to deal with the identity manager in .Net DI.
+builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient();
+```
 
-    builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient();
+## Scope interceptor to a specific repository
 
-This line of code inject an interceptor that works with ITokenAcquisition, injected by the framework during OpenId integration (for example AAD integration).
-Automatically it adds the token to each request.
+```csharp
+builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient<User, string>();
+```
 
-You may use the default identity interceptor not on all repositories, you can specificy them with
+## Notes
 
-    builder.Services.AddRepository(builder => {
-        builder
-            .WithApiClient()
-            .WithHttpClient("localhost:7058")
-            .AddDefaultAuthorizationInterceptorForApiHttpClient<T, TKey>();
-    });
+- The interceptor adds bearer tokens before API requests.
+- Keep token acquisition and refresh configured in your WASM authentication setup.

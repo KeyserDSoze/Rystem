@@ -1,40 +1,46 @@
-### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+﻿# Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Table
 
-## Integration with Azure TableStorage and Repository Framework
-Example from unit test with a business integration too.
-Here you may find the chance to use ToResult() in services to avoid the async method.
+Azure Table Storage integration for Repository/CQRS services.
 
-    services
-        .AddRepositoryAsync<AppUser, AppUserKey>(async builder =>
-        {
-            await builder
-                .WithTableStorageAsync(tableStorageBuilder =>
-                {
-                    tableStorageBuilder
-                        .Settings.ConnectionString = configuration["ConnectionString:Storage"];
-                    tableStorageBuilder
-                        .WithTableStorageKeyReader<TableStorageKeyReader>()
-                        .WithPartitionKey(x => x.Id, x => x.Id)
-                        .WithRowKey(x => x.Username)
-                        .WithTimestamp(x => x.CreationTime);
-                });
-        }).ToResult();
+## Installation
 
-You found the IRepository<SuperCar, Guid> in DI to play with it.
+```bash
+dotnet add package Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Table
+```
 
-### Automated api with Rystem.RepositoryFramework.Api.Server package
-With automated api, you may have the api implemented with your tablestorage integration.
-You need only to add the AddApiFromRepositoryFramework and UseApiForRepositoryFramework
+## Quick start
 
-     builder.Services.AddApiFromRepositoryFramework()
-        .WithDescriptiveName("Repository Api")
-        .WithPath(Path)
-        .WithSwagger()
-        .WithVersion(Version)
-        .WithDocumentation()
-        .WithDefaultCors("http://example.com");  
+```csharp
+builder.Services.AddRepository<User, UserKey>(repositoryBuilder =>
+{
+    repositoryBuilder.WithTableStorage(tableStorageBuilder =>
+    {
+        tableStorageBuilder.Settings.ConnectionString = builder.Configuration["ConnectionStrings:Storage"];
+        tableStorageBuilder
+            .WithPartitionKey(x => x.TenantId, x => x.TenantId)
+            .WithRowKey(x => x.Id, x => x.Id)
+            .WithTimestamp(x => x.UpdatedAt);
+    });
+});
+```
 
-    var app = builder.Build();
+## Async setup variant
 
-    app.UseApiFromRepositoryFramework()
-        .WithNoAuthorization();
+```csharp
+await builder.Services.AddRepositoryAsync<User, UserKey>(async repositoryBuilder =>
+{
+    await repositoryBuilder.WithTableStorageAsync(tableStorageBuilder =>
+    {
+        tableStorageBuilder.Settings.ConnectionString = builder.Configuration["ConnectionStrings:Storage"];
+    });
+});
+```
+
+## Expose as API
+
+```csharp
+builder.Services.AddApiFromRepositoryFramework().WithPath("api");
+
+var app = builder.Build();
+app.UseApiFromRepositoryFramework().WithNoAuthorization();
+```

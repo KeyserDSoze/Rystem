@@ -1,113 +1,84 @@
-### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+﻿# Rystem.RepositoryFramework.Api.Client
 
-## Services extensions
+HTTP client integration for Repository/CQRS services exposed by `Rystem.RepositoryFramework.Api.Server`.
 
-### HttpClient to use your API (example)
-You can add a client for a specific url
+## Installation
 
-    builder.Services.AddRepository<User, string>(builder =>
+```bash
+dotnet add package Rystem.RepositoryFramework.Api.Client
+```
+
+## Quick start
+
+```csharp
+builder.Services.AddRepository<User, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithApiClient(apiBuilder =>
     {
-        builder
-            .WithApiClient()
-            .WithHttpClient("localhost:7058");
+        apiBuilder.WithHttpClient("https://localhost:7058");
     });
+});
+```
 
-You may add a Polly policy to your api client for example:
+## Add resilience policy
 
-    var retryPolicy = HttpPolicyExtensions
-      .HandleTransientHttpError()
-      .Or<TimeoutRejectedException>()
-      .RetryAsync(3);
-
-    builder.Services.AddRepository<User, string>(builder =>
+```csharp
+builder.Services.AddRepository<User, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithApiClient(apiBuilder =>
     {
-        builder
-            .WithApiClient()
-            .WithHttpClient("localhost:7058")
-                .ClientBuilder
-            .AddPolicyHandler(retryPolicy);
+        apiBuilder
+            .WithHttpClient("https://localhost:7058")
+            .WithDefaultRetryPolicy();
     });
-    
-and use it in DI with
-    
-    IRepository<User, string> repository
+});
+```
 
-### Query and Command
-In DI you install the services
+You can also use `ClientBuilder` to add custom Polly policies.
 
-    services.AddCommand<User, string>(builder => {
-        builder
-            .WithApiClient()
-            .WithHttpClient("localhost:7058");
-    });
-    services.AddQuery<User, string>(builder => {
-        builder
-            .WithApiClient()
-            .WithHttpClient("localhost:7058");
-    });
+## CQRS-only registrations
 
-And you may inject the objects
-## Please, use ICommand, IQuery and not ICommandPattern, IQueryPattern
+```csharp
+builder.Services.AddCommand<User, string>(commandBuilder =>
+{
+    commandBuilder.WithApiClient(apiBuilder => apiBuilder.WithHttpClient("https://localhost:7058"));
+});
 
-    ICommand<User, string> command
-    IQuery<User, string> command
+builder.Services.AddQuery<User, string>(queryBuilder =>
+{
+    queryBuilder.WithApiClient(apiBuilder => apiBuilder.WithHttpClient("https://localhost:7058"));
+});
+```
 
-### With a non default key
-In DI you install the services with a bool key for example.
+## Interceptors
 
-    services.AddRepository<User, bool>(builder => {
-        builder
-            .WithApiClient()
-            .WithHttpClient("localhost:7058");
-    });
-    services.AddCommand<User, bool>(builder => {
-        builder
-            .WithApiClient()
-            .WithHttpClient("localhost:7058");
-    });
-    services.AddQuery<User, bool>(builder => {
-        builder
-            .WithApiClient()
-            .WithHttpClient("localhost:7058");
-    });
+### Global interceptor for all clients
 
-And you may inject the objects
-## Please, use ICommand, IQuery, IRepository and not ICommandPattern, IQueryPattern, IRepositoryPattern
-    
-    IRepository<User, string> repository
-    ICommand<User, string> command
-    IQuery<User, string> command
+```csharp
+builder.Services.AddApiClientInterceptor<MyGlobalInterceptor>();
+```
 
-### Interceptors
-You may add a custom interceptor for every request for every model
+### Model-specific interceptor
 
-    public static IServiceCollection AddApiClientInterceptor<TInterceptor>(this IServiceCollection services,
-        ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
-        where TInterceptor : class, IRepositoryClientInterceptor
+```csharp
+builder.Services.AddApiClientSpecificInterceptor<User, MyUserInterceptor>();
+```
 
-or a specific interceptor for each model
-    
-    public static IServiceCollection AddApiClientInterceptor<TInterceptor>(this IServiceCollection services,
-        ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
-        where TInterceptor : class, IRepositoryClientInterceptor
+### Model + key specific interceptor
 
-or for a string as default TKey
+```csharp
+builder.Services.AddApiClientSpecificInterceptor<User, string, MyUserKeyInterceptor>();
+```
 
-     public static RepositorySettings<T, TKey> AddApiClientSpecificInterceptor<T, TKey, TInterceptor>(
-        this RepositorySettings<T, TKey> settings,
-        ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
-        where TInterceptor : class, IRepositoryClientInterceptor<T>
-        where TKey : notnull   
+## JWT authorization interceptor
 
-Maybe you can use it to add a token as JWT o another pre-request things.
+Use one of these packages for default auth interceptors:
 
-### Default interceptor for Authentication with JWT
-You may use the default interceptor to deal with the identity manager in .Net DI.
+- `Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer`
+- `Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm`
 
-    builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient();
+Then register:
 
-with package 
-#### RepositoryFramework.Api.Client.Authentication.BlazorServer 
-or if you need to use in Wasm blazor use with 
-#### Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm
-
+```csharp
+builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient();
+```

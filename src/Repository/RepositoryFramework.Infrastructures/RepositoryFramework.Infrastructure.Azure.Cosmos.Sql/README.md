@@ -1,38 +1,37 @@
-### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+﻿# Rystem.RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
 
-## Integration with Azure Cosmos Sql and Repository Framework
-Example from unit test with a business integration too.
+Azure Cosmos DB (SQL API) integration for Repository/CQRS services.
 
-     await services
-        .AddRepositoryAsync<AppUser, AppUserKey>(async builder =>
-            {
-                await builder.WithCosmosSqlAsync(x =>
-                {
-                    x.Settings.ConnectionString = configuration["ConnectionString:CosmosSql"];
-                    x.Settings.DatabaseName = "unittestdatabase";
-                    x.WithId(x => new AppUserKey(x.Id));
-                }).NoContext();
-            builder
-                .AddBusiness()
-                .AddBusinessBeforeInsert<AppUserBeforeInsertBusiness>()
-                .AddBusinessBeforeInsert<AppUserBeforeInsertBusiness2>();
-        }).NoContext();
+## Installation
 
-You found the IRepository<AppUser, AppUserKey> in DI to play with it.
+```bash
+dotnet add package Rystem.RepositoryFramework.Infrastructure.Azure.Cosmos.Sql
+```
 
-### Automated api with Rystem.RepositoryFramework.Api.Server package
-With automated api, you may have the api implemented with your cosmos sql integration.
-You need only to add the AddApiFromRepositoryFramework and UseApiForRepositoryFramework
+## Quick start
 
-     builder.Services.AddApiFromRepositoryFramework()
-        .WithDescriptiveName("Repository Api")
-        .WithPath(Path)
-        .WithSwagger()
-        .WithVersion(Version)
-        .WithDocumentation()
-        .WithDefaultCors("http://example.com");  
+```csharp
+await builder.Services.AddRepositoryAsync<AppUser, AppUserKey>(async repositoryBuilder =>
+{
+    await repositoryBuilder.WithCosmosSqlAsync(cosmosBuilder =>
+    {
+        cosmosBuilder.Settings.ConnectionString = builder.Configuration["ConnectionStrings:CosmosSql"];
+        cosmosBuilder.Settings.DatabaseName = "app-database";
+        cosmosBuilder.WithId(x => x.Id);
+    });
+});
+```
 
-    var app = builder.Build();
+## Expose as API
 
-    app.UseApiFromRepositoryFramework()
-        .WithNoAuthorization();
+```csharp
+builder.Services.AddApiFromRepositoryFramework().WithPath("api");
+
+var app = builder.Build();
+app.UseApiFromRepositoryFramework().WithNoAuthorization();
+```
+
+## Notes
+
+- Use `WithId(...)` to map model key to Cosmos `id`.
+- You can use managed identity or connection string in `CosmosSqlConnectionSettings`.

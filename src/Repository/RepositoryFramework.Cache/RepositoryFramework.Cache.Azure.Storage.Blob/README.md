@@ -1,38 +1,46 @@
-### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+﻿# Rystem.RepositoryFramework.Cache.Azure.Storage.Blob
 
-## Cache example
+Azure Blob Storage distributed cache provider for Repository/CQRS decorators.
 
-    .AddRepository<User, string>(repositoryBuilder =>
+## Installation
+
+```bash
+dotnet add package Rystem.RepositoryFramework.Cache.Azure.Storage.Blob
+```
+
+## Quick start
+
+```csharp
+builder.Services.AddRepository<User, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithBlobStorage(blobStorageBuilder =>
     {
-        repositoryBuilder
-        .WithBlobStorage(storageBuilder =>
-        {
-            storageBuilder.Settings.ConnectionString = builder.Configuration["ConnectionString:Storage"];
-        });
-        repositoryBuilder
-        .WithInMemoryCache(x =>
-        {
-            x.ExpiringTime = TimeSpan.FromSeconds(60);
-            x.Methods = RepositoryMethods.Get | RepositoryMethods.Insert | RepositoryMethods.Update | RepositoryMethods.Delete;
-        })
-        .WithBlobStorageCache(
-            x =>
-            {
-                x.Settings.ConnectionString = builder.Configuration["ConnectionString:Storage"];
-            }
-            , x =>
-            {
-                x.ExpiringTime = TimeSpan.FromSeconds(120);
-                x.Methods = RepositoryMethods.All;
-            });
+        blobStorageBuilder.Settings.ConnectionString = builder.Configuration["ConnectionStrings:Storage"];
     });
 
-### Usage
-You always will find the same interface. For instance
+    repositoryBuilder.WithInMemoryCache(cacheOptions =>
+    {
+        cacheOptions.ExpiringTime = TimeSpan.FromSeconds(60);
+        cacheOptions.Methods = RepositoryMethods.Get | RepositoryMethods.Insert | RepositoryMethods.Update | RepositoryMethods.Delete;
+    });
 
-    IRepository<User, string> repository
+    repositoryBuilder.WithBlobStorageCache(
+        blobStorageOptions =>
+        {
+            blobStorageOptions.Settings.ConnectionString = builder.Configuration["ConnectionStrings:Storage"];
+        },
+        cacheOptions =>
+        {
+            cacheOptions.ExpiringTime = TimeSpan.FromSeconds(120);
+            cacheOptions.Methods = RepositoryMethods.All;
+        });
+});
+```
 
-or if you added a query pattern or command pattern
+## Usage
 
-    IQuery<User, string> query 
-    ICommand<User, string> command
+Use the same service contracts as usual:
+
+- `IRepository<User, string>`
+- `ICommand<User, string>`
+- `IQuery<User, string>`

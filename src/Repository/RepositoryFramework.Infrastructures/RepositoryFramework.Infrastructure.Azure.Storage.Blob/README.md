@@ -1,37 +1,43 @@
-### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+﻿# Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob
 
-## Integration with Azure BlobStorage and Repository Framework
-Example from unit test with a business integration too.
+Azure Blob Storage integration for Repository/CQRS services.
 
-    services
-        .AddRepository<Car, Guid>(builder =>
-        {
-            builder.WithBlobStorage(builder =>
-            {
-                builder.Settings.ConnectionString = configuration["ConnectionString:Storage"];
-                builder.Settings.Prefix = "MyFolder/";
-            });
-        });
-    services
-        .AddBusinessForRepository<Car, Guid>()
-            .AddBusinessBeforeInsert<CarBeforeInsertBusiness>()
-            .AddBusinessBeforeInsert<CarBeforeInsertBusiness2>();
+## Installation
 
-You found the IRepository<Car, Guid> in DI to play with it.
+```bash
+dotnet add package Rystem.RepositoryFramework.Infrastructure.Azure.Storage.Blob
+```
 
-### Automated api with Rystem.RepositoryFramework.Api.Server package
-With automated api, you may have the api implemented with your blobstorage integration.
-You need only to add the AddApiFromRepositoryFramework and UseApiForRepositoryFramework
+## Quick start
 
-     builder.Services.AddApiFromRepositoryFramework()
-        .WithDescriptiveName("Repository Api")
-        .WithPath(Path)
-        .WithSwagger()
-        .WithVersion(Version)
-        .WithDocumentation()
-        .WithDefaultCors("http://example.com");  
+```csharp
+builder.Services.AddRepository<Document, Guid>(repositoryBuilder =>
+{
+    repositoryBuilder.WithBlobStorage(blobStorageBuilder =>
+    {
+        blobStorageBuilder.Settings.ConnectionString = builder.Configuration["ConnectionStrings:Storage"];
+        blobStorageBuilder.Settings.Prefix = "documents/";
+    });
+});
+```
 
-    var app = builder.Build();
+## Async setup variant
 
-    app.UseApiFromRepositoryFramework()
-        .WithNoAuthorization();
+```csharp
+await builder.Services.AddRepositoryAsync<Document, Guid>(async repositoryBuilder =>
+{
+    await repositoryBuilder.WithBlobStorageAsync(blobStorageBuilder =>
+    {
+        blobStorageBuilder.Settings.ConnectionString = builder.Configuration["ConnectionStrings:Storage"];
+    });
+});
+```
+
+## Expose as API
+
+```csharp
+builder.Services.AddApiFromRepositoryFramework().WithPath("api");
+
+var app = builder.Build();
+app.UseApiFromRepositoryFramework().WithNoAuthorization();
+```
