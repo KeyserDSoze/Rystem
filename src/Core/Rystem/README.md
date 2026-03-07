@@ -1,343 +1,306 @@
-﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
-## 📚 Resources
+## Rystem
 
-- **📖 Complete Documentation**: [https://rystem.net](https://rystem.net)
-- **🤖 MCP Server for AI**: [https://rystem.cloud/mcp](https://rystem.cloud/mcp)
-- **💬 Discord Community**: [https://discord.gg/tkWvy4WPjt](https://discord.gg/tkWvy4WPjt)
-- **☕ Support the Project**: [https://www.buymeacoffee.com/keyserdsoze](https://www.buymeacoffee.com/keyserdsoze)
+`Rystem` is the core utilities package of the Rystem ecosystem.
 
----
-# Table of Contents
+It extends familiar BCL namespaces such as `System`, `System.Linq`, `System.Linq.Expressions`, `System.Reflection`, `System.Text`, and `System.Threading.Tasks` with pragmatic helpers for:
 
+- discriminated unions in C#
+- expression serialization and dynamic LINQ/queryable composition
+- reflection, mocking, runtime model generation, and IL inspection
+- JSON, CSV, minimization, hashing, and encoding helpers
+- task orchestration and small concurrent collections
+
+Most examples below are adapted from the repository test suite so the README stays aligned with real usage.
+For brevity, short snippets sometimes use obvious sample types such as `User`, `Order`, `MyType`, or `MyDto`.
+
+## Resources
+
+- Complete Documentation: [https://rystem.net](https://rystem.net)
+- MCP Server for AI: [https://rystem.cloud/mcp](https://rystem.cloud/mcp)
+- Discord Community: [https://discord.gg/tkWvy4WPjt](https://discord.gg/tkWvy4WPjt)
+- Support the Project: [https://www.buymeacoffee.com/keyserdsoze](https://www.buymeacoffee.com/keyserdsoze)
+
+## Installation
+
+```bash
+dotnet add package Rystem
+```
+
+The current `10.x` package targets `net10.0`.
+
+After installation, most APIs are available through standard `using` directives that match the namespace they extend. The main exception is `ReflectionHelper`, which lives in `Rystem.Reflection`.
+
+## Table of Contents
+
+- [Rystem](#rystem)
+- [Resources](#resources)
+- [Installation](#installation)
 - [Table of Contents](#table-of-contents)
-  - [Discriminated Union in C#](#discriminated-union-in-c)
-    - [What is a Discriminated Union?](#what-is-a-discriminated-union)
-    - [AnyOf Classes](#anyof-classes)
-    - [JSON Integration](#json-integration)
-      - [Serialization and Deserialization](#serialization-and-deserialization)
-      - [How "Signature" Works](#how-signature-works)
-  - [Matching and Switching](#matching-and-switching)
-    - [Match Method](#match-method)
-      - [Example:](#example)
-    - [Switch Method](#switch-method)
-      - [Example:](#example-1)
-    - [Async Matching and Switching](#async-matching-and-switching)
-      - [Async Match Example:](#async-match-example)
-      - [Async Switch Example:](#async-switch-example)
-    - [Usage Examples](#usage-examples)
-      - [Defining Unions](#defining-unions)
-      - [Serializing and Deserializing JSON](#serializing-and-deserializing-json)
-        - [Example:](#example-2)
-      - [Deserialization with Attributes](#deserialization-with-attributes)
-        - [Example:](#example-3)
-      - [Further attributes](#further-attributes)
-      - [Benefits of Using It](#benefits-of-using-it)
-- [Extension methods](#extension-methods)
-  - [Stopwatch](#stopwatch)
-  - [Try / Retry](#try--retry)
-    - [Retry with TryBehavior](#retry-with-trybehavior)
-  - [Cast Extensions](#cast-extensions)
-  - [Copy Extensions](#copy-extensions)
-  - [Linq expression serializer](#linq-expression-serializer)
-  - [Reflection helper](#reflection-helper)
-    - [Name of calling class](#name-of-calling-class)
-    - [Extensions for Type class](#extensions-for-type-class)
-    - [Mock a Type](#mock-a-type)
-  - [Check nullability for properties, fields and parameters.](#check-nullability-for-properties-fields-and-parameters)
-  - [Enum Extensions](#enum-extensions)
-  - [Text extensions](#text-extensions)
-  - [Encoding: Base64 and Base45](#encoding-base64-and-base45)
-    - [Base64](#base64)
-    - [Base45](#base45)
-  - [Cryptography (Hashing)](#cryptography-hashing)
-  - [Character separated-value (CSV)](#character-separated-value-csv)
-  - [Minimization of a model (based on CSV concept)](#minimization-of-a-model-based-on-csv-concept)
-  - [Extensions for json](#extensions-for-json)
-  - [LINQ Extensions](#linq-extensions)
-    - [RemoveWhere](#removewhere)
-    - [Async LINQ: AllAsync and AnyAsync](#async-linq-allasync-and-anyasync)
-  - [Collections Extensions (non-generic IEnumerable)](#collections-extensions-non-generic-ienumerable)
-  - [Extensions for Task](#extensions-for-task)
-  - [TaskManager](#taskmanager)
-    - [WhenAll](#whenall)
-    - [WhenAtLeast](#whenatleast)
-  - [Concurrency](#concurrency)
-    - [ConcurrentList](#concurrentlist)
+- [What is inside this package](#what-is-inside-this-package)
+- [Discriminated Unions in C#](#discriminated-unions-in-c)
+  - [Define a union](#define-a-union)
+  - [Match, Switch, and TryGet](#match-switch-and-tryget)
+  - [JSON serialization and deserialization](#json-serialization-and-deserialization)
+  - [Resolving ambiguous JSON with selectors](#resolving-ambiguous-json-with-selectors)
+  - [Class-level selectors, regex selectors, and default types](#class-level-selectors-regex-selectors-and-default-types)
+- [Core Utilities](#core-utilities)
+- [Stopwatch](#stopwatch)
+- [Try / Retry](#try--retry)
+- [Cast extensions](#cast-extensions)
+- [Copy extensions](#copy-extensions)
+- [Enum extensions](#enum-extensions)
+- [Text extensions](#text-extensions)
+- [Encoding: Base64 and Base45](#encoding-base64-and-base45)
+  - [Base64](#base64)
+  - [Base45](#base45)
+- [Cryptography (Hashing)](#cryptography-hashing)
+- [JSON extensions](#json-extensions)
+- [CSV and Minimization](#csv-and-minimization)
+- [CSV](#csv)
+- [Minimization](#minimization)
+- [LINQ and Expression Utilities](#linq-and-expression-utilities)
+- [Serialize and deserialize lambda expressions](#serialize-and-deserialize-lambda-expressions)
+- [Dynamic lambda utilities](#dynamic-lambda-utilities)
+- [Dynamic IQueryable helpers](#dynamic-iqueryable-helpers)
+- [RemoveWhere](#removewhere)
+- [AllAsync and AnyAsync](#allasync-and-anyasync)
+- [Non-generic IEnumerable helpers](#non-generic-ienumerable-helpers)
+- [Reflection and Runtime Tools](#reflection-and-runtime-tools)
+- [Name of the calling class](#name-of-the-calling-class)
+- [Cached reflection helpers](#cached-reflection-helpers)
+- [Type relationship helpers](#type-relationship-helpers)
+- [Create default instances](#create-default-instances)
+- [Mock abstract classes and interfaces](#mock-abstract-classes-and-interfaces)
+- [Construct with the best dynamic fit](#construct-with-the-best-dynamic-fit)
+- [Nullability inspection](#nullability-inspection)
+- [Property showcase](#property-showcase)
+- [IL inspection and method signatures](#il-inspection-and-method-signatures)
+- [Runtime model builder](#runtime-model-builder)
+- [Generic method invocation](#generic-method-invocation)
+- [Tasks and Collections](#tasks-and-collections)
+- [NoContext and ToResult](#nocontext-and-toresult)
+- [ToListAsync](#tolistasync)
+- [TaskManager](#taskmanager)
+  - [WhenAll](#whenall)
+  - [WhenAtLeast](#whenatleast)
+- [ConcurrentList](#concurrentlist)
 - [Utilities](#utilities)
-  - [AsyncEnumerable.Empty](#asyncenumerableempty)
-  - [Programming Language Conversion](#programming-language-conversion)
+- [AsyncEnumerable.Empty](#asyncenumerableempty)
+- [Programming language conversion](#programming-language-conversion)
+- [Repository examples](#repository-examples)
 
 ---
 
-## Discriminated Union in C#
+## What is inside this package
 
-This library introduces a `AnyOf<T0, T1, ...>` class that implements discriminated unions in C#. Discriminated unions are a powerful type system feature that allows variables to store one of several predefined types, enabling type-safe and concise programming. 
+| Area                   | Main APIs                                                                                                                                                       |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Discriminated unions   | `AnyOf<T0, ...>`, `Match`, `MatchAsync`, `Switch`, `SwitchAsync`, `TryGetTn`, JSON selectors and defaults                                                       |
+| Core helpers           | `Stopwatch`, `Try`, `Cast<T>`, `ToDeepCopy`, `CopyPropertiesFrom`, enum and string helpers                                                                      |
+| Text and data          | `ToByteArray`, `ToStream`, `ReadLinesAsync`, `ToJson`, `ToHash`, `ToBase64`, `ToBase45`, `ToCsv`, `ToMinimize`                                                  |
+| LINQ and expressions   | `Serialize`, `Deserialize`, `DeserializeAsDynamic`, `ChangeReturnType`, `InvokeAsync`, `Where(LambdaExpression)`, `Select(LambdaExpression)`, `CallMethodAsync` |
+| Reflection and runtime | `FetchProperties`, `CreateWithDefault`, `CreateInstance`, `ConstructWithBestDynamicFit`, `ToShowcase`, `GetBodyAsString`, `Model.Create(...)`                   |
+| Tasks and collections  | `NoContext`, `ToResult`, `ToListAsync`, `TaskManager`, `ConcurrentList<T>`, `AsyncEnumerable<T>.Empty`                                                          |
+| Conversion             | `ConvertAs(ProgrammingLanguageType.Typescript)`                                                                                                                 |
 
-**This library also includes integration with JSON serialization and deserialization.**
-
-### What is a Discriminated Union?
-
-A discriminated union is a type that can hold one of several predefined types at a time. It provides a way to represent and operate on data that may take different forms, ensuring type safety and improving code readability.
-
-For example, a union can represent a value that is either an integer, a string, or a boolean:
-
-```csharp
-AnyOf<int, string, bool> value;
-```
-
-The `value` can hold an integer, a string, or a boolean, but never more than one type at a time.
+If you want a single package with a broad set of low-level .NET utilities, this is the entry point of the Rystem ecosystem.
 
 ---
 
-### AnyOf Classes
+## Discriminated Unions in C#
 
-The `AnyOf` class provides the ability to define a discriminated union of up to 10 types.
+`AnyOf<T0, T1, ...>` brings discriminated unions to C# with built-in `System.Text.Json` integration.
 
-- `AnyOf<T0, T1>`
-- `AnyOf<T0, T1, T2>`
-- ...
-- `AnyOf<T0, T1, ..., T9>`
+The package ships `AnyOf` variants from 2 to 10 generic arguments.
 
-Each class supports the following features:
+### Define a union
 
-1. **Implicit Conversion**: Allows seamless assignment of any supported type to the union.
 ```csharp
-public AnyOf<int, string> GetSomething(bool check)
+AnyOf<int, string, bool> value = "hello";
+
+Console.WriteLine(value.Index); // 1
+Console.WriteLine(value.IsT1);  // true
+Console.WriteLine(value.AsT1);  // hello
+
+value = 42;
+int number = value.CastT0;
+```
+
+Useful members include:
+
+- `Index`
+- `IsT0`, `IsT1`, ...
+- `AsT0`, `AsT1`, ...
+- `CastT0`, `CastT1`, ...
+- `Is<T>()`
+- `TryGetT0(out value)`, `TryGetT1(out value)`, ...
+
+### Match, Switch, and TryGet
+
+```csharp
+AnyOf<int, string, bool> value = "hello";
+
+string description = value.Match(
+    number => $"int: {number}",
+    text => $"string: {text}",
+    flag => $"bool: {flag}")!;
+
+value.Switch(
+    number => Console.WriteLine(number),
+    text => Console.WriteLine(text),
+    flag => Console.WriteLine(flag));
+
+string? asyncDescription = await value.MatchAsync(
+    async number => await Task.FromResult($"int: {number}"),
+    async text => await Task.FromResult($"string: {text}"),
+    async flag => await Task.FromResult($"bool: {flag}"));
+
+await value.SwitchAsync(
+    number => { Console.WriteLine(number); return ValueTask.CompletedTask; },
+    text => { Console.WriteLine(text); return ValueTask.CompletedTask; },
+    flag => { Console.WriteLine(flag); return ValueTask.CompletedTask; });
+
+if (value.TryGetT1(out var textValue))
+    Console.WriteLine(textValue);
+```
+
+Notes:
+
+- `MatchAsync` delegates return `Task<TResult?>`
+- `SwitchAsync` delegates return `ValueTask`
+- `TryGetTn` is the safest way to branch without exceptions
+
+### JSON serialization and deserialization
+
+The active value is serialized directly, and deserialization automatically chooses the correct target type.
+
+```csharp
+public sealed class Wrapper
 {
-    if (check)
-        return 42;
-    else
-        return "Hello";
-}
-```
-2. **Type Checking and Casting**: Methods to check and retrieve the stored type.
-3. **Serialization Support**: Built-in JSON serialization and deserialization integration.
-4. **Matching and Switching**: Methods to process the stored value using delegates or lambdas.
-
----
-
-### JSON Integration
-
-This library supports seamless JSON serialization and deserialization for discriminated unions. It uses a mechanism called **"Signature"** to identify the correct class during deserialization. The "Signature" is constructed based on the names of all properties that define each class in the union.
-
-#### Serialization and Deserialization
-
-The `AnyOf` class integrates with JSON serialization and deserialization. The integration supports:
-
-1. **Implicit Serialization**: The active value in the union is serialized to JSON directly.
-2. **Signature-Based Deserialization**: Uses property names ("signatures") to determine the correct type during deserialization.
-
-#### How "Signature" Works
-
-1. During deserialization, the library analyzes the properties present in the JSON.
-2. The "Signature" matches the property names in the JSON to a predefined signature for each class in the union.
-3. Once a match is found, the correct class is instantiated and populated with the data.
-
----
-
-## Matching and Switching
-
-The `AnyOf` class includes methods to simplify processing the stored value:
-
-### Match Method
-
-The `Match` method allows you to provide delegates for each possible type, returning a value based on the stored type.
-
-#### Example:
-
-```csharp
-var union = new AnyOf<int, string>(42);
-var result = union.Match(
-    i => $"Integer: {i}",
-    s => $"String: {s}"
-);
-Console.WriteLine(result); // Outputs: "Integer: 42"
-```
-
-### Switch Method
-
-The `Switch` method allows you to perform different actions based on the stored type without returning a value.
-
-#### Example:
-
-```csharp
-var union = new AnyOf<int, string>("Hello");
-union.Switch(
-    i => Console.WriteLine($"Integer: {i}"),
-    s => Console.WriteLine($"String: {s}")
-);
-```
-
-### Async Matching and Switching
-
-Async versions of `Match` and `Switch` are also available for asynchronous operations.
-
-#### Async Match Example:
-
-```csharp
-var union = new AnyOf<int, string>("Hello");
-var result = await union.MatchAsync(
-    async i => await Task.FromResult($"Integer: {i}"),
-    async s => await Task.FromResult($"String: {s}")
-);
-Console.WriteLine(result); // Outputs: "String: Hello"
-```
-
-#### Async Switch Example:
-
-```csharp
-await union.SwitchAsync(
-    async i => { await Task.Delay(100); Console.WriteLine($"Integer: {i}"); },
-    async s => { await Task.Delay(100); Console.WriteLine($"String: {s}"); }
-);
-```
-
----
-
-### Usage Examples
-
-#### Defining Unions
-
-Here’s how to define and use a discriminated union:
-
-```csharp
-var testClass = new CurrentTestClass
-{
-    OneClass_String = new FirstClass { FirstProperty = "OneClass_String.FirstProperty", SecondProperty = "OneClass_String.SecondProperty" },
-    SecondClass_OneClass = new SecondClass
-    {
-        FirstProperty = "SecondClass_OneClass.FirstProperty",
-        SecondProperty = "SecondClass_OneClass.SecondProperty"
-    },
-    OneClass_string__2 = "ExampleString",
-    Bool_Int = 3,
-    Decimal_Bool = true,
-    OneCLass_SecondClass_Int = 42,
-    FirstClass_SecondClass_Int_ThirdClass = new ThirdClass
-    {
-        Stringable = "StringContent",
-        SecondClass = new SecondClass { FirstProperty = "Nested.FirstProperty", SecondProperty = "Nested.SecondProperty" }
-    }
-};
-```
-
-#### Serializing and Deserializing JSON
-
-##### Example:
-
-```csharp
-var json = testClass.ToJson();
-var deserialized = json.FromJson<CurrentTestClass>();
-Console.WriteLine(deserialized.OneClass_String.AsT0.FirstProperty); // Outputs: OneClass_String.FirstProperty
-```
-
----
-
-#### Deserialization with Attributes
-
-Attributes allow more control over deserialization, specifying how the correct type is chosen:
-
-##### Example:
-
-```csharp
-
-public sealed class ChosenClass
-{
-    public AnyOf<TheFirstChoice, TheSecondChoice>? FirstProperty { get; set; }
-    public string? SecondProperty { get; set; }
+    public AnyOf<FirstClass, string>? Data { get; set; }
 }
 
-public sealed class TheFirstChoice
+public sealed class FirstClass
 {
-    [AnyOfJsonSelector("first")]
-    public string Type { get; init; }
-    public int Flexy { get; set; }
-}
-public sealed class TheSecondChoice
-{
-    [AnyOfJsonSelector("third", "second")]
-    public string Type { get; init; }
-    public int Flexy { get; set; }
-}
-
-var testClass = new ChosenClass
-{
-    FirstProperty = new TheSecondChoice
-    {
-        Type = "first",
-        Flexy = 1,
-    }
-};
-var json = testClass.ToJson();
-var deserialized = json.FromJson<ChosenClass>();
-Assert.True(deserialized.FirstProperty.Is<TheFirstChoice>());
-```
-
-I want to use this example that you find in the unit test to explain the attribute AnyOfJsonSelector. 
-In this example FirstProperty of ChosenClass has a value for TheSecondChoice with a value in Type equal to "first".
-The attribute AnyOfJsonSelector is used to define the correct class to use during deserialization, therefore when the deserialization happens
-the library will use the class TheFirstChoice because the value of Type is "first". Both classes have the same properties and so the signatures are equals.
-Follow the next example to understand completely.
-
-```csharp
-public sealed class ChosenClass
-{
-    public AnyOf<TheFirstChoice, TheSecondChoice>? FirstProperty { get; set; }
-    public string? SecondProperty { get; set; }
-}
-
-public sealed class TheFirstChoice
-{
-    [AnyOfJsonSelector("first")]
-    public string Type { get; init; }
-    public int Flexy { get; set; }
-}
-public sealed class TheSecondChoice
-{
-    [AnyOfJsonSelector("third", "second")]
-    public string Type { get; init; }
-    public int Flexy { get; set; }
-}
-
-var testClass = new ChosenClass
-{
-    FirstProperty = new TheSecondChoice
-    {
-        Type = "third",
-        Flexy = 1,
-    }
-};
-var json = testClass.ToJson();
-var deserialized = json.FromJson<ChosenClass>();
-Assert.True(deserialized.FirstProperty.Is<TheSecondChoice>());
-```
-
-In this second example the property has a value of "third" and so the library will use the class TheSecondChoice.
-
-#### Further attributes
-
-Set a class as default class for AnyOf
-
-```csharp
- [AnyOfJsonDefault]
-public sealed class RunResult : ApiBaseResponse
-{
-}
-```
-
-Use regex as selector
-
-```csharp
-public sealed class FifthGetClass
-{
-    [AnyOfJsonRegexSelector("fift[^.]*.")]
     public string? FirstProperty { get; set; }
     public string? SecondProperty { get; set; }
 }
+
+var wrapper = new Wrapper
+{
+    Data = new FirstClass
+    {
+        FirstProperty = "alpha",
+        SecondProperty = "beta"
+    }
+};
+
+string json = wrapper.ToJson();
+Wrapper copy = json.FromJson<Wrapper>();
+
+Console.WriteLine(copy.Data!.AsT0!.FirstProperty); // alpha
 ```
 
-Use over a class and not only over a property, like a value or like a regex.
+By default, union deserialization uses the JSON payload signature, meaning the set of available property names is used to find the best candidate.
+
+```csharp
+public sealed class SignatureTestClass
+{
+    public AnyOf<SignatureClassOne, SignatureClassTwo>? Test { get; set; }
+}
+
+public sealed class SignatureClassOne
+{
+    public string? FirstProperty { get; set; }
+    public string? SecondProperty { get; set; }
+}
+
+public sealed class SignatureClassTwo
+{
+    public string? FirstProperty { get; set; }
+    public string? SecondProperty { get; set; }
+}
+
+var payload = new SignatureTestClass
+{
+    Test = new SignatureClassTwo
+    {
+        FirstProperty = "FirstProperty",
+        SecondProperty = "SecondProperty"
+    }
+};
+
+var copy = payload.ToJson().FromJson<SignatureTestClass>();
+
+// Both candidate types have the same signature,
+// so the first matching type wins.
+Console.WriteLine(copy.Test!.Is<SignatureClassOne>()); // true
+```
+
+If no candidate can be matched, the union property is deserialized as `null`.
+
+### Resolving ambiguous JSON with selectors
+
+When multiple candidate types share the same shape, add selectors to tell the deserializer how to choose.
+
+`AnyOfJsonSelector` works with both strings and non-string values.
+
+```csharp
+public sealed class ChosenClass
+{
+    public AnyOf<TheFirstChoice, TheSecondChoice>? Value { get; set; }
+}
+
+public sealed class TheFirstChoice
+{
+    [AnyOfJsonSelector("first")]
+    public string Type { get; init; } = null!;
+
+    [AnyOfJsonSelector(2, 3, 4)]
+    public int Flexy { get; set; }
+}
+
+public sealed class TheSecondChoice
+{
+    [AnyOfJsonSelector("first", "second")]
+    public string Type { get; init; } = null!;
+
+    [AnyOfJsonSelector(1)]
+    public int Flexy { get; set; }
+}
+
+var payload = new ChosenClass
+{
+    Value = new TheSecondChoice
+    {
+        Type = "first",
+        Flexy = 1
+    }
+};
+
+var copy = payload.ToJson().FromJson<ChosenClass>();
+Console.WriteLine(copy.Value!.Is<TheSecondChoice>()); // true
+
+payload = new ChosenClass
+{
+    Value = new TheSecondChoice
+    {
+        Type = "first",
+        Flexy = 2
+    }
+};
+
+copy = payload.ToJson().FromJson<ChosenClass>();
+Console.WriteLine(copy.Value!.Is<TheFirstChoice>()); // true
+```
+
+In the second case, the raw object was originally `TheSecondChoice`, but the selector values identify `TheFirstChoice` as the correct deserialization target.
+
+### Class-level selectors, regex selectors, and default types
+
+You can apply selectors to a whole class instead of a single property.
 
 ```csharp
 [AnyOfJsonClassSelector(nameof(FirstProperty), "first.F")]
@@ -346,527 +309,845 @@ public sealed class FirstGetClass
     public string? FirstProperty { get; set; }
     public string? SecondProperty { get; set; }
 }
+
 [AnyOfJsonRegexClassSelector(nameof(FirstProperty), "secon[^.]*.[^.]*")]
 public sealed class SecondGetClass
 {
     public string? FirstProperty { get; set; }
     public string? SecondProperty { get; set; }
 }
+
+public sealed class FourthGetClass
+{
+    [AnyOfJsonSelector("fourth.F")]
+    public string? FirstProperty { get; set; }
+    public string? SecondProperty { get; set; }
+}
+
+public sealed class FifthGetClass
+{
+    [AnyOfJsonRegexSelector("fift[^.]*.")]
+    public string? FirstProperty { get; set; }
+    public string? SecondProperty { get; set; }
+}
+
+[AnyOfJsonDefault]
+public sealed class SixthGetClass
+{
+    public string? FirstProperty { get; set; }
+    public string? SecondProperty { get; set; }
+}
 ```
+
+This lets you combine:
+
+- exact value selectors
+- regex selectors
+- class-level selectors
+- a default fallback type when no other selector matches
 
 ---
 
-#### Benefits of Using It
-
-1. **Type Safety**: Ensures only predefined types are used.
-2. **JSON Support**: Automatically identifies and deserializes the correct type using "Signature".
-3. **Code Clarity**: Reduces boilerplate code for type management and error handling.
-
-
-# Extension methods
+## Core Utilities
 
 ## Stopwatch
-You can monitor the time spent on an action, task or in a method.
-Some examples from Unit test.
 
-	var started = Stopwatch.Start();
-    //do something
-    await Task.Delay(2000);
-    var result = started.Stop();
-
-or
-
-    var result = await Stopwatch.MonitorAsync(async () =>
-    {
-        await Task.Delay(2000);
-    });
-
-or with a return value
-
-     var result = await Stopwatch.MonitorAsync(async () =>
-    {
-        await Task.Delay(2000);
-        return 3;
-    });
-
-## Try / Retry
-The static `Try` class wraps any action or function in a try/catch, returning a `TryResponse<T>` that holds both the result and any exception. You can also configure automatic retry logic.
+Measure actions, tasks, or task-returning functions.
 
 ```csharp
-// Return default on exception (sync)
-TryResponse<int> result = Try.WithDefaultOnCatch(() => int.Parse("abc"));
-bool ok = result;         // false - implicit bool conversion
-int val = result;         // 0 - implicit value conversion
-Exception? ex = result.Exception;
+var started = Stopwatch.Start();
+await Task.Delay(2000);
+var result = started.Stop();
 
-// Return the value on success
-TryResponse<int> result2 = Try.WithDefaultOnCatch(() => 42);
-bool ok2 = result2;       // true
-int val2 = result2;       // 42
+Console.WriteLine(result.Span.TotalMilliseconds);
+```
 
-// Async variant
-TryResponse<int> result3 = await Try.WithDefaultOnCatchAsync(async () =>
+```csharp
+var result = await Stopwatch.MonitorAsync(async () =>
+{
+    await Task.Delay(2000);
+});
+
+Console.WriteLine(result.Span.TotalMilliseconds);
+```
+
+```csharp
+var result = await Stopwatch.MonitorAsync(async () =>
+{
+    await Task.Delay(2000);
+    return 3;
+});
+
+Console.WriteLine(result.Result);            // 3
+Console.WriteLine(result.Stopwatch.Span);    // elapsed time
+```
+
+There is also a synchronous overload:
+
+```csharp
+var result = Stopwatch.Monitor(() => DoWork());
+```
+
+## Try / Retry
+
+`Try` wraps synchronous, `Task`, and `ValueTask` execution and returns the value plus any exception.
+
+```csharp
+var success = Try.WithDefaultOnCatch(() => 42);
+int value = success;
+
+Console.WriteLine(value);                    // 42
+Console.WriteLine(success.Exception == null); // true
+```
+
+```csharp
+var failed = Try.WithDefaultOnCatch(() => int.Parse("abc"));
+
+Console.WriteLine((int)failed);              // 0
+Console.WriteLine(failed.Exception != null); // true
+```
+
+```csharp
+var asyncFailed = await Try.WithDefaultOnCatchAsync(async () =>
 {
     await Task.Delay(10);
     return int.Parse("abc");
 });
 
-// Fire-and-forget action - returns the Exception or null
-Exception? err = await Try.WithDefaultOnCatchAsync(async () =>
-{
-    await DoSomethingRiskyAsync();
-});
+Console.WriteLine(asyncFailed.Exception != null); // true
+```
 
-// ValueTask variants
-TryResponse<int> result4 = await Try.WithDefaultOnCatchValueTaskAsync(async () =>
+```csharp
+var valueTaskResult = await Try.WithDefaultOnCatchValueTaskAsync(async () =>
 {
-    return await GetValueAsync();
+    await Task.Delay(10);
+    return 12;
 });
 ```
 
-### Retry with TryBehavior
+You can also configure retry behavior.
 
 ```csharp
-TryResponse<string> result = await Try.WithDefaultOnCatchAsync(
+var response = await Try.WithDefaultOnCatchAsync(
     async () => await FlakyServiceAsync(),
     behavior =>
     {
         behavior.MaxRetry = 3;
-        behavior.WaitBetweenRetry = 200;           // ms between retries
-        behavior.RetryUntil = ex => ex is HttpRequestException; // only retry on specific exception
+        behavior.WaitBetweenRetry = 200;
+        behavior.RetryUntil = exception => exception is HttpRequestException;
     });
 ```
 
----
+Prefer checking `response.Exception` to detect failures. That is the most explicit and reliable success signal.
 
-## Cast Extensions
-Safe type-casting via extension method. Handles `IConvertible`, inheritance, `string`-to-primitive parsing (`Guid`, `DateTimeOffset`, `TimeSpan`, etc.), and returns `default` for null inputs.
+## Cast extensions
+
+Use `Cast<T>()` for safe conversions across numeric values, strings, runtime types, and inheritance hierarchies.
 
 ```csharp
 int x = 2;
-decimal d = x.Cast<decimal>();  // 2M
+decimal result = x.Cast<decimal>();
 
 int? nullable = null;
-decimal d2 = nullable.Cast<decimal>();   // 0
-decimal? d3 = nullable.Cast<decimal?>(); // null
+decimal result2 = nullable.Cast<decimal>();   // 0
+decimal? result3 = nullable.Cast<decimal?>(); // null
 
-string guidStr = Guid.NewGuid().ToString();
-Guid g = guidStr.Cast<Guid>();
-
-// Cast to a runtime type (returns dynamic)
-object casted = entity.Cast(targetType);
+string guid = Guid.NewGuid().ToString();
+Guid parsed = guid.Cast<Guid>();
 ```
-
----
-
-## Copy Extensions
-Deep copy an object or copy properties between instances.
 
 ```csharp
-// Deep copy (serialization-based, new reference)
-MyClass copy = original.ToDeepCopy();
-
-// Non-generic overload
-object copy2 = (object)original.ToDeepCopy();
-
-// Copy all settable properties from source to destination (same reference kept)
-MyClass target = new MyClass();
-target.CopyPropertiesFrom(source);    // non-generic
-
-// Typed overload
-MyClass? typed = null;
-typed.CopyPropertiesFrom(source);     // both T-typed
+object entity = new User();
+Type targetType = typeof(UserDto);
+object converted = entity.Cast(targetType)!;
 ```
 
----
+## Copy extensions
 
-## Linq expression serializer
-Usually a linq expression is not serializable as string. With this method you can serialize your expression with some limits. Only primitives are allowed in the expression body.
-An example from Unit test.
-
-    Expression<Func<MakeIt, bool>> expression = ƒ => ƒ.X == q && ƒ.Samules.Any(x => x == k) && ƒ.Sol && (ƒ.X.Contains(q) || ƒ.Sol.Equals(IsOk)) && (ƒ.E == id | ƒ.Id == V) && (ƒ.Type == MakeType.Yes || ƒ.Type == qq);
-    var serialized = expression.Serialize();
-
-with result
-
-    "ƒ => ((((((ƒ.X == \"dasda\") AndAlso ƒ.Samules.Any(x => (x == \"ccccde\"))) AndAlso ƒ.Sol) AndAlso (ƒ.X.Contains(\"dasda\") OrElse ƒ.Sol.Equals(True))) AndAlso ((ƒ.E == Guid.Parse(\"bf46510b-b7e6-4ba2-88da-cef208aa81f2\")) Or (ƒ.Id == 32))) AndAlso ((ƒ.Type == 1) OrElse (ƒ.Type == 2)))"
-
-with deserialization
-
-    var newExpression = expressionAsString.Deserialize<MakeIt, bool>();
-
-and usage, for instance, with Linq
-
-    var result = makes.Where(newExpression.Compile()).ToList();
-
-you can deserialize and compile at the same time with
-
-    var newExpression = expressionAsString.DeserializeAndCompile<MakeIt, bool>();
-
-you can deserialize as dynamic and use the linq dynamic methods
-
-    Expression<Func<MakeIt, int>> expression = x => x.Id;
-    string value = expression.Serialize();
-    LambdaExpression newLambda = value.DeserializeAsDynamic<MakeIt>();
-    var got = makes.AsQueryable();
-    var cut = got.OrderByDescending(newLambda).ThenByDescending(newLambda).ToList();
-
-please see the unit test [here](https://github.com/KeyserDSoze/RystemV3/blob/master/src/Rystem.Test/Rystem.Test.UnitTest/System.Linq/SystemLinq.cs) to understand better how it works
-You may deal with return type of your lambda expression:
-
-     LambdaExpression newLambda = value.DeserializeAsDynamic<MakeIt>();
-     newLambda =  newLambda.ChangeReturnType<bool>();
-
-or
-
-     newLambda =  newLambda.ChangeReturnType(typeof(bool));
-
-
-## Reflection helper
-
-### Name of calling class
-You can find the name of the calling class from your method, with deep = 1 the calling class of your method, with deep = 2 the calling class that calls the class that calls your method, and so on, with fullName set to true you obtain the complete name of the discovered class.
-
-    ReflectionHelper.NameOfCallingClass(deep, fullName);
-
-### Extensions for Type class
-You can get the properties, fields and constructors for your class (and singleton them to save time during new requests)
-
-    Type.FetchProperties();
-    Type.FecthConstructors();
-    Type.FetchFields();
-
-You can check if a Type is a son or a father or both of other type (in the example Zalo and Folli are Sulo).
-You may find more information in unit test [here](https://github.com/KeyserDSoze/RystemV3/blob/master/src/Rystem.Test/Rystem.Test.UnitTest/System.Reflection/ReflectionTest.cs)
-    
-    Zalo zalo = new();
-    Zalo zalo2 = new();
-    Folli folli = new();
-    Sulo sulo = new();
-    object quo = new();
-    int x = 2;
-    decimal y = 3;
-    Assert.True(zalo.IsTheSameTypeOrASon(sulo));
-    Assert.True(folli.IsTheSameTypeOrASon(sulo));
-    Assert.True(zalo.IsTheSameTypeOrASon(zalo2));
-    Assert.True(zalo.IsTheSameTypeOrASon(quo));
-    Assert.False(sulo.IsTheSameTypeOrASon(zalo));
-    Assert.True(sulo.IsTheSameTypeOrAParent(zalo));
-    Assert.False(y.IsTheSameTypeOrAParent(x));
-
-### Mock a Type
-If you need to create a type over an abstract class or interface you may use the mocking system of Rystem.
-For example, if you have an abstract class like this one down below.
-
-    public abstract class Alzio
-    {
-        private protected string X { get; }
-        public string O => X;
-        public string A { get; set; }
-        public Alzio(string x)
-        {
-            X = x;
-        }
-    }
-
-you can create an instace of it or simply mock it with
-
-    var mocked = typeof(Alzio).CreateInstance("AAA") as Alzio;
-    mocked.A = "rrrr";
-
-and you can use the class like a real class. You also may do it with
-
-    Alzio alzio = null!;
-    var mocked = alzio.CreateInstance("AAA");
-    mocked.A = "rrrr";
-
-or
-
-    Mocking.CreateInstance<Alzio>("AAA");
-
-you may see "AAA" as argument for your constructor in abstract class.
-
-## Check nullability for properties, fields and parameters.
-Following an example from unit test.
-
-    private sealed class InModel
-    {
-        public string? A { get; set; }
-        public string B { get; set; }
-        public string? C;
-        public string D;
-        public InModel(string? b, string c)
-        {
-            A = b;
-            B = c;
-        }
-        public void SetSomething(string? b, string c)
-        {
-            A = b;
-            B = c;
-        }
-    }
-    [Fact]
-    public void Test1()
-    {
-        var type = typeof(InModel);
-        var constructorParameters = type.GetConstructors().First().GetParameters().ToList();
-        Assert.True(constructorParameters[0].IsNullable());
-        Assert.False(constructorParameters[1].IsNullable());
-        var methodParameters = type.GetMethod(nameof(InModel.SetSomething)).GetParameters().ToList();
-        Assert.True(methodParameters[0].IsNullable());
-        Assert.False(methodParameters[1].IsNullable());
-        var properties = type.GetProperties().ToList();
-        Assert.True(properties[0].IsNullable());
-        Assert.False(properties[1].IsNullable());
-        var fields = type.GetFields().ToList();
-        Assert.True(fields[0].IsNullable());
-        Assert.False(fields[1].IsNullable());
-    }
-
-## Enum Extensions
-Convert strings or other enum types to a target enum, and get the `[Display]` name.
+Use `ToDeepCopy()` to create a detached clone, or `CopyPropertiesFrom(...)` to copy property values onto an existing instance.
 
 ```csharp
-enum Color { Red, Green, Blue }
+var original = new User { Id = 3 };
+var copy = original.ToDeepCopy();
 
-Color c1 = "green".ToEnum<Color>();     // Color.Green  (case-insensitive)
-Color c2 = SomeOtherEnum.Green.ToEnum<Color>();
-
-// Read [Display(Name = "...")] attribute, falls back to enum member name
-string label = Color.Red.GetDisplayName();
+Console.WriteLine(ReferenceEquals(original, copy)); // false
+Console.WriteLine(copy.Id);                         // 3
 ```
 
----
+```csharp
+var source = new User { Id = 10 };
+var target = new User();
+
+target.CopyPropertiesFrom(source);
+Console.WriteLine(target.Id); // 10
+```
+
+## Enum extensions
+
+Convert strings or other enum values into a target enum and read `[Display]` names.
+
+```csharp
+enum Color
+{
+    Red,
+    Green,
+    Blue
+}
+
+Color c1 = "green".ToEnum<Color>();
+Color c2 = ConsoleColor.Green.ToEnum<Color>();
+```
+
+```csharp
+public enum Status
+{
+    [Display(Name = "In Progress")]
+    Working
+}
+
+string label = Status.Working.GetDisplayName(); // In Progress
+```
 
 ## Text extensions
-You may convert as fast as possible byte[] to string or stream to byte[] or byte[] to stream or stream to string or string to stream.
-For example, string to byte array and viceversa.
 
-    string olfa = "daskemnlandxioasndslam dasmdpoasmdnasndaslkdmlasmv asmdsa";
-    var bytes = olfa.ToByteArray();
-    string value = bytes.ConvertToString();
+Convert between strings, byte arrays, and streams with minimal ceremony.
 
-For example, string to stream and viceversa.
+```csharp
+string text = "daskemnlandxioasndslam dasmdpoasmdnasndaslkdmlasmv asmdsa";
 
-    string olfa = "daskemnlandxioasndslam dasmdpoasmdnasndaslkdmlasmv asmdsa";
-    var stream = olfa.ToStream();
-    string value = stream.ConvertToString();
+byte[] bytes = text.ToByteArray();
+string restored = bytes.ConvertToString();
+```
 
-You may read a string with break lines as an enumerable of string
+```csharp
+string text = "daskemnlandxioasndslam dasmdpoasmdnasndaslkdmlasmv asmdsa";
 
-    string olfa = "daskemnlandxioasndslam\ndasmdpoasmdnasndaslkdmlasmv\nasmdsa";
-    var stream = olfa.ToStream();
-    var strings = new List<string>();
-    await foreach (var x in stream.ReadLinesAsync())
-    {
-        strings.Add(x);
-    }
+Stream stream = text.ToStream();
+string restored = stream.ConvertToString();
+```
 
-A simple method to make uppercase the first character.
+`ReadLinesAsync()` turns a stream into `IAsyncEnumerable<string>`.
 
-    string olfa = "dasda";
-    var olfa2 = olfa.ToUpperCaseFirst();
+```csharp
+string text = "line 1\nline 2\nline 3";
+Stream stream = text.ToStream();
 
-A simple method to check if a char is contained at least X times.
+await foreach (var line in stream.ReadLinesAsync())
+{
+    Console.WriteLine(line);
+}
+```
 
-    string value = "abcderfa";
-    bool containsAtLeastTwoAChar = value.ContainsAtLeast(2, 'a');
+Other small helpers:
 
-Replace only the first N occurrences of a substring.
-
-    string result = "aaa".Replace("a", "b", 2); // "bba"
-
----
+```csharp
+string title = "dasda".ToUpperCaseFirst();          // Dasda
+bool hasTwoAs = "abcderfa".ContainsAtLeast(2, 'a');
+string replaced = "aaa".Replace("a", "b", 2);    // bba
+```
 
 ## Encoding: Base64 and Base45
 
 ### Base64
-Convert strings, streams, byte arrays, or any serializable object to/from Base64.
 
 ```csharp
-// Encode
-string encoded = "Hello World".ToBase64();         // string → Base64
-string encoded2 = myStream.ToBase64();             // Stream → Base64
-string encoded3 = myBytes.ToBase64();              // byte[] → Base64
-string encoded4 = myObject.ToBase64();             // any T → JSON → Base64
+string encoded = "Hello World".ToBase64();
+string decoded = encoded.FromBase64();
 
-// Decode
-string decoded = encoded.FromBase64();             // Base64 → string
-MyClass obj = encoded4.FromBase64<MyClass>();      // Base64 → JSON → T
+var payload = new User { Id = 7, Name = "Ada" };
+string encodedObject = payload.ToBase64();
+User decodedObject = encodedObject.FromBase64<User>();
 ```
 
 ### Base45
-Base45 is a compact encoding designed for QR-code-friendly character sets. Same API surface as Base64.
+
+Base45 is handy when you want a compact, QR-code-friendly character set.
 
 ```csharp
-// Encode
 string encoded = "Hello World".ToBase45();
-string encoded2 = myStream.ToBase45();
-string encoded3 = myObject.ToBase45();   // any T → JSON → Base45
-
-// Decode
 string decoded = encoded.FromBase45();
-MyClass obj = encoded.FromBase45<MyClass>();
+
+var payload = new User { Id = 7, Name = "Ada" };
+string encodedObject = payload.ToBase45();
+User decodedObject = encodedObject.FromBase45<User>();
 ```
 
----
+Both object overloads serialize through JSON first.
 
 ## Cryptography (Hashing)
-Compute a deterministic SHA-512 hex hash of any string or serializable object.
+
+`ToHash()` creates a deterministic SHA-512 hexadecimal hash from a string or any serializable object.
 
 ```csharp
-using System.Security.Cryptography;
-
-// Hash a string
 string hash = "my secret".ToHash();
 
-// Hash any serializable type (T → JSON → SHA-512)
-var foo = new Foo { Values = new[] { "aa", "bb" }, X = true };
+var foo = new Foo
+{
+    Values = new[] { "aa", "bb", "cc" },
+    X = true
+};
+
 string hash2 = foo.ToHash();
+Console.WriteLine(foo.ToHash() == hash2); // true
+```
 
-// Hashing is deterministic: same input → same output
-Assert.Equal(foo.ToHash(), foo.ToHash());
+```csharp
+Guid id = Guid.Parse("41e2c840-8ba1-4c0b-8a9b-781747a5de0c");
+string hash = id.ToHash();
+```
+
+## JSON extensions
+
+The JSON helpers are intentionally tiny wrappers over `System.Text.Json`.
+
+```csharp
+var users = new List<User>
+{
+    new User { Id = 1, Name = "Ada" },
+    new User { Id = 2, Name = "Grace" }
+};
+
+string json = users.ToJson();
+List<User> copy = json.FromJson<List<User>>();
+```
+
+```csharp
+object? dynamicCopy = json.FromJson(typeof(List<User>));
+```
+
+```csharp
+await using var stream = json.ToStream();
+List<User> fromStream = await stream.FromJsonAsync<List<User>>();
 ```
 
 ---
 
-## Character separated-value (CSV)
-Transform any kind of IEnumerable data in a CSV string.
+## CSV and Minimization
 
-    string value = _models.ToCsv();
+## CSV
 
+`ToCsv()` flattens objects, nested objects, and enumerable members into a tabular representation.
 
-## Minimization of a model (based on CSV concept)
-It's a brand new idea to serialize any kind of objects (with lesser occupied space of json), the idea comes from Command separated-value standard.
-To serialize
+```csharp
+string csv = models.ToCsv();
+```
 
-    string value = _models.ToMinimize();
+You can configure headers, delimiters, Excel-friendly quoting, and excluded properties.
 
-To deserialize (for instance in a List of a class named CsvModel)
+```csharp
+string csv = users.ToCsv(configuration =>
+{
+    configuration.ForExcel = true;
+    configuration.UseExtendedName = false;
+    configuration.ConfigureHeader(x => x.Id, "Identifier");
+    configuration.ConfigureHeader(x => x.Groups.First().Name, "GroupName");
+    configuration.AvoidProperty(x => x.Password);
+    configuration.Delimiter = ";";
+});
+```
 
-    value.FromMinimization<List<CsvModel>>();
+Configuration options include:
 
-## Extensions for json
-I don't know if you are fed up to write JsonSerializer.Serialize, I do, and so, you may use the extension method to serialize faster.
-To serialize
+- `UseHeader`
+- `Delimiter`
+- `ForExcel`
+- `UseExtendedName`
+- `ConfigureHeader(...)`
+- `AvoidProperty(...)`
 
-    var text = value.ToJson();
+## Minimization
 
-To deserialize in a class (for instance a class named User)
+`ToMinimize()` is a compact serializer designed to occupy less space than JSON for many object graphs.
 
-    var value = text.FromJson<User>();
+```csharp
+string minimized = models.ToMinimize();
+List<CsvModel> restored = minimized.FromMinimization<List<CsvModel>>();
+```
+
+You can also choose the starting separator explicitly.
+
+```csharp
+string minimized = models.ToMinimize('&');
+List<CsvModel> restored = minimized.FromMinimization<List<CsvModel>>('&');
+```
+
+Use `MinimizationPropertyAttribute` when you want deterministic property ordering.
+
+```csharp
+public sealed class CompactUser
+{
+    [MinimizationProperty(0)]
+    public int Id { get; set; }
+
+    [MinimizationProperty(1)]
+    public string? Name { get; set; }
+}
+```
 
 ---
 
-## LINQ Extensions
+## LINQ and Expression Utilities
 
-### RemoveWhere
-Remove elements from arrays, `List<T>`, and `ICollection<T>` based on a predicate. Arrays are resized in-place; collections return the removed count.
+## Serialize and deserialize lambda expressions
+
+Rystem can serialize expression trees to strings and build them back into executable expressions.
 
 ```csharp
-// Array — returns a new resized array
+var q = "dasda";
+var id = Guid.Parse("bf46510b-b7e6-4ba2-88da-cef208aa81f2");
+
+Expression<Func<MakeIt, bool>> expression =
+    x => x.X == q &&
+         x.Samules!.Any(y => y == "ccccde") &&
+         x.Sol &&
+         (x.X.Contains(q) || x.Sol.Equals(true)) &&
+         (x.E == id | x.Id == 32);
+
+string serialized = expression.Serialize();
+Func<MakeIt, bool> compiled = serialized.DeserializeAndCompile<MakeIt, bool>();
+
+List<MakeIt> filtered = makes.Where(compiled).ToList();
+```
+
+The test suite covers scenarios such as:
+
+- `Contains(...)`
+- `Any(...)`
+- enum comparisons
+- `DateTime` comparisons
+- `TimeSpan` comparisons
+- unary `!`
+- nested member access
+
+## Dynamic lambda utilities
+
+You can deserialize to `LambdaExpression`, inspect the inferred result type, convert the return type, and cast back to typed expressions.
+
+```csharp
+Expression<Func<User, int>> selector = x => x.Id;
+string text = selector.Serialize();
+
+LambdaExpression dynamicSelector = text.DeserializeAsDynamic<User>();
+Expression<Func<User, int>> asInt = dynamicSelector.AsExpression<User, int>();
+Expression<Func<User, decimal>> asDecimal = dynamicSelector.AsExpression<User, decimal>();
+
+decimal average = new List<User> { new User { Id = 13 } }.Average(asDecimal.Compile());
+```
+
+```csharp
+var inferred = "x => x.Id == 25".DeserializeAsDynamicAndRetrieveType<User>();
+
+Console.WriteLine(inferred.Type); // System.Boolean
+```
+
+```csharp
+Expression<Func<User, ValueTask<int>>> expression = x => GetUserIdAsync(x);
+LambdaExpression lambda = expression;
+
+decimal id = await lambda.InvokeAsync<decimal>(new User { Id = 13 });
+```
+
+`InvokeAndTransform(...)` is also available when you want a converted return type from a compiled expression.
+
+```csharp
+Expression<Func<User, int>> expression = x => x.Id;
+decimal result = expression.InvokeAndTransform<User, int, decimal>(new User { Id = 13 })!;
+```
+
+You can also extract a property directly from an expression.
+
+```csharp
+PropertyInfo? property = ((Expression<Func<User, int>>)(x => x.Id)).GetPropertyFromExpression();
+```
+
+## Dynamic IQueryable helpers
+
+The package exposes dynamic `IQueryable` operators that accept `LambdaExpression` instead of strongly typed selectors.
+
+Supported helpers include:
+
+- `Average`
+- `Count`
+- `DistinctBy`
+- `GroupBy`
+- `LongCount`
+- `Max`
+- `Min`
+- `OrderBy`
+- `OrderByDescending`
+- `Select`
+- `Sum`
+- `ThenBy`
+- `ThenByDescending`
+- `Where`
+
+```csharp
+Expression<Func<MakeIt, int>> orderExpression = x => x.Id;
+Expression<Func<MakeIt, bool>> predicateExpression = x => x.Id >= 10;
+
+LambdaExpression orderBy = orderExpression.Serialize().DeserializeAsDynamic<MakeIt>();
+LambdaExpression predicate = predicateExpression.Serialize().DeserializeAsDynamic<MakeIt>();
+
+var query = makes.AsQueryable();
+
+var ordered = query.OrderByDescending(orderBy).ThenBy(orderBy).ToList();
+var filtered = query.Where(predicate).ToList();
+var grouped = query.GroupBy(orderBy).ToList();
+var projected = query.Select<MakeIt, decimal>(orderBy).ToList();
+
+var average = query.Average(orderBy);
+var sum = query.Sum(orderBy);
+var count = query.Count(predicate);
+```
+
+`CallMethodAsync(...)` lets you invoke custom async query operators dynamically.
+
+```csharp
+public static class QueryableExtensions
+{
+    public static async Task<IQueryable<T>> GetAsync<T>(
+        this IQueryable<T> queryable,
+        Expression<Func<T, bool>> expression,
+        CancellationToken cancellationToken = default)
+    {
+        await Task.Delay(0);
+        return queryable.Where(expression);
+    }
+}
+
+var result = await query.CallMethodAsync<MakeIt, IQueryable<MakeIt>>(
+    "GetAsync",
+    predicate,
+    typeof(QueryableExtensions));
+```
+
+This is especially useful when you need to bridge runtime-generated selectors with LINQ providers such as Entity Framework.
+
+## RemoveWhere
+
+`RemoveWhere(...)` works on arrays, `ICollection<T>`, and plain `IEnumerable<T>`.
+
+```csharp
 int[] numbers = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-numbers = numbers.RemoveWhere(x => x == 8 || x == 9); // length = 8
+numbers = numbers.RemoveWhere(x => x == 8 || x == 9);
+```
 
-// IEnumerable<T> — lazy, returns filtered sequence
+```csharp
 var filtered = myEnumerable.RemoveWhere(x => x.IsExpired);
+```
 
-// List<T> / ICollection<T> — mutates the collection, returns removed count
+```csharp
 List<Order> orders = GetOrders();
-int removed = orders.RemoveWhere(o => o.Status == OrderStatus.Cancelled);
+int removed = orders.RemoveWhere(x => x.Status == OrderStatus.Cancelled);
 ```
 
-### Async LINQ: AllAsync and AnyAsync
-Async predicates for `IEnumerable<T>` — useful when the condition itself is async.
+## AllAsync and AnyAsync
+
+Use async predicates over a synchronous `IEnumerable<T>`.
 
 ```csharp
-// AllAsync — returns false as soon as one element fails the async predicate
-bool allValid = await myList.AllAsync(async x => await ValidateAsync(x));
+bool allValid = await items.AllAsync(x => ValueTask.FromResult(x.Id >= 0));
+bool anyZero = await items.AnyAsync(x => Task.FromResult(x.Id == 0));
+```
 
-// AnyAsync — returns true as soon as one element passes
-bool anyReady = await myList.AnyAsync(async x => await IsReadyAsync(x));
+Both `Task<bool>` and `ValueTask<bool>` predicates are supported.
 
-// ValueTask variants are also supported
-bool ok = await myList.AllAsync(x => new ValueTask<bool>(x.IsActive));
+## Non-generic IEnumerable helpers
+
+The non-generic helpers are useful when you receive `IEnumerable` at runtime and still need indexed operations.
+
+```csharp
+IEnumerable items = GetItems();
+
+object? value = items.ElementAt(10);
+items.SetElementAt(10, newValue);
+
+bool removed = items.RemoveElementAt(10, out IEnumerable newItems, out object? removedValue);
+```
+
+They work with both `Array` and `IList` implementations.
+
+---
+
+## Reflection and Runtime Tools
+
+## Name of the calling class
+
+`ReflectionHelper` lives in `Rystem.Reflection`.
+
+```csharp
+using Rystem.Reflection;
+
+string name = ReflectionHelper.NameOfCallingClass(deep: 1);
+string fullName = ReflectionHelper.NameOfCallingClass(deep: 1, full: true);
+```
+
+Increase `deep` when you want to walk further up the call stack.
+
+## Cached reflection helpers
+
+The package caches repeated reflection lookups for better reuse.
+
+```csharp
+PropertyInfo[] properties = typeof(MyType).FetchProperties();
+ConstructorInfo[] constructors = typeof(MyType).FecthConstructors();
+FieldInfo[] fields = typeof(MyType).FetchFields();
+MethodInfo[] methods = typeof(MyType).FetchMethods();
+MethodInfo[] staticMethods = typeof(MyType).FetchStaticMethods();
+```
+
+`FetchProperties(...)` can ignore properties decorated with specific attributes.
+
+```csharp
+PropertyInfo[] visibleProperties = typeof(MyType).FetchProperties(typeof(JsonIgnoreAttribute));
+```
+
+## Type relationship helpers
+
+```csharp
+bool sameOrSon = typeof(Folli).IsTheSameTypeOrASon(typeof(Sulo));
+bool sameOrParent = typeof(Sulo).IsTheSameTypeOrAParent(typeof(Folli));
+bool hasInterface = typeof(MyService).HasInterface<IDisposable>();
+```
+
+Instance overloads are available too.
+
+```csharp
+Zalo zalo = new();
+Sulo sulo = new();
+
+Console.WriteLine(zalo.IsTheSameTypeOrASon(sulo));
+Console.WriteLine(sulo.IsTheSameTypeOrAParent(zalo));
+```
+
+## Create default instances
+
+`CreateWithDefault()` builds an instance by recursively creating default constructor arguments and common collection implementations.
+
+```csharp
+public sealed class Foo
+{
+    public IEnumerable<string> Values { get; }
+    public Foo(IEnumerable<string> values) => Values = values;
+}
+
+Foo foo = typeof(Foo).CreateWithDefault<Foo>()!;
+(foo.Values as List<string>)!.Add("aaa");
+```
+
+`CreateWithDefaultConstructorPropertiesAndField()` goes further and populates settable properties and fields as well.
+
+```csharp
+Foo2 foo = typeof(Foo2).CreateWithDefaultConstructorPropertiesAndField<Foo2>()!;
+
+foo.Complex.Add("x", "y");
+(foo.Tiny.Values as List<string>)!.Add("aaa");
+```
+
+## Mock abstract classes and interfaces
+
+Rystem can generate runtime implementations for abstract classes and interfaces.
+
+```csharp
+public abstract class Alzio
+{
+    private protected string X { get; }
+    public string O => X;
+    public string A { get; set; }
+
+    protected Alzio(string x) => X = x;
+}
+
+var mocked = typeof(Alzio).CreateInstance("AAA") as Alzio;
+mocked!.A = "rrrr";
+
+Console.WriteLine(mocked.O); // AAA
+Console.WriteLine(mocked.A); // rrrr
+```
+
+You can also configure the generated type.
+
+```csharp
+Alzio alzio = null!;
+
+var configured = alzio.CreateInstance(configuration =>
+{
+    configuration.IsSealed = false;
+    configuration.CreateNewOneIfExists = true;
+}, "AAA");
+```
+
+## Construct with the best dynamic fit
+
+`ConstructWithBestDynamicFit(...)` matches runtime arguments first against constructor parameters and then against settable properties.
+
+```csharp
+var entity = (MySuperClass)typeof(MySuperClass).ConstructWithBestDynamicFit(3, 4, 5, 6)!;
+var entity2 = Constructor.InvokeWithBestDynamicFit<MySuperClass>(5, 6, 7, 8);
+var interfaceInstance = Constructor.InvokeWithBestDynamicFit<IMogalo>(9, 10, 11, 21);
+```
+
+This is useful when the values are only known at runtime and you still want a best-effort, exact-type match.
+
+## Nullability inspection
+
+`IsNullable()` works on properties, fields, and parameters.
+
+```csharp
+var type = typeof(InModel);
+
+var constructorParameters = type.GetConstructors().First().GetParameters();
+var methodParameters = type.GetMethod(nameof(InModel.SetSomething))!.GetParameters();
+var properties = type.GetProperties();
+var fields = type.GetFields();
+
+Console.WriteLine(constructorParameters[0].IsNullable());
+Console.WriteLine(methodParameters[0].IsNullable());
+Console.WriteLine(properties[0].IsNullable());
+Console.WriteLine(fields[0].IsNullable());
+```
+
+## Property showcase
+
+`ToShowcase()` builds a structured description of a type and can attach extra computed metadata to each flattened property.
+
+```csharp
+var showcase = typeof(Something).ToShowcase(
+    IFurtherParameter.Create("Bootstrap", x => new BootstrapProperty(x)),
+    IFurtherParameter.Create("Title", x => x.NavigationPath));
+
+var first = showcase.FlatProperties.First();
+string title = first.GetProperty<string>("Title");
+BootstrapProperty bootstrap = first.GetProperty<BootstrapProperty>("Bootstrap");
+```
+
+This is handy for metadata-driven UI generation, forms, and schema exploration.
+
+## IL inspection and method signatures
+
+Inspect the body of a method as text or as decoded IL instructions.
+
+```csharp
+MethodInfo method = typeof(Sulo).GetMethod(nameof(Sulo.Something), BindingFlags.Public | BindingFlags.Instance)!;
+
+string body = method.GetBodyAsString();
+List<ILInstruction> instructions = method.GetInstructions();
+string signature = method.ToSignature();
+```
+
+This is useful for diagnostics, analysis tools, or advanced runtime inspection.
+
+## Runtime model builder
+
+Create types dynamically at runtime.
+
+```csharp
+var modelName = "MyBestModel";
+
+Type modelType = Model
+    .Create(modelName)
+    .AddProperty("Primary", typeof(int))
+    .AddProperty("Secondary", typeof(bool))
+    .AddProperty("Name", typeof(string))
+    .AddProperty("Id", typeof(Guid))
+    .AddProperty("InModel", typeof(InModel))
+    .AddParent<SomethingNew>()
+    .Build();
+
+dynamic instance = Model.Construct(modelName);
+instance.Primary = 45;
+instance.B = "Aloa";
+```
+
+This gives you a runtime-generated type plus a strongly discoverable builder API.
+
+## Generic method invocation
+
+`Generics.With(...)` and `Generics.WithStatic(...)` let you bind generic methods by runtime type and invoke them later.
+
+```csharp
+var staticResult = await Generics
+    .WithStatic<SystemReflection>(nameof(StaticCreateAsync), typeof(int))
+    .InvokeAsync(3);
+
+var host = new SystemReflection();
+
+var instanceResult = await Generics
+    .With<SystemReflection>(nameof(CreateAsync), typeof(int))
+    .InvokeAsync(host, 3);
+```
+
+```csharp
+int value = Generics
+    .WithStatic<SystemReflection>(nameof(StaticCreate), typeof(int))
+    .Invoke<int>(3)!;
 ```
 
 ---
 
-## Collections Extensions (non-generic IEnumerable)
-Index-based access, update, and removal on `IEnumerable` (non-generic), with support for both arrays and `IList`.
+## Tasks and Collections
+
+## NoContext and ToResult
+
+`NoContext()` is a small convenience wrapper around `ConfigureAwait(...)`, controlled by `RystemTask.WaitYourStartingThread`.
 
 ```csharp
-IEnumerable items = GetItems();   // could be a List<T> or Array
-
-// Read element at index (0-based)
-object? val = items.ElementAt(5);
-
-// Update element at index
-items.SetElementAt(5, newValue);
-
-// Remove element at index — out newEntities replaces the original collection
-bool removed = items.RemoveElementAt(5, out IEnumerable newItems, out object? removedValue);
+await DoSomethingAsync().NoContext();
+int result = GetValueAsync().ToResult();
 ```
 
----
+If you need to preserve the original synchronization context, set:
 
-## Extensions for Task
-I don't know if you still are fed up to write .ConfigureAwait(false) to eliminate the context waiting for a task. I do.
-[Why should I set the configure await to false?](https://devblogs.microsoft.com/dotnet/configureawait-faq/)
-To set configure await to false
+```csharp
+RystemTask.WaitYourStartingThread = true;
+```
 
-    await {your async task}.NoContext();
+## ToListAsync
 
-Instead, to get the result as synchronous result but with a configure await set to false.
+The package adds a small `IAsyncEnumerable<T>` helper.
 
-    {your async task}.ToResult();
-
-You may change the behavior of your NoContext() or ToResult(), setting (in the bootstrap of your application for example)
-
-    RystemTask.WaitYourStartingThread = true;
-
-When do I need a true? In windows application for example you have to return after a button clicked to the same thread that started the request.
+```csharp
+await using var stream = "line 1\nline 2\nline 3".ToStream();
+List<string> lines = await stream.ReadLinesAsync().ToListAsync();
+```
 
 ## TaskManager
-When you need to run a list of tasks concurrently you may use this static method.
+
+`TaskManager` helps you run a bounded number of tasks concurrently.
 
 ### WhenAll
-Run a delegate `{times}` times (or over a list of objects) with a bounded concurrency level. With `runEverytimeASlotIsFree = true` a new task starts as soon as any running task finishes; otherwise tasks are awaited in batches.
 
 ```csharp
-// Integer-indexed overload
 var bag = new ConcurrentBag<int>();
-await TaskManager.WhenAll(ExecuteAsync, times, concurrentTasks, runEverytimeASlotIsFree).NoContext();
-Assert.Equal(times, bag.Count);
+
+await TaskManager.WhenAll(ExecuteAsync, times: 45, concurrentTasks: 12, runEverytimeASlotIsFree: true).NoContext();
 
 async Task ExecuteAsync(int i, CancellationToken cancellationToken)
 {
     await Task.Delay(i * 20, cancellationToken).NoContext();
     bag.Add(i);
 }
+```
 
-// Typed-list overload
-var orders = GetOrders();   // List<Order>
-var results = new ConcurrentBag<Order>();
+It also works with collections of objects.
+
+```csharp
 await TaskManager.WhenAll(ProcessAsync, orders, concurrentTasks: 5).NoContext();
 
 async Task ProcessAsync(Order order, CancellationToken cancellationToken)
 {
     await SaveAsync(order, cancellationToken).NoContext();
-    results.Add(order);
 }
 ```
 
 ### WhenAtLeast
-Run tasks until at least `{atLeast}` of them have completed, then stop waiting for the rest.
+
+`WhenAtLeast(...)` stops waiting as soon as the requested number of tasks has completed.
 
 ```csharp
 var bag = new ConcurrentBag<int>();
-await TaskManager.WhenAtLeast(ExecuteAsync, times, atLeast, concurrentTasks).NoContext();
 
-Assert.True(bag.Count < times);
-Assert.True(bag.Count >= atLeast);
+await TaskManager.WhenAtLeast(ExecuteAsync, times: 45, atLeast: 16, concurrentTasks: 12).NoContext();
 
 async Task ExecuteAsync(int i, CancellationToken cancellationToken)
 {
@@ -875,24 +1156,29 @@ async Task ExecuteAsync(int i, CancellationToken cancellationToken)
 }
 ```
 
-## Concurrency
+## ConcurrentList
 
-### ConcurrentList
-You can use the `ConcurrentList<T>` implementation to have the `List<T>` behavior with lock operations. It implements `IList<T>` and locks for every mutating operation (`Add`, `Remove`, `Insert`, `Clear`, etc.).
+`ConcurrentList<T>` is a small thread-safe wrapper around `List<T>` for common list operations.
 
 ```csharp
 var items = new ConcurrentList<MyClass>();
+
 items.Add(new MyClass());
+items.Insert(0, new MyClass());
 items.RemoveAt(0);
-int count = items.Count;
+
+Console.WriteLine(items.Count);
 ```
+
+Use it when you want a simple `IList<T>` implementation with locking around the common mutating APIs.
 
 ---
 
-# Utilities
+## Utilities
 
 ## AsyncEnumerable.Empty
-A typed static empty `IAsyncEnumerable<T>` — useful as a default/fallback value without allocating resources.
+
+`AsyncEnumerable<T>.Empty` gives you a typed empty `IAsyncEnumerable<T>`.
 
 ```csharp
 using System.Collection.Generics;
@@ -901,37 +1187,52 @@ IAsyncEnumerable<MyClass> empty = AsyncEnumerable<MyClass>.Empty;
 
 await foreach (var item in empty)
 {
-    // loop body never executes
+    // never reached
 }
 ```
 
----
+## Programming language conversion
 
-## Programming Language Conversion
-Convert C# `Type` definitions to other programming language representations. Currently supports **TypeScript**.
+The package can convert CLR types into other language representations. Right now it supports TypeScript.
 
 ```csharp
 using System.ProgrammingLanguage;
 
-// Convert a single type
-ProgrammingLanguangeResponse ts = typeof(MyDto).ConvertAs(ProgrammingLanguageType.Typescript);
-Console.WriteLine(ts.Text);      // export type MyDto = { ... }
-Console.WriteLine(ts.MimeType);  // application/typescript
-
-// Convert multiple types at once (handles nested/referenced types automatically)
-ProgrammingLanguangeResponse result = new[] { typeof(OrderDto), typeof(ProductDto) }
+ProgrammingLanguangeResponse ts = typeof(MyDto)
     .ConvertAs(ProgrammingLanguageType.Typescript);
 
-// With a custom name for the root type
+Console.WriteLine(ts.Text);
+Console.WriteLine(ts.MimeType);
+```
+
+```csharp
+ProgrammingLanguangeResponse ts = new[] { typeof(OrderDto), typeof(ProductDto) }
+    .ConvertAs(ProgrammingLanguageType.Typescript);
+```
+
+```csharp
 ProgrammingLanguangeResponse renamed = typeof(MyInternalClass)
     .ConvertAs(ProgrammingLanguageType.Typescript, "PublicDto");
 ```
 
-The converter maps:
-- Numeric primitives → `number`  
-- `bool` → `boolean`  
-- `DateTime` / `DateTimeOffset` → `Date`  
-- Enums → `export enum { ... }`  
-- Arrays / `IEnumerable<T>` → `Array<T>`  
-- `IDictionary<K,V>` → `Map<K, V>`  
-- Nested class types → referenced by name and emitted separately
+The generated output understands common primitives, arrays, enumerables, dictionaries, enums, and nested types. It also respects `JsonPropertyNameAttribute` when present.
+
+---
+
+## Repository examples
+
+If you want to see more real-world examples, the best references are the repository tests:
+
+- Discriminated unions: [src/Core/Test/Rystem.Test.UnitTest/System/DiscriminatedUnionTests.cs](https://github.com/KeyserDSoze/Rystem/blob/master/src/Core/Test/Rystem.Test.UnitTest/System/DiscriminatedUnionTests.cs)
+- LINQ and dynamic queryable helpers: [src/Core/Test/Rystem.Test.UnitTest/System.Linq/SystemLinq.cs](https://github.com/KeyserDSoze/Rystem/blob/master/src/Core/Test/Rystem.Test.UnitTest/System.Linq/SystemLinq.cs)
+- Expression serialization and dynamic lambdas: [src/Core/Test/Rystem.Test.UnitTest/System.Linq.Expression/SystemLinqExpressions.cs](https://github.com/KeyserDSoze/Rystem/blob/master/src/Core/Test/Rystem.Test.UnitTest/System.Linq.Expression/SystemLinqExpressions.cs)
+- Reflection helpers: [src/Core/Test/Rystem.Test.UnitTest/System.Reflection/ReflectionTest.cs](https://github.com/KeyserDSoze/Rystem/blob/master/src/Core/Test/Rystem.Test.UnitTest/System.Reflection/ReflectionTest.cs)
+- Generic reflection and constructor fitting: [src/Core/Test/Rystem.Test.UnitTest/System.Reflection/SystemReflection.cs](https://github.com/KeyserDSoze/Rystem/blob/master/src/Core/Test/Rystem.Test.UnitTest/System.Reflection/SystemReflection.cs)
+- Property showcase: [src/Core/Test/Rystem.Test.UnitTest/System.Reflection/PropertyHandlerTest.cs](https://github.com/KeyserDSoze/Rystem/blob/master/src/Core/Test/Rystem.Test.UnitTest/System.Reflection/PropertyHandlerTest.cs)
+- Runtime model builder: [src/Core/Test/Rystem.Test.UnitTest/System.Reflection/ModelTest.cs](https://github.com/KeyserDSoze/Rystem/blob/master/src/Core/Test/Rystem.Test.UnitTest/System.Reflection/ModelTest.cs)
+- IL reader: [src/Core/Test/Rystem.Test.UnitTest/System.Reflection/IlReaderTest.cs](https://github.com/KeyserDSoze/Rystem/blob/master/src/Core/Test/Rystem.Test.UnitTest/System.Reflection/IlReaderTest.cs)
+- CSV: [src/Core/Test/Rystem.Test.UnitTest/System.Text.Csv/CsvTest.cs](https://github.com/KeyserDSoze/Rystem/blob/master/src/Core/Test/Rystem.Test.UnitTest/System.Text.Csv/CsvTest.cs)
+- Minimization: [src/Core/Test/Rystem.Test.UnitTest/System.Text.Minimization/MinimizationTest.cs](https://github.com/KeyserDSoze/Rystem/blob/master/src/Core/Test/Rystem.Test.UnitTest/System.Text.Minimization/MinimizationTest.cs)
+- Task helpers: [src/Core/Test/Rystem.Test.UnitTest/System.Threading.Tasks/TasksTest.cs](https://github.com/KeyserDSoze/Rystem/blob/master/src/Core/Test/Rystem.Test.UnitTest/System.Threading.Tasks/TasksTest.cs)
+
+The current README is intentionally long because this package covers a lot of independent utilities.
