@@ -40,6 +40,9 @@ builder.Services.AddOpenApi();
 // Register Calculator Service (used by Calculator scene)
 builder.Services.AddSingleton<ICalculatorService, CalculatorService>();
 
+// Register Shape Service (used by AnyOf repro scene)
+builder.Services.AddSingleton<IShapeService, ShapeService>();
+
 // Configure Azure OpenAI (from user secrets or appsettings)
 var azureOpenAIEndpoint = builder.Configuration["AzureOpenAI:Endpoint"];
 var azureOpenAIKey = builder.Configuration["AzureOpenAI:Key"];
@@ -78,16 +81,16 @@ else
     builder.Services.AddSingleton<IChatClient>(new MockChatClient());
 }
 
-// ── Foundry Local adapter (local AI model) ─────────────────────────────
-var foundryModel = builder.Configuration["FoundryLocal:Model"] ?? "phi-4-mini";
-var foundryUrl = builder.Configuration["FoundryLocal:WebServiceUrl"] ?? "http://127.0.0.1:5272";
+//// ── Foundry Local adapter (local AI model) ─────────────────────────────
+//var foundryModel = builder.Configuration["FoundryLocal:Model"] ?? "phi-4-mini";
+//var foundryUrl = builder.Configuration["FoundryLocal:WebServiceUrl"] ?? "http://127.0.0.1:5272";
 
-builder.Services.AddAdapterForFoundryLocal("foundry", settings =>
-{
-    settings.Model = foundryModel;
-    settings.WebServiceUrl = foundryUrl;
-    settings.AppName = "Rystem.PlayFramework.Test";
-});
+//builder.Services.AddAdapterForFoundryLocal("foundry", settings =>
+//{
+//    settings.Model = foundryModel;
+//    settings.WebServiceUrl = foundryUrl;
+//    settings.AppName = "Rystem.PlayFramework.Test";
+//});
 
 // Configure PlayFramework with Chat scene
 builder.Services.AddPlayFramework("default", frameworkBuilder =>
@@ -179,6 +182,32 @@ builder.Services.AddPlayFramework("default", frameworkBuilder =>
                         .WithMethod<double>(x => x.Subtract(default, default), "Subtract", "Subtracts the second number from the first. Use for subtraction operations (e.g., '5 minus 3', '5-3').")
                         .WithMethod<double>(x => x.Multiply(default, default), "Multiply", "Multiplies two numbers together. Use for multiplication operations (e.g., '5 times 7.69', '5*7.69', '5 per 7.69' when 'per' means multiplication).")
                         .WithMethod<double>(x => x.Divide(default, default), "Divide", "Divides the first number by the second. Use for division operations (e.g., '5 divided by 7.69', '5/7.69', '5 diviso 7.69').");
+                });
+        })
+        .AddScene("Shape Operations",
+            "Use this scene for any geometry or shape-related request: describing shapes, calculating areas/perimeters, " +
+            "or querying shape info. Keywords: 'shape', 'circle', 'rectangle', 'triangle', 'area', 'perimeter', " +
+            "'forma', 'cerchio', 'rettangolo', 'triangolo', 'area', 'perimetro', 'describe shape', 'calculate area'.",
+            sceneBuilder =>
+        {
+            sceneBuilder
+                .WithDescriptionFromTools()
+                .WithActors(actorBuilder =>
+                {
+                    actorBuilder
+                        .AddActor("Describe shapes clearly and accurately.")
+                        .AddActor("Calculate areas using the correct formula for each shape.")
+                        .AddActor("When the user provides a shape identifier it can be either a string name or a numeric code (1=circle, 2=rectangle, 3=triangle).");
+                })
+                .WithService<IShapeService>(serviceBuilder =>
+                {
+                    serviceBuilder
+                        .WithMethod<string>(x => x.DescribeShape(default!), "DescribeShape",
+                            "Describes a shape by its name (e.g. 'circle') or numeric code (1=circle, 2=rectangle, 3=triangle).")
+                        .WithMethod<double>(x => x.CalculateArea(default!), "CalculateArea",
+                            "Calculates the area of a shape. Provide either a CircleArgs (with Radius) or a RectangleArgs (with Width and Height).")
+                        .WithMethod<string>(x => x.GetShapeInfo(default!, default), "GetShapeInfo",
+                            "Returns a full description of a shape plus optional area override. Shape identifier can be a name or numeric code; area override can be a number or a label string.");
                 });
         })
         .AddScene("Technical Documentation Estimator",
