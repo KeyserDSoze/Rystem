@@ -32,13 +32,11 @@ The current `10.x` package targets `net10.0`.
 
 After installation, most APIs are available through standard `using` directives that match the namespace they extend. The main exception is `ReflectionHelper`, which lives in `Rystem.Reflection`.
 
+If you move deeper into the ecosystem, [`Rystem.DependencyInjection`](https://github.com/KeyserDSoze/Rystem/blob/master/src/Core/Rystem.DependencyInjection/README.md) builds DI modules on top of this package, and [`Rystem.DependencyInjection.Web`](https://github.com/KeyserDSoze/Rystem/blob/master/src/Core/Rystem.DependencyInjection.Web/README.md) adds ASP.NET Core runtime rebuilding on top of the DI layer.
+
 ## Table of Contents
 
-- [Rystem](#rystem)
-- [Resources](#resources)
-- [Installation](#installation)
-- [Table of Contents](#table-of-contents)
-- [What is inside this package](#what-is-inside-this-package)
+- [Package Architecture](#package-architecture)
 - [Discriminated Unions in C#](#discriminated-unions-in-c)
   - [Define a union](#define-a-union)
   - [Match, Switch, and TryGet](#match-switch-and-tryget)
@@ -89,11 +87,11 @@ After installation, most APIs are available through standard `using` directives 
 - [Utilities](#utilities)
 - [AsyncEnumerable.Empty](#asyncenumerableempty)
 - [Programming language conversion](#programming-language-conversion)
-- [Repository examples](#repository-examples)
+- [Repository Examples](#repository-examples)
 
 ---
 
-## What is inside this package
+## Package Architecture
 
 | Area                   | Main APIs                                                                                                                                                       |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1219,7 +1217,7 @@ The generated output understands common primitives, arrays, enumerables, diction
 
 ---
 
-## Repository examples
+## Repository Examples
 
 If you want to see more real-world examples, the best references are the repository tests:
 

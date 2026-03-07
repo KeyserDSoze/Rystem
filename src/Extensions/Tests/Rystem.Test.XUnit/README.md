@@ -1,249 +1,310 @@
-﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
 
 ## Rystem.Test.XUnit
 
-XUnit integration testing framework with built-in **Dependency Injection** and **ASP.NET Core Test Host** support. Based on [Xunit.DependencyInjection](https://github.com/pengweiqhca/Xunit.DependencyInjection), it lets you inject services directly into test class constructors and optionally spin up a real in-process ASP.NET Core server for HTTP integration tests.
+`Rystem.Test.XUnit` is a test-project helper for xUnit v3 that combines constructor injection with an optional in-process ASP.NET Core test host.
 
-## 📦 Installation
+The package builds on `Xunit.DependencyInjection` and adds a `StartupHelper` model so your test project can choose between:
+
+- DI-only tests
+- full HTTP integration tests with `Microsoft.AspNetCore.TestHost`
+
+It is most useful when:
+
+- you want test classes to receive services directly in their constructors
+- you want one reusable test startup pipeline for a whole test assembly
+- you want an in-process API host without managing your own `WebApplicationFactory`
+- you want to reuse the same Rystem DI and runtime service patterns inside tests
+
+The strongest source-backed examples are the package implementation itself and the real startup used by `src/Core/Test/Rystem.Test.UnitTest/Startup.cs` plus the HTTP tests in `src/Core/Test/Rystem.Test.UnitTest/RuntimeServiceProvider/RuntimeServiceProviderTest.cs`.
+
+## Resources
+
+- Complete Documentation: [https://rystem.net](https://rystem.net)
+- MCP Server for AI: [https://rystem.cloud/mcp](https://rystem.cloud/mcp)
+- Discord Community: [https://discord.gg/tkWvy4WPjt](https://discord.gg/tkWvy4WPjt)
+- Support the Project: [https://www.buymeacoffee.com/keyserdsoze](https://www.buymeacoffee.com/keyserdsoze)
+
+## Installation
 
 ```bash
 dotnet add package Rystem.Test.XUnit
 ```
 
-**Recommended test project packages:**
+The current `10.x` package targets `net10.0` and references:
 
-```xml
-<ItemGroup>
-  <PackageReference Include="Rystem.Test.XUnit" Version="10.0.6" />
-  <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
-  <PackageReference Include="xunit.v3" Version="3.2.2" />
-  <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4">
-    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    <PrivateAssets>all</PrivateAssets>
-  </PackageReference>
-</ItemGroup>
-```
+- `Microsoft.NET.Test.Sdk`
+- `Microsoft.AspNetCore.TestHost`
+- `xunit.v3`
+- `Xunit.DependencyInjection`
+- `Rystem.DependencyInjection.Web`
+- `Rystem.Concurrency`
 
-> **Requires XUnit v3.** The `xunit.v3` package replaces the old `xunit` package.
+The package is designed for xUnit v3 projects, not the older `xunit` package line.
+
+## Package Architecture
+
+The package is centered around three main pieces.
+
+| Piece | Purpose |
+|---|---|
+| `StartupHelper` | Declarative startup model for the test project |
+| `HostTester` | Lazily creates and starts the shared in-process test host |
+| `TestHttpClientFactory` | Exposes `IHttpClientFactory` backed by the shared `TestServer` |
+
+At a high level, the flow is:
+
+- xUnit bootstraps the test assembly through `Xunit.DependencyInjection`
+- your test project provides a `Startup : StartupHelper`
+- `ConfigureHost(...)` builds configuration for the test run
+- `ConfigureServices(...)` either configures DI only or starts the shared test host
+- constructor injection works for all test classes in the assembly
 
 ## Table of Contents
 
-- [Rystem.Test.XUnit](#rystemtestxunit)
-- [📦 Installation](#-installation)
-- [Table of Contents](#table-of-contents)
+- [Package Architecture](#package-architecture)
 - [How it Works](#how-it-works)
 - [Implement a Startup Class](#implement-a-startup-class)
-- [StartupHelper — Reference](#startuphelper--reference)
-  - [Abstract members (must override)](#abstract-members-must-override)
-  - [Virtual members (override if needed)](#virtual-members-override-if-needed)
-- [Scenario 1: DI-only (no HTTP server)](#scenario-1-di-only-no-http-server)
-- [Scenario 2: Full API integration with Test Host](#scenario-2-full-api-integration-with-test-host)
-- [Test Server Behaviour](#test-server-behaviour)
+- [StartupHelper Reference](#startuphelper-reference)
+  - [Required members](#required-members)
+  - [Optional members](#optional-members)
+- [DI-only Tests](#di-only-tests)
+- [HTTP Integration Tests with Test Host](#http-integration-tests-with-test-host)
+- [Shared Test Server Behavior](#shared-test-server-behavior)
 - [IHttpClientFactory in Tests](#ihttpclientfactory-in-tests)
+- [Repository Examples](#repository-examples)
 
 ---
 
 ## How it Works
 
-`Rystem.Test.XUnit` builds on `Xunit.DependencyInjection` to wire a standard `IHostBuilder` into the XUnit process. You provide a `Startup` class that extends `StartupHelper`; the framework calls it the same way ASP.NET Core calls a `Startup` at app startup.
+`StartupHelper` exposes two framework-facing methods that `Xunit.DependencyInjection` can call:
 
-- **`ConfigureHost`** — loads `appsettings.json` + User Secrets + environment variables.
-- **`ConfigureServices`** — optionally boots an in-process `TestServer` (one per test run, created lazily once and shared), then calls your `ConfigureClientServices` to populate the DI container that test classes consume.
-- Constructor injection then works automatically in every test class.
+- `ConfigureHost(IHostBuilder)`
+- `ConfigureServices(IServiceCollection, HostBuilderContext)`
+
+From the current implementation:
+
+- `ConfigureHost(...)` loads `AppSettingsFileName`, then optional user secrets, then environment variables
+- `ConfigureServices(...)` checks `HasTestHost`
+- if `HasTestHost = true`, it calls `HostTester.CreateHostServerAsync(...)`
+- the shared `TestHttpClientFactory` is then registered into the test DI container
+- `ConfigureClientServices(...)` always runs and is where you add the services that test classes consume
+
+So the package gives you one central startup object for both configuration and test DI wiring.
 
 ---
 
 ## Implement a Startup Class
 
-Create a `Startup` class in your test project that extends `StartupHelper`:
+Create a `Startup` class in the test project that inherits from `StartupHelper`.
 
 ```csharp
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Rystem.Test.XUnit;
 
-namespace MyApp.Tests;
-
-public class Startup : StartupHelper
-{
-    protected override string? AppSettingsFileName => "appsettings.test.json";
-    protected override bool HasTestHost => false; // set true for HTTP tests
-    protected override Type? TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration => typeof(Startup);
-    protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => null; // only needed when HasTestHost = true
-
-    protected override IServiceCollection ConfigureClientServices(IServiceCollection services, IConfiguration configuration)
-    {
-        services.AddMyBusinessLogic();
-        services.AddMyRepositories();
-        return services;
-    }
-}
-```
-
----
-
-## StartupHelper — Reference
-
-### Abstract members (must override)
-
-| Member | Description |
-|---|---|
-| `AppSettingsFileName` | Path to the appsettings file to load (e.g. `"appsettings.test.json"`) |
-| `HasTestHost` | `true` to start an in-process ASP.NET Core `TestServer`; `false` for DI-only |
-| `TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration` | Type from the assembly whose User Secrets to load; usually `typeof(Startup)` |
-| `TypeToChooseTheRightAssemblyWithControllersToMap` | Type from the API assembly to discover controllers from; `null` when `HasTestHost = false` |
-| `ConfigureClientServices` | Register services consumed by test classes (HTTP clients, helpers, mocks, …) |
-
-### Virtual members (override if needed)
-
-| Member | Default | Description |
-|---|---|---|
-| `WithHttps` | `true` | Use `https://localhost:443` for the test server; `false` for plain HTTP |
-| `PreserveExecutionContext` | `false` | Preserve `AsyncLocal<T>` context across async calls in the test server |
-| `AddHealthCheck` | `true` | Add a `/healthz` endpoint; framework validates it returns `Healthy` after server start |
-| `ConfigureServerServicesAsync` | no-op | Register services for the test server DI container |
-| `ConfigureServerMiddlewareAsync` | no-op | Configure the test server's middleware pipeline |
-
----
-
-## Scenario 1: DI-only (no HTTP server)
-
-Use this when testing services, repositories, and business logic that don't require HTTP.
-
-```csharp
-public class Startup : StartupHelper
+public sealed class Startup : StartupHelper
 {
     protected override string? AppSettingsFileName => "appsettings.test.json";
     protected override bool HasTestHost => false;
     protected override Type? TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration => typeof(Startup);
     protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => null;
 
-    protected override IServiceCollection ConfigureClientServices(IServiceCollection services, IConfiguration configuration)
+    protected override IServiceCollection ConfigureClientServices(
+        IServiceCollection services,
+        IConfiguration configuration)
     {
-        services.AddDbContext<MyDbContext>(opt => opt.UseInMemoryDatabase("TestDb"));
+        services.AddMyBusinessLogic();
+        return services;
+    }
+}
+```
+
+The real project already contains a concrete example in `src/Core/Test/Rystem.Test.UnitTest/Startup.cs`, where:
+
+- `HasTestHost` is `true`
+- controllers are mapped from the API assembly containing `ServiceController`
+- client DI gets an `HttpClient` named `client`
+- server DI gets application services from `AddTestServices()`
+
+---
+
+## StartupHelper Reference
+
+### Required members
+
+`StartupHelper` requires these members:
+
+| Member | Purpose |
+|---|---|
+| `AppSettingsFileName` | Test configuration file name, for example `appsettings.test.json` |
+| `HasTestHost` | Enables or disables the in-process ASP.NET Core host |
+| `TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration` | Selects the assembly used for user secrets discovery |
+| `TypeToChooseTheRightAssemblyWithControllersToMap` | Selects the controller assembly for the test host |
+| `ConfigureClientServices(...)` | Registers services consumed directly by test classes |
+
+Even when the host is enabled, `ConfigureClientServices(...)` is still the place for the services injected into the tests themselves.
+
+### Optional members
+
+These virtual members can be overridden when needed:
+
+| Member | Default | Purpose |
+|---|---|---|
+| `WithHttps` | `true` | Configures the in-process server base address as `https://localhost:443` |
+| `PreserveExecutionContext` | `false` | Passes through to `TestServerOptions.PreserveExecutionContext` |
+| `AddHealthCheck` | `true` | Adds `/healthz` and validates host startup through it |
+| `ConfigureServerServicesAsync(...)` | no-op | Registers services inside the test server container |
+| `ConfigureServerMiddlewareAsync(...)` | no-op | Configures the in-process middleware pipeline |
+
+If `HasTestHost` is `false`, the server-specific members are effectively ignored.
+
+---
+
+## DI-only Tests
+
+Use this mode when you only need constructor injection and no HTTP pipeline.
+
+```csharp
+public sealed class Startup : StartupHelper
+{
+    protected override string? AppSettingsFileName => "appsettings.test.json";
+    protected override bool HasTestHost => false;
+    protected override Type? TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration => typeof(Startup);
+    protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => null;
+
+    protected override IServiceCollection ConfigureClientServices(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
         services.AddMyRepositories();
         services.AddMyBusinessLogic();
         return services;
     }
 }
 
-public class OrderServiceTest
+public sealed class OrderServiceTest
 {
     private readonly IOrderService _orderService;
 
-    // Constructor injection — works automatically
     public OrderServiceTest(IOrderService orderService)
-        => _orderService = orderService;
+    {
+        _orderService = orderService;
+    }
 
     [Fact]
     public async Task CreateOrder_ShouldReturnValidOrder()
     {
         var order = await _orderService.CreateAsync(new CreateOrderRequest { ProductId = 1 });
-
         Assert.NotNull(order);
-        Assert.True(order.Id > 0);
-    }
-
-    [Theory]
-    [InlineData(1)]
-    [InlineData(2)]
-    public async Task GetOrder_ShouldReturnCorrectProduct(int productId)
-    {
-        var order = await _orderService.CreateAsync(new CreateOrderRequest { ProductId = productId });
-        var retrieved = await _orderService.GetAsync(order.Id);
-
-        Assert.Equal(productId, retrieved.ProductId);
     }
 }
 ```
 
+In this mode, the package behaves mainly as an xUnit DI bootstrapper.
+
 ---
 
-## Scenario 2: Full API integration with Test Host
+## HTTP Integration Tests with Test Host
 
-Use this for end-to-end HTTP testing against a real ASP.NET Core pipeline running in-process.
+Use this mode when the tests should hit a real ASP.NET Core pipeline in-process.
+
+A trimmed version looks like this:
 
 ```csharp
 using Microsoft.AspNetCore.Builder;
 
-public class Startup : StartupHelper
+public sealed class Startup : StartupHelper
 {
     protected override string? AppSettingsFileName => "appsettings.test.json";
     protected override bool HasTestHost => true;
-    protected override bool WithHttps => true;
-    protected override bool AddHealthCheck => true;
-    protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => typeof(Program); // API assembly
     protected override Type? TypeToChooseTheRightAssemblyToRetrieveSecretsForConfiguration => typeof(Startup);
+    protected override Type? TypeToChooseTheRightAssemblyWithControllersToMap => typeof(Program);
 
-    // Services for test classes (HTTP clients, helpers)
-    protected override IServiceCollection ConfigureClientServices(IServiceCollection services, IConfiguration configuration)
+    protected override IServiceCollection ConfigureClientServices(
+        IServiceCollection services,
+        IConfiguration configuration)
     {
-        services.AddHttpClient<IMyApiClient, MyApiClient>(client =>
+        services.AddHttpClient("client", x =>
         {
-            client.BaseAddress = new Uri("https://localhost");
+            x.BaseAddress = new Uri("https://localhost:443");
         });
         return services;
     }
 
-    // Services for the in-process test server
-    protected override async ValueTask ConfigureServerServicesAsync(IServiceCollection services, IConfiguration configuration)
+    protected override ValueTask ConfigureServerServicesAsync(
+        IServiceCollection services,
+        IConfiguration configuration)
     {
         services.AddControllers();
         services.AddMyApiServices();
-        services.AddDbContext<MyDbContext>(opt =>
-            opt.UseInMemoryDatabase($"TestDb_{Guid.NewGuid()}"));
+        return ValueTask.CompletedTask;
     }
 
-    // Middleware pipeline for the in-process test server
-    protected override async ValueTask ConfigureServerMiddlewareAsync(IApplicationBuilder app, IServiceProvider serviceProvider)
+    protected override ValueTask ConfigureServerMiddlewareAsync(
+        IApplicationBuilder app,
+        IServiceProvider serviceProvider)
     {
         app.UseRouting();
-        app.UseAuthentication();
-        app.UseAuthorization();
         app.UseEndpoints(endpoints => endpoints.MapControllers());
-    }
-}
-
-public class BooksApiTest
-{
-    private readonly IMyApiClient _client;
-
-    public BooksApiTest(IMyApiClient client) => _client = client;
-
-    [Fact]
-    public async Task GetBooks_ShouldReturnNonEmptyList()
-    {
-        var books = await _client.GetBooksAsync();
-        Assert.NotEmpty(books);
-    }
-
-    [Theory]
-    [InlineData("Clean Code")]
-    [InlineData("DDD")]
-    public async Task CreateBook_ThenGet_ShouldMatch(string title)
-    {
-        var created = await _client.CreateBookAsync(new CreateBookRequest { Title = title });
-        var retrieved = await _client.GetBookByIdAsync(created.Id);
-
-        Assert.Equal(title, retrieved.Title);
+        return ValueTask.CompletedTask;
     }
 }
 ```
 
+The real repository example is `src/Core/Test/Rystem.Test.UnitTest/Startup.cs`.
+
+And a real HTTP test using constructor injection is `src/Core/Test/Rystem.Test.UnitTest/RuntimeServiceProvider/RuntimeServiceProviderTest.cs`:
+
+```csharp
+public class RuntimeServiceProviderTest
+{
+    private readonly HttpClient _httpClient;
+
+    public RuntimeServiceProviderTest(IHttpClientFactory httpClientFactory)
+    {
+        _httpClient = httpClientFactory.CreateClient("client");
+    }
+
+    [Fact]
+    public async Task AddOneServiceAtRuntimeAsync()
+    {
+        var response = await _httpClient.GetAsync("Service/Get");
+        Assert.True(response.IsSuccessStatusCode);
+    }
+}
+```
+
+That pattern is the core value of the package: tests can just request `IHttpClientFactory`, typed clients, repositories, or any other service directly in their constructors.
+
 ---
 
-## Test Server Behaviour
+## Shared Test Server Behavior
 
-- The in-process `TestServer` is **created once** per test run and shared across all test classes. A lock ensures only one instance is ever started, even with parallelism.
-- If `AddHealthCheck = true`, the framework performs a `GET /healthz` after startup and throws if it does not return `Healthy`.
-- The test server uses `Microsoft.AspNetCore.TestHost` — no real network port is opened; all HTTP traffic is in-process.
-- Controllers are discovered via `AddApplicationPart` using the assembly of `TypeToChooseTheRightAssemblyWithControllersToMap`.
+When `HasTestHost = true`, `HostTester` creates the in-process server lazily and only once.
+
+Important implementation details:
+
+- server creation is guarded with `Rystem.Concurrency` via `ILock`
+- the built host is stored on the singleton `TestHttpClientFactory.Instance`
+- later test classes reuse the same host instead of rebuilding it
+- controllers are discovered with `AddApplicationPart(...)`
+- if `AddHealthCheck = true`, the framework maps `/healthz` and performs a startup probe after the host starts
+
+No real TCP port is opened. The package uses `Microsoft.AspNetCore.TestHost`, so requests stay in-process.
 
 ---
 
 ## IHttpClientFactory in Tests
 
-When `HasTestHost = true`, an `IHttpClientFactory` singleton backed by the test server is registered automatically in the client DI container. Any `HttpClient` created through it connects directly to the in-process server with these default headers pre-set:
+When the test host is enabled, `ConfigureServices(...)` registers:
+
+```csharp
+services.AddSingleton<IHttpClientFactory>(TestHttpClientFactory.Instance);
+```
+
+`TestHttpClientFactory` creates clients from the shared `TestServer` and pre-populates these request headers:
 
 | Header | Value |
 |---|---|
@@ -251,22 +312,43 @@ When `HasTestHost = true`, an `IHttpClientFactory` singleton backed by the test 
 | `Access-Control-Request-Method` | `POST` |
 | `Access-Control-Request-Headers` | `X-Requested-With` |
 
-Inject `IHttpClientFactory` directly, or use typed clients registered in `ConfigureClientServices`:
+That means tests can either:
+
+- inject `IHttpClientFactory` directly
+- register named or typed clients in `ConfigureClientServices(...)`
+
+Example:
 
 ```csharp
-public class MyTest
+public sealed class HealthCheckTest
 {
-    private readonly HttpClient _http;
+    private readonly HttpClient _httpClient;
 
-    public MyTest(IHttpClientFactory factory)
-        => _http = factory.CreateClient();
+    public HealthCheckTest(IHttpClientFactory factory)
+    {
+        _httpClient = factory.CreateClient();
+    }
 
     [Fact]
     public async Task HealthCheck_ShouldBeHealthy()
     {
-        var response = await _http.GetAsync("/healthz");
+        var response = await _httpClient.GetAsync("/healthz");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 }
 ```
 
+---
+
+## Repository Examples
+
+The most useful references for this package are:
+
+- `StartupHelper`: [src/Extensions/Tests/Rystem.Test.XUnit/TestHostWithDi/StartupHelper.cs](https://github.com/KeyserDSoze/Rystem/blob/master/src/Extensions/Tests/Rystem.Test.XUnit/TestHostWithDi/StartupHelper.cs)
+- Shared test host builder: [src/Extensions/Tests/Rystem.Test.XUnit/TestHostWithDi/HostTester.cs](https://github.com/KeyserDSoze/Rystem/blob/master/src/Extensions/Tests/Rystem.Test.XUnit/TestHostWithDi/HostTester.cs)
+- Test HTTP client factory: [src/Extensions/Tests/Rystem.Test.XUnit/TestHostWithDi/TestHttpClientFactory.cs](https://github.com/KeyserDSoze/Rystem/blob/master/src/Extensions/Tests/Rystem.Test.XUnit/TestHostWithDi/TestHttpClientFactory.cs)
+- Real startup example: [src/Core/Test/Rystem.Test.UnitTest/Startup.cs](https://github.com/KeyserDSoze/Rystem/blob/master/src/Core/Test/Rystem.Test.UnitTest/Startup.cs)
+- Real HTTP integration tests: [src/Core/Test/Rystem.Test.UnitTest/RuntimeServiceProvider/RuntimeServiceProviderTest.cs](https://github.com/KeyserDSoze/Rystem/blob/master/src/Core/Test/Rystem.Test.UnitTest/RuntimeServiceProvider/RuntimeServiceProviderTest.cs)
+- Test API used by that startup: [src/Extensions/Tests/Test/Rystem.Test.TestApi/Program.cs](https://github.com/KeyserDSoze/Rystem/blob/master/src/Extensions/Tests/Test/Rystem.Test.TestApi/Program.cs)
+
+This README is intentionally architecture-first because `Rystem.Test.XUnit` is mostly infrastructure. The main value is not a long API surface, but the way it composes xUnit DI, configuration loading, and an optional shared in-process ASP.NET Core host.

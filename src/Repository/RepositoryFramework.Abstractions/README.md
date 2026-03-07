@@ -1,9 +1,29 @@
-﻿# Rystem.RepositoryFramework.Abstractions
+### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+
+# Rystem.RepositoryFramework.Abstractions
 
 [![NuGet](https://img.shields.io/nuget/v/Rystem.RepositoryFramework.Abstractions)](https://www.nuget.org/packages/Rystem.RepositoryFramework.Abstractions)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/Rystem.RepositoryFramework.Abstractions)](https://www.nuget.org/packages/Rystem.RepositoryFramework.Abstractions)
 
 Core contracts and dependency-injection extensions for the Repository Pattern and CQRS in Rystem.
+
+This is the foundational package for the whole Repository Framework area documented in `src/Repository/README.md`.
+
+It is the package that defines:
+
+- repository, query, and command contracts
+- DI registration builders
+- key abstractions
+- query builder extensions
+- business hooks
+- repository metadata registry
+
+## Resources
+
+- Complete Documentation: [https://rystem.net](https://rystem.net)
+- MCP Server for AI: [https://rystem.cloud/mcp](https://rystem.cloud/mcp)
+- Discord Community: [https://discord.gg/tkWvy4WPjt](https://discord.gg/tkWvy4WPjt)
+- Support the Project: [https://www.buymeacoffee.com/keyserdsoze](https://www.buymeacoffee.com/keyserdsoze)
 
 ---
 
@@ -12,6 +32,30 @@ Core contracts and dependency-injection extensions for the Repository Pattern an
 ```bash
 dotnet add package Rystem.RepositoryFramework.Abstractions
 ```
+
+The current package metadata in `src/Repository/RepositoryFramework.Abstractions/RepositoryFramework.Abstractions.csproj` is:
+
+- package id: `Rystem.RepositoryFramework.Abstractions`
+- version: `10.0.6`
+- target framework: `net10.0`
+
+It builds on top of `Rystem.DependencyInjection`.
+
+---
+
+## Package Architecture
+
+At a high level, this package is organized around these areas.
+
+| Area | Purpose |
+|---|---|
+| Pattern interfaces | Low-level storage contracts such as `IRepositoryPattern<T, TKey>` |
+| Consumer interfaces | DI-facing contracts such as `IRepository<T, TKey>` |
+| Service registration builders | `AddRepository`, `AddCommand`, `AddQuery`, and their builders |
+| Query model | `QueryBuilder<T, TKey>`, filters, paging, and aggregate operations |
+| Keys and state models | `IKey`, `IDefaultKey`, `Entity<T, TKey>`, `State<T, TKey>` |
+| Business and translation hooks | interceptors, translation mappers, examples, exposure rules |
+| Runtime metadata | `RepositoryFrameworkRegistry` and `RepositoryFrameworkService` |
 
 ---
 
