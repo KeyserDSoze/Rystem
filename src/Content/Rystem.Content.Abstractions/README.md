@@ -1,8 +1,8 @@
 # Rystem.Content.Abstractions
 
-[![NuGet](https://img.shields.io/nuget/v/Rystem.Content.Abstractions)](https://www.nuget.org/packages/Rystem.Content.Abstractions)
+`Rystem.Content.Abstractions` contains the shared content API, the registration builder, and the cross-provider migration service.
 
-Core contracts, models, and migration tooling for the Rystem Content Framework. Provides the `IContentRepository` interface and DI wiring so your business code never depends on a specific storage backend.
+It does not implement storage by itself. Real storage arrives through provider packages such as Blob, File Share, SharePoint, or InMemory.
 
 ## Installation
 
@@ -10,378 +10,245 @@ Core contracts, models, and migration tooling for the Rystem Content Framework. 
 dotnet add package Rystem.Content.Abstractions
 ```
 
-## What this package provides
+## What this package adds
 
-- `IContentRepository` — unified file storage interface (upload, download, list, delete, exist, properties)
-- `IContentRepositoryFactory` — named-instance factory when multiple backends are registered
-- `IContentMigration` — copy/migrate files between any two registered backends
-- `ContentRepositoryOptions` — metadata, tags, HTTP headers for uploaded files
-- `ContentInformationType` — flags enum controlling which metadata is fetched
+This package defines:
 
----
+- `IContentRepository`
+- `IContentRepositoryBuilder`
+- `ContentRepositoryOptions`
+- `ContentRepositoryResult`
+- `ContentRepositoryDownloadResult`
+- `ContentInformationType`
+- `IContentMigration`
 
-## DI registration
+At DI level, `AddContentRepository()` currently registers:
+
+- `IContentMigration` as `Transient`
+
+Provider registrations are added later through `With...Integration(...)` extension methods.
+
+## Architecture
+
+The core model is intentionally small:
+
+- `IContentRepository` is the only storage contract
+- `AddContentRepository()` returns an `IContentRepositoryBuilder`
+- providers register named implementations through the shared factory system
+- migrations resolve source and destination repositories from `IFactory<IContentRepository>`
+
+In the current source tree and tests, named resolution is done with `IFactory<IContentRepository>`, not an `IContentRepositoryFactory` abstraction.
+
+## Registration API
+
+`IContentRepositoryBuilder` exposes three registration shapes:
+
+| Method | Use when | Default lifetime |
+| --- | --- | --- |
+| `WithIntegration<TRepository>(name, lifetime)` | repository has no options object | `Transient` |
+| `WithIntegration<TRepository, TOptions>(options, name, lifetime)` | repository needs synchronous options wiring | `Transient` |
+| `WithIntegrationAsync<TRepository, TOptions, TConnection>(options, name, lifetime)` | repository setup is asynchronous and builds a connection wrapper | `Transient` |
+
+The built-in Blob, File, and SharePoint providers sit on top of `WithIntegrationAsync(...)`. The InMemory provider uses `WithIntegration(...)` and overrides the lifetime to `Singleton`.
+
+The provider-specific `WithBlobStorageIntegration(...)`, `WithFileStorageIntegration(...)`, `WithSharepointIntegration(...)`, and `WithInMemoryIntegration(...)` extensions are defined by the provider packages, not by this package itself.
+
+## Minimal setup
 
 ```csharp
-services
-    .AddContentRepository()
-    .WithIntegration<MyCustomIntegration>("custom", ServiceLifetime.Singleton);
+var repositories = services.AddContentRepository();
+
+repositories.WithInMemoryIntegration("inmemory");
 ```
 
-Built-in backends add their own `WithXxxIntegration` extension methods on top of `IContentRepositoryBuilder`.
-
-### Custom integration
-
-Implement `IContentRepository` and register it:
+When you need a provider with async setup:
 
 ```csharp
-internal sealed class MyStorageIntegration : IContentRepository
+var repositories = services.AddContentRepository();
+
+await repositories.WithBlobStorageIntegrationAsync(options =>
 {
-    public IAsyncEnumerable<ContentRepositoryDownloadResult> ListAsync(
-        string? prefix = null,
-        bool downloadContent = false,
-        ContentInformationType informationRetrieve = ContentInformationType.None,
-        CancellationToken cancellationToken = default)
-    { /* … */ }
+    options.ContainerName = "supertest";
+    options.ConnectionString = configuration["ConnectionString:Storage"];
+}, "blobstorage");
+```
 
-    public Task<ContentRepositoryDownloadResult?> DownloadAsync(
-        string path,
-        ContentInformationType informationRetrieve = ContentInformationType.None,
-        CancellationToken cancellationToken = default)
-    { /* … */ }
+## Consuming named repositories
 
-    public Task<ContentRepositoryResult?> GetPropertiesAsync(
-        string path,
-        ContentInformationType informationRetrieve = ContentInformationType.All,
-        CancellationToken cancellationToken = default)
-    { /* … */ }
+The content tests resolve repositories like this:
 
-    public ValueTask<bool> UploadAsync(
-        string path,
-        byte[] data,
-        ContentRepositoryOptions? options = default,
-        bool overwrite = true,
-        CancellationToken cancellationToken = default)
-    { /* … */ }
+```csharp
+public sealed class ContentService
+{
+    private readonly IContentRepository _contentRepository;
 
-    public ValueTask<bool> SetPropertiesAsync(
-        string path,
-        ContentRepositoryOptions? options = default,
-        CancellationToken cancellationToken = default)
-    { /* … */ }
-
-    public ValueTask<bool> DeleteAsync(string path, CancellationToken cancellationToken = default)
-    { /* … */ }
-
-    public ValueTask<bool> ExistAsync(string path, CancellationToken cancellationToken = default)
-    { /* … */ }
+    public ContentService(IFactory<IContentRepository> factory)
+        => _contentRepository = factory.Create("blobstorage");
 }
 ```
 
----
+## `IContentRepository` contract
 
-## `IContentRepository` method reference
-
-| Method | Return | Description |
-|--------|--------|-------------|
-| `UploadAsync(path, data, options?, overwrite)` | `ValueTask<bool>` | Upload a file. Set `overwrite = false` to skip if already exists |
-| `DownloadAsync(path, informationRetrieve?)` | `Task<ContentRepositoryDownloadResult?>` | Download file bytes + optional metadata |
-| `ExistAsync(path)` | `ValueTask<bool>` | Check whether a file exists |
+| Method | Return type | Purpose |
+| --- | --- | --- |
+| `ListAsync(prefix, downloadContent, informationRetrieve)` | `IAsyncEnumerable<ContentRepositoryDownloadResult>` | Enumerate files with optional prefix filtering |
+| `DownloadAsync(path, informationRetrieve)` | `Task<ContentRepositoryDownloadResult?>` | Download bytes and optional metadata |
+| `GetPropertiesAsync(path, informationRetrieve)` | `Task<ContentRepositoryResult?>` | Read metadata without downloading bytes |
+| `UploadAsync(path, data, options, overwrite)` | `ValueTask<bool>` | Create or replace a file |
+| `SetPropertiesAsync(path, options)` | `ValueTask<bool>` | Update headers, metadata, or tags |
 | `DeleteAsync(path)` | `ValueTask<bool>` | Delete a file |
-| `GetPropertiesAsync(path, informationRetrieve?)` | `Task<ContentRepositoryResult?>` | Fetch URI, metadata, tags, headers (no bytes) |
-| `SetPropertiesAsync(path, options?)` | `ValueTask<bool>` | Update metadata, tags, or HTTP headers |
-| `ListAsync(prefix?, downloadContent?, informationRetrieve?)` | `IAsyncEnumerable<ContentRepositoryDownloadResult>` | Enumerate files, optionally filtering by path prefix |
+| `ExistAsync(path)` | `ValueTask<bool>` | Check whether a file exists |
 
----
+Important caveat: `overwrite` is part of the shared interface, but not every provider enforces it the same way.
 
-## Models
+## Shared models
 
 ### `ContentRepositoryOptions`
-
-Passed to `UploadAsync` and `SetPropertiesAsync`:
 
 ```csharp
 var options = new ContentRepositoryOptions
 {
     HttpHeaders = new ContentRepositoryHttpHeaders
     {
-        ContentType       = "image/png",
-        CacheControl      = "max-age=3600",
-        ContentEncoding   = "gzip",
-        ContentLanguage   = "en",
-        ContentDisposition = "attachment; filename=photo.png",
+        ContentType = "image/png",
+        CacheControl = "max-age=3600",
+        ContentDisposition = "attachment; filename=image.png"
     },
-    Metadata = new Dictionary<string, string> { { "author", "alice" } },
-    Tags     = new Dictionary<string, string> { { "version", "1" } }
+    Metadata = new Dictionary<string, string>
+    {
+        ["author"] = "alice"
+    },
+    Tags = new Dictionary<string, string>
+    {
+        ["version"] = "1"
+    }
 };
 ```
 
-### `ContentRepositoryResult`
+### `ContentInformationType`
 
-Returned by `GetPropertiesAsync`:
+| Value | Meaning |
+| --- | --- |
+| `None` | no extra metadata |
+| `HttpHeaders` | include content headers |
+| `Metadata` | include metadata dictionary |
+| `Tags` | include tags when supported |
+| `All` | `HttpHeaders | Metadata | Tags` |
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `Uri` | `string?` | Public or SAS URL of the file |
-| `Path` | `string?` | Storage path |
-| `Options` | `ContentRepositoryOptions?` | Metadata, tags, HTTP headers |
+### Result models
 
-### `ContentRepositoryDownloadResult`
+| Type | Properties |
+| --- | --- |
+| `ContentRepositoryResult` | `Path`, `Uri`, `Options` |
+| `ContentRepositoryDownloadResult` | everything in `ContentRepositoryResult` plus `Data` |
 
-Extends `ContentRepositoryResult`, adds:
+`Path` and `Uri` are provider-defined. Do not assume they have identical semantics across Blob, File Share, SharePoint, and InMemory.
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `Data` | `byte[]?` | File content bytes |
+## Migration service
 
-### `ContentInformationType` flags
+`IContentMigration` copies content between named providers.
 
-| Value | Description |
-|-------|-------------|
-| `None` | No extra metadata fetched (fastest) |
-| `HttpHeaders` | Fetch Content-Type, Cache-Control, etc. |
-| `Metadata` | Fetch key-value metadata dictionary |
-| `Tags` | Fetch blob/file tags |
-| `All` | Fetch everything (`HttpHeaders \| Metadata \| Tags`) |
-
----
-
-## Injecting `IContentRepository`
-
-### Single backend
-
-When only one backend is registered you can inject `IContentRepository` directly:
+This example matches the usage style in `src/Content/Rystem.Content.Tests/Rystem.Content.UnitTest/Integrations/AllStorageTest.cs`.
 
 ```csharp
-public sealed class DocumentService
-{
-    private readonly IContentRepository _repo;
+ContentMigrationResult result = await contentMigration.MigrateAsync(
+    sourceName: "inmemory",
+    destinationName: "filestorage",
+    settings: options =>
+    {
+        options.Prefix = "Test/Folder1/";
+        options.OverwriteIfExists = true;
+        options.Predicate = item => item.Path?.Contains("fileName6") != true;
+        options.ModifyDestinationPath = path => path.Replace("Folder2", "Folder3");
+    });
+```
 
-    public DocumentService(IContentRepository repo)
-        => _repo = repo;
+Available settings:
+
+| Property | Default | Meaning |
+| --- | --- | --- |
+| `Prefix` | `null` | restrict source enumeration |
+| `Predicate` | `null` | skip items that do not match |
+| `OverwriteIfExists` | `false` | pass overwrite intent to destination upload |
+| `OnErrorContinue` | `true` | keep going after per-file errors |
+| `ModifyDestinationPath` | `null` | rewrite the output path |
+
+## Migration behavior notes
+
+The current implementation is a straightforward copy loop:
+
+- it resolves both repositories through `IFactory<IContentRepository>`
+- it enumerates source items with `ListAsync(..., downloadContent: false, ContentInformationType.None)`
+- it downloads each matched item with `ContentInformationType.All`
+- it uploads the downloaded bytes plus options to the destination repository
+
+Important caveats from the source:
+
+- `NotMigratedPaths` exists on `ContentMigrationResult`, but the current implementation never fills it
+- when an upload returns `false`, the result currently lands in `NotContentPaths`
+- there is no provider-native server-side copy or batching logic
+
+## Writing a custom provider
+
+If you want your own backend, implement `IContentRepository` and register it through the builder.
+
+```csharp
+internal sealed class MyContentRepository : IContentRepository
+{
+    public IAsyncEnumerable<ContentRepositoryDownloadResult> ListAsync(
+        string? prefix = null,
+        bool downloadContent = false,
+        ContentInformationType informationRetrieve = ContentInformationType.None,
+        CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
+
+    public Task<ContentRepositoryDownloadResult?> DownloadAsync(
+        string path,
+        ContentInformationType informationRetrieve = ContentInformationType.None,
+        CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
+
+    public Task<ContentRepositoryResult?> GetPropertiesAsync(
+        string path,
+        ContentInformationType informationRetrieve = ContentInformationType.All,
+        CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
+
+    public ValueTask<bool> UploadAsync(
+        string path,
+        byte[] data,
+        ContentRepositoryOptions? options = null,
+        bool overwrite = true,
+        CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
+
+    public ValueTask<bool> SetPropertiesAsync(
+        string path,
+        ContentRepositoryOptions? options = null,
+        CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
+
+    public ValueTask<bool> DeleteAsync(string path, CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
+
+    public ValueTask<bool> ExistAsync(string path, CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
 }
 ```
 
-### Multiple named backends
-
-Use `IContentRepositoryFactory` to resolve by name:
+Then register it:
 
 ```csharp
 services
     .AddContentRepository()
-    .WithIntegration<BlobBackend>("blob")
-    .WithIntegration<SharepointBackend>("sharepoint");
-
-// In constructor:
-public DocumentService(IContentRepositoryFactory factory)
-{
-    var blob       = factory.Create("blob");
-    var sharepoint = factory.Create("sharepoint");
-}
+    .WithIntegration<MyContentRepository>("custom");
 ```
-
----
-
-## Migration tool
-
-Copy or move files between any two registered backends:
-
-```csharp
-// Inject IContentMigration (registered automatically by AddContentRepository)
-public sealed class StorageMigrator
-{
-    private readonly IContentMigration _migration;
-    public StorageMigrator(IContentMigration migration) => _migration = migration;
-
-    public async Task RunAsync()
-    {
-        ContentMigrationResult result = await _migration.MigrateAsync(
-            sourceName:      "blob",
-            destinationName: "sharepoint",
-            settings: s =>
-            {
-                s.Prefix             = "documents/";        // only files under this prefix
-                s.OverwriteIfExists  = true;
-                s.OnErrorContinue    = true;                // skip errors instead of throwing
-                s.Predicate          = x => x.Path?.EndsWith(".pdf") == true;  // custom filter
-                s.ModifyDestinationPath = path => path.Replace("documents/", "Archive/"); // remap paths
-            });
-
-        Console.WriteLine($"Migrated:  {result.MigratedPaths.Count}");
-        Console.WriteLine($"Blocked:   {result.BlockedByPredicatePaths.Count}");
-        Console.WriteLine($"Errors:    {result.NotMigratedPathsForErrors.Count}");
-    }
-}
-```
-
-### `ContentMigrationSettings` reference
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `Prefix` | `string?` | `null` | Filter source files to those whose path starts with this prefix |
-| `Predicate` | `Func<ContentRepositoryDownloadResult, bool>?` | `null` | Additional per-file filter; return `false` to skip |
-| `OverwriteIfExists` | `bool` | `false` | Overwrite destination file if it already exists |
-| `OnErrorContinue` | `bool` | `true` | Continue to next file on error instead of throwing |
-| `ModifyDestinationPath` | `Func<string, string>?` | `null` | Transform source path before writing to destination |
-
-### `ContentMigrationResult` reference
-
-| Property | Description |
-|----------|-------------|
-| `MigratedPaths` | Files successfully copied |
-| `NotMigratedPaths` | Files skipped (already exist and `OverwriteIfExists = false`) |
-| `NotContentPaths` | Entries that had no downloadable content |
-| `BlockedByPredicatePaths` | Files excluded by `Predicate` |
-| `NotMigratedPathsForErrors` | Files that failed with an exception |
-
----
 
 ## Related packages
 
-| Package | Backend |
-|---------|---------|
-| `Rystem.Content.Infrastructure.Azure.Storage.Blob` | Azure Blob Storage |
-| `Rystem.Content.Infrastructure.Azure.Storage.File` | Azure File Share |
-| `Rystem.Content.Infrastructure.M365.Sharepoint` | SharePoint Online |
-| `Rystem.Content.Infrastructure.InMemory` | In-memory (testing) |
-You may use this library to help the integration with your business and your several storage repositories.
+- `Rystem.Content.Infrastructure.Storage.Blob`
+- `Rystem.Content.Infrastructure.Storage.File`
+- `Rystem.Content.Infrastructure.M365.Sharepoint`
+- `Rystem.Content.Infrastructure.InMemory`
 
-## Dependency injection
-
-    services
-        .AddContentRepository()
-        .WithIntegration<SimpleIntegration>("example", ServiceLifetime.Singleton);
-
-with integration class
-
-    internal sealed class SimpleIntegration : IContentRepository
-    {
-        public ValueTask<bool> DeleteAsync(string path, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<ContentRepositoryDownloadResult?> DownloadAsync(string path, ContentInformationType informationRetrieve = ContentInformationType.None, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-
-        public ValueTask<bool> ExistAsync(string path, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<ContentRepositoryResult?> GetPropertiesAsync(string path, ContentInformationType informationRetrieve = ContentInformationType.All, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IAsyncEnumerable<ContentRepositoryDownloadResult> ListAsync(string? prefix = null, bool downloadContent = false, ContentInformationType informationRetrieve = ContentInformationType.None, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void SetName(string name)
-        {
-            throw new NotImplementedException();
-        }
-
-        public ValueTask<bool> SetPropertiesAsync(string path, ContentRepositoryOptions? options = null, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-
-        public ValueTask<bool> UploadAsync(string path, byte[] data, ContentRepositoryOptions? options = null, bool overwrite = true, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-## How to use
-If you have only one integration installed at once, you may inject directly
-
-    public sealed class SimpleBusiness
-    {
-        private readonly IContentRepository _contentRepository;
-
-        public SimpleBusiness(IContentRepository contentRepository)
-        {
-            _contentRepository = contentRepository;
-        }
-    }
-
-### In case of multiple integrations you have to use the factory service
-
-DI
-
-    services
-        .AddContentRepository()
-        .WithIntegration<SimpleIntegration>("example", ServiceLifetime.Singleton);
-        .WithIntegration<SimpleIntegration2>("example2", ServiceLifetime.Singleton);
-
-in Business class to use the first integration
-
-    public sealed class SimpleBusiness
-    {
-        private readonly IContentRepository _contentRepository;
-
-        public SimpleBusiness(IContentRepositoryFactory contentRepositoryFactory)
-        {
-            _contentRepository = contentRepositoryFactory.Create("example");
-        }
-    }
-
-in Business class to use the second integration
-
-    public sealed class SimpleBusiness
-    {
-        private readonly IContentRepository _contentRepository;
-
-        public SimpleBusiness(IContentRepositoryFactory contentRepositoryFactory)
-        {
-            _contentRepository = contentRepositoryFactory.Create("example2");
-        }
-    }
-
-## Migration tool
-You can migrate from two different sources. For instance from a blob storage to a sharepoint site document library.
-
-Setup in DI
-
-     services
-        .AddSingleton<Utility>()
-        .AddContentRepository()
-        .WithBlobStorageIntegrationAsync(x =>
-        {
-            x.ContainerName = "supertest";
-            x.Prefix = "site/";
-            x.ConnectionString = configuration["ConnectionString:Storage"];
-        },
-        "blobstorage")
-        .ToResult()
-        .WithInMemoryIntegration("inmemory")
-        .WithSharepointIntegrationAsync(x =>
-        {
-            x.TenantId = configuration["Sharepoint:TenantId"];
-            x.ClientId = configuration["Sharepoint:ClientId"];
-            x.ClientSecret = configuration["Sharepoint:ClientSecret"];
-            x.MapWithSiteNameAndDocumentLibraryName("TestNumberOne", "Foglione");
-        }, "sharepoint")
-        .ToResult();
-
-Usage
-
-    var result = await _contentMigration.MigrateAsync("blobstorage", "sharepoint",
-        settings =>
-        {
-            settings.OverwriteIfExists = true;
-            settings.Prefix = prefix;
-            settings.Predicate = (x) =>
-            {
-                return x.Path?.Contains("fileName6") != true;
-            };
-            settings.ModifyDestinationPath = x =>
-            {
-                return x.Replace("Folder2", "Folder3");
-            };
-        }).NoContext();    
+Use this package when you want the contract and migration layer; add a provider package when you want real storage.

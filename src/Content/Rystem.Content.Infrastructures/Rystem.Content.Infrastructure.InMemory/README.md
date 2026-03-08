@@ -1,8 +1,8 @@
-﻿# Rystem.Content.Infrastructure.InMemory
+# Rystem.Content.Infrastructure.InMemory
 
-[![NuGet](https://img.shields.io/nuget/v/Rystem.Content.Infrastructure.InMemory)](https://www.nuget.org/packages/Rystem.Content.Infrastructure.InMemory)
+This provider adds an in-memory content store for tests, local development, and simple non-persistent scenarios.
 
-In-memory backend for [Rystem Content Framework](../Rystem.Content.Abstractions). Stores all file data in a thread-safe in-process dictionary. No external dependencies — perfect for unit tests, integration tests, and local development.
+It is the lightest provider in the Content area: a singleton `ConcurrentDictionary<string, ContentRepositoryDownloadResult>` keyed by path.
 
 ## Installation
 
@@ -10,154 +10,91 @@ In-memory backend for [Rystem Content Framework](../Rystem.Content.Abstractions)
 dotnet add package Rystem.Content.Infrastructure.InMemory
 ```
 
----
-
 ## Registration
 
 ```csharp
 services
     .AddContentRepository()
-    .WithInMemoryIntegration("inmemory");  // name is optional; omit if single backend
+    .WithInMemoryIntegration("inmemory");
 ```
 
-The backend is registered as a **singleton** — state is shared for the lifetime of the application/test host.
+Unlike the other built-in providers, this one registers with `ServiceLifetime.Singleton`.
 
----
-
-## Usage
+## Example
 
 ```csharp
-public sealed class FileServiceTests
+public sealed class InMemoryContentService
 {
-    private readonly IContentRepository _repo;
+    private readonly IContentRepository _repository;
 
-    public FileServiceTests(IContentRepositoryFactory factory)
-        => _repo = factory.Create("inmemory");
+    public InMemoryContentService(IFactory<IContentRepository> factory)
+        => _repository = factory.Create("inmemory");
 
-    public async Task RoundtripAsync()
+    public async Task RoundTripAsync()
     {
-        var data        = System.Text.Encoding.UTF8.GetBytes("hello world");
-        var contentType = "text/plain";
-        var metadata    = new Dictionary<string, string> { { "author", "test" } };
-
-        // upload
-        var ok = await _repo.UploadAsync("folder/file.txt", data, new ContentRepositoryOptions
+        await _repository.UploadAsync("folder/file.txt", System.Text.Encoding.UTF8.GetBytes("hello"), new ContentRepositoryOptions
         {
-            HttpHeaders = new ContentRepositoryHttpHeaders { ContentType = contentType },
-            Metadata    = metadata
-        });
-        // ok == true
-
-        // exist
-        var exists = await _repo.ExistAsync("folder/file.txt");  // true
-
-        // properties
-        var props = await _repo.GetPropertiesAsync("folder/file.txt", ContentInformationType.All);
-        // props.Options.HttpHeaders.ContentType == "text/plain"
-        // props.Options.Metadata["author"]      == "test"
-
-        // download
-        var downloaded = await _repo.DownloadAsync("folder/file.txt");
-        // downloaded.Data == data
-
-        // set properties
-        await _repo.SetPropertiesAsync("folder/file.txt", new ContentRepositoryOptions
-        {
-            Metadata = new Dictionary<string, string> { { "author", "test" }, { "revised", "yes" } }
+            HttpHeaders = new ContentRepositoryHttpHeaders
+            {
+                ContentType = "text/plain"
+            },
+            Metadata = new Dictionary<string, string>
+            {
+                ["author"] = "test"
+            },
+            Tags = new Dictionary<string, string>
+            {
+                ["version"] = "1"
+            }
         });
 
-        // delete
-        await _repo.DeleteAsync("folder/file.txt");
-        exists = await _repo.ExistAsync("folder/file.txt");  // false
+        var file = await _repository.DownloadAsync("folder/file.txt", ContentInformationType.All);
+        var props = await _repository.GetPropertiesAsync("folder/file.txt", ContentInformationType.All);
+        await _repository.DeleteAsync("folder/file.txt");
     }
 }
 ```
 
----
+## Provider behavior
 
-## Notes
+The runtime is straightforward:
 
-- **Singleton lifetime**: data persists for the whole process lifetime. Between test cases use `DeleteAsync` or create a fresh host.
-- **No I/O**: all operations are synchronous under the hood — `await` resolves immediately.
-- **Full API support**: unlike real storage backends, `Tags`, `Metadata`, and all `ContentInformationType` flags are fully supported in memory.
-- **Thread-safety**: the store uses a `ConcurrentDictionary` and is safe for parallel tests.
+- `UploadAsync` stores `Path`, `Uri`, `Data`, and `Options` directly in memory
+- `DeleteAsync` removes the item from the dictionary
+- `ExistAsync` checks the dictionary key
+- `SetPropertiesAsync` mutates the stored options object
 
-    services
-    .AddContentRepository()
-    .WithInMemoryIntegration("inmemory");
+This makes the provider very convenient for tests and also means it is not a fidelity model for remote storage services.
 
-### How to use in a business class
+## Important caveats
 
-    public class AllStorageTest
-    {
-        private readonly IContentRepositoryFactory _contentRepositoryFactory;
-        private readonly Utility _utility;
-        public AllStorageTest(IContentRepositoryFactory contentRepositoryFactory, Utility utility)
-        {
-            _contentRepositoryFactory = contentRepositoryFactory;
-            _utility = utility;
-        }
-        
-        public async Task ExecuteAsync()
-        {
-            var _contentRepository = _contentRepositoryFactory.Create("inmemory");
-            var file = await _utility.GetFileAsync();
-            var name = "file.png";
-            var contentType = "images/png";
-            var metadata = new Dictionary<string, string>()
-            {
-                { "name", "ale" }
-            };
-            var tags = new Dictionary<string, string>()
-            {
-                { "version", "1" }
-            };
-            var response = await _contentRepository.ExistAsync(name).NoContext();
-            if (response)
-            {
-                await _contentRepository.DeleteAsync(name).NoContext();
-                response = await _contentRepository.ExistAsync(name).NoContext();
-            }
-            Assert.False(response);
-            response = await _contentRepository.UploadAsync(name, file.ToArray(), new ContentRepositoryOptions
-            {
-                HttpHeaders = new ContentRepositoryHttpHeaders
-                {
-                    ContentType = contentType
-                },
-                Metadata = metadata,
-                Tags = tags
-            }, true).NoContext();
-            Assert.True(response);
-            response = await _contentRepository.ExistAsync(name).NoContext();
-            Assert.True(response);
-            var options = await _contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
-            Assert.NotNull(options.Uri);
-            foreach (var x in metadata)
-            {
-                Assert.Equal(x.Value, options.Options.Metadata[x.Key]);
-            }
-            foreach (var x in tags)
-            {
-                Assert.Equal(x.Value, options.Options.Tags[x.Key]);
-            }
-            Assert.Equal(contentType, options.Options.HttpHeaders.ContentType);
-            metadata.Add("ale2", "single");
-            response = await _contentRepository.SetPropertiesAsync(name, new ContentRepositoryOptions
-            {
-                HttpHeaders = new ContentRepositoryHttpHeaders
-                {
-                    ContentType = contentType
-                },
-                Metadata = metadata,
-                Tags = tags
-            }).NoContext();
-            Assert.True(response);
-            options = await _contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
-            Assert.Equal("single", options.Options.Metadata["ale2"]);
-            response = await _contentRepository.DeleteAsync(name).NoContext();
-            Assert.True(response);
-            response = await _contentRepository.ExistAsync(name).NoContext();
-            Assert.False(response);
-        }
-    }
+### `downloadContent` is ignored
+
+`ListAsync(...)` always yields the stored `ContentRepositoryDownloadResult`, so data is already present even when `downloadContent == false`.
+
+### `informationRetrieve` is mostly ignored
+
+`DownloadAsync(...)` and `GetPropertiesAsync(...)` return the stored object or stored options directly. They do not selectively materialize headers, metadata, or tags based on the requested flags.
+
+### `Uri` is just the path
+
+The provider stores:
+
+- `Path = path`
+- `Uri = path`
+
+So `Uri` is only a placeholder string, not a real network URL.
+
+### State lives for the process lifetime
+
+Because the provider is a singleton, content persists until you remove it or rebuild the host.
+
+## When to use this provider
+
+Use it when you want:
+
+- fast unit or integration tests
+- no external infrastructure
+- full round-trip of headers, metadata, and tags in memory
+
+Do not treat it as a perfect simulator for Blob, File Share, or SharePoint behavior.
