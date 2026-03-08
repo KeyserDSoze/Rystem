@@ -1,12 +1,20 @@
-﻿# Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer
+### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+
+# Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer
 
 [![NuGet](https://img.shields.io/nuget/v/Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer)](https://www.nuget.org/packages/Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer)](https://www.nuget.org/packages/Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer)
 
-Bearer token integration for `Rystem.RepositoryFramework.Api.Client` in **Blazor Server** applications. Provides two ready-to-use token managers:
+Blazor Server authentication helpers for `Rystem.RepositoryFramework.Api.Client`.
 
-- **MSAL / Microsoft Identity** — uses `IAuthorizationHeaderProvider` (from `Microsoft.Identity.Abstractions`)
-- **Rystem Social Login** — uses `SocialLoginManager` (from `Rystem.Authentication.Social.Blazor`)
+This package plugs concrete token managers into the API client's interceptor pipeline so repository calls can automatically add bearer tokens in Blazor Server hosts.
+
+## Resources
+
+- Complete Documentation: [https://rystem.net](https://rystem.net)
+- MCP Server for AI: [https://rystem.cloud/mcp](https://rystem.cloud/mcp)
+- Discord Community: [https://discord.gg/tkWvy4WPjt](https://discord.gg/tkWvy4WPjt)
+- Support the Project: [https://www.buymeacoffee.com/keyserdsoze](https://www.buymeacoffee.com/keyserdsoze)
 
 ---
 
@@ -16,46 +24,59 @@ Bearer token integration for `Rystem.RepositoryFramework.Api.Client` in **Blazor
 dotnet add package Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer
 ```
 
+The current package metadata in `src/Repository/RepositoryFramework.Api.Client.Authentication.BlazorServer/RepositoryFramework.Api.Client.Authentication.BlazorServer.csproj` is:
+
+- package id: `Rystem.RepositoryFramework.Api.Client.Authentication.BlazorServer`
+- version: `10.0.6`
+- target framework: `net10.0`
+- main auth dependency: `Microsoft.Identity.Abstractions` `11.0.0`
+- companion dependency: `Rystem.Authentication.Social.Blazor`
+
 ---
 
-## MSAL / Microsoft Identity setup
+## Package architecture
 
-Use this when your Blazor Server app authenticates users via Azure AD / Entra ID with MSAL.
+| Area | Purpose |
+|---|---|
+| `TokenManager` | Microsoft Identity / MSAL path via `IAuthorizationHeaderProvider` |
+| `SocialTokenManager` | Social-login path via `SocialLoginManager` |
+| Convenience extensions | Register the right token manager into the base API-client interceptor pipeline |
+| Shared `AuthenticatorSettings` | Reuse the settings model from `Rystem.RepositoryFramework.Api.Client` |
 
-### 1. Configure MSAL in `Program.cs`
+---
+
+## Mental model
+
+This package does not implement a new HTTP client. It only provides Blazor Server-specific token sources for the base repository API client.
+
+The actual HTTP behavior still comes from `Rystem.RepositoryFramework.Api.Client`:
+
+- request interceptors add headers
+- response interceptors can retry after `401 Unauthorized`
+- repository calls still use the same API-client routes and payload shapes
+
+This package only decides how the bearer token is acquired.
+
+---
+
+## Option 1: Microsoft Identity / MSAL
+
+This path is built on `IAuthorizationHeaderProvider` from `Microsoft.Identity.Abstractions`.
+
+### Typical setup
 
 ```csharp
-builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+builder.Services
+    .AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"))
     .EnableTokenAcquisitionToCallDownstreamApi(["api://your-api-id/.default"])
     .AddInMemoryTokenCaches();
-```
 
-### 2. Register the bearer interceptor
-
-```csharp
-// Global — applies to all repository clients
 builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient(settings =>
 {
     settings.Scopes = ["api://your-api-id/.default"];
 });
 
-// Optional: model-specific
-builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient<Product>(settings =>
-{
-    settings.Scopes = ["api://your-api-id/.default"];
-});
-
-// Optional: model + key specific
-builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient<Product, int>(settings =>
-{
-    settings.Scopes = ["api://your-api-id/.default"];
-});
-```
-
-### 3. Add the repository client
-
-```csharp
 builder.Services.AddRepository<Product, int>(repositoryBuilder =>
 {
     repositoryBuilder.WithApiClient(apiBuilder =>
@@ -65,30 +86,28 @@ builder.Services.AddRepository<Product, int>(repositoryBuilder =>
 });
 ```
 
-### How it works
+### How `TokenManager` works
 
-`TokenManager` calls `IAuthorizationHeaderProvider.CreateAuthorizationHeaderForUserAsync(scopes)` which returns a full `"Bearer {token}"` header value. The value is split and applied to `HttpClient.DefaultRequestHeaders.Authorization`. If token acquisition fails, the request proceeds without the header (no exception is thrown to the caller).
+- it asks `IAuthorizationHeaderProvider.CreateAuthorizationHeaderForUserAsync(...)` for a full authorization header value
+- it expects that value to look like `Bearer {token}`
+- it splits the returned string and applies it to `HttpClient.DefaultRequestHeaders.Authorization`
+- if token acquisition fails, it returns `null` and the request proceeds without an auth header
+
+### Scope requirement
+
+In practice you should provide `settings.Scopes` for this path, because the underlying token-manager implementation passes `_settings.Scopes!` to `CreateAuthorizationHeaderForUserAsync(...)`.
 
 ---
 
-## Social Login (Rystem.Authentication.Social.Blazor) setup
+## Option 2: Rystem social login
 
-Use this when your Blazor Server app uses `Rystem.Authentication.Social.Blazor` for social login (Google, Microsoft, GitHub, etc.).
+This path is built on `SocialLoginManager` from `Rystem.Authentication.Social.Blazor`.
 
-### 1. Configure social login
-
-Follow the setup from [`Rystem.Authentication.Social.Blazor`](https://www.nuget.org/packages/Rystem.Authentication.Social.Blazor).
-
-### 2. Register the social bearer interceptor
+### Typical setup
 
 ```csharp
-// Global — applies to all repository clients
 builder.Services.AddDefaultSocialLoginAuthorizationInterceptorForApiHttpClient();
-```
 
-### 3. Add the repository client
-
-```csharp
 builder.Services.AddRepository<Product, int>(repositoryBuilder =>
 {
     repositoryBuilder.WithApiClient(apiBuilder =>
@@ -98,50 +117,113 @@ builder.Services.AddRepository<Product, int>(repositoryBuilder =>
 });
 ```
 
-### How it works
+### How `SocialTokenManager` works
 
-`SocialTokenManager` calls `SocialLoginManager.FetchTokenAsync()` to retrieve the current access token:
+- it calls `SocialLoginManager.FetchTokenAsync()`
+- when a token exists, it sends `Authorization: Bearer {accessToken}`
+- when a token is missing, it calls `LogoutAsync()`
+- if `NavigationManager` is available, it forces a page refresh so the login flow can restart
 
-- If a valid token is found, it is attached as `Authorization: Bearer {token}`.
-- If the token is expired or missing, `SocialLoginManager.LogoutAsync()` is called and the page is **force-refreshed** (`NavigationManager.Refresh(forceReload: true)`) to redirect the user back to the login flow.
+This makes the social-login path more aggressive than the MSAL path: missing auth state can immediately push the user back into a sign-in flow.
+
+### Scope of the helper
+
+This package only exposes the social-login convenience method in its global form:
+
+```csharp
+builder.Services.AddDefaultSocialLoginAuthorizationInterceptorForApiHttpClient();
+```
+
+There is no package-level convenience overload for model-only or model-plus-key-only social auth.
+
+---
+
+## Extension methods
+
+All convenience methods are registered on `IServiceCollection`.
+
+| Method | Token source | Scope |
+|---|---|---|
+| `AddDefaultAuthorizationInterceptorForApiHttpClient(settings?)` | `TokenManager` | all repository clients |
+| `AddDefaultAuthorizationInterceptorForApiHttpClient<T>(settings?)` | `TokenManager` | one model |
+| `AddDefaultAuthorizationInterceptorForApiHttpClient<T, TKey>(settings?)` | `TokenManager` | one model + key |
+| `AddDefaultSocialLoginAuthorizationInterceptorForApiHttpClient(settings?)` | `SocialTokenManager` | all repository clients |
 
 ---
 
 ## `AuthenticatorSettings`
 
+This package reuses the shared settings model from the core API client package.
+
 ```csharp
 public class AuthenticatorSettings
 {
-    // Required for MSAL path — the OAuth scopes to request
     public string[]? Scopes { get; set; }
-
-    // Optional — handle token acquisition exceptions
     public Func<Exception, IServiceProvider, Task>? ExceptionHandler { get; set; }
 }
 ```
 
----
-
-## Extension method reference
-
-All methods are registered on `IServiceCollection`:
-
-| Method | Token source | Scope |
-|---|---|---|
-| `AddDefaultAuthorizationInterceptorForApiHttpClient(settings?)` | MSAL `IAuthorizationHeaderProvider` | All repository clients |
-| `AddDefaultSocialLoginAuthorizationInterceptorForApiHttpClient(settings?)` | `SocialLoginManager` | All repository clients |
-| `AddDefaultAuthorizationInterceptorForApiHttpClient<T>(settings?)` | MSAL `IAuthorizationHeaderProvider` | Only `T` repository client |
-| `AddDefaultAuthorizationInterceptorForApiHttpClient<T, TKey>(settings?)` | MSAL `IAuthorizationHeaderProvider` | Only `T`/`TKey` repository client |
-
-> The Social Login variant is only available globally. For model-scoped social token injection, use `AddApiClientSpecificInterceptor` from `Rystem.RepositoryFramework.Api.Client` with a custom `IRepositoryClientInterceptor<T>`.
+- `Scopes` matters for the Microsoft Identity path
+- `ExceptionHandler` is used by the base bearer interceptor when request-time token enrichment throws
 
 ---
 
-## Related Packages
+## Source-backed behavior notes
+
+### Request/response behavior comes from the base client package
+
+These helpers ultimately call the generic registration methods in `Rystem.RepositoryFramework.Api.Client`, so the same caveats still apply here:
+
+- global and model-specific registrations add both request and response interceptors
+- model-plus-key registration adds only the request interceptor in the current implementation
+
+That means automatic `401` refresh-and-retry is available for the global and model-specific registrations, but not fully for the model-plus-key registration path.
+
+### Token acquisition failures are soft failures
+
+For the Microsoft Identity path, the token manager catches token-acquisition exceptions and returns `null`, so the outgoing request can continue without the bearer header.
+
+### Social-login failures trigger logout behavior
+
+For the social-login path, failure to fetch a token leads to logout plus optional forced navigation refresh.
+
+---
+
+## Practical examples
+
+### Global MSAL registration
+
+```csharp
+builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient(settings =>
+{
+    settings.Scopes = builder.Configuration["AzureAd:Scopes"]!.Split(' ');
+});
+```
+
+### Model-specific MSAL registration
+
+```csharp
+builder.Services.AddDefaultAuthorizationInterceptorForApiHttpClient<Product>(settings =>
+{
+    settings.Scopes = ["api://your-api-id/.default"];
+});
+```
+
+### Global social-login registration
+
+```csharp
+builder.Services.AddDefaultSocialLoginAuthorizationInterceptorForApiHttpClient();
+```
+
+---
+
+## Related packages
 
 | Package | Purpose |
 |---|---|
-| `Rystem.RepositoryFramework.Api.Client` | Base HTTP client — interceptor registration |
-| `Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm` | Bearer token integration for Blazor WASM |
-| `Rystem.Authentication.Social.Blazor` | Social login for Blazor Server/WASM |
-| `Rystem.RepositoryFramework.Api.Server` | Server-side REST endpoint generation |
+| `Rystem.RepositoryFramework.Api.Client` | Base repository HTTP client and interceptor pipeline |
+| `Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm` | Equivalent auth helpers for Blazor WebAssembly |
+| `Rystem.Authentication.Social.Blazor` | Social-login infrastructure used by `SocialTokenManager` |
+| `Rystem.RepositoryFramework.Api.Server` | Matching server package |
+
+Read this package after `src/Repository/RepositoryFramework.Api.Client/README.md` when your repository client runs in Blazor Server.

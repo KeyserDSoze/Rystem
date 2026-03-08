@@ -5,18 +5,18 @@
 [![NuGet](https://img.shields.io/nuget/v/Rystem.RepositoryFramework.Abstractions)](https://www.nuget.org/packages/Rystem.RepositoryFramework.Abstractions)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/Rystem.RepositoryFramework.Abstractions)](https://www.nuget.org/packages/Rystem.RepositoryFramework.Abstractions)
 
-Core contracts and dependency-injection extensions for the Repository Pattern and CQRS in Rystem.
+Core contracts, query primitives, registration builders, and runtime metadata for the Rystem repository ecosystem.
 
-This is the foundational package for the whole Repository Framework area documented in `src/Repository/README.md`.
+This is the foundation for the whole Repository Framework area documented in `src/Repository/README.md`.
 
-It is the package that defines:
+It defines:
 
-- repository, query, and command contracts
-- DI registration builders
-- key abstractions
-- query builder extensions
-- business hooks
-- repository metadata registry
+- repository, command, and query contracts
+- DI registration builders for repository and CQRS setups
+- key abstractions and key serialization rules
+- query/filter primitives used by every storage provider
+- business hooks and translation builders
+- runtime metadata used by the API packages and diagnostics
 
 ## Resources
 
@@ -39,11 +39,11 @@ The current package metadata in `src/Repository/RepositoryFramework.Abstractions
 - version: `10.0.6`
 - target framework: `net10.0`
 
-It builds on top of `Rystem.DependencyInjection`.
+This package builds on top of `Rystem.DependencyInjection`.
 
 ---
 
-## Package Architecture
+## Package architecture
 
 At a high level, this package is organized around these areas.
 
@@ -51,23 +51,36 @@ At a high level, this package is organized around these areas.
 |---|---|
 | Pattern interfaces | Low-level storage contracts such as `IRepositoryPattern<T, TKey>` |
 | Consumer interfaces | DI-facing contracts such as `IRepository<T, TKey>` |
-| Service registration builders | `AddRepository`, `AddCommand`, `AddQuery`, and their builders |
-| Query model | `QueryBuilder<T, TKey>`, filters, paging, and aggregate operations |
-| Keys and state models | `IKey`, `IDefaultKey`, `Entity<T, TKey>`, `State<T, TKey>` |
-| Business and translation hooks | interceptors, translation mappers, examples, exposure rules |
+| Service registration builders | `AddRepository`, `AddCommand`, `AddQuery`, and their async variants |
+| Query model | `QueryBuilder<T, TKey>`, `IFilterExpression`, paging, aggregate operations |
+| Keys and state models | `IKey`, `IDefaultKey`, `Key<T1,...>`, `Entity<T, TKey>`, `State<T, TKey>` |
+| Business and translation hooks | interceptors, examples, exposure rules, filter translation |
 | Runtime metadata | `RepositoryFrameworkRegistry` and `RepositoryFrameworkService` |
 
 ---
 
 ## What this package provides
 
-- Core implementation interfaces: `IRepositoryPattern<T, TKey>`, `ICommandPattern<T, TKey>`, `IQueryPattern<T, TKey>`
-- Consumer interfaces for injection: `IRepository<T, TKey>`, `ICommand<T, TKey>`, `IQuery<T, TKey>`
-- Key helpers: `IKey`, `IDefaultKey`, `Key<T1>` ... `Key<T1,T2,T3,T4,T5>`
-- DI extensions: `AddRepository`, `AddCommand`, `AddQuery`, and their async variants
-- Fluent query builder: `QueryBuilder<T, TKey>` with filter, sort, paging, aggregation
-- Business hooks: `Before`/`After` interceptors for every repository operation
-- Translation mapper: map domain models to storage models in query expressions
+- Core storage contracts: `IRepositoryPattern<T, TKey>`, `ICommandPattern<T, TKey>`, `IQueryPattern<T, TKey>`
+- Consumer contracts for DI: `IRepository<T, TKey>`, `ICommand<T, TKey>`, `IQuery<T, TKey>`
+- Fluent registration builders: `AddRepository`, `AddCommand`, `AddQuery`, plus async variants
+- Storage wiring primitives: `SetStorage`, `SetStorageWithOptions`, `SetStorageAndBuildOptions`, `SetStorageAndBuildOptionsAsync`, `SetStorageAndServiceConnection`
+- Key helpers: `IKey`, `IDefaultKey`, `Key<T1>` through `Key<T1, T2, T3, T4, T5>`, and `KeySettings<TKey>`
+- Query/filter model: `QueryBuilder<T, TKey>`, `FilterExpression`, `SerializableFilter`, metadata, paging, and aggregate operations
+- Business hooks and translation builders for cross-cutting logic and model remapping
+- Runtime registry data used by diagnostics and API exposure packages
+
+---
+
+## Mental model
+
+This package does not ship a database provider by itself. Instead, it gives you a stable abstraction layer for three concerns:
+
+1. Implement storage behavior behind repository contracts.
+2. Register those implementations in DI, optionally with named factories.
+3. Reuse the same query/filter/key model across in-memory, EF, blob, table, Cosmos, API client, and custom providers.
+
+Most other packages in `src/Repository` are adapters built on top of these abstractions.
 
 ---
 
@@ -75,7 +88,7 @@ At a high level, this package is organized around these areas.
 
 ### Implementation interfaces
 
-Implement one of these in your storage class:
+Implement one of these in your storage class.
 
 ```csharp
 // Full repository (read + write)
@@ -103,19 +116,23 @@ public interface IQueryPattern<T, TKey>
 }
 ```
 
+Both query and command abstractions also inherit the non-generic bootstrap contract through their base interfaces, so storage implementations can participate in warm-up/startup bootstrap logic.
+
 ### Consumer interfaces
 
-Inject these into your services — never inject the pattern interfaces directly:
+Inject these into application services instead of the pattern interfaces directly.
 
 ```csharp
-IRepository<T, TKey>   // IRepositoryPattern<T, TKey> + query helpers + command helpers
-ICommand<T, TKey>      // ICommandPattern<T, TKey>
-IQuery<T, TKey>        // IQueryPattern<T, TKey>
+IRepository<T, TKey>   // read + write + query extensions
+ICommand<T, TKey>      // write only
+IQuery<T, TKey>        // read only
 ```
+
+The consumer interfaces are what the registration builders expose through DI and named factories.
 
 ---
 
-## DI Setup
+## Basic registration
 
 ### Repository (read + write)
 
@@ -140,9 +157,9 @@ builder.Services.AddQuery<AppUser, Guid>(queryBuilder =>
 });
 ```
 
-### Async setup
+### Async registration
 
-Use async variants when storage setup requires I/O (e.g. loading connection strings):
+Use async variants when the builder itself needs asynchronous setup.
 
 ```csharp
 await builder.Services.AddRepositoryAsync<AppUser, Guid>(async repositoryBuilder =>
@@ -151,18 +168,167 @@ await builder.Services.AddRepositoryAsync<AppUser, Guid>(async repositoryBuilder
     await Task.CompletedTask;
 });
 
-// Also available:
-await builder.Services.AddCommandAsync<AppUser, Guid>(...);
-await builder.Services.AddQueryAsync<AppUser, Guid>(...);
+await builder.Services.AddCommandAsync<AppUser, Guid>(async commandBuilder =>
+{
+    commandBuilder.SetStorage<AppUserCommandStorage>();
+    await Task.CompletedTask;
+});
+
+await builder.Services.AddQueryAsync<AppUser, Guid>(async queryBuilder =>
+{
+    queryBuilder.SetStorage<AppUserQueryStorage>();
+    await Task.CompletedTask;
+});
 ```
+
+---
+
+## Storage registration primitives
+
+All repository builders eventually flow through the storage registration methods in `RepositoryBaseBuilder`.
+
+### `SetStorage<TStorage>()`
+
+Use this when the storage can be resolved directly from DI.
+
+```csharp
+builder.Services.AddRepository<AppUser, Guid>(repositoryBuilder =>
+{
+    repositoryBuilder.SetStorage<AppUserStorage>();
+});
+```
+
+### `SetStorageWithOptions<TStorage, TStorageOptions>()`
+
+Use this when the storage consumes a simple options object implementing `IFactoryOptions`.
+
+```csharp
+builder.Services.AddRepository<AppUser, Guid>(repositoryBuilder =>
+{
+    repositoryBuilder.SetStorageWithOptions<AppUserStorage, AppUserStorageOptions>(options =>
+    {
+        options.ConnectionString = builder.Configuration["ConnectionStrings:Default"]!;
+    });
+});
+```
+
+### `SetStorageAndBuildOptions<TStorage, TStorageOptions, TConnection>()`
+
+Use this when the builder must transform fluent configuration into a factory-backed connection/options object.
+
+```csharp
+builder.Services.AddRepository<AppUser, Guid>(repositoryBuilder =>
+{
+    repositoryBuilder.SetStorageAndBuildOptions<AppUserStorage, AppUserBuilder, AppUserConnection>(options =>
+    {
+        options.Name = "users";
+    });
+});
+```
+
+### `SetStorageAndBuildOptionsAsync<TStorage, TStorageOptions, TConnection>()`
+
+Same as the previous one, but the options builder can perform asynchronous work.
+
+```csharp
+await builder.Services.AddRepositoryAsync<AppUser, Guid>(async repositoryBuilder =>
+{
+    await repositoryBuilder.SetStorageAndBuildOptionsAsync<AppUserStorage, AppUserBuilder, AppUserConnection>(options =>
+    {
+        options.Name = "users";
+    });
+});
+```
+
+### `SetStorageAndServiceConnection<TStorage, TConnectionService, TConnectionClient>()`
+
+Use this when the actual connection or client is request-aware or tenant-aware.
+
+```csharp
+public sealed class TenantAwareConnectionService : IConnectionService<Order, Guid, DbConnection>
+{
+    private readonly ITenantResolver _tenantResolver;
+
+    public TenantAwareConnectionService(ITenantResolver tenantResolver)
+        => _tenantResolver = tenantResolver;
+
+    public DbConnection GetConnection(string entityName, string? factoryName = null)
+    {
+        var connectionString = _tenantResolver.GetConnectionString(entityName, factoryName);
+        return new SqlConnection(connectionString);
+    }
+}
+
+builder.Services.AddRepository<Order, Guid>(repositoryBuilder =>
+{
+    repositoryBuilder.SetStorageAndServiceConnection<OrderStorage, TenantAwareConnectionService, DbConnection>();
+});
+```
+
+### Lifetime and naming
+
+- All `SetStorage*` methods default to `ServiceLifetime.Scoped`.
+- Every `SetStorage*` overload accepts an optional `name` and `serviceLifetime`.
+- The `name` is stored as the repository `FactoryName` in the runtime registry and is how named factories resolve a specific storage.
+
+---
+
+## Named registrations and factories
+
+One model can be backed by multiple repositories or providers at the same time. The common pattern is to register each one with a `name`, then resolve it through `IFactory<TService>`.
+
+This is heavily used in the integration tests and sample web API.
+
+```csharp
+builder.Services.AddRepository<AppUser, AppUserKey>(repositoryBuilder =>
+{
+    repositoryBuilder.SetStorage<PrimaryAppUserStorage>(name: "primary");
+    repositoryBuilder.SetStorage<ArchiveAppUserStorage>(name: "archive");
+});
+```
+
+```csharp
+public sealed class AppUserImportService
+{
+    private readonly IFactory<IRepository<AppUser, AppUserKey>> _repositoryFactory;
+
+    public AppUserImportService(IFactory<IRepository<AppUser, AppUserKey>> repositoryFactory)
+        => _repositoryFactory = repositoryFactory;
+
+    public Task<AppUser?> GetFromArchiveAsync(AppUserKey key, CancellationToken cancellationToken = default)
+    {
+        var repository = _repositoryFactory.Create("archive")!;
+        return repository.GetAsync(key, cancellationToken);
+    }
+}
+```
+
+The same pattern works for:
+
+- `IFactory<IRepository<T, TKey>>`
+- `IFactory<IQuery<T, TKey>>`
+- `IFactory<ICommand<T, TKey>>`
+
+This makes it easy to switch between environments, fallback providers, multi-tenant routing, cache layers, or migration tooling without changing the domain-facing contract.
 
 ---
 
 ## Keys
 
-### Primitive keys
+Key handling is more flexible than the old docs suggest. `KeySettings<TKey>` supports several strategies.
 
-Any non-null primitive works directly:
+### Primitive and framework-native keys
+
+These work out of the box:
+
+- primitive numeric types
+- `string`
+- `Guid`
+- `DateTime`
+- `DateTimeOffset`
+- `TimeSpan`
+- `nint`
+- `nuint`
 
 ```csharp
 builder.Services.AddRepository<AppUser, Guid>(...);
@@ -172,21 +338,21 @@ builder.Services.AddRepository<Session, string>(...);
 
 ### Composite keys with `Key<T1, T2, ...>`
 
-Up to 5 generic parameters:
+You can use the built-in `Key<>` helpers for common composite-key scenarios.
 
 ```csharp
-// Two-part composite key
 builder.Services.AddRepository<Order, Key<int, string>>(repositoryBuilder =>
 {
     repositoryBuilder.SetStorage<OrderStorage>();
 });
 
-// Usage
 var key = new Key<int, string>(42, "region-eu");
-await repository.GetAsync(key);
+var order = await repository.GetAsync(key);
 ```
 
-### Custom key with `IKey`
+### Custom keys with `IKey`
+
+Implement `IKey` when you want full control over string serialization.
 
 ```csharp
 public sealed class AppUserKey : IKey
@@ -204,9 +370,9 @@ public sealed class AppUserKey : IKey
 }
 ```
 
-### `IDefaultKey` — property-based composite key
+### Property-based keys with `IDefaultKey`
 
-Implement `IDefaultKey` on a class that has properties. The framework serializes all properties using `"|||"` as separator by default:
+Implement `IDefaultKey` when you want the framework to serialize all key properties using the default separator.
 
 ```csharp
 public sealed class OrderKey : IDefaultKey
@@ -215,17 +381,43 @@ public sealed class OrderKey : IDefaultKey
     public string Region { get; set; } = string.Empty;
 }
 
-// Change separator if needed (call before AddRepository):
 builder.Services.AddDefaultSeparatorForDefaultKeyInterface("$$$");
 ```
 
+### Plain POCO keys also work
+
+If `TKey` is not primitive, not `IKey`, and not `IDefaultKey`, `KeySettings<TKey>` still supports it as long as the type exposes properties. In that case it falls back to JSON serialization.
+
+This behavior is covered by the key tests and the class-key repository tests.
+
+```csharp
+public sealed class ClassAnimalKey
+{
+    public string Area { get; set; } = string.Empty;
+    public int Id { get; set; }
+    public Guid CorrelationId { get; set; }
+
+    public ClassAnimalKey() { }
+
+    public ClassAnimalKey(string area, int id, Guid correlationId)
+        => (Area, Id, CorrelationId) = (area, id, correlationId);
+}
+
+builder.Services.AddRepository<ClassAnimal, ClassAnimalKey>(repositoryBuilder =>
+{
+    repositoryBuilder.SetStorage<ClassAnimalRepository>();
+});
+```
+
+The practical rule is simple: if the key can be converted to and from a stable string representation, the abstraction layer can carry it through providers and APIs.
+
 ---
 
-## Models
+## Core models
 
 ### `State<T, TKey>`
 
-Returned by all command operations:
+All command methods return `State<T, TKey>`.
 
 ```csharp
 public class State<T, TKey>
@@ -235,28 +427,23 @@ public class State<T, TKey>
     public int? Code { get; set; }
     public string? Message { get; set; }
     public bool HasEntity { get; }
-
-    // Implicit conversions
-    // bool state = state;       // true if IsOk
-    // int  code  = state;       // Code ?? 0
 }
 ```
 
-Static factory helpers:
+Useful factory helpers include:
 
 ```csharp
 return State.Ok(value, key);
 return State.NotOk(value, key);
 return State.Default(isOk, value, key);
 
-// Async variants
 return await State.OkAsTask(value, key);
 return await State.NotOkAsTask(value, key);
 ```
 
 ### `Entity<T, TKey>`
 
-Wrapper returned by query operations:
+Query operations return `Entity<T, TKey>` so callers can keep both the key and the value.
 
 ```csharp
 public class Entity<T, TKey>
@@ -271,9 +458,9 @@ public class Entity<T, TKey>
 }
 ```
 
-### `BatchOperations<T, TKey>`
+### Batch models
 
-Fluent builder for atomic multi-operation batches:
+Use `BatchOperations<T, TKey>` and `BatchResult<T, TKey>` when the provider supports grouped write operations.
 
 ```csharp
 var batch = new BatchOperations<AppUser, Guid>()
@@ -283,50 +470,45 @@ var batch = new BatchOperations<AppUser, Guid>()
 
 await foreach (var result in command.BatchAsync(batch))
 {
-    // result.Command — CommandType.Insert | Update | Delete
-    // result.Key     — TKey
-    // result.State   — State<T, TKey>
+    // result.Command
+    // result.Key
+    // result.State
 }
 ```
 
-Or use the extension fluent builder:
+The command and repository consumers also expose the fluent helper:
 
 ```csharp
-await command.CreateBatchOperation()
+await repository.CreateBatchOperation()
     .AddInsert(key1, value1)
     .AddDelete(key2)
-    .ExecuteAsync();
+    .ExecuteAsync()
+    .ToListAsync();
 ```
 
 ---
 
-## Fluent Query Builder
+## Fluent query builder
 
-`IQuery<T, TKey>` and `IRepository<T, TKey>` expose extension methods that return a `QueryBuilder<T, TKey>`:
+`IQuery<T, TKey>` and `IRepository<T, TKey>` expose extension methods that create a `QueryBuilder<T, TKey>`.
 
 ```csharp
-// Injected
-private readonly IQuery<Product, int> _query;
-
-// Filtering
-var results = await _query
-    .Where(x => x.Price > 10)
+var items = await repository
+    .Where(x => x.IsActive)
     .OrderByDescending(x => x.Price)
-    .Take(20)
-    .Skip(40)
+    .Skip(20)
+    .Take(10)
     .ToListAsync();
 
-// Results are List<Entity<Product, int>> — use .Value to get the entity
-foreach (var entity in results)
+foreach (var entity in items)
     Console.WriteLine(entity.Value!.Name);
 
-// Without key wrapper
-List<Product> products = await _query
+List<Product> values = await repository
     .Where(x => x.IsActive)
     .ToListAsEntityAsync();
 ```
 
-### Available `QueryBuilder<T, TKey>` methods
+### Main query methods
 
 | Method | Description |
 |---|---|
@@ -338,45 +520,93 @@ List<Product> products = await _query
 | `OrderByDescending(expr)` | Descending sort |
 | `ThenBy(expr)` | Secondary ascending sort |
 | `ThenByDescending(expr)` | Secondary descending sort |
-| `GroupByAsync<TProperty>(expr)` | Group results |
 | `AnyAsync(expr?)` | Returns `bool` |
-| `FirstOrDefaultAsync(expr?)` | Returns `Entity<T,TKey>?` |
-| `FirstAsync(expr?)` | Returns `Entity<T,TKey>` (throws if empty) |
-| `FirstOrDefaultByKeyAsync(expr?)` | Filter by key, return first |
-| `FirstByKeyAsync(expr?)` | Filter by key, return first (throws if empty) |
-| `PageAsync(page, pageSize)` | Returns `Page<T,TKey>` with total count and pages |
-| `ToListAsync()` | Returns `List<Entity<T,TKey>>` |
-| `ToListAsEntityAsync()` | Returns `List<T>` (no key) |
-| `QueryAsync()` | Returns `IAsyncEnumerable<Entity<T,TKey>>` |
-| `QueryAsEntityAsync()` | Returns `IAsyncEnumerable<T>` (no key) |
-| `CountAsync()` | Returns `long` |
-| `SumAsync<TProperty>(expr)` | Aggregate sum |
-| `AverageAsync<TProperty>(expr)` | Aggregate average |
-| `MaxAsync<TProperty>(expr)` | Aggregate max |
-| `MinAsync<TProperty>(expr)` | Aggregate min |
-| `OperationAsync<TProperty>(operation)` | Custom aggregate operation |
-| `AddMetadata(key, value)` | Attach custom metadata to the filter expression |
+| `FirstOrDefaultAsync(expr?)` | Returns `Entity<T, TKey>?` |
+| `FirstAsync(expr?)` | Returns `Entity<T, TKey>` |
+| `FirstOrDefaultByKeyAsync(expr?)` | Returns first entity filtered on key |
+| `FirstByKeyAsync(expr?)` | Returns first entity filtered on key |
+| `PageAsync(page, pageSize)` | Returns `Page<T, TKey>` |
+| `ToListAsync()` | Returns `List<Entity<T, TKey>>` |
+| `ToListAsEntityAsync()` | Returns `List<T>` |
+| `QueryAsync()` | Returns `IAsyncEnumerable<Entity<T, TKey>>` |
+| `QueryAsEntityAsync()` | Returns `IAsyncEnumerable<T>` |
+| `CountAsync()` | Aggregate count |
+| `SumAsync(expr)` | Aggregate sum |
+| `AverageAsync(expr)` | Aggregate average |
+| `MaxAsync(expr)` | Aggregate max |
+| `MinAsync(expr)` | Aggregate min |
+| `OperationAsync(operation)` | Custom aggregate operation |
+| `AddMetadata(key, value)` | Attach metadata to the filter |
 
-### Pagination
+### Important behavior notes
+
+- `PageAsync` validates that `page >= 1` and `pageSize >= 1`.
+- `PageAsync` calculates total pages using a separate `Count` operation.
+- `GroupByAsync` is not translated into provider-native grouping. It first enumerates `QueryAsync()` and then groups client-side.
 
 ```csharp
-Page<Product, int> page = await _query
-    .Where(x => x.IsActive)
-    .OrderBy(x => x.Name)
+Page<AppUser, AppUserKey> firstPage = await repository
+    .Where(x => x.Id > 0)
+    .OrderByDescending(x => x.Id)
     .PageAsync(page: 1, pageSize: 20);
-
-// page.Items     — List<Entity<Product, int>>
-// page.TotalCount — long
-// page.Pages     — long (total page count)
 ```
 
 ---
 
-## Business Hooks
+## Filter model and custom storage integration
 
-Business interceptors run before or after each repository operation. They are chained by `Priority` (lower value runs first; same priority overrides the previous):
+`IFilterExpression` is the portable query description that storage providers receive in `QueryAsync` and `OperationAsync`.
 
-### Register inline with the builder
+This is the bridge between LINQ-like consumer code and your provider implementation.
+
+### What it can do
+
+- carry ordered filter operations such as `Where`, `OrderBy`, `Skip`, and `Take`
+- serialize itself through `Serialize()` into a `SerializableFilter`
+- produce a stable cache/transport key through `ToKey()`
+- apply the filter directly to in-memory collections or queryables
+- expose filter metadata and parsed values through `GetFilters(...)`
+- translate mapped expressions through `Translate(...)`
+
+### Typical custom repository usage
+
+For in-memory or adapter-style repositories, the simplest pattern is to let the filter apply itself.
+
+```csharp
+public async IAsyncEnumerable<Entity<AppUser, AppUserKey>> QueryAsync(
+    IFilterExpression filter,
+    [EnumeratorCancellation] CancellationToken cancellationToken = default)
+{
+    await Task.Yield();
+
+    foreach (var item in filter.Apply(_items))
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        yield return Entity.Default(item, new AppUserKey(item.Id));
+    }
+}
+```
+
+### Metadata and caching scenarios
+
+`AddMetadata(key, value)` is useful when your provider needs extra information that is not part of the entity predicate itself, such as tenant, partition, read consistency, or a custom projection mode.
+
+```csharp
+var query = repository
+    .Where(x => x.IsActive)
+    .AddMetadata("tenant", "eu-west")
+    .AddMetadata("mode", "snapshot");
+```
+
+The metadata becomes part of the filter representation available to the storage layer through `IFilterExpression`.
+
+---
+
+## Business hooks
+
+Business interceptors let you wrap every repository operation with validation, auditing, policy checks, or side effects.
+
+### Register inline during repository setup
 
 ```csharp
 builder.Services.AddRepository<AppUser, Guid>(repositoryBuilder =>
@@ -391,7 +621,7 @@ builder.Services.AddRepository<AppUser, Guid>(repositoryBuilder =>
 });
 ```
 
-### Register independently (CQRS or after-the-fact)
+### Register independently
 
 ```csharp
 builder.Services
@@ -400,15 +630,16 @@ builder.Services
     .AddBusinessAfterUpdate<AppUserUpdateAudit>();
 ```
 
-### Auto-scan all business classes in assemblies
+### Scan assemblies
 
 ```csharp
 builder.Services.ScanBusinessForRepositoryFramework();
-// or specific assemblies:
 builder.Services.ScanBusinessForRepositoryFramework(typeof(MyAssemblyMarker).Assembly);
 ```
 
-### All available hooks
+`ScanBusinessForRepositoryFramework()` inspects all before/after business interfaces for the repositories already registered in the framework registry.
+
+### Available hook families
 
 | Interface | Triggered |
 |---|---|
@@ -429,116 +660,68 @@ builder.Services.ScanBusinessForRepositoryFramework(typeof(MyAssemblyMarker).Ass
 | `IRepositoryBusinessBeforeOperation<T, TKey>` | Before `OperationAsync` |
 | `IRepositoryBusinessAfterOperation<T, TKey>` | After `OperationAsync` |
 
-### Implementing a business hook
-
-```csharp
-public sealed class AppUserValidation : IRepositoryBusinessBeforeInsert<AppUser, Guid>
-{
-    public int Priority => 1;
-
-    public Task<State<AppUser, Guid>> BeforeInsertAsync(
-        Entity<AppUser, Guid> entity,
-        CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrEmpty(entity.Value?.Email))
-            return State.NotOkAsTask<AppUser, Guid>(entity.Value!, entity.Key!.Value);
-
-        return State.OkAsTask(entity);
-    }
-}
-```
+Priority controls ordering. Lower values run first.
 
 ---
 
-## Translation Mapper
+## Translation mapper
 
-Map your domain model to a different storage model (e.g. EF entity, DTO) while keeping query expressions translatable:
+The translation builder is what lets consumer code keep writing filters against the domain model while the provider translates them to a different storage model.
+
+This is covered by the translation tests.
 
 ```csharp
-builder.Services.AddRepository<AppUser, Guid>(repositoryBuilder =>
+builder.Services.AddRepository<Translatable, string>(repositoryBuilder =>
 {
-    repositoryBuilder.SetStorage<AppUserStorage>();
-
     repositoryBuilder
-        .Translate<AppUserEntity>()
-        .With(x => x.Id,       x => x.ExternalId)
-        .With(x => x.Username, x => x.DisplayName)
-        .With(x => x.Email,    x => x.EmailAddress)
-        .WithKey(x => x,       x => x.PrimaryKey);     // key mapping
+        .SetStorage<TranslatableRepository>()
+        .Translate<ToTranslateSomething>()
+            .With(x => x.Foolish, x => x.Folle)
+            .With(x => x.Id, x => x.IdccnlValidita)
+            .With(x => x.CcnlId, x => x.Idccnl)
+            .With(x => x.From, x => x.DataInizio)
+            .With(x => x.To, x => x.DataFine)
+        .AndTranslate<ToTranslateSomethingElse>()
+            .With(x => x.Foolish, x => x.Folle)
+            .With(x => x.Id, x => x.IdccnlValidita)
+            .With(x => x.CcnlId, x => x.Idccnl);
 });
 ```
 
-**With same property names** (when domain model and storage model share property names):
+Common helpers include:
 
-```csharp
-repositoryBuilder
-    .Translate<AppUserEntity>()
-    .WithSamePorpertiesName();
-```
+- `Translate<TTranslated>()`
+- `With(domainProperty, translatedProperty)`
+- `WithKey(...)`
+- `WithSamePorpertiesName()`
+- `AndTranslate<TTranslated>()`
 
-**Chain multiple translations:**
-
-```csharp
-repositoryBuilder
-    .Translate<AppUserEntity>()
-    .With(x => x.Id, x => x.ExternalId)
-    .AndTranslate<AppUserCache>()
-    .With(x => x.Id, x => x.CacheId);
-```
+This is especially useful for EF models, API DTOs, cache projections, or legacy schemas where names do not line up with the public domain model.
 
 ---
 
-## Exposing / Hiding Methods for API
+## API exposure and examples
 
-Control which repository operations are exposed when using `Rystem.RepositoryFramework.Api.Server`:
+These settings matter when the repository is later surfaced through `Rystem.RepositoryFramework.Api.Server`.
+
+### Control exposed methods
 
 ```csharp
 builder.Services.AddRepository<AppUser, Guid>(repositoryBuilder =>
 {
     repositoryBuilder.SetStorage<AppUserStorage>();
 
-    // Expose all (default)
     repositoryBuilder.SetExposable(RepositoryMethods.All);
-
-    // Expose only reads
     repositoryBuilder.SetOnlyQueryExposable();
-
-    // Expose only writes
     repositoryBuilder.SetOnlyCommandExposable();
-
-    // Expose specific methods
     repositoryBuilder.SetExposable(RepositoryMethods.Get | RepositoryMethods.Query);
-
-    // Hide completely
     repositoryBuilder.SetNotExposable();
 });
 ```
 
-`RepositoryMethods` flags:
+`RepositoryMethods` also includes `Bootstrap`, so the bootstrap endpoint can be included or hidden when you expose repositories as APIs.
 
-```csharp
-[Flags]
-public enum RepositoryMethods
-{
-    None      = 0,
-    Insert    = 1,
-    Update    = 2,
-    Delete    = 4,
-    Batch     = 8,
-    Exist     = 16,
-    Get       = 32,
-    Query     = 64,
-    Operation = 128,
-    Bootstrap = 256,
-    All       = Insert | Update | Delete | Batch | Exist | Get | Query | Operation | Bootstrap
-}
-```
-
----
-
-## Swagger / OpenAPI Examples
-
-Provide sample data for generated API documentation:
+### Provide OpenAPI examples
 
 ```csharp
 builder.Services.AddRepository<AppUser, Guid>(repositoryBuilder =>
@@ -552,80 +735,39 @@ builder.Services.AddRepository<AppUser, Guid>(repositoryBuilder =>
 
 ---
 
-## Bootstrap pattern
+## Bootstrap and warm-up lifecycle
 
-If your storage class needs to run initialisation logic on startup (create tables, seed data, warm up connections), implement `IBootstrapPattern`:
+If a storage implementation needs startup work such as schema creation, seeding, or client warm-up, implement the bootstrap contract.
 
 ```csharp
-public class AppUserStorage : IRepositoryPattern<AppUser, Guid>, IBootstrapPattern
+public sealed class AppUserStorage : IRepositoryPattern<AppUser, Guid>, IBootstrapPattern
 {
     public async ValueTask<bool> BootstrapAsync(CancellationToken cancellationToken = default)
     {
-        // create schema, seed data, pre-warm connections …
         await EnsureTableExistsAsync(cancellationToken);
-        return true; // return false to signal failure
+        return true;
     }
 
-    // … other IRepositoryPattern methods
+    // other IRepositoryPattern members omitted
 }
 ```
 
-Bootstrap runs automatically during application startup. The `RepositoryMethods.Bootstrap` flag in `SetExposable` controls whether the bootstrap endpoint is exposed via the REST API.
+Important: bootstrap does not run just because `AddRepository` was called.
 
----
-
-## Dynamic connections (`IConnectionService`)
-
-When the connection string (or client) depends on the request context — for example in multi-tenant apps — implement `IConnectionService<T, TKey, TConnectionClient>` and register it with `SetStorageAndServiceConnection`:
+In the real tests and sample web API, bootstrap is executed by calling `WarmUpAsync()` on the built service provider:
 
 ```csharp
-// 1. Connection service: resolves the right client for the given entity type
-public sealed class TenantAwareDbConnectionService : IConnectionService<Order, Guid, DbConnection>
-{
-    private readonly ITenantResolver _tenantResolver;
-
-    public TenantAwareDbConnectionService(ITenantResolver tenantResolver)
-        => _tenantResolver = tenantResolver;
-
-    public DbConnection GetConnection(string entityName, string? factoryName = null)
-    {
-        var connString = _tenantResolver.GetConnectionString(entityName);
-        return new SqlConnection(connString);
-    }
-}
-
-// 2. Storage: receives the connection client via DI
-public sealed class OrderStorage : IRepositoryPattern<Order, Guid>
-{
-    private readonly IConnectionService<Order, Guid, DbConnection> _connectionService;
-
-    public OrderStorage(IConnectionService<Order, Guid, DbConnection> connectionService)
-        => _connectionService = connectionService;
-
-    public async Task<State<Order, Guid>> InsertAsync(Guid key, Order value, CancellationToken ct = default)
-    {
-        using var conn = _connectionService.GetConnection("Order");
-        // … use conn
-        return State.Ok(value, key);
-    }
-    // … other methods
-}
-
-// 3. Registration
-builder.Services.AddRepository<Order, Guid>(repositoryBuilder =>
-{
-    repositoryBuilder.SetStorageAndServiceConnection<
-        OrderStorage,
-        TenantAwareDbConnectionService,
-        DbConnection>();
-});
+var app = builder.Build();
+await app.Services.WarmUpAsync();
 ```
+
+That is the practical startup lifecycle to document and rely on.
 
 ---
 
 ## Post-build callbacks
 
-Run code immediately after the repository is registered (e.g. validate configuration, emit telemetry):
+You can run synchronous or asynchronous logic after the repository builder delegate finishes.
 
 ```csharp
 builder.Services.AddRepository<AppUser, Guid>(repositoryBuilder =>
@@ -644,16 +786,16 @@ builder.Services.AddRepository<AppUser, Guid>(repositoryBuilder =>
 });
 ```
 
-Both `AfterBuild` (synchronous) and `AfterBuildAsync` are called after the `SetStorage*` call completes.
+The important detail is timing: `AfterBuild` and `AfterBuildAsync` run after the whole `AddRepository` or `AddCommand` or `AddQuery` builder delegate returns, not after each individual `SetStorage*` call.
 
 ---
 
-## Runtime registry (`RepositoryFrameworkRegistry`)
+## Runtime registry
 
-`RepositoryFrameworkRegistry` is a singleton registered automatically. Inject it to enumerate every repository registered in the application:
+`RepositoryFrameworkRegistry` is registered automatically as a singleton. It tracks every repository, command, and query configured through the framework.
 
 ```csharp
-public class RepositoryDiagnosticsService
+public sealed class RepositoryDiagnosticsService
 {
     private readonly RepositoryFrameworkRegistry _registry;
 
@@ -662,42 +804,40 @@ public class RepositoryDiagnosticsService
 
     public void PrintAll()
     {
-        foreach (var (key, service) in _registry.Services)
+        foreach (var (_, service) in _registry.Services)
         {
             Console.WriteLine(
-                $"{service.ModelType.Name} ({service.Type}) " +
-                $"→ {service.ImplementationType.Name} " +
-                $"[{service.ExposedMethods}]");
+                $"{service.ModelType.Name} {service.Type} -> {service.ImplementationType.Name} [{service.FactoryName}]");
         }
     }
-
-    // Get services for a specific model type
-    public IEnumerable<RepositoryFrameworkService> GetForModel<T>()
-        => _registry.GetByModel(typeof(T));
 }
 ```
 
-### `RepositoryFrameworkService` properties
+### `RepositoryFrameworkService` metadata
 
-| Property | Type | Description |
-|---|---|---|
-| `ModelType` | `Type` | The domain model type (`T`) |
-| `KeyType` | `Type` | The key type (`TKey`) |
-| `InterfaceType` | `Type` | The consumer interface (`IRepository<T,TKey>`, etc.) |
-| `ImplementationType` | `Type` | The concrete storage class |
-| `ExposedMethods` | `RepositoryMethods` | Which operations are exposed via the REST API |
-| `ServiceLifetime` | `ServiceLifetime` | DI lifetime |
-| `Type` | `PatternType` | `Repository`, `Command`, or `Query` |
-| `FactoryName` | `string` | Named factory key (empty = default) |
-| `Policies` | `List<string>` | Authorization policy names (used by the Web UI) |
+| Property | Description |
+|---|---|
+| `ModelType` | The domain model type |
+| `KeyType` | The key type |
+| `InterfaceType` | The DI-facing contract |
+| `ImplementationType` | The storage implementation |
+| `ExposedMethods` | API-visible methods |
+| `ServiceLifetime` | DI lifetime used by registration |
+| `Type` | `Repository`, `Command`, or `Query` |
+| `FactoryName` | Named registration key, empty when default |
+| `Policies` | Authorization policy names used by UI/API tooling |
+
+This registry is what later packages use to expose repositories as APIs, create documentation, or inspect configured services.
 
 ---
 
-## Related Packages
+## Related packages
 
 | Package | Purpose |
 |---|---|
-| `Rystem.RepositoryFramework.Infrastructure.InMemory` | In-memory storage for testing |
-| `Rystem.RepositoryFramework.Infrastructure.EntityFramework` | EF Core storage |
-| `Rystem.RepositoryFramework.Api.Server` | Auto-generate REST API from repositories |
-| `Rystem.RepositoryFramework.Api.Client` | TypeScript / .NET client for repository API |
+| `Rystem.RepositoryFramework.Infrastructure.InMemory` | In-memory storage and test-friendly provider |
+| `Rystem.RepositoryFramework.Infrastructure.EntityFramework` | EF Core adapter |
+| `Rystem.RepositoryFramework.Api.Server` | Auto-generate REST APIs from repository registrations |
+| `Rystem.RepositoryFramework.Api.Client` | .NET and TypeScript client adapters |
+
+If you are continuing through the repository area, this README is the conceptual base to read before the infrastructure packages.

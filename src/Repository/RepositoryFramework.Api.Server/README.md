@@ -1,9 +1,20 @@
-﻿# Rystem.RepositoryFramework.Api.Server
+### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+
+# Rystem.RepositoryFramework.Api.Server
 
 [![NuGet](https://img.shields.io/nuget/v/Rystem.RepositoryFramework.Api.Server)](https://www.nuget.org/packages/Rystem.RepositoryFramework.Api.Server)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/Rystem.RepositoryFramework.Api.Server)](https://www.nuget.org/packages/Rystem.RepositoryFramework.Api.Server)
 
-Automatically exposes all registered Repository/CQRS services as HTTP endpoints with a single call. No controllers required.
+Minimal-API endpoint generation for repositories and CQRS registrations created through the Rystem repository framework.
+
+This package reads the runtime repository registry and turns registered repositories, commands, and queries into HTTP endpoints without controllers.
+
+## Resources
+
+- Complete Documentation: [https://rystem.net](https://rystem.net)
+- MCP Server for AI: [https://rystem.cloud/mcp](https://rystem.cloud/mcp)
+- Discord Community: [https://discord.gg/tkWvy4WPjt](https://discord.gg/tkWvy4WPjt)
+- Support the Project: [https://www.buymeacoffee.com/keyserdsoze](https://www.buymeacoffee.com/keyserdsoze)
 
 ---
 
@@ -13,38 +24,84 @@ Automatically exposes all registered Repository/CQRS services as HTTP endpoints 
 dotnet add package Rystem.RepositoryFramework.Api.Server
 ```
 
+The current package metadata in `src/Repository/RepositoryFramework.Api.Server/RepositoryFramework.Api.Server.csproj` is:
+
+- package id: `Rystem.RepositoryFramework.Api.Server`
+- version: `10.0.6`
+- target framework: `net10.0`
+- framework reference: `Microsoft.AspNetCore.App`
+- Swagger package: `Swashbuckle.AspNetCore` `10.1.4`
+
 ---
 
-## Quick Start
+## Package architecture
+
+| Area | Purpose |
+|---|---|
+| `AddApiFromRepositoryFramework()` | Collect API-level settings such as path, version, Swagger, CORS, and diagnostics |
+| `UseApiFromRepositoryFramework()` | Read `RepositoryFrameworkRegistry` and map endpoints |
+| Authorization builder | Apply endpoint-level auth rules by repository method group |
+| Repository authorization handlers | Add repository-specific authorization logic via `IRepositoryAuthorization<T, TKey>` |
+| Map/models diagnostics | Expose generated endpoint metadata and generated TypeScript model definitions |
+| Swagger/OpenID helpers | Configure Swagger UI and OpenID metadata for the generated API |
+
+---
+
+## Mental model
+
+This package does not replace repository registration. It sits on top of it.
+
+The flow is:
+
+1. Register repositories, commands, or queries through the abstractions layer.
+2. Optionally mark methods as exposable or hidden on each repository registration.
+3. Configure API behavior with `AddApiFromRepositoryFramework()`.
+4. Map the generated endpoints with `UseApiFromRepositoryFramework()`.
+
+The package discovers what to expose from `RepositoryFrameworkRegistry`, so there is no controller layer to keep in sync.
+
+---
+
+## Quick start
+
+This is the real shape used in the sample host under `src/Repository/RepositoryFramework.Test/RepositoryFramework.WebApi/Program.cs`.
 
 ```csharp
-// Program.cs
-builder.Services
-    .AddRepository<SuperUser, string>(repo => repo.WithInMemory());
+builder.Services.AddRepository<SuperUser, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithInMemory(inMemoryBuilder =>
+    {
+        inMemoryBuilder
+            .PopulateWithRandomData(120, 5)
+            .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
+    });
+});
 
 builder.Services.AddApiFromRepositoryFramework()
-    .WithDescriptiveName("Repository API")
-    .WithPath("api")
-    .WithVersion("v1")
+    .WithDescriptiveName("Repository Api")
     .WithSwagger()
+    .WithMapApi()
+    .WithModelsApi()
     .WithDocumentation()
-    .WithDefaultCors("https://example.com");
+    .WithDefaultCorsWithAllOrigins();
 
 var app = builder.Build();
+await app.Services.WarmUpAsync();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.UseApiFromRepositoryFramework()
-   .WithNoAuthorization();
+    .WithNoAuthorization();
 
 app.Run();
 ```
 
-Generated endpoints follow the pattern `/{path}/{version}/{EntityName}/{Method}`, e.g. `GET /api/v1/SuperUser/Get?key=...`.
-
 ---
 
-## `AddApiFromRepositoryFramework()` — Service Configuration
+## Service-side configuration
 
-Call this in `builder.Services` to configure how the API is generated.
+`AddApiFromRepositoryFramework()` returns `IApiBuilder`.
 
 ```csharp
 builder.Services.AddApiFromRepositoryFramework()
@@ -52,91 +109,209 @@ builder.Services.AddApiFromRepositoryFramework()
     .WithPath("api")
     .WithVersion("v2")
     .WithSwagger()
-    .WithDocumentation()
-    .WithDefaultCors("https://myapp.com", "https://staging.myapp.com");
+    .WithMapApi()
+    .WithModelsApi();
 ```
 
-### Configuration Methods
+### Configuration methods
 
-| Method | Description |
+| Method | What it does |
 |---|---|
-| `WithDescriptiveName(string)` | Sets the API display name (used in Swagger UI). Defaults to the assembly name. |
-| `WithPath(string)` | Base path prefix for all generated endpoints. Default: `"api"`. |
-| `WithVersion(string)` | Version segment appended after the path (e.g. `"v1"` → `/api/v1/...`). |
-| `WithDocumentation()` | Enables XML documentation on generated Swagger operations. |
-| `WithSwagger()` | Registers Swagger/OpenAPI generation and UI. |
-| `WithMapApi()` | Enables the `/Map` endpoint that returns the full repository map. |
-| `WithModelsApi()` | Enables the `/Models` endpoint that returns entity model schemas. |
-| `WithName<T>(string)` | Overrides the route segment for entity type `T` (default is `typeof(T).Name`). |
-| `WithDefaultCors(params string[] domains)` | Adds a CORS policy allowing the specified origins. |
-| `WithDefaultCorsWithAllOrigins()` | Adds a CORS policy that allows any origin. |
-| `WithCors(Action<CorsOptions>)` | Full control over CORS policy registration. |
-| `WithOpenIdAuthentication(Action<ApiIdentitySettings>)` | Configures OpenID Connect in Swagger UI. Returns `IIdentityApiBuilder`. |
-| `ConfigureAzureActiveDirectory(IConfiguration)` | Shortcut that reads `AzureAd:*` settings from `appsettings.json`. Returns `IIdentityApiBuilder`. |
+| `WithDescriptiveName(string)` | Sets the API name used by Swagger UI |
+| `WithPath(string)` | Sets the base path segment, default `api` |
+| `WithVersion(string)` | Adds a version segment after the base path |
+| `WithName<T>(string)` | Overrides the route segment used for model `T` |
+| `WithSwagger()` | Registers Swagger/OpenAPI services and UI support |
+| `WithDocumentation()` | Enables extra Swagger UI customization and PDF export support |
+| `WithMapApi()` | Enables the repository map endpoint |
+| `WithModelsApi()` | Enables the generated-model endpoint |
+| `WithDefaultCors(params string[] domains)` | Registers a default named CORS policy for the provided origins |
+| `WithDefaultCorsWithAllOrigins()` | Registers a permissive named CORS policy |
+| `WithCors(Action<CorsOptions>)` | Lets you configure CORS directly |
+| `WithOpenIdAuthentication(...)` | Configures OpenID metadata for Swagger UI and returns `IIdentityApiBuilder` |
+| `ConfigureAzureActiveDirectory(IConfiguration)` | Shortcut that reads `AzureAd:*` settings and configures OpenID metadata |
 
-### OpenID / Azure AD Authentication in Swagger
+### Important note about `WithDocumentation()`
+
+`WithDocumentation()` does not load XML doc comments.
+
+In the current implementation it enhances Swagger UI by injecting custom UI content and a RapiPDF-based export button. It only has visible effect when Swagger is also enabled.
+
+---
+
+## Route generation
+
+The main generated route shape is:
+
+- default registration: `/{path}/{version?}/{modelName}/{method}`
+- named registration: `/{path}/{version?}/{modelName}/{factoryName}/{method}`
+
+Examples:
+
+- `/api/v1/SuperUser/Get`
+- `/api/v1/SuperUser/Insert`
+- `/api/v1/SuperUser/inmemory/Get`
+
+If you override a name with `WithName<T>(...)`, that custom segment is used instead of `typeof(T).Name`.
+
+---
+
+## Mapping all repositories or one repository
+
+### Map every registered repository
 
 ```csharp
-// Generic OpenID
-builder.Services.AddApiFromRepositoryFramework()
-    .WithSwagger()
-    .WithOpenIdAuthentication(settings =>
-    {
-        settings.AuthorizationUrl = new Uri("https://login.example.com/oauth2/authorize");
-        settings.TokenUrl = new Uri("https://login.example.com/oauth2/token");
-        settings.ClientId = "your-client-id";
-        settings.Scopes.Add(new ApiIdentityScopeSettings { Value = "api.read", Description = "Read access" });
-    })
-    .WithAuthorization(options =>
-    {
-        options.AddPolicy("AdminOnly", p => p.RequireRole("Admin"));
-    });
+app.UseApiFromRepositoryFramework()
+    .WithNoAuthorization();
 ```
+
+### Map a single entity type
 
 ```csharp
-// Azure Active Directory shortcut (reads from appsettings.json "AzureAd" section)
-builder.Services.AddApiFromRepositoryFramework()
-    .WithSwagger()
-    .ConfigureAzureActiveDirectory(builder.Configuration)
-    .WithAuthorization(options =>
-    {
-        options.AddPolicy("AdminOnly", p => p.RequireRole("Admin"));
-    });
+app.UseApiFromRepositoryFramework<WebApplication, SuperUser, string>()
+    .WithNoAuthorization();
 ```
 
-`appsettings.json` section expected by `ConfigureAzureActiveDirectory`:
+### Map a specific named registration
 
-```json
-"AzureAd": {
-    "Instance": "https://login.microsoftonline.com/",
-    "Domain": "your-domain.onmicrosoft.com",
-    "TenantId": "<tenant-id>",
-    "ClientId": "<client-id>",
-    "Scopes": "api.read api.write"
-}
+```csharp
+app.UseApiFromRepositoryFramework<WebApplication, SuperUser, string>(name: "inmemory")
+    .WithNoAuthorization();
 ```
 
 ---
 
-## `UseApiFromRepositoryFramework()` — Endpoint Registration + Authorization
+## Request shapes by method
 
-Call this on `app` (or any `IEndpointRouteBuilder`) to register the endpoints and configure authorization.
+The generated HTTP shape depends not only on the repository method, but also on whether `TKey` is JSON-serializable according to `KeySettings<TKey>`.
 
-### No Authorization
+### Non-JSON keys
+
+For primitive/string/`IKey`-style keys, the generated endpoints are:
+
+| Method | HTTP | Shape |
+|---|---|---|
+| `Get` | `GET` | `?key=...` |
+| `Exist` | `GET` | `?key=...` |
+| `Delete` | `GET` | `?key=...` |
+| `Insert` | `POST` | query `key` + body `T` |
+| `Update` | `POST` | query `key` + body `T` |
+| `Query` | `POST` | body `SerializableFilter?` |
+| `Operation` | `POST` | query `op`, optional query `returnType`, body `SerializableFilter?` |
+| `Batch` | `POST` | body `BatchOperations<T, TKey>` |
+
+### JSON-style keys
+
+For keys treated as JSONable by `KeySettings<TKey>`, the generated endpoints switch to request bodies for key-based methods.
+
+| Method | HTTP | Shape |
+|---|---|---|
+| `Get` | `POST` | body `TKey` |
+| `Exist` | `POST` | body `TKey` |
+| `Delete` | `POST` | body `TKey` |
+| `Insert` | `POST` | body `Entity<T, TKey>` |
+| `Update` | `POST` | body `Entity<T, TKey>` |
+
+### Stream endpoints
+
+Two methods also generate streaming variants:
+
+- `POST .../Query/Stream`
+- `POST .../Batch/Stream`
+
+These return the underlying async stream instead of materializing everything into a list first.
+
+---
+
+## Repository methods and exposure
+
+The API server only maps methods that are both:
+
+- implemented by the registered service
+- allowed by the repository's `ExposedMethods`
+
+That means abstractions-layer settings such as these directly affect the generated API:
+
+- `SetExposable(...)`
+- `SetOnlyQueryExposable()`
+- `SetOnlyCommandExposable()`
+- `SetNotExposable()`
+
+For custom storages that are not marked as default integrations, the mapper also skips methods whose body is just `throw new NotImplementedException(...)`.
+
+---
+
+## Diagnostics endpoints
+
+Two optional endpoints provide metadata about the generated API.
+
+### Repository map
+
+Enable it with:
+
+```csharp
+builder.Services.AddApiFromRepositoryFramework()
+    .WithMapApi();
+```
+
+Route:
+
+```text
+/Repository/Map/All
+```
+
+This endpoint is not placed under your configured API base path. It is a fixed diagnostic route.
+
+It returns:
+
+- every generated API entry
+- route URIs
+- repository method names
+- authentication/policy metadata
+- sample request and response payloads
+
+If you registered repository examples with `SetExamples(...)`, those values are used. Otherwise the package falls back to random sample generation.
+
+### Models endpoint
+
+Enable it with:
+
+```csharp
+builder.Services.AddApiFromRepositoryFramework()
+    .WithModelsApi();
+```
+
+Current route:
+
+```text
+/Repository/Models/Typescript
+```
+
+This route returns generated TypeScript definitions for repository models and non-primitive keys. It is also outside the main API base path.
+
+---
+
+## Authorization at endpoint-mapping time
+
+`UseApiFromRepositoryFramework()` returns `IApiAuthorizationBuilder`.
+
+### No authorization
 
 ```csharp
 app.UseApiFromRepositoryFramework()
-   .WithNoAuthorization();
+    .WithNoAuthorization();
 ```
 
-### Require Authentication (No Specific Policy)
+### Require authentication on all endpoints
 
 ```csharp
 app.UseApiFromRepositoryFramework()
-   .WithDefaultAuthorization();
+    .WithDefaultAuthorization();
 ```
 
-### Policy per Method Group
+This maps endpoints and applies `RequireAuthorization()` without naming a specific policy.
+
+### Query vs command policies
 
 ```csharp
 app.UseApiFromRepositoryFramework()
@@ -146,7 +321,7 @@ app.UseApiFromRepositoryFramework()
     .Build();
 ```
 
-### Policy per Specific Methods
+### Specific methods
 
 ```csharp
 app.UseApiFromRepositoryFramework()
@@ -156,109 +331,201 @@ app.UseApiFromRepositoryFramework()
     .Build();
 ```
 
-### Authorization for a Single Entity Type
+### Builder methods
+
+| Method | Purpose |
+|---|---|
+| `WithNoAuthorization()` | Map endpoints without auth requirements |
+| `WithDefaultAuthorization()` | Require authentication on all mapped endpoints |
+| `SetPolicyForAll()` | Target every repository method |
+| `SetPolicyForCommand()` | Target `Insert`, `Update`, `Delete`, `Batch` |
+| `SetPolicyForQuery()` | Target `Exist`, `Get`, `Query`, `Operation` |
+| `SetPolicy(...)` | Target specific `RepositoryMethods` |
+| `Build()` | Finalize endpoint mapping |
+
+### Policy chaining methods
+
+| Method | Purpose |
+|---|---|
+| `With(params string[])` | Attach ASP.NET policy names |
+| `Empty()` | Require auth but clear explicit policy names |
+| `And()` | Return to the main authorization builder |
+| `Build()` | Finalize mapping |
+
+---
+
+## Repository-specific authorization handlers
+
+This package also supports custom authorization handlers that run with repository-specific context.
+
+### Register directly on a repository builder
 
 ```csharp
-app.UseApiFromRepositoryFramework<WebApplication, SuperUser, string>()
-    .SetPolicyForCommand().With("SuperAdmin")
-    .Build();
+repositoryBuilder
+    .ConfigureSpecificPolicies()
+    .WithAuthorizationHandler<PolicyHandlerForSuperUser>();
 ```
 
----
-
-## Authorization Builder Reference
-
-### `IApiAuthorizationBuilder`
-
-| Method | Returns | Description |
-|---|---|---|
-| `WithDefaultAuthorization()` | `IEndpointRouteBuilder` | Enables authentication on all endpoints, no policy name required. |
-| `WithNoAuthorization()` | `IEndpointRouteBuilder` | Registers all endpoints without any auth middleware. |
-| `SetPolicyForAll()` | `IApiAuthorizationPolicy` | Targets all `RepositoryMethods`. |
-| `SetPolicyForCommand()` | `IApiAuthorizationPolicy` | Targets `Insert`, `Update`, `Delete`, `Batch`. |
-| `SetPolicyForQuery()` | `IApiAuthorizationPolicy` | Targets `Exist`, `Get`, `Query`, `Operation`. |
-| `SetPolicy(params RepositoryMethods[])` | `IApiAuthorizationPolicy` | Targets the specific methods listed. |
-| `Build()` | `IEndpointRouteBuilder` | Finalizes and registers all endpoints. |
-
-### `IApiAuthorizationPolicy`
-
-| Method | Returns | Description |
-|---|---|---|
-| `With(params string[] policies)` | `IApiAuthorizationPolicy` | Assigns one or more policy names to the selected methods. |
-| `And()` | `IApiAuthorizationBuilder` | Returns the builder to chain another `SetPolicy*` call. |
-| `Empty()` | `IApiAuthorizationBuilder` | Clears policies for the selected methods (require auth, no policy name). |
-| `Build()` | `IEndpointRouteBuilder` | Finalizes and registers all endpoints. |
-
----
-
-## `RepositoryMethods` Enum
-
-| Value | HTTP | Description |
-|---|---|---|
-| `Get` | `GET` | Retrieve a single entity by key. |
-| `Exist` | `GET` | Check whether an entity with the given key exists. |
-| `Query` | `POST` | Execute a filtered, sorted, paged query. |
-| `Operation` | `POST` | Execute aggregates: `Count`, `Max`, `Min`, `Average`, `Sum`. |
-| `Insert` | `POST` | Insert a new entity. |
-| `Update` | `POST` | Update an existing entity. |
-| `Delete` | `GET` | Delete an entity by key. |
-| `Batch` | `POST` | Execute multiple insert/update/delete operations in one request. |
-| `Bootstrap` | `GET` | Trigger schema/data warm-up (e.g. EF Core migrations). |
-| `All` | — | Shorthand that matches every method in a policy assignment. |
-
----
-
-## Warm-Up / Bootstrap
-
-If you use EF Core migrations, in-memory pre-population, or other initialization that must run before the first request, call `WarmUpAsync()` on the app before `app.Run()`:
+### Scan assemblies for handlers
 
 ```csharp
-await app.Services.WarmUpAsync();
-app.Run();
+builder.Services.ScanAuthorizationForRepositoryFramework();
 ```
 
-Alternatively, expose the `Bootstrap` endpoint so clients can trigger it on demand (it is included automatically when available).
+Handlers implement:
+
+```csharp
+public interface IRepositoryAuthorization<in T, in TKey>
+{
+    Task<AuthorizedRepositoryResponse> HandleRequirementAsync(
+        IHttpContextAccessor httpContextAccessor,
+        AuthorizationHandlerContext context,
+        RepositoryRequirement requirement,
+        RepositoryMethods method,
+        TKey? key,
+        T? value);
+}
+```
+
+This gives the handler access to:
+
+- the current repository method
+- the current request
+- the parsed key when available
+- the parsed entity body for insert/update when available
+
+`ScanAuthorizationForRepositoryFramework()` attaches discovered handlers to repositories with the matching model/key pair and registers the backing ASP.NET authorization policies automatically.
 
 ---
 
-## Multiple Repositories Example
+## Swagger and OpenID notes
 
-All registered repositories are exposed automatically — no extra configuration per entity:
+### Swagger
+
+```csharp
+builder.Services.AddApiFromRepositoryFramework()
+    .WithDescriptiveName("Repository Api")
+    .WithSwagger();
+```
+
+Swagger UI is activated when the endpoints are mapped through `UseApiFromRepositoryFramework(...)`.
+
+### OpenID metadata for Swagger UI
+
+```csharp
+builder.Services.AddApiFromRepositoryFramework()
+    .WithSwagger()
+    .WithOpenIdAuthentication(settings =>
+    {
+        settings.AuthorizationUrl = new Uri("https://login.example.com/oauth2/authorize");
+        settings.TokenUrl = new Uri("https://login.example.com/oauth2/token");
+        settings.ClientId = "client-id";
+        settings.Scopes.Add(new ApiIdentityScopeSettings
+        {
+            Value = "api.read",
+            Description = "Read access"
+        });
+    })
+    .WithAuthorization(options =>
+    {
+        options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+    });
+```
+
+Important: `WithOpenIdAuthentication(...)` and `ConfigureAzureActiveDirectory(...)` configure Swagger/OpenAPI authentication metadata. They do not register your runtime ASP.NET authentication handler.
+
+You still need the normal server-side authentication setup, for example:
 
 ```csharp
 builder.Services
-    .AddRepository<User, string>(repo => repo.WithInMemory())
-    .AddRepository<Product, Guid>(repo => repo.WithInMemory())
-    .AddQuery<Order, long>(repo => repo.WithInMemory());
-
-builder.Services.AddApiFromRepositoryFramework()
-    .WithPath("api")
-    .WithVersion("v1")
-    .WithSwagger();
-
-var app = builder.Build();
-
-app.UseApiFromRepositoryFramework()
-   .SetPolicyForAll().With("AuthenticatedUser")
-   .And()
-   .SetPolicyForCommand().With("Manager")
-   .Build();
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
 ```
 
-This generates endpoints like:
-- `GET  /api/v1/User/Get?key=...`
-- `POST /api/v1/User/Query`
-- `POST /api/v1/User/Insert`
-- `GET  /api/v1/Product/Get?key=...`
-- `POST /api/v1/Order/Query`
-- etc.
+### Azure Active Directory shortcut
+
+```csharp
+builder.Services.AddApiFromRepositoryFramework()
+    .WithSwagger()
+    .ConfigureAzureActiveDirectory(builder.Configuration);
+```
+
+This reads:
+
+- `AzureAd:Instance`
+- `AzureAd:TenantId`
+- `AzureAd:ClientId`
+- `AzureAd:Scopes`
+
+and converts them into the OpenID settings used by Swagger UI.
 
 ---
 
-## Related Packages
+## Warm-up and bootstrap
 
-| Package | Description |
+If your repositories rely on startup work such as in-memory data population or other bootstrap actions, keep calling:
+
+```csharp
+await app.Services.WarmUpAsync();
+```
+
+before serving requests.
+
+The API package can also expose repository `Bootstrap` endpoints when that method is exposable.
+
+One source-backed nuance: the current bootstrap endpoint still flows through the same key-binding pipeline as other key-based methods, even though the key is ignored by the implementation.
+
+---
+
+## Practical examples from the repo
+
+### Rename an entity route segment
+
+The API tests configure custom names like this:
+
+```csharp
+builder.Services.AddApiFromRepositoryFramework()
+    .WithName<ExtremelyRareUser>("extremelyrareuserrefresh")
+    .WithName<CalamityUniverseUser>("calamityuser")
+    .WithPath("SuperApi")
+    .WithVersion("v2");
+```
+
+That produces routes like:
+
+```text
+/SuperApi/v2/extremelyrareuserrefresh/Get
+```
+
+### Map endpoint metadata and models
+
+The same API tests also enable:
+
+```csharp
+builder.Services.AddApiFromRepositoryFramework()
+    .WithSwagger()
+    .WithMapApi()
+    .WithModelsApi()
+    .WithDocumentation();
+```
+
+### Clear no-auth mapping in tests and samples
+
+The tests and sample host generally use the explicit no-auth mapping form:
+
+```csharp
+app.UseApiFromRepositoryFramework()
+    .WithNoAuthorization();
+```
+
+---
+
+## Related packages
+
+| Package | Purpose |
 |---|---|
-| `Rystem.RepositoryFramework.Abstractions` | Core interfaces and repository registration |
-| `Rystem.RepositoryFramework.Api.Client` | .NET client for consuming these endpoints |
-| `rystem.repository.client` | TypeScript/npm client for consuming these endpoints |
+| `Rystem.RepositoryFramework.Abstractions` | Repository registration, exposure flags, keys, filters, and business hooks |
+| `Rystem.RepositoryFramework.Api.Client` | .NET client for the generated server endpoints |
+| `rystem.repository.client` | TypeScript/npm client for the generated server endpoints |
+
+If you are continuing through the repository area, this package is the bridge between repository registrations and HTTP exposure.

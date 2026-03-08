@@ -1,9 +1,20 @@
-﻿# Rystem.RepositoryFramework.Infrastructure.InMemory
+### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+
+# Rystem.RepositoryFramework.Infrastructure.InMemory
 
 [![NuGet](https://img.shields.io/nuget/v/Rystem.RepositoryFramework.Infrastructure.InMemory)](https://www.nuget.org/packages/Rystem.RepositoryFramework.Infrastructure.InMemory)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/Rystem.RepositoryFramework.Infrastructure.InMemory)](https://www.nuget.org/packages/Rystem.RepositoryFramework.Infrastructure.InMemory)
 
-In-memory repository implementation for local development, functional tests, and reliability simulations. Supports random data generation, JSON/object seeding, latency simulation, and configurable exception injection per repository method.
+In-memory storage for the Rystem repository ecosystem, designed for local development, sample apps, integration tests, random data population, and resilience simulations.
+
+This package sits on top of `Rystem.RepositoryFramework.Abstractions` and is usually the easiest concrete provider to start with when you want repository behavior without a real external database.
+
+## Resources
+
+- Complete Documentation: [https://rystem.net](https://rystem.net)
+- MCP Server for AI: [https://rystem.cloud/mcp](https://rystem.cloud/mcp)
+- Discord Community: [https://discord.gg/tkWvy4WPjt](https://discord.gg/tkWvy4WPjt)
+- Support the Project: [https://www.buymeacoffee.com/keyserdsoze](https://www.buymeacoffee.com/keyserdsoze)
 
 ---
 
@@ -13,14 +24,43 @@ In-memory repository implementation for local development, functional tests, and
 dotnet add package Rystem.RepositoryFramework.Infrastructure.InMemory
 ```
 
+The current package metadata in `src/Repository/RepositoryFramework.Infrastructure.InMemory/RepositoryFramework.Infrastructure.InMemory.csproj` is:
+
+- package id: `Rystem.RepositoryFramework.Infrastructure.InMemory`
+- version: `10.0.6`
+- target framework: `net10.0`
+
 ---
 
-## Quick Start
+## Package architecture
+
+| Area | Purpose |
+|---|---|
+| `WithInMemory(...)` extensions | Register in-memory storage on repository, command, or query builders |
+| `InMemoryStorage<T, TKey>` | Concrete storage implementation used by the registration extensions |
+| `IRepositoryInMemoryBuilder<T, TKey>` | Builder used for seeding and behavior configuration |
+| `RepositoryBehaviorSettings<T, TKey>` | Per-method latency and exception configuration |
+| `MethodBehaviorSetting` / `ExceptionOdds` | Delay ranges and simulated failure probabilities |
+| Warm-up population hooks | Deferred seeding from random generation, injected data, or JSON |
+
+---
+
+## What this package is good for
+
+- fast tests that still go through repository contracts
+- sample apps and demos that need realistic query/write behavior
+- local development before wiring a real provider
+- generating seeded datasets with `System.Population.Random`
+- simulating latency and failures without external infrastructure
+
+---
+
+## Quick start
 
 ```csharp
-builder.Services.AddRepository<User, string>(repo =>
+builder.Services.AddRepository<User, string>(repositoryBuilder =>
 {
-    repo.WithInMemory();
+    repositoryBuilder.WithInMemory();
 });
 
 var app = builder.Build();
@@ -28,11 +68,19 @@ await app.Services.WarmUpAsync();
 app.Run();
 ```
 
-`WithInMemory()` is available on `IRepositoryBuilder`, `ICommandBuilder`, and `IQueryBuilder`.
+`WithInMemory()` is available on:
+
+- `IRepositoryBuilder<T, TKey>`
+- `ICommandBuilder<T, TKey>`
+- `IQueryBuilder<T, TKey>`
+
+`WarmUpAsync()` is only required when you use the population helpers, but many repository-based apps already call it during startup for consistency across providers.
 
 ---
 
-## `WithInMemory()` Signature
+## Registration API
+
+All three overloads share the same signature and the same defaults.
 
 ```csharp
 .WithInMemory(
@@ -43,232 +91,365 @@ app.Run();
 
 | Parameter | Default | Description |
 |---|---|---|
-| `inMemoryBuilder` | `null` | Optional configuration callback for seeding and behavior. |
-| `name` | `null` | Factory name for named registrations. |
-| `lifetime` | `Singleton` | DI lifetime of the storage instance. |
+| `inMemoryBuilder` | `null` | Optional callback for seeding and behavior settings |
+| `name` | `null` | Named factory key used by DI and warm-up resolution |
+| `lifetime` | `Singleton` | DI lifetime for the registered storage service |
+
+This provider uses `SetStorageAndBuildOptions(...)` from the abstractions layer under the hood.
 
 ---
 
-## Seeding Data
+## How the in-memory store behaves
 
-### Random Data
+`InMemoryStorage<T, TKey>` stores data in a static `ConcurrentDictionary<string, Entity<T, TKey>>` keyed by `KeySettings<TKey>.AsString(key)`.
 
-Generates `numberOfElements` random entities using `System.Population.Random`. Returns an `IPopulationBuilder` for fine-grained pattern configuration.
+That has a few practical consequences:
+
+- data is shared per closed generic pair `T` and `TKey`
+- inserts, updates, and reads are thread-safe at the dictionary level
+- values are deep-cloned through JSON when written and when returned from `GetAsync` and `QueryAsync`
+- the storage behaves more like a serialization boundary than a simple in-process reference cache
+
+### Important note about named registrations
+
+Named registrations help you resolve different DI entries, but they do not create isolated backing stores for the same `T` and `TKey` pair.
+
+For example, these two registrations resolve separately through `IFactory<IRepository<User, string>>`, but they still share the same underlying static dictionary:
 
 ```csharp
-repo.WithInMemory(x =>
+builder.Services.AddRepository<User, string>(repositoryBuilder =>
 {
-    x.PopulateWithRandomData(
-        numberOfElements: 120,
-        numberOfElementsWhenEnumerableIsFound: 5);
+    repositoryBuilder.WithInMemory(name: "default");
+    repositoryBuilder.WithInMemory(name: "secondary");
 });
 ```
 
-> Always call `await app.Services.WarmUpAsync()` after `Build()` when using random or injected population.
-
-### Regex Patterns on Properties
-
-Chain `WithPattern` on the returned `IPopulationBuilder` to constrain random string generation:
-
-```csharp
-repo.WithInMemory(x =>
-{
-    x.PopulateWithRandomData(100, 5)
-        .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com")
-        .WithPattern(x => x.Value!.Username, @"[a-z]{4,8}");
-});
-```
-
-`WithPattern` supports any property reachable via a lambda, including nested properties and collection elements accessed via `.First()`.
-
-### Concrete Implementations for Interfaces
-
-When your entity has interface-typed properties, specify the concrete type to instantiate:
-
-```csharp
-repo.WithInMemory(x =>
-{
-    x.PopulateWithRandomData(100)
-        .WithImplementation<IInnerService, ConcreteInnerService>(x => x.Value!.Service!);
-});
-```
-
-### Inject from an Enumerable
-
-Seed from an existing in-memory collection:
-
-```csharp
-var users = new List<User>
-{
-    new() { Id = "alice", Name = "Alice" },
-    new() { Id = "bob",   Name = "Bob" },
-};
-
-repo.WithInMemory(x =>
-{
-    x.PopulateWithDataInjection(u => u.Id, users);
-});
-```
-
-### Inject from JSON
-
-Seed from a JSON string (expects a JSON array of `T`):
-
-```csharp
-var json = File.ReadAllText("seed/users.json");
-
-repo.WithInMemory(x =>
-{
-    x.PopulateWithJsonData(u => u.Id, json);
-});
-```
+So in this provider, `name` is primarily a DI-selection and warm-up-routing concept, not a data-partitioning mechanism.
 
 ---
 
-## Behavior Simulation
+## Seeding and warm-up
 
-Use `inMemoryBuilder.Settings` to configure latency and exception injection. This is useful for resilience testing without a real external dependency.
+The in-memory builder exposes three seeding styles:
 
-### `RepositoryBehaviorSettings<T, TKey>` Methods
+- `PopulateWithRandomData(...)`
+- `PopulateWithDataInjection(...)`
+- `PopulateWithJsonData(...)`
 
-| Method | Scope |
-|---|---|
-| `AddForRepositoryPattern(setting)` | All methods |
-| `AddForCommandPattern(setting)` | `Insert`, `Update`, `Delete`, `Batch` |
-| `AddForQueryPattern(setting)` | `Get`, `Query`, `Exist`, `Operation` |
-| `AddForInsert(setting)` | `Insert` only |
-| `AddForUpdate(setting)` | `Update` only |
-| `AddForDelete(setting)` | `Delete` only |
-| `AddForBatch(setting)` | `Batch` only |
-| `AddForGet(setting)` | `Get` only |
-| `AddForQuery(setting)` | `Query` only |
-| `AddForExist(setting)` | `Exist` only |
-| `AddForCount(setting)` | `Operation` (count/aggregates) only |
+These methods do not insert data immediately during service registration. They register warm-up actions, and those actions run when `WarmUpAsync()` is called on the built service provider.
 
-### `MethodBehaviorSetting` Properties
+### Random data
 
-| Property | Type | Description |
-|---|---|---|
-| `MillisecondsOfWait` | `Range` | Random delay (min..max ms) added to every call of that method. |
-| `MillisecondsOfWaitWhenException` | `Range` | Additional delay (min..max ms) added when an exception is thrown. |
-| `ExceptionOdds` | `List<ExceptionOdds>` | List of exceptions each with a probability percentage (0–100). Total must not exceed 100. |
-
-### `ExceptionOdds` Properties
-
-| Property | Type | Description |
-|---|---|---|
-| `Percentage` | `double` | Probability (0.000…1 – 100) that this exception is thrown on each call. |
-| `Exception` | `Exception?` | The exception instance to throw. |
-
-### Example — Global Latency + Transient Errors
+`PopulateWithRandomData(...)` uses `System.Population.Random` and returns `IPopulationBuilder<Entity<T, TKey>>`, which is why the lambda examples target `x.Value` and `x.Key`.
 
 ```csharp
-repo.WithInMemory(x =>
+builder.Services.AddRepository<NonPlusSuperUser, NonPlusSuperUserKey>(repositoryBuilder =>
 {
-    x.Settings.AddForRepositoryPattern(new MethodBehaviorSetting
+    repositoryBuilder.WithInMemory(inMemoryBuilder =>
     {
-        MillisecondsOfWait = new Range(50, 200),
-        ExceptionOdds = new List<ExceptionOdds>
-        {
-            new() { Exception = new TimeoutException("Simulated timeout"), Percentage = 5 },
-            new() { Exception = new IOException("Simulated I/O error"), Percentage = 3 },
-        }
-    });
-});
-```
-
-### Example — Slow Writes Only
-
-```csharp
-repo.WithInMemory(x =>
-{
-    x.Settings.AddForCommandPattern(new MethodBehaviorSetting
-    {
-        MillisecondsOfWait = new Range(300, 800)
-    });
-});
-```
-
-### Example — Inject Failures on Delete
-
-```csharp
-repo.WithInMemory(x =>
-{
-    x.Settings.AddForDelete(new MethodBehaviorSetting
-    {
-        ExceptionOdds = new List<ExceptionOdds>
-        {
-            new() { Exception = new InvalidOperationException("Cannot delete"), Percentage = 20 }
-        },
-        MillisecondsOfWaitWhenException = new Range(100, 300)
-    });
-});
-```
-
----
-
-## CQRS — Command and Query Variants
-
-```csharp
-// Command-only
-builder.Services.AddCommand<Order, Guid>(cmd =>
-    cmd.WithInMemory());
-
-// Query-only
-builder.Services.AddQuery<Product, int>(qry =>
-    qry.WithInMemory(x =>
-        x.PopulateWithRandomData(50)));
-```
-
----
-
-## Named Instances (Factory Pattern)
-
-Use `name` to register multiple in-memory stores for the same entity type:
-
-```csharp
-builder.Services.AddRepository<Cache, string>(repo =>
-    repo.WithInMemory(name: "hot"));
-
-builder.Services.AddRepository<Cache, string>(repo =>
-    repo.WithInMemory(name: "cold"));
-```
-
----
-
-## Full Example
-
-```csharp
-builder.Services.AddRepository<IperUser, string>(repo =>
-{
-    repo.WithInMemory(x =>
-    {
-        x.PopulateWithRandomData(120, 5)
-            .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com")
-            .WithPattern(x => x.Value!.Groups!.First().Name, @"[a-z]{4,6}");
-
-        x.Settings.AddForCommandPattern(new MethodBehaviorSetting
-        {
-            MillisecondsOfWait = new Range(10, 50),
-            ExceptionOdds = new List<ExceptionOdds>
-            {
-                new() { Exception = new Exception("Transient write error"), Percentage = 2 }
-            }
-        });
+        inMemoryBuilder
+            .PopulateWithRandomData(120, 5)
+            .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
     });
 });
 
 var app = builder.Build();
 await app.Services.WarmUpAsync();
-app.Run();
+```
+
+The two numeric parameters are:
+
+- `numberOfElements`: how many root entities to generate
+- `numberOfElementsWhenEnumerableIsFound`: how many items to generate for enumerable members
+
+### Customizing random generation
+
+Because random population returns an `IPopulationBuilder<Entity<T, TKey>>`, you can use the population features from the core ecosystem.
+
+Real tests in the repository use helpers such as:
+
+- `WithPattern(...)`
+- `WithImplementation(...)`
+- `WithValue(...)`
+- `WithAutoIncrement(...)`
+
+```csharp
+repositoryBuilder.WithInMemory(inMemoryBuilder =>
+{
+    inMemoryBuilder
+        .PopulateWithRandomData(90, 8)
+        .WithAutoIncrement(x => x.Value!.Id, 0)
+        .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com")
+        .WithImplementation<IInnerInterface, MyInnerInterfaceImplementation>(x => x.Value!.Inner!)
+        .WithValue(x => x.Value!.Enabled, () => true);
+});
+```
+
+### Inject from existing data
+
+Use `PopulateWithDataInjection(...)` when you already have a list of entities.
+
+```csharp
+var users = new List<User>
+{
+    new() { Id = "alice", Name = "Alice" },
+    new() { Id = "bob", Name = "Bob" }
+};
+
+builder.Services.AddRepository<User, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithInMemory(inMemoryBuilder =>
+    {
+        inMemoryBuilder.PopulateWithDataInjection(x => x.Id, users);
+    });
+});
+```
+
+The key selector should point to a property that can be read from each entity.
+
+### Inject from JSON
+
+Use `PopulateWithJsonData(...)` when the source is a JSON array of `T`.
+
+```csharp
+var json = """
+[
+  { "Id": "alice", "Name": "Alice" },
+  { "Id": "bob", "Name": "Bob" }
+]
+""";
+
+builder.Services.AddRepository<User, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithInMemory(inMemoryBuilder =>
+    {
+        inMemoryBuilder.PopulateWithJsonData(x => x.Id, json);
+    });
+});
+```
+
+If the JSON cannot be deserialized into `IEnumerable<T>`, the builder simply leaves the store unchanged.
+
+### Warm-up behavior details
+
+- `PopulateWithRandomData(...)`, `PopulateWithDataInjection(...)`, and `PopulateWithJsonData(...)` all seed through warm-up actions
+- warm-up resolves the named repository/command/query registration when a `name` is provided
+- plain `WithInMemory()` without population does not need warm-up to function, because `InMemoryStorage<T, TKey>.BootstrapAsync()` is currently a no-op
+
+---
+
+## CRUD and query usage
+
+Once registered, the provider behaves like any other repository implementation from the consumer side.
+
+```csharp
+var result = await repository.InsertAsync(1, new Animal { Id = 1, Name = "Eagle" });
+var item = await repository.GetAsync(1);
+var exists = await repository.ExistAsync(1);
+
+var page = await repository
+    .Where(x => x.Id > 0)
+    .OrderByDescending(x => x.Id)
+    .PageAsync(1, 2);
+
+var batch = repository.CreateBatchOperation();
+for (var i = 0; i < 10; i++)
+    batch.AddInsert(i, new Animal { Id = i, Name = i.ToString() });
+
+await batch.ExecuteAsync().ToListAsync();
+```
+
+This exact style is covered by the in-memory all-methods tests in the repository.
+
+---
+
+## Behavior simulation
+
+The provider can simulate latency and failure probability per repository method family through `RepositoryBehaviorSettings<T, TKey>`.
+
+```csharp
+builder.Services.AddRepository<User, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithInMemory(inMemoryBuilder =>
+    {
+        inMemoryBuilder.Settings.AddForCommandPattern(new MethodBehaviorSetting
+        {
+            MillisecondsOfWait = new Range(50, 200)
+        });
+
+        inMemoryBuilder.Settings.AddForQueryPattern(new MethodBehaviorSetting
+        {
+            MillisecondsOfWait = new Range(5, 20)
+        });
+    });
+});
+```
+
+### Configuration methods
+
+| Method | Intended scope |
+|---|---|
+| `AddForRepositoryPattern(setting)` | All methods through `RepositoryMethods.All` fallback |
+| `AddForCommandPattern(setting)` | `Insert`, `Update`, `Delete`, `Batch` |
+| `AddForQueryPattern(setting)` | `Get`, `Query`, `Exist`, `Operation` |
+| `AddForInsert(setting)` | `Insert` |
+| `AddForUpdate(setting)` | `Update` |
+| `AddForDelete(setting)` | `Delete` |
+| `AddForBatch(setting)` | `Batch` |
+| `AddForGet(setting)` | `Get` |
+| `AddForQuery(setting)` | `Query` |
+| `AddForExist(setting)` | `Exist` |
+| `AddForCount(setting)` | `Operation` |
+
+### `MethodBehaviorSetting`
+
+| Property | Type | Meaning |
+|---|---|---|
+| `MillisecondsOfWait` | `Range` | Inclusive random delay added before the operation |
+| `MillisecondsOfWaitWhenException` | `Range` | Additional delay added on the simulated-failure path |
+| `ExceptionOdds` | `List<ExceptionOdds>` | Candidate exceptions and their probabilities |
+
+### `ExceptionOdds`
+
+| Property | Type | Meaning |
+|---|---|---|
+| `Percentage` | `double` | Probability from `> 0` to `100` |
+| `Exception` | `Exception?` | Exception object associated with that probability |
+
+### Validation rules
+
+Before the options are finalized, the builder validates the configured percentages:
+
+- each percentage must be greater than `0` and less than or equal to `100`
+- the total of one list cannot exceed `100`
+
+Invalid configurations throw during options building, not later at query time.
+
+---
+
+## Important behavior differences by method
+
+The provider does not simulate failures in the exact same way for every method.
+
+### Read-style methods
+
+These methods throw the configured simulated exception when the probability path is hit:
+
+- `GetAsync`
+- `QueryAsync`
+- `OperationAsync`
+
+### Command-style methods
+
+These methods do not throw the configured exception. Instead, the simulated failure path returns a failed `State<T, TKey>`:
+
+- `InsertAsync`
+- `UpdateAsync`
+- `DeleteAsync`
+- `ExistAsync`
+
+So for writes and `ExistAsync`, you should check `state.IsOk` rather than expect an exception.
+
+### Batch behavior
+
+`BatchAsync` executes insert/update/delete operations one by one and yields a result for each operation. It is not transactional and does not roll back previous operations.
+
+Also, as currently implemented, `BatchAsync` does not read the dedicated `RepositoryMethods.Batch` behavior setting directly. It inherits behavior from the individual insert/update/delete calls it performs.
+
+That means `AddForBatch(...)` exists in the options API, but it is not consumed by `InMemoryStorage<T, TKey>` today.
+
+---
+
+## CQRS variants
+
+The same extension exists for command-only and query-only registrations.
+
+```csharp
+builder.Services.AddCommand<Order, Guid>(commandBuilder =>
+{
+    commandBuilder.WithInMemory();
+});
+
+builder.Services.AddQuery<Product, int>(queryBuilder =>
+{
+    queryBuilder.WithInMemory(inMemoryBuilder =>
+    {
+        inMemoryBuilder.PopulateWithRandomData(50, 3);
+    });
+});
+```
+
+Because the concrete in-memory storage implements the full repository contract internally, warm-up seeding still works even when the public DI surface is query-only or command-only.
+
+---
+
+## Practical examples from the repo
+
+### Sample web API seed data
+
+The sample API under `src/Repository/RepositoryFramework.Test/RepositoryFramework.WebApi/Program.cs` registers repositories like this:
+
+```csharp
+builder.Services.AddRepository<SuperUser, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithInMemory(inMemoryBuilder =>
+    {
+        inMemoryBuilder
+            .PopulateWithRandomData(120, 5)
+            .WithPattern(x => x.Value!.Email, @"[a-z]{5,10}@gmail\.com");
+    });
+});
+
+var app = builder.Build();
+await app.Services.WarmUpAsync();
+```
+
+### Test-focused latency simulation
+
+The population tests configure different delays for reads and writes:
+
+```csharp
+repositoryBuilder.WithInMemory(inMemoryBuilder =>
+{
+    inMemoryBuilder.Settings.AddForCommandPattern(new MethodBehaviorSetting
+    {
+        MillisecondsOfWait = new Range(100, 250)
+    });
+
+    inMemoryBuilder.Settings.AddForQueryPattern(new MethodBehaviorSetting
+    {
+        MillisecondsOfWait = new Range(10, 40)
+    });
+});
+```
+
+### Full exception distribution example
+
+The exception tests configure a full distribution across several exceptions:
+
+```csharp
+repositoryBuilder.WithInMemory(inMemoryBuilder =>
+{
+    inMemoryBuilder.Settings.AddForRepositoryPattern(new MethodBehaviorSetting
+    {
+        ExceptionOdds = new List<ExceptionOdds>
+        {
+            new() { Exception = new Exception("Normal Exception"), Percentage = 10.352 },
+            new() { Exception = new Exception("Big Exception"), Percentage = 49.1 },
+            new() { Exception = new Exception("Great Exception"), Percentage = 40.548 }
+        }
+    });
+});
 ```
 
 ---
 
-## Related Packages
+## Related packages
 
-| Package | Description |
+| Package | Purpose |
 |---|---|
-| `Rystem.RepositoryFramework.Abstractions` | Core interfaces and `AddRepository` registration |
+| `Rystem.RepositoryFramework.Abstractions` | Core contracts, query model, and registration builders |
 | `Rystem.RepositoryFramework.Api.Server` | Expose repositories as HTTP endpoints |
-| `Rystem.RepositoryFramework.Api.Client` | .NET HTTP client for repository endpoints |
+| `Rystem.RepositoryFramework.Api.Client` | Call repository APIs from .NET or TypeScript |
+
+If you are continuing through the repository area, this is usually the next package to understand after `src/Repository/RepositoryFramework.Abstractions/README.md`.

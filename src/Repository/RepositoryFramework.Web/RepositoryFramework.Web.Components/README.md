@@ -1,6 +1,17 @@
 ﻿# Rystem.RepositoryFramework.Web.Components
 
-Auto-generated Blazor Server management UI for every repository registered in the [Repository Framework](https://github.com/KeyserDSoze/Rystem). Provides query, create, edit, and delete views with full customisation: theming, authentication, localisation, custom actions, and property-level UI mapping — all without writing Razor code.
+`Rystem.RepositoryFramework.Web.Components` provides a server-side Blazor admin UI on top of Repository Framework registrations.
+
+It gives you generic pages for:
+
+- query/list
+- show
+- create
+- edit
+- delete
+- theme and language settings
+
+and lets you customize menu labels, icons, form rendering, localization, and edit-page actions per repository.
 
 ## Installation
 
@@ -8,367 +19,309 @@ Auto-generated Blazor Server management UI for every repository registered in th
 dotnet add package Rystem.RepositoryFramework.Web.Components
 ```
 
-Target framework: `net10.0`
+## What this package actually adds
 
----
+The package registers:
 
-## Quick start
+- Razor Pages for the built-in UI area
+- package host pages (`/_Host` and `/_AuthorizedHost` inside the package area)
+- menu, localization, modal, loading, copy, and Radzen-related services
+- per-repository UI metadata driven by Repository Framework registrations
 
-### 1 — Register the UI (Program.cs)
+It does not replace normal Blazor Server setup.
+
+You still need:
+
+- `AddServerSideBlazor()`
+- `app.MapBlazorHub()`
+- your own authentication middleware if you enable authenticated UI
+
+## Minimal setup
+
+This is the working shape used by the sample app.
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddServerSideBlazor();
+
+builder.Services
+    .AddRepositoryUi(settings =>
+    {
+        settings.Name = "Repository App";
+        settings.Icon = "dashboard";
+    })
+    .AddDefaultSkinForUi();
+
+var app = builder.Build();
+
+app.UseStaticFiles();
+app.UseRouting();
+app.MapBlazorHub();
+app.AddDefaultRepositoryEndpoints();
+
+app.Run();
+```
+
+## Main registration API
+
+### `AddRepositoryUi(...)`
+
+```csharp
+builder.Services.AddRepositoryUi(settings =>
+{
+    settings.Name = "Admin";
+    settings.Icon = "savings";
+    settings.Image = "/logo.png";
+});
+```
+
+`AppSettings` includes:
+
+| Property | Notes |
+| --- | --- |
+| `Name` | Required app name shown in the UI |
+| `Icon` | Optional Material icon name |
+| `Image` | Optional top-bar image |
+| `Palette` | Active palette settings |
+| `Sizing` | Sizing and typography settings |
+| `RazorPagesForRoutingAdditionalAssemblies` | Extra assemblies for the Blazor router |
+
+### `AddRepositoryUi<T>(...)`
+
+There is also a generic overload intended to add an extra assembly for routing.
+
+Important caveat: the current implementation does not preserve that additional assembly setting correctly, so treat this overload as unreliable for now.
+
+## Endpoint mapping
+
+Use:
+
+```csharp
+app.AddDefaultRepositoryEndpoints();
+```
+
+This method:
+
+- calls `UseStaticFiles()`
+- enables request localization when configured
+- maps `/Repository/Language/{culture}`
+- maps `/Repository/Settings/Theme/{themeKey}`
+- maps `/Repository/Identity/Logout` when authenticated UI is enabled
+- maps Razor Pages
+- maps fallback to the package host page
+
+It does not map the Blazor hub for you.
+
+## Authentication
+
+Use:
 
 ```csharp
 builder.Services
     .AddRepositoryUi(settings =>
     {
-        settings.Name  = "My Dashboard";
-        settings.Icon  = "dashboard";   // Google Material Icons Outlined name
-        settings.Image = "/logo.png";   // optional top-bar image
+        settings.Name = "Admin";
     })
-    .AddDefaultSkinForUi()      // registers "Light" and "Dark" themes
-    .AddDefaultLocalization();  // enables culture routing and IStringLocalizer support
-```
-
-If you need to include Razor Pages / components from an additional assembly for routing:
-
-```csharp
-builder.Services.AddRepositoryUi<MyAssemblyMarker>(settings => { ... });
-```
-
-### 2 — Register endpoints (Program.cs)
-
-```csharp
-var app = builder.Build();
-app.AddDefaultRepositoryEndpoints();
-```
-
-This single call registers:
-- Static files
-- Map fallback to the `_Host` (or `_AuthorizedHost`) Razor Page
-- `MapRazorPages()`
-- All built-in management endpoints (see [Built-in endpoints](#built-in-endpoints))
-
-### 3 — Add the host page
-
-Create `Pages/_Host.cshtml` (or reuse the one the package provides) and include the two partials plus the root component:
-
-```cshtml
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <partial name="RepositoryStyle" />
-</head>
-<body>
-    <component type="typeof(RepositoryApp)" render-mode="ServerPrerendered" />
-    <partial name="RepositoryScript" />
-</body>
-</html>
-```
-
----
-
-## Authentication
-
-Call `WithAuthenticatedUi()` to protect the dashboard behind cookie authentication. The framework then maps to `_AuthorizedHost.cshtml` instead of `_Host.cshtml` and registers a logout endpoint.
-
-```csharp
-builder.Services
-    .AddRepositoryUi(settings => { settings.Name = "Admin"; })
     .WithAuthenticatedUi();
 ```
 
-Logout is handled automatically at `GET /Repository/Identity/Logout`.
+What this actually does:
 
----
+- switches fallback from the package `/_Host` page to the package `/_AuthorizedHost` page
+- enables the logout endpoint at `/Repository/Identity/Logout`
 
-## Per-repository customisation
+What it does not do:
 
-After calling `AddRepository<T, TKey, ...>()`, chain any of the extension methods below on the returned `IRepositoryBuilder<T, TKey>`:
+- configure ASP.NET authentication
+- configure cookies or OpenID Connect
+- add `UseAuthentication()` or `UseAuthorization()`
 
-| Method | Description |
-|--------|-------------|
-| `SetDefaultUiRoot<T, TKey>()` | Makes this model the dashboard home / landing entity |
-| `DoNotExposeInUi<T, TKey>()` | Hides the model from the sidebar menu entirely |
-| `ExposeFor<T, TKey>(int index)` | Controls the sidebar sort order (lower = higher in list) |
-| `WithIcon<T, TKey>("icon_name")` | Sets the sidebar icon (Google Material Icons Outlined name, default: `hexagon`) |
-| `WithName<T, TKey>("Display Name")` | Overrides the menu label (default: `typeof(T).Name`) |
-| `AddAction<T, TKey, TAction>()` | Registers a custom action button on the edit view |
-| `MapPropertiesForUi<T, TKey, TUiMapper>()` | Registers a custom property mapper for this model |
-| `WithLocalization<T, TKey, TLocalization>()` | Attaches an `IStringLocalizer` to this model's views |
+Those are still your responsibility.
+
+## Localization
+
+Enable built-in localization with:
+
+```csharp
+builder.Services
+    .AddRepositoryUi(settings =>
+    {
+        settings.Name = "Admin";
+    })
+    .AddDefaultLocalization();
+```
+
+The package then enables language switching through:
+
+- `GET /Repository/Language/{culture}`
+
+Important notes:
+
+- the current supported cultures are hardcoded internally to `en-US`, `es-ES`, `it-IT`, `fr-FR`, and `de-DE`
+- the endpoint redirects to the app root, not back to the current page
+
+### Per-repository localization
+
+```csharp
+builder.Services
+    .AddRepository<AppUser, int>(settings =>
+    {
+        settings
+            .WithLocalization<AppUser, int, IStringLocalizer<SharedResource>>();
+    });
+```
+
+## Themes and skins
+
+### Default skins
+
+```csharp
+builder.Services
+    .AddRepositoryUi(settings =>
+    {
+        settings.Name = "Admin";
+    })
+    .AddDefaultSkinForUi();
+```
+
+This registers:
+
+- `Light`
+- `Dark`
+
+### Custom skin
+
+```csharp
+builder.Services
+    .AddRepositoryUi(settings =>
+    {
+        settings.Name = "Admin";
+    })
+    .AddDefaultSkinForUi()
+    .AddSkinForUi("Corporate", palette =>
+    {
+        palette.Primary = "#003366";
+        palette.Secondary = "#0066cc";
+        palette.BackgroundColor = "#f4f6f8";
+        palette.Color = "#1a1a2e";
+    });
+```
+
+Runtime switching happens through:
+
+- `GET /Repository/Settings/Theme/{themeKey}`
+
+Important note: the theme cookie is written with `Secure = true`, so HTTPS is the safe assumption for real use.
+
+## Per-repository customization
+
+These extensions hang off `IRepositoryBuilder<T, TKey>`.
+
+| Method | Purpose |
+| --- | --- |
+| `SetDefaultUiRoot<T, TKey>()` | Make this repository the landing page for the package router |
+| `DoNotExposeInUi<T, TKey>()` | Hide the repository from the menu |
+| `ExposeFor<T, TKey>(index)` | Set menu ordering |
+| `WithIcon<T, TKey>(icon)` | Set menu icon |
+| `WithName<T, TKey>(name)` | Set menu label |
+| `AddAction<T, TKey, TAction>()` | Add a custom edit-page action |
+| `MapPropertiesForUi<T, TKey, TUiMapper>()` | Customize form rendering and defaults |
+| `WithLocalization<T, TKey, TLocalization>()` | Attach a localizer for this repository |
 
 ### Example
 
 ```csharp
 builder.Services
-    .AddRepository<Product, Guid, ProductRepository>()
-    .WithIcon<Product, Guid>("inventory_2")
-    .WithName<Product, Guid>("Products")
-    .ExposeFor<Product, Guid>(0)
-    .AddAction<Product, Guid, ArchiveProductAction>()
-    .MapPropertiesForUi<Product, Guid, ProductUiMapper>();
-```
-
----
-
-## Custom actions (`IRepositoryEditAction<T, TKey>`)
-
-A custom action appears as a button on the entity edit page. Implement the interface and register it with `AddAction<T, TKey, TAction>()`.
-
-```csharp
-public sealed class ArchiveProductAction : IRepositoryEditAction<Product, Guid>
-{
-    private readonly IRepository<Product, Guid> _repository;
-
-    public ArchiveProductAction(IRepository<Product, Guid> repository)
-        => _repository = repository;
-
-    public string  Name     => "Archive";
-    public string? IconName => "archive";
-
-    public async ValueTask<bool> InvokeAsync(Entity<Product, Guid> entity)
+    .AddRepository<AppUser, int>(settings =>
     {
-        await _repository.DeleteAsync(entity.Key);
-        return true;   // return true to navigate away after the action
-    }
-}
-```
-
-Constructor dependencies are resolved from DI.
-
----
-
-## Property UI mapping (`IRepositoryUiMapper<T, TKey>`)
-
-Override how individual properties are rendered and validated in the edit form. Implement `IRepositoryUiMapper<T, TKey>` and register it with `MapPropertiesForUi<T, TKey, TUiMapper>()`.
-
-```csharp
-public sealed class ProductUiMapper : IRepositoryUiMapper<Product, Guid>
-{
-    public void Map(IRepositoryPropertyUiHelper<Product, Guid> mapper)
-    {
-        mapper
-            // Set a literal default value for a property
-            .MapDefault(x => x.Description, "Enter a description")
-
-            // Set a factory-resolved default (called at render time)
-            .MapDefault(x => x.Tags, () => new List<string> { "new" })
-
-            // Use a related entity's key as the default (loads from IRepository)
-            .MapDefault(x => x.CategoryId, Guid.Empty)
-
-            // Render the property as a rich-text / HTML editor
-            .SetTextEditor(x => x.LongDescription, minHeight: 400)
-
-            // Single-select dropdown backed by an async data source
-            .MapChoice(
-                x => x.CategoryId,
-                async (sp, entity) =>
-                {
-                    var repo = sp.GetRequiredService<IRepository<Category, Guid>>();
-                    var items = new List<LabelValueDropdownItem>();
-                    await foreach (var item in repo.QueryAsync())
-                        items.Add(new LabelValueDropdownItem
-                        {
-                            Label = item.Value!.Name,
-                            Id    = item.Key.ToString()!,
-                            Value = item.Key
-                        });
-                    return items;
-                },
-                id => id.ToString())
-
-            // Multi-select dropdown
-            .MapChoices(
-                x => x.Tags,
-                (sp, entity) => Task.FromResult<IEnumerable<LabelValueDropdownItem>>(
-                    new[] { "Electronics", "Books", "Clothing" }
-                        .Select(t => new LabelValueDropdownItem { Label = t, Value = t, Id = t })),
-                x => x);
-    }
-}
-```
-
-### `IRepositoryPropertyUiHelper<T, TKey>` methods
-
-| Method | Description |
-|--------|-------------|
-| `MapDefault(expr, value)` | Sets a static default value for a property |
-| `MapDefault(expr, factory)` | Sets a factory (`Func<TProperty>`) default evaluated at render time |
-| `MapDefault(expr, key)` | Loads the default from the repository using a key |
-| `SetTextEditor(expr, minHeight)` | Renders the property as a rich-text (HTML) editor |
-| `MapChoice(expr, retriever, labelComparer)` | Single-select dropdown backed by an async `LabelValueDropdownItem` list |
-| `MapChoices(expr, retriever, labelComparer)` | Multi-select dropdown backed by an async `LabelValueDropdownItem` list |
-
----
-
-## Theming
-
-### Default themes
-
-```csharp
-builder.Services.AddRepositoryUi(settings => { ... })
-    .AddDefaultSkinForUi();   // registers "Light" and "Dark" named skins
-```
-
-Users can switch themes at runtime via `GET /Repository/Settings/Theme/{themeKey}`. The selection is stored in a 1-year cookie.
-
-### Custom theme
-
-```csharp
-builder.Services.AddRepositoryUi(settings => { ... })
-    .AddDefaultSkinForUi()
-    .AddSkinForUi("Corporate", palette =>
-    {
-        palette.Primary         = "#003366";
-        palette.Secondary       = "#0066cc";
-        palette.BackgroundColor = "#f4f6f8";
-        palette.Color           = "#1a1a2e";
+        settings
+            .WithIcon("manage_accounts")
+            .WithName("User")
+            .ExposeFor(2)
+            .SetDefaultUiRoot()
+            .MapPropertiesForUi<AppUser, int, AppUserDesignMapper>()
+            .WithLocalization<AppUser, int, IStringLocalizer<SharedResource>>();
     });
 ```
 
-### `AppPalette` properties
+## Custom edit actions
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `Primary` | `string` | Primary brand colour (default Light: `#ff6d41`) |
-| `Secondary` | `string` | Secondary accent colour (default Light: `#35a0d7`) |
-| `Success` | `string` | Success / positive colour |
-| `Info` | `string` | Informational colour |
-| `Warning` | `string` | Warning colour |
-| `Danger` | `string` | Error / danger colour |
-| `Light` | `string` | Light surface colour |
-| `Dark` | `string` | Dark surface colour (default Dark bg: `#222`) |
-| `Color` | `string` | Default text colour (default Dark: `#e1e1e1`) |
-| `BackgroundColor` | `string` | Page background colour |
-| `Link` | `LinkPalette` | Link colour settings |
-| `Button` | `ButtonPalette` | Button colour overrides |
-| `Table` | `TablePalette` | Table row / header colours |
-
----
-
-## Sizing
-
-Customise typography and layout through `AppSizingSettings` on `AppSettings.Sizing`:
+Register actions with `AddAction<T, TKey, TAction>()`.
 
 ```csharp
-builder.Services.AddRepositoryUi(settings =>
+public sealed class ArchiveUserAction : IRepositoryEditAction<AppUser, int>
 {
-    settings.Name = "My App";
-    settings.Sizing = new AppSizingSettings
+    public string Name => "Archive";
+    public string? IconName => "archive";
+
+    public ValueTask<bool> InvokeAsync(Entity<AppUser, int> entity)
     {
-        RootFontSize       = "16px",
-        BodyFontSize       = "14px",
-        NavigationFontSize = "13px",
-        ColumnWidth        = "200px"
-    };
-});
+        return ValueTask.FromResult(true);
+    }
+}
 ```
 
-### `AppSizingSettings` properties
+The action appears on the edit page and dependencies are resolved from DI.
 
-| Property | Description |
-|----------|-------------|
-| `BorderWidth` | Border width for UI elements |
-| `RootFontSize` | `font-size` on `:root` |
-| `BodyFontSize` | `font-size` on `body` |
-| `BodyLineHeight` | `line-height` on `body` |
-| `IconSize` | Size of Material Icons |
-| `ColumnWidth` | Default grid column width |
-| `InputFontSize` | `font-size` for form inputs |
-| `NavigationFontSize` | Sidebar menu font size |
-| `NavigationFontWeight` | Sidebar menu font weight |
-| `TextFontFamily` | Global font family |
+## Property UI mapping
 
----
+Implement `IRepositoryUiMapper<T, TKey>` and register it with `MapPropertiesForUi<T, TKey, TUiMapper>()`.
 
-## Localisation
+This lets you configure:
 
-```csharp
-builder.Services.AddRepositoryUi(settings => { ... })
-    .AddDefaultLocalization();
-```
+- default values
+- default values loaded from repositories
+- single-choice dropdowns
+- multi-choice dropdowns
+- text editor behavior
 
-Users change culture via `GET /Repository/Language/{culture}` (stores a `.AspNetCore.Culture` cookie).
+## Host pages and runtime requirements
 
-To provide model-specific translations register a localiser per repository:
+The package ships its own host pages inside the area and maps fallback to them.
 
-```csharp
-builder.Services
-    .AddRepository<Product, Guid, ProductRepository>()
-    .WithLocalization<Product, Guid, ProductStringLocalizer>();
-```
+The package host includes:
 
-`ProductStringLocalizer` is a standard `IStringLocalizer<Product>` — create the matching `.resx` files and register the class normally.
+- `<base href="~/" />`
+- `HeadOutlet`
+- `RepositoryApp`
+- `_framework/blazor.server.js`
+- the `RepositoryStyle` and `RepositoryScript` partials
 
----
+So you do not need to create your own `_Host.cshtml` just to use the packaged UI.
 
-## `AppSettings` reference
+## Built-in routes
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `Name` | `string` | Application name shown in the top bar |
-| `Icon` | `string` | Material Icons Outlined name for the app icon |
-| `Image` | `string` | URL of an image displayed in the top bar (alternative to icon) |
-| `Palette` | `AppPalette` | Active colour palette (set at startup; runtime switching uses named skins) |
-| `Sizing` | `AppSizingSettings` | Typography and layout sizing |
-| `RazorPagesForRoutingAdditionalAssemblies` | `List<Assembly>` | Extra assemblies scanned for Razor Pages routing |
+Repository pages:
 
----
+- `/Repository/{Name}/Query`
+- `/Repository/{Name}/Create`
+- `/Repository/{Name}/Edit/{Key}`
+- `/Repository/{Name}/Show/{Key}`
+- `/Repository/Settings`
 
-## Built-in endpoints
+Utility endpoints:
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| `GET` | `/Repository/Language/{culture}` | Sets a `.AspNetCore.Culture` cookie and redirects back |
-| `GET` | `/Repository/Settings/Theme/{themeKey}` | Activates a named skin (1-year cookie) |
-| `GET` | `/Repository/Identity/Logout` | Signs out and redirects (only registered when `WithAuthenticatedUi()` is used) |
+- `/Repository/Language/{culture}`
+- `/Repository/Settings/Theme/{themeKey}`
+- `/Repository/Identity/Logout` when authenticated UI is enabled
 
-Per-entity routes (auto-generated from `typeof(T).Name`):
+If you do not set a default UI root with `SetDefaultUiRoot()`, unmatched/fallback navigation ends on the router's not-found content.
 
-| Route | Description |
-|-------|-------------|
-| `/Repository/{ModelName}/Query` | Paginated query / search list view |
-| `/Repository/{ModelName}/Create` | Create new entity form |
-| `/Repository/{ModelName}/Edit/{key}` | Edit existing entity form |
+## Important caveats
 
----
+- `AddRepositoryUi(...)` does not replace `AddServerSideBlazor()` or `MapBlazorHub()`
+- `WithAuthenticatedUi()` does not configure auth middleware; it only switches the package host and logout route
+- language and theme endpoints redirect to the app root, not the current page
+- supported cultures are fixed internally
+- `AddRepositoryUi<T>(...)` is intended for additional router assemblies but is not reliable in the current implementation
 
-## Full setup example
+## When to use this package
 
-```csharp
-// Program.cs
-var builder = WebApplication.CreateBuilder(args);
+Use it when you want:
 
-builder.Services
-    .AddRepository<Product, Guid, ProductRepository>()
-        .WithIcon<Product, Guid>("inventory_2")
-        .WithName<Product, Guid>("Products")
-        .ExposeFor<Product, Guid>(0)
-        .SetDefaultUiRoot<Product, Guid>()
-        .AddAction<Product, Guid, ArchiveProductAction>()
-        .MapPropertiesForUi<Product, Guid, ProductUiMapper>()
-        .WithLocalization<Product, Guid, ProductStringLocalizer>()
-    .Services
-    .AddRepository<Category, int, CategoryRepository>()
-        .WithIcon<Category, int>("category")
-        .WithName<Category, int>("Categories")
-        .ExposeFor<Category, int>(1)
-    .Services
-    .AddRepositoryUi(settings =>
-    {
-        settings.Name  = "Product Admin";
-        settings.Icon  = "store";
-    })
-    .AddDefaultSkinForUi()
-    .AddDefaultLocalization()
-    .WithAuthenticatedUi();
+- a quick back-office UI over Repository Framework registrations
+- server-side Blazor CRUD screens without hand-writing each page
+- per-repository customization through metadata and DI
 
-var app = builder.Build();
-app.AddDefaultRepositoryEndpoints();
-app.Run();
-```
-
-## Notes
-
-- Use `AddRepositoryUi` (lowercase `Ui`), not `AddRepositoryUI`.
-- Combine with `Rystem.RepositoryFramework.Api.Client` or other integrations for repository data sources.
+If you need a fully custom frontend, this package is better used as a reference or internal admin surface than as the only UI for public-facing workflows.
