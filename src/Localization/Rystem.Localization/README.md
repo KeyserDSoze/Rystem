@@ -1,93 +1,169 @@
-﻿# Rystem.Localization
+# Rystem.Localization
 
-[![Version](https://img.shields.io/nuget/v/Rystem.Localization)](https://www.nuget.org/packages/Rystem.Localization)
-[![Downloads](https://img.shields.io/nuget/dt/Rystem.Localization)](https://www.nuget.org/packages/Rystem.Localization)
+`Rystem.Localization` is a strongly typed localization layer built on top of `RepositoryFramework`.
 
-**Rystem.Localization** provides strongly-typed, repository-backed localization for .NET applications. Instead of resource files or key/value dictionaries, you define a plain C# class for your translation strings and store language variants in any data source supported by `RepositoryFramework`.
+It does not use `.resx` files or per-key lookups. Instead, each language stores one full object of type `T`, keyed by language code, and the package resolves the right object at runtime from an in-memory snapshot.
 
-Languages are loaded once at startup (warm-up), held in memory as a keyed dictionary, and resolved at runtime by matching `CultureInfo.CurrentUICulture`.
-
----
-
-## Install
+## Installation
 
 ```bash
 dotnet add package Rystem.Localization
 ```
 
-> **Dependencies**: `Rystem.DependencyInjection`, `RepositoryFramework.Abstractions`
+## Architecture
 
----
+The package is small and repository-centric:
 
-## Define Your Localization Model
+1. define a localization model `T`
+2. register a repository-backed or query-backed source for `T`
+3. warm the app up with `WarmUpAsync()`
+4. let `ILanguages<T>` load all language rows into memory
+5. resolve the current language through `IRepositoryLocalizer<T>` or direct `T` injection
 
-Create a POCO class to hold the text values for one language. Every property is a string (or `FormattedString` for parameterized messages).
+Runtime lookup uses:
+
+- `CultureInfo.CurrentUICulture.TwoLetterISOLanguageName`
+- then `en`
+- then the first loaded language
+
+## Define the localization model
+
+A language is one full object graph.
 
 ```csharp
-public class AppDictionary
+public sealed class TheDictionary
 {
-    public string WelcomeMessage { get; set; } = string.Empty;
-    public string LogoutLabel { get; set; } = string.Empty;
-    public FormattedString ItemCount { get; set; } = default!;
+    public string Value { get; set; } = string.Empty;
+    public TheFirstPage TheFirstPage { get; set; } = new();
+    public TheSecondPage TheSecondPage { get; set; } = new();
+}
+
+public sealed class TheFirstPage
+{
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+}
+
+public sealed class TheSecondPage
+{
+    public FormattedString Title { get; set; } = "Title {0}";
 }
 ```
 
-The repository key for each entry is the two-letter ISO 639-1 language code (e.g. `"en"`, `"it"`, `"fr"`).
+The repository key is expected to be the language code, typically the two-letter ISO form such as `en` or `it`.
 
----
+## Registration with Repository Framework
 
-## Registration
+The most grounded path is `AddLocalizationWithRepositoryFramework<T>(...)`.
 
-### `AddLocalizationWithRepositoryFramework<T>`
-
-Use this when you need full read/write access to the localization store (e.g. to update translations at runtime).
+This is how the sample app wires it in `src/Localization/Tests/Rystem.Localization.Test.App/Repository/ServiceCollectionExtensions.cs`.
 
 ```csharp
-builder.Services.AddLocalizationWithRepositoryFramework<AppDictionary>(
-    repositoryBuilder => repositoryBuilder.WithEntityFramework<AppDbContext>(),
-    name: null,                   // optional factory name (string or Enum)
-    storageWarmup: async sp =>    // optional: seed the store before warm-up loads it
+services.AddLocalizationWithRepositoryFramework<TheDictionary>(builder =>
+{
+    builder.WithInMemory(name: "localization");
+},
+name: "localization",
+storageWarmup: async serviceProvider =>
+{
+    var repository = serviceProvider.GetRequiredService<IRepository<TheDictionary, string>>();
+
+    await repository.InsertAsync("it", new TheDictionary
     {
-        var repo = sp.GetRequiredService<IRepository<AppDictionary, string>>();
-        await repo.InsertAsync("en", new AppDictionary { WelcomeMessage = "Welcome" });
-        await repo.InsertAsync("it", new AppDictionary { WelcomeMessage = "Benvenuto" });
-    }
-);
-```
-
-Internally this registers:
-- `IRepository<T, string>` via RepositoryFramework
-- `ILanguages<T>` (singleton) — holds the loaded dictionary
-- `IRepositoryLocalizer<T>` (singleton) — resolves by current culture
-- `T` (transient) — direct injection of the resolved instance
-- A warm-up that calls `ILanguages<T>.WarmUpAsync` on app start
-
-### `AddLocalizationWithQueryFramework<T>`
-
-Use this for read-only access (e.g. translations stored in a static source).
-
-```csharp
-builder.Services.AddLocalizationWithQueryFramework<AppDictionary>(
-    queryBuilder => queryBuilder.WithInMemory(builder =>
-    {
-        builder.PopulateWithData(new[]
+        Value = "Valore",
+        TheFirstPage = new TheFirstPage
         {
-            new Entity<AppDictionary, string>(new AppDictionary { WelcomeMessage = "Welcome" }, "en"),
-            new Entity<AppDictionary, string>(new AppDictionary { WelcomeMessage = "Benvenuto" }, "it"),
-        });
-    })
-);
+            Title = "Titolo",
+            Description = "Descrizione"
+        },
+        TheSecondPage = new TheSecondPage
+        {
+            Title = "Titolo {0}"
+        }
+    });
+
+    await repository.InsertAsync("en", new TheDictionary
+    {
+        Value = "Value",
+        TheFirstPage = new TheFirstPage
+        {
+            Title = "Title",
+            Description = "Description"
+        },
+        TheSecondPage = new TheSecondPage
+        {
+            Title = "Title {0}"
+        }
+    });
+});
 ```
 
-Registers `IQueryModel<T, string>` (read-only) instead of the full repository, plus the same `ILanguages<T>`, `IRepositoryLocalizer<T>`, and warm-up.
+What this registration adds:
 
----
+- the underlying `IRepository<T, string>`
+- named `ILanguages<T>` as a singleton
+- named `IRepositoryLocalizer<T>` as a singleton
+- direct transient `T` injection via `localizer.Instance`
+- warm-up hooks for optional storage seeding and language-cache loading
 
-## Interfaces
+## Query-backed registration
+
+The package also exposes:
+
+```csharp
+services.AddLocalizationWithQueryFramework<TheDictionary>(builder =>
+{
+    // configure a query source here
+});
+```
+
+This API is intended for read-only localization sources.
+
+Important caveat: the current implementation looks inconsistent here. The registration path adds query services, but the warm-up loader still resolves `IFactory<IRepository<T, string>>`. There is no sample app using this path, so treat it as a less-proven option until it is cleaned up.
+
+Also note that, unlike the repository-backed path, the current query-backed registration does not add direct `T` injection.
+
+## Warm-up is required
+
+You need to warm the host up manually.
+
+The sample app does this in `src/Localization/Tests/Rystem.Localization.Test.App/Program.cs`:
+
+```csharp
+var app = builder.Build();
+await app.Services.WarmUpAsync();
+```
+
+Without warm-up, the in-memory language snapshot never loads.
+
+## Culture management is manual
+
+This package does not ship ASP.NET Core request-localization middleware, culture providers, or built-in culture selection.
+
+You are expected to set `CultureInfo.CurrentCulture` and `CultureInfo.CurrentUICulture` yourself.
+
+The sample app uses a custom middleware that reads a `lang` cookie:
+
+```csharp
+public sealed class LocalizationMiddleware : IMiddleware
+{
+    public async Task InvokeAsync(HttpContext context, RequestDelegate next)
+    {
+        if (context.Request.Cookies.TryGetValue("lang", out var cookieLanguage))
+        {
+            var language = cookieLanguage;
+            CultureInfo.CurrentCulture = new CultureInfo(language ?? "en");
+            CultureInfo.CurrentUICulture = new CultureInfo(language ?? "en");
+        }
+
+        await next(context);
+    }
+}
+```
+
+## Core abstractions
 
 ### `IRepositoryLocalizer<T>`
-
-Resolves the translation instance for the current UI culture.
 
 ```csharp
 public interface IRepositoryLocalizer<T>
@@ -96,9 +172,9 @@ public interface IRepositoryLocalizer<T>
 }
 ```
 
-### `ILanguages<T>`
+`Instance` resolves the current language object every time you access it.
 
-Exposes the full in-memory dictionary across all loaded languages.
+### `ILanguages<T>`
 
 ```csharp
 public interface ILanguages<T>
@@ -106,6 +182,8 @@ public interface ILanguages<T>
     RystemLocalizationFiles<T> Localizer { get; }
 }
 ```
+
+This exposes the full loaded language snapshot.
 
 ### `RystemLocalizationFiles<T>`
 
@@ -116,132 +194,126 @@ public sealed class RystemLocalizationFiles<T>
 }
 ```
 
----
+## `FormattedString`
 
-## Models
-
-### `FormattedString`
-
-A wrapper around a format string that supports `string.Format`-style parameters via the indexer.
+`FormattedString` is the package's simple formatted-message helper.
 
 ```csharp
 public sealed class FormattedString
 {
     public required string Value { get; init; }
-
-    // Apply parameters via string.Format
-    public string this[params object[] parameters]
-        => string.Format(Value, parameters);
-
-    public static implicit operator FormattedString(string formattableString)
-        => new() { Value = formattableString };
+    public string this[params object[] parameters] => string.Format(Value, parameters);
 }
 ```
 
-**Usage:**
+Usage:
 
 ```csharp
-public class AppDictionary
+var title = localizer.Instance.TheSecondPage.Title["something"];
+```
+
+## Consuming localizations
+
+The sample Blazor app injects both the localizer and the direct `T` instance in `src/Localization/Tests/Rystem.Localization.Test.App/Components/_Imports.razor`:
+
+```razor
+@inject IRepositoryLocalizer<TheDictionary> Localizer
+@inject TheDictionary InstanceOfLocalizer
+```
+
+And uses them in `src/Localization/Tests/Rystem.Localization.Test.App/Components/Pages/Home.razor`:
+
+```razor
+<h2>@Localizer.Instance.Value</h2>
+<h3>@Localizer.Instance.TheFirstPage.Title</h3>
+<h5>@Localizer.Instance.TheSecondPage.Title["something"]</h5>
+
+<h2>@InstanceOfLocalizer.Value</h2>
+```
+
+### Difference between `IRepositoryLocalizer<T>` and direct `T`
+
+- `IRepositoryLocalizer<T>.Instance` resolves from the current culture at access time
+- injected `T` is resolved once when the consuming service or component is created
+
+If culture can change during the lifetime of the consumer, prefer `IRepositoryLocalizer<T>`.
+
+## Fallback behavior
+
+`RepositoryLocalizer<T>` resolves languages in this order:
+
+1. current UI culture's two-letter code
+2. `en`
+3. the first loaded language
+
+Examples:
+
+- `it-IT` resolves through `it`
+- `en-US` resolves through `en`
+
+This also means storing keys like `en-US` is not enough by itself, because the resolver only uses the two-letter code.
+
+## Named localizers
+
+Both registration methods accept `name`, which can be a `string` or `Enum` through `AnyOf<string?, Enum>?`.
+
+That lets you host multiple independent localization sets.
+
+```csharp
+public enum LocalizationSet
 {
-    public FormattedString CartItems { get; set; } = "You have {0} items in your cart.";
+    Main,
+    Admin
 }
 
-// At runtime:
-var text = localizer.Instance.CartItems[itemCount];
-// → "You have 5 items in your cart."
-```
-
----
-
-## Inject and Use
-
-### Inject the resolved instance directly
-
-```csharp
-public class MyService(AppDictionary strings)
+services.AddLocalizationWithRepositoryFramework<TheDictionary>(builder =>
 {
-    public string GetWelcome() => strings.WelcomeMessage;
-}
+    builder.WithInMemory(name: LocalizationSet.Admin);
+}, LocalizationSet.Admin);
 ```
 
-### Inject `IRepositoryLocalizer<T>`
+Resolve named localizers through the factory layer:
 
 ```csharp
-public class MyService(IRepositoryLocalizer<AppDictionary> localizer)
+public sealed class AdminService
 {
-    public string GetWelcome() => localizer.Instance.WelcomeMessage;
+    private readonly IRepositoryLocalizer<TheDictionary> _localizer;
+
+    public AdminService(IFactory<IRepositoryLocalizer<TheDictionary>> factory)
+        => _localizer = factory.Create(LocalizationSet.Admin);
 }
 ```
 
-### Inject `ILanguages<T>` for all languages
+## Important caveats
 
-```csharp
-public class TranslationAdmin(ILanguages<AppDictionary> languages)
-{
-    public IEnumerable<string> LoadedLanguages()
-        => languages.Localizer.AllLanguages.Keys;
+### This is snapshot caching, not live synchronization
 
-    public AppDictionary? GetForLanguage(string lang)
-        => languages.Localizer.AllLanguages.GetValueOrDefault(lang);
-}
-```
+Warm-up loads all languages into memory once. Later repository updates do not automatically refresh `AllLanguages`.
 
----
+### No built-in ASP.NET localization pipeline
 
-## Language Resolution and Fallback
+You are responsible for setting the current culture yourself.
 
-`RepositoryLocalizer<T>` resolves the language in this order:
+### Language keys are effectively two-letter keys
 
-1. `CultureInfo.CurrentUICulture.TwoLetterISOLanguageName` — exact match (e.g. `"it"`)
-2. `"en"` — English fallback
-3. First entry in `AllLanguages` — last-resort fallback
+Lookup uses `TwoLetterISOLanguageName`, so the most reliable storage keys are values like `en`, `it`, and `fr`.
 
-If no languages are loaded after warm-up, an `Exception` is thrown at startup.
+### Query-backed registration looks weaker than the repository path
 
----
+Because the warm-up implementation currently resolves a repository factory, `AddLocalizationWithQueryFramework<T>(...)` should be treated cautiously until the source is aligned.
 
-## Multiple Independent Localizations
+### Warm-up failures are not ideal
 
-You can register multiple dictionaries for the same `T` (or different types) using the `name` parameter, which accepts a `string` or `Enum` via `AnyOf<string?, Enum>?`.
+`Languages<T>.WarmUpAsync()` throws when no languages are found, but broader warm-up handling elsewhere in the repo can swallow failures. So do not rely on a clean startup exception as the only safety mechanism.
 
-```csharp
-public enum LocalizationKey { Main, Admin }
+## Grounded by sample and source files
 
-// Main UI translations
-builder.Services.AddLocalizationWithQueryFramework<AppDictionary>(
-    queryBuilder => queryBuilder.WithInMemory(...),
-    name: LocalizationKey.Main
-);
+- `src/Localization/Tests/Rystem.Localization.Test.App/Program.cs`
+- `src/Localization/Tests/Rystem.Localization.Test.App/Repository/ServiceCollectionExtensions.cs`
+- `src/Localization/Tests/Rystem.Localization.Test.App/Components/_Imports.razor`
+- `src/Localization/Tests/Rystem.Localization.Test.App/Components/Pages/Home.razor`
+- `src/Localization/Rystem.Localization/ServiceCollectionExtensions/RepositoryFrameworkLocalizationServiceCollectionExtensions.cs`
+- `src/Localization/Rystem.Localization/Services/Languages.cs`
+- `src/Localization/Rystem.Localization/Services/RepositoryLocalizer.cs`
 
-// Admin panel translations
-builder.Services.AddLocalizationWithQueryFramework<AppDictionary>(
-    queryBuilder => queryBuilder.WithInMemory(...),
-    name: LocalizationKey.Admin
-);
-```
-
-Resolve by name using the factory:
-
-```csharp
-public class AdminService(IFactory<IRepositoryLocalizer<AppDictionary>> factory)
-{
-    private readonly IRepositoryLocalizer<AppDictionary> _adminLocalizer
-        = factory.Create(LocalizationKey.Admin);
-}
-```
-
----
-
-## Access All Languages
-
-```csharp
-public class TranslationExport(ILanguages<AppDictionary> languages)
-{
-    public Dictionary<string, AppDictionary> ExportAll()
-        => languages.Localizer.AllLanguages;
-
-    public AppDictionary GetForLanguage(string lang)
-        => languages.Localizer.AllLanguages[lang];
-}
-```
-
+Use this package when you want repository-backed, strongly typed localized object graphs rather than `.resx` resources or key/value string lookups.
