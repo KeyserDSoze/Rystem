@@ -258,7 +258,7 @@ app.MapPrometheusScrapingEndpoint();  // /metrics endpoint
 scrape_configs:
   - job_name: 'playframework'
     static_configs:
-      - targets: ['localhost:5000']
+      - targets: ['localhost:5158']  # Or your actual app port
 ```
 
 **View**: http://localhost:9090
@@ -590,7 +590,7 @@ services:
 
 1. Check /metrics endpoint:
    ```bash
-   curl http://localhost:5000/metrics
+   curl http://localhost:5158/metrics
    ```
 
 2. Check Prometheus target:

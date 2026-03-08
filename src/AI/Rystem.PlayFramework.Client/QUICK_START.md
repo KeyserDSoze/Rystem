@@ -77,10 +77,9 @@ npm run format        # Formatta codice
    npm run dev
    ```
 
-3. **Crea `.env.local`:**
-   ```env
-   VITE_API_URL=http://localhost:5000
-   ```
+3. **Verifica il backend sample:**
+   - Il sample app corrente usa `http://localhost:5158/api/ai` hardcoded in `src/App.tsx`
+   - Non legge ancora `VITE_API_URL`
 
 4. **Verifica tutto funziona:**
    - [ ] `npm run dev` - porta 3000 aperta
@@ -122,7 +121,7 @@ src/AI/Rystem.PlayFramework.Client/
 ### ✨ Highlights
 
 - ✅ Zero breaking changes - Tutti i componenti React funzionano
-- ✅ API proxy configurato - `/api` → `localhost:5000`
+- ⚠️ Esiste un proxy Vite di esempio, ma il sample app corrente usa un URL backend assoluto hardcoded in `src/App.tsx`
 - ✅ Strict TypeScript - Massima type safety
 - ✅ Modern ESLint - Best practices garantite
 - ✅ Auto-formatting - Prettier integrato

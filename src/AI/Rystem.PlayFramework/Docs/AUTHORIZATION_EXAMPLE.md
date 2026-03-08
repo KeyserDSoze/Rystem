@@ -176,8 +176,11 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 Content-Type: application/json
 
 {
-  "prompt": "Hello",
-  "sceneName": "MainScene"
+  "message": "Hello",
+  "settings": {
+    "executionMode": "Scene",
+    "sceneName": "MainScene"
+  }
 }
 ```
 
@@ -190,8 +193,12 @@ httpClient.DefaultRequestHeaders.Authorization =
 
 var request = new PlayFrameworkRequest
 {
-    Prompt = "Hello",
-    SceneName = "MainScene"
+    Message = "Hello",
+    Settings = new SceneRequestSettings
+    {
+        ExecutionMode = SceneExecutionMode.Scene,
+        SceneName = "MainScene"
+    }
 };
 
 var response = await httpClient.PostAsJsonAsync(

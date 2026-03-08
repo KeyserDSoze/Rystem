@@ -1,4 +1,6 @@
-# Client-Side Tool Execution with Continuation Tokens
+# Client-Side Tool Execution with Conversation Resume
+
+> Status note: this guide predates the current finalized HTTP contract. The implemented client now resumes with `conversationKey` + `clientInteractionResults`, uses lowercase statuses such as `awaitingClient`, and the published package name is `rystem.playframework.client`.
 
 This guide explains how to use PlayFramework's client-side tool execution feature, which allows LLMs to request browser/mobile-specific operations (camera, geolocation, file picker, etc.) and resume execution with the results.
 
@@ -6,7 +8,7 @@ This guide explains how to use PlayFramework's client-side tool execution featur
 
 1. **Server** (C#) registers client-side tools via `OnClient()` builder
 2. **LLM** requests a tool (e.g., "Take a photo")
-3. **Server** yields `AwaitingClient` status with continuation token
+3. **Server** yields `awaitingClient` status with resume state
 4. **Client** (TypeScript) executes the tool and resumes with results
 5. **Server** continues execution with tool results
 
@@ -22,7 +24,7 @@ services.AddPlayFramework(builder =>
             client.AddTool<CameraOptions>("capturePhoto", "Capture photo from user's camera");
             client.AddTool("getLocation", "Get user's GPS coordinates");
         })
-        .WithCacheExpiration(TimeSpan.FromMinutes(5)); // Continuation token TTL
+        .WithCacheExpiration(TimeSpan.FromMinutes(5)); // Resume-state TTL
 
         scene.WithService<VisionService>(s => s.AddTool(x => x.AnalyzeImage));
     });
@@ -53,7 +55,7 @@ import {
     PlayFrameworkClient, 
     ClientInteractionRegistry,
     AIContentConverter 
-} from "@rystem/playframework-client";
+} from "rystem.playframework.client";
 
 // Create registry
 const registry = new ClientInteractionRegistry();
@@ -85,19 +87,22 @@ const client = new PlayFrameworkClient(settings, registry);
 
 ### 2. Execute with Automatic Continuation
 
-The client automatically handles `AwaitingClient` responses:
+The client automatically handles `awaitingClient` responses:
 
 ```typescript
 const request: PlayFrameworkRequest = {
-    prompt: "Take a photo and tell me what you see",
-    sceneName: "vision-analysis"
+    message: "Take a photo and tell me what you see",
+    settings: {
+        executionMode: "Scene",
+        sceneName: "vision-analysis"
+    }
 };
 
 for await (const response of client.executeStepByStep(request)) {
     console.log(`Status: ${response.status}`);
     console.log(`Message: ${response.message}`);
 
-    // Client automatically executes tools when status === "AwaitingClient"
+    // Client automatically executes tools when status === "awaitingClient"
     // You can still yield these responses to show "Accessing camera..." UI
 }
 ```
@@ -185,7 +190,7 @@ const content = AIContentConverter.fromText("Hello world");
 ## React Hook Example
 
 ```tsx
-import { usePlayFramework } from "@rystem/playframework-client";
+import { usePlayFramework } from "rystem.playframework.client";
 import { useState } from "react";
 
 function VisionAnalysisComponent() {
@@ -204,15 +209,18 @@ function VisionAnalysisComponent() {
 
     const analyze = async () => {
         const request = {
-            prompt: "Take a photo and describe what you see",
-            sceneName: "vision-analysis"
+            message: "Take a photo and describe what you see",
+            settings: {
+                executionMode: "Scene",
+                sceneName: "vision-analysis"
+            }
         };
 
         for await (const response of client.executeStepByStep(request)) {
             setResponses(prev => [...prev, response]);
 
-            // Show UI feedback for AwaitingClient
-            if (response.status === "AwaitingClient") {
+            // Show UI feedback for awaitingClient
+            if (response.status === "awaitingClient") {
                 console.log("Accessing camera...");
             }
         }
@@ -229,18 +237,16 @@ function VisionAnalysisComponent() {
 }
 ```
 
-## Advanced: Manual Continuation Token Handling
+## Advanced: Manual Resume Handling
 
-If you want manual control over continuation tokens (not using the automatic loop):
+If you want manual control over resume requests instead of relying on the automatic loop:
 
 ```typescript
-let continuationToken: string | undefined;
 let conversationKey: string | undefined;
 
 for await (const response of client.executeStepByStep(request)) {
-    if (response.status === "AwaitingClient" && response.clientInteractionRequest) {
-        // Save token
-        continuationToken = response.continuationToken;
+    if (response.status === "awaitingClient" && response.clientInteractionRequest) {
+        // Save conversation key
         conversationKey = response.conversationKey;
 
         // Execute tool manually
@@ -248,7 +254,7 @@ for await (const response of client.executeStepByStep(request)) {
 
         // Manually resume with new POST
         const resumeRequest: PlayFrameworkRequest = {
-            continuationToken,
+            conversationKey,
             clientInteractionResults: [result]
         };
 
@@ -265,8 +271,8 @@ for await (const response of client.executeStepByStep(request)) {
 ## Security Considerations
 
 1. **Timeout**: Server enforces `TimeoutSeconds` per tool (default from server config)
-2. **Cache TTL**: Continuation tokens expire after `CacheExpiration` (default 5 minutes)
-3. **Single Use**: Continuation tokens are deleted after use (cannot be replayed)
+2. **Cache TTL**: Resume state expires after `CacheExpiration` (default 5 minutes)
+3. **Single Use**: Resume state is deleted after use (cannot be replayed)
 4. **Validation**: Server validates tool results have valid contents and no errors
 
 ## Error Handling
@@ -315,7 +321,7 @@ type AIContent =
 1. **Register tools early**: Call `registry.register()` during component mount
 2. **Use descriptive tool names**: Match server `OnClient().AddTool("name")`
 3. **Handle permissions**: Request camera/mic permissions gracefully
-4. **Show feedback**: Display "Accessing camera..." during `AwaitingClient` status
+4. **Show feedback**: Display "Accessing camera..." during `awaitingClient` status
 5. **Test locally**: Server requires IDistributedCache (use in-memory for dev)
 
 ## Example: Complete Flow
@@ -333,11 +339,14 @@ registry.register("capturePhoto", async () => {
     return [content];
 });
 
-const request = { prompt: "Take photo and describe", sceneName: "vision" };
+const request = {
+    message: "Take photo and describe",
+    settings: { executionMode: "Scene", sceneName: "vision" }
+};
 
 for await (const response of client.executeStepByStep(request)) {
     console.log(response.status); 
-    // Output: "Running" → "AwaitingClient" → (camera opens) → "Running" → "Completed"
+    // Output: "running" → "awaitingClient" → (camera opens) → "running"
 }
 ```
 
@@ -346,7 +355,7 @@ for await (const response of client.executeStepByStep(request)) {
 **Error: "Tool 'X' not found in registry"**
 - Ensure `registry.register("X", ...)` matches server `AddTool("X")`
 
-**Error: "Continuation token not found or expired"**
+**Error: resume state not found or expired**
 - Check `WithCacheExpiration()` TTL (default 5 min)
 - Ensure IDistributedCache is configured
 
@@ -356,4 +365,4 @@ for await (const response of client.executeStepByStep(request)) {
 
 ---
 
-For more examples, see [examples/client-tools/](../examples/client-tools/)
+For more examples, see `src/AI/Rystem.PlayFramework.Client/src/App.tsx` and `src/AI/Rystem.PlayFramework.Client/src/rystem/README.md`.

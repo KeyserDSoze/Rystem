@@ -25,13 +25,13 @@ npm install
 npm run dev
 ```
 
-Because this is a Vite app, the default dev URL is typically:
+The current `vite.config.ts` pins the dev server to:
 
 ```text
-http://localhost:5173
+http://localhost:3000
 ```
 
-not `3000`.
+This workspace is not using the default Vite port.
 
 ## Available scripts
 
@@ -72,16 +72,17 @@ If you want conversation management in the UI, the backend also needs:
 
 Important correction: the real builder method is parameterless `UseRepository()`. The sample backend is responsible for registering the repository separately.
 
-## Environment configuration
+## Backend URL configuration
 
-Typical local setup:
+The current sample app does not read `VITE_API_URL` yet.
 
-```env
-VITE_API_URL=http://localhost:5158/api/ai
-VITE_DEBUG=false
+Right now `src/App.tsx` hardcodes:
+
+```text
+http://localhost:5158/api/ai
 ```
 
-The app can also proxy `/api/*` through Vite when configured in `vite.config.ts`.
+There is also a Vite proxy entry in `vite.config.ts`, but the current app does not use that proxy path because it calls the backend through the hardcoded absolute URL.
 
 ## Relationship to the published TS client
 

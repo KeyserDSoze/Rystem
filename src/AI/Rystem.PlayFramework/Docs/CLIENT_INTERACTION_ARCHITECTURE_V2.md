@@ -1,6 +1,8 @@
 # Client-Side Interaction Architecture V2
 ## Architettura OnClient() con Continuation Token e Cache
 
+> Status note: this document describes an earlier design iteration. The current HTTP contract no longer uses request-level `Prompt` or `ContinuationToken` fields. The implemented API resumes client interactions with top-level `ConversationKey` plus `ClientInteractionResults`, and direct scene selection lives under `Settings.SceneName`.
+
 ---
 
 ## 📋 Executive Summary
@@ -26,10 +28,13 @@ Client (Browser)                    Server (PlayFramework)
      │                                      │
      ├──POST /api/ai/default───────────────>│
      │  {                                   │
-     │    prompt: "Take a photo and        │
-     │             analyze it",             │
-     │    conversationKey: "conv-abc123",   │
-     │    sceneName: "VisionAnalysis"       │
+     │    message: "Take a photo and       │
+     │              analyze it",            │
+     │    conversationKey: "conv-abc123",  │
+     │    settings: {                        │
+     │      executionMode: "Scene",        │
+     │      sceneName: "VisionAnalysis"    │
+     │    }                                  │
      │  }                                   │
      │                                      │
      │                              ┌───────┴────────┐
@@ -294,21 +299,17 @@ internal sealed class SceneContinuation
 
 public sealed class PlayFrameworkRequest
 {
-    public string? Prompt { get; init; }
+    public string? Message { get; init; }
+    public List<ContentItem>? Contents { get; init; }
+    public Dictionary<string, object>? Metadata { get; init; }
     public string? ConversationKey { get; init; }
-    public string? SceneName { get; init; }
-    
-    /// <summary>
-    /// Token per riprendere esecuzione dopo client interaction.
-    /// </summary>
-    public string? ContinuationToken { get; init; }
     
     /// <summary>
     /// Risultati di tool eseguiti lato client.
     /// </summary>
     public List<ClientInteractionResult>? ClientInteractionResults { get; init; }
     
-    public PlayFrameworkSettings? Settings { get; init; }
+    public SceneRequestSettings? Settings { get; init; }
 }
 ```
 

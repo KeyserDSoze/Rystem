@@ -82,10 +82,10 @@ npm install
 npm run dev
 ```
 
-That workspace is Vite-based, so the default local URL is typically:
+That workspace currently runs on the port configured in `src/AI/Rystem.PlayFramework.Client/vite.config.ts`:
 
 ```text
-http://localhost:5173
+http://localhost:3000
 ```
 
 ## Request shape
