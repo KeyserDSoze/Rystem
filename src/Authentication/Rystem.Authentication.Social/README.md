@@ -1,198 +1,207 @@
-﻿# Rystem.Authentication.Social
+# Rystem.Authentication.Social
 
-[![Version](https://img.shields.io/nuget/v/Rystem.Authentication.Social)](https://www.nuget.org/packages/Rystem.Authentication.Social)
-[![Downloads](https://img.shields.io/nuget/dt/Rystem.Authentication.Social)](https://www.nuget.org/packages/Rystem.Authentication.Social)
+`Rystem.Authentication.Social` is the server-side social-login package in the Authentication area.
 
-ASP.NET Core server-side social authentication for Rystem. Exposes OAuth token exchange endpoints, manages per-provider HTTP clients, and integrates with .NET bearer tokens.
+It is not a full identity platform. Its job is narrower:
 
-Supported providers: **Google**, **Microsoft**, **Facebook**, **GitHub**, **Amazon**, **LinkedIn**, **X (Twitter)**, **Instagram**, **Pinterest**, **TikTok**, and internal **.NET** bearer.
+- accept provider-specific codes or access tokens from a client
+- validate or exchange them through a provider-specific `ITokenChecker`
+- issue ASP.NET Core bearer tokens
+- expose a small authenticated `/User` endpoint
 
----
-
-## Install
+## Installation
 
 ```bash
 dotnet add package Rystem.Authentication.Social
 ```
 
-> **Dependencies**: `Rystem.Authentication.Social.Abstractions`, `Rystem.DependencyInjection`
+## Architecture
 
----
+The server package revolves around two entry points:
+
+- `AddSocialLogin<TProvider>(...)`
+- `UseSocialLoginEndpoints()`
+
+The high-level flow is:
+
+1. configure one or more providers in `SocialLoginBuilder`
+2. implement `ISocialUserProvider` for app-specific claims and user payloads
+3. call `AddSocialLogin<TProvider>(...)`
+4. call `UseSocialLoginEndpoints()`
+5. let a Blazor or TypeScript client complete the browser-side OAuth flow and call the token endpoint
+
+The package then issues standard ASP.NET bearer tokens through `Results.SignIn(...)`.
 
 ## Registration
 
-### `AddSocialLogin<TProvider>`
+The real public registration method is:
 
 ```csharp
-builder.Services.AddSocialLogin<MyUserProvider>(settings =>
+builder.Services.AddSocialLogin<MySocialUserProvider>(settings =>
 {
-    settings.Google.ClientId = "...";
-    settings.Google.ClientSecret = "...";
-    settings.Google.AddUri("https://app.example.com");
+    settings.Google.ClientId = builder.Configuration["SocialLogin:Google:ClientId"];
+    settings.Google.ClientSecret = builder.Configuration["SocialLogin:Google:ClientSecret"];
+    settings.Google.AddUris("https://localhost:7100", "https://app.example.com");
 
-    settings.Microsoft.ClientId = "...";
-    settings.Microsoft.ClientSecret = "...";
-    settings.Microsoft.AddUri("https://app.example.com");
+    settings.Microsoft.ClientId = builder.Configuration["SocialLogin:Microsoft:ClientId"];
+    settings.Microsoft.ClientSecret = builder.Configuration["SocialLogin:Microsoft:ClientSecret"];
+    settings.Microsoft.AddUris("https://localhost:7100", "https://app.example.com");
 
-    settings.GitHub.ClientId = "...";
-    settings.GitHub.ClientSecret = "...";
-
-    // Facebook and Amazon use access tokens directly â€” no secrets needed
+    settings.GitHub.ClientId = builder.Configuration["SocialLogin:GitHub:ClientId"];
+    settings.GitHub.ClientSecret = builder.Configuration["SocialLogin:GitHub:ClientSecret"];
+}, bearer =>
+{
+    bearer.BearerTokenExpiration = TimeSpan.FromHours(1);
+    bearer.RefreshTokenExpiration = TimeSpan.FromDays(10);
 });
 ```
 
-Full signature:
+Signature:
 
 ```csharp
-public static IServiceCollection AddSocialLogin<TProvider>(
-    this IServiceCollection services,
+IServiceCollection AddSocialLogin<TProvider>(
     Action<SocialLoginBuilder> settings,
     Action<BearerTokenOptions>? action = null,
     ServiceLifetime userProviderLifeTime = ServiceLifetime.Transient)
     where TProvider : class, ISocialUserProvider
 ```
 
-- `action` â€” configures .NET bearer token options (e.g. token lifetime, sliding expiration)
-- `userProviderLifeTime` â€” DI lifetime for your `ISocialUserProvider` implementation
+What it registers:
 
-A provider is only activated (its `HttpClient` registered) when its `IsActive` property returns `true`.
+- ASP.NET bearer-token authentication
+- `ISocialUserProvider`
+- one named `ITokenChecker` per provider, plus the internal `DotNet` checker for refresh-token reuse
+- named `HttpClient`s only for providers whose configuration is active
 
----
+## Provider configuration model
 
-## Provider Configuration
+`SocialLoginBuilder` currently exposes these providers:
 
-Provider settings follow an inheritance hierarchy:
+- `Google`
+- `Microsoft`
+- `Facebook`
+- `GitHub`
+- `Amazon`
+- `Linkedin`
+- `X`
+- `Instagram`
+- `Pinterest`
+- `TikTok`
 
-| Class | Properties added | `IsActive` when |
-|---|---|---|
-| `SocialDefaultLoginSettings` | _(none)_ | always `true` |
-| `SocialLoginSettings` | `ClientId` | `ClientId != null` |
-| `SocialLoginWithSecretsSettings` | `ClientId`, `ClientSecret` | both non-null |
-| `SocialLoginWithSecretsAndRedirectSettings` | + allowed redirect domains | all of the above + â‰¥1 domain set |
+The activation rules depend on the settings type:
 
-### `SocialLoginBuilder`
+| Settings type | Used by | Active when |
+| --- | --- | --- |
+| `SocialDefaultLoginSettings` | Facebook, Amazon | always `true` |
+| `SocialLoginSettings` | base type | `ClientId != null` |
+| `SocialLoginWithSecretsSettings` | GitHub | `ClientId` and `ClientSecret` are set |
+| `SocialLoginWithSecretsAndRedirectSettings` | Google, Microsoft, Linkedin, X, Instagram, Pinterest, TikTok | client id, client secret, and at least one allowed URI are set |
 
-```csharp
-public sealed class SocialLoginBuilder
-{
-    public SocialLoginWithSecretsAndRedirectSettings Google { get; set; }
-    public SocialLoginWithSecretsAndRedirectSettings Microsoft { get; set; }
-    public SocialDefaultLoginSettings Facebook { get; set; }
-    public SocialDefaultLoginSettings Amazon { get; set; }
-    public SocialLoginWithSecretsSettings GitHub { get; set; }
-    public SocialLoginWithSecretsAndRedirectSettings Linkedin { get; set; }
-    public SocialLoginWithSecretsAndRedirectSettings X { get; set; }
-    public SocialLoginWithSecretsAndRedirectSettings Instagram { get; set; }
-    public SocialLoginWithSecretsAndRedirectSettings Pinterest { get; set; }
-    public SocialLoginWithSecretsAndRedirectSettings TikTok { get; set; }
-}
-```
-
-### Adding Allowed Redirect Domains
-
-For providers that use `SocialLoginWithSecretsAndRedirectSettings`, the incoming `Origin` / `Referer` header is validated against a whitelist before the token exchange proceeds. Use the fluent API to add allowed origins:
+For redirect-based providers, add allowed origins with:
 
 ```csharp
-settings.Google.ClientId = "...";
-settings.Google.ClientSecret = "...";
 settings.Google.AddUri("https://app.example.com");
-settings.Google.AddUri("http://localhost:5173");              // local dev
 settings.Google.AddUris("https://app.example.com", "https://staging.example.com");
-settings.Google.AddDomainWithProtocolAndPort("example.com", "https", 443);
+settings.Google.AddDomainWithProtocolAndPort("localhost", "https", 7100);
 ```
 
----
+Important detail: allowed redirects are matched by scheme, host, and port. The stored path is not used as a differentiator when validating the incoming domain.
 
-## Implement `ISocialUserProvider`
+## `ISocialUserProvider`
+
+`ISocialUserProvider` is the application extension point.
 
 ```csharp
 public interface ISocialUserProvider
 {
-    // Called when issuing the bearer token â€” yield custom claims to embed
-    IAsyncEnumerable<Claim> GetClaimsAsync(TokenResponse response, CancellationToken cancellationToken);
-
-    // Called on the /User endpoint â€” return your application user
     Task<ISocialUser> GetAsync(string username, IEnumerable<Claim> claims, CancellationToken cancellationToken);
+    IAsyncEnumerable<Claim> GetClaimsAsync(TokenResponse response, CancellationToken cancellationToken);
 }
 ```
 
-Example:
+Responsibilities:
 
-```csharp
-public class MyUserProvider : ISocialUserProvider
-{
-    private readonly IUserRepository _repo;
-    public MyUserProvider(IUserRepository repo) => _repo = repo;
+- `GetClaimsAsync(...)` controls which claims are embedded into the issued bearer token
+- `GetAsync(...)` controls what `/api/Authentication/Social/User` returns
 
-    public async IAsyncEnumerable<Claim> GetClaimsAsync(
-        TokenResponse response,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        var user = await _repo.GetOrCreateAsync(response.Username, cancellationToken);
-        yield return new Claim(ClaimTypes.Name, user.Username!);
-        yield return new Claim(ClaimTypes.Role, user.Role);
-    }
+The sample provider in `src/Authentication/Tests/Rystem.Authentication.Social.TestApi/Services/SocialUserProvider.cs` shows both:
 
-    public async Task<ISocialUser> GetAsync(
-        string username, IEnumerable<Claim> claims, CancellationToken cancellationToken)
-    {
-        return await _repo.GetAsync(username, cancellationToken);
-    }
-}
-```
+- adding `ClaimTypes.Name`
+- adding a custom language claim with `RystemClaimTypes.Language`
+- returning a richer app user model that implements `ISocialUser`
 
----
+## Endpoints
 
-## Expose Endpoints
+Expose the runtime endpoints with:
 
 ```csharp
 app.UseSocialLoginEndpoints();
 ```
 
-Calls `UseAuthentication()`, `UseAuthorization()`, and registers the two minimal API endpoints below.
+This method does more than mapping endpoints: it also calls `UseAuthentication()` and `UseAuthorization()` internally.
 
-### `GET/POST api/Authentication/Social/Token`
+### `api/Authentication/Social/Token`
 
-Exchanges an OAuth authorization code for a Rystem bearer token.
+This endpoint is mapped with `Map(...)`, so it accepts any verb. In practice the bundled clients use:
 
-| Parameter | Source | Description |
-|---|---|---|
-| `provider` | query | `ProviderType` value (e.g. `Google`, `Microsoft`) |
-| `code` | query | Authorization code from the OAuth provider |
-| `redirectPath` | query (optional) | Path string for the redirect URI |
-| _(body)_ | JSON body (optional) | `Dictionary<string, string>` â€” e.g. `{ "code_verifier": "..." }` for PKCE |
+- `GET` for simple exchanges
+- `POST` when they need to send extra body parameters such as `code_verifier`
 
-The domain is extracted automatically from the `Origin` or `Referer` request header and validated against the allowed-domains whitelist configured in `SocialLoginBuilder`. The final redirect URI is assembled as `{domain}{redirectPath}`.
+Inputs:
 
-On success, returns a signed `ClaimsPrincipal` as a bearer token (`Results.SignIn`).  
-On failure, returns `401 Unauthorized` or a `Problem` with the error message.
+| Name | Source | Meaning |
+| --- | --- | --- |
+| `provider` | query | `ProviderType` value |
+| `code` | query | authorization code, provider access token, or refresh token depending on provider |
+| `redirectPath` | query | optional redirect path from the client |
+| `additionalParameters` | JSON body | optional provider-specific extras like PKCE `code_verifier` |
 
-### `GET api/Authentication/Social/User` _(requires authentication)_
+Behavior:
 
-Returns the authenticated user object.
+- reads `Origin` first, then `Referer`
+- derives a domain from those headers
+- builds a `TokenCheckerSettings` object with `Domain`, `RedirectPath`, and `AdditionalParameters`
+- resolves the provider-specific named `ITokenChecker`
+- on success builds a `ClaimsPrincipal` and returns `Results.SignIn(...)`
 
-- With `ISocialUserProvider` registered â†’ calls `GetAsync(username, claims)`
-- Without provider â†’ returns `ISocialUser.OnlyUsername(identity.Name)`
+The actual wire payload is the ASP.NET bearer-token sign-in response, not a custom social-auth DTO.
 
----
+### `api/Authentication/Social/User`
 
-## Full Setup Example
+This endpoint requires authorization and returns either:
 
-```csharp
-var builder = WebApplication.CreateBuilder(args);
+- `ISocialUserProvider.GetAsync(...)` output, when a provider is registered
+- or `ISocialUser.OnlyUsername(...)` when no provider is available
 
-builder.Services.AddSocialLogin<MyUserProvider>(settings =>
-{
-    settings.Google.ClientId     = builder.Configuration["Google:ClientId"];
-    settings.Google.ClientSecret = builder.Configuration["Google:ClientSecret"];
-    settings.Google.AddUri(builder.Configuration["App:Domain"]!);
+## Refresh flow and the `DotNet` provider
 
-    settings.Microsoft.ClientId     = builder.Configuration["Microsoft:ClientId"];
-    settings.Microsoft.ClientSecret = builder.Configuration["Microsoft:ClientSecret"];
-    settings.Microsoft.AddUri(builder.Configuration["App:Domain"]!);
-});
+`ProviderType.DotNet` is the package's internal refresh path, not a social provider.
 
-var app = builder.Build();
-app.UseSocialLoginEndpoints();
-app.Run();
-```
+It validates a refresh token previously issued by ASP.NET bearer auth and only accepts it when the original token domain matches the current request domain claim.
+
+## Important caveats
+
+### `Origin` or `Referer` is effectively required
+
+The token endpoint refuses to proceed when it cannot infer a non-empty domain from `Origin` or `Referer`, even for providers that do not use redirect whitelists in their settings object.
+
+### Redirect behavior is provider-specific
+
+The overall contract supports `redirectPath`, but provider implementations are not fully uniform. Some use the computed redirect URI, while others rely on harder-coded callback shapes.
+
+### Allowed URI validation is host-oriented
+
+For redirect-whitelist providers, matching is based on scheme, host, and port. Multiple callback paths on the same host are not distinguished during domain validation.
+
+### This package issues bearer tokens; it does not define your user model
+
+Your claims and `/User` payload come from `ISocialUserProvider`. Without it, the package falls back to a username-only response.
+
+## Grounded by sample files
+
+- `src/Authentication/Tests/Rystem.Authentication.Social.TestApi/Program.cs`
+- `src/Authentication/Tests/Rystem.Authentication.Social.TestApi/Services/SocialUserProvider.cs`
+- `src/Authentication/Rystem.Authentication.Social/Extensions/ServiceCollectionExtensions.cs`
+- `src/Authentication/Rystem.Authentication.Social/Extensions/EndpointRouteBuilderExtensions.cs`
+
+Use this package when you want a small ASP.NET Core token-exchange backend for social-login clients, not a full end-to-end identity platform.

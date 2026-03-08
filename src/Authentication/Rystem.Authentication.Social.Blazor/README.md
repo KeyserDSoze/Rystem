@@ -1,332 +1,218 @@
-﻿# Rystem.Authentication.Social.Blazor
+# Rystem.Authentication.Social.Blazor
 
-[![Version](https://img.shields.io/nuget/v/Rystem.Authentication.Social.Blazor)](https://www.nuget.org/packages/Rystem.Authentication.Social.Blazor)
-[![Downloads](https://img.shields.io/nuget/dt/Rystem.Authentication.Social.Blazor)](https://www.nuget.org/packages/Rystem.Authentication.Social.Blazor)
+`Rystem.Authentication.Social.Blazor` is the Blazor-side companion to `Rystem.Authentication.Social`.
 
-Blazor client-side social authentication for Rystem. Handles the OAuth redirect flow, PKCE, token storage, user resolution, and localization â€” for web and mobile (MAUI Blazor Hybrid).
+It handles browser-local state, callback processing, token retrieval, user loading, and a small amount of localization glue. It does not replace your server package and it does not register arbitrary social-login providers by itself.
 
----
-
-## Install
+## Installation
 
 ```bash
 dotnet add package Rystem.Authentication.Social.Blazor
 ```
 
-> **Dependencies**: `Rystem.Authentication.Social.Abstractions`, `Microsoft.Identity.Abstractions`
+## Architecture
 
----
+The Blazor package is centered around:
+
+- `AddSocialLoginUI(...)`
+- `UseSocialLoginAuthorization()`
+- `SocialLoginManager`
+- UI components like `SocialAuthentication` and `SocialAuthenticationRouter`
+
+The normal flow is:
+
+1. register the Blazor package with the API base URL and provider client ids
+2. include the package JavaScript asset in the host page
+3. wrap the app or route tree in `SocialAuthentication` or `SocialAuthenticationRouter`
+4. let `SocialLoginManager` read stored state, process the OAuth callback, exchange codes with the server, and load the authenticated user
 
 ## Registration
 
-### `AddSocialLoginUI`
+The real setup API is:
 
 ```csharp
 builder.Services.AddSocialLoginUI(settings =>
 {
-    settings.ApiUrl = "https://api.example.com";
-
-    settings.Google.ClientId    = "your-google-client-id";
-    settings.Microsoft.ClientId = "your-microsoft-client-id";
-    settings.Facebook.ClientId  = "your-facebook-app-id";
-
-    settings.Platform.RedirectPath = "/account/login"; // web default
-    settings.Platform.Type         = PlatformType.Auto;
+    settings.ApiUrl = "https://localhost:7017";
+    settings.Google.ClientId = builder.Configuration["SocialLogin:Google:ClientId"];
+    settings.Microsoft.ClientId = builder.Configuration["SocialLogin:Microsoft:ClientId"];
+    settings.Platform.RedirectPath = "/account/login";
 });
 ```
 
-Full signature:
+`AddSocialLoginUI(...)` currently registers:
 
-```csharp
-public static IServiceCollection AddSocialLoginUI(
-    this IServiceCollection services,
-    Action<SocialLoginAppSettings> settings)
-```
+- singleton `SocialLoginAppSettings`
+- scoped `SocialLoginLocalStorageService`
+- named `HttpClient` for `SocialLoginManager`
+- transient `SocialLoginManager`
+- singleton `LocalizationMiddleware`
+- scoped `IAuthorizationHeaderProvider` via `SocialLoginAuthorizationHeaderProvider`
 
-Registers: `SocialLoginLocalStorageService`, `SocialLoginManager` (transient), `LocalizationMiddleware` (singleton), and `IAuthorizationHeaderProvider` backed by token storage.
-
-### `UseSocialLoginAuthorization`
-
-Adds the localization middleware. Call it after `UseAuthentication()`:
+### Middleware
 
 ```csharp
 app.UseSocialLoginAuthorization();
 ```
 
----
+In the current implementation this only adds the localization middleware. It does not set up authentication middleware or map social-login endpoints.
 
-## Configuration
+## Required host-page script
 
-### `SocialLoginAppSettings`
+The package needs its JS asset loaded explicitly. The sample app does this in `src/Authentication/Tests/RystemAuthentication.Social.TestBlazorApp/Components/App.razor`:
 
-```csharp
-public sealed class SocialLoginAppSettings
-{
-    public string? ApiUrl { get; set; }           // base URL of the Rystem.Authentication.Social API
-    public SocialParameter Google { get; set; }
-    public SocialParameter Facebook { get; set; }
-    public SocialParameter Microsoft { get; set; }
-    public PlatformConfig Platform { get; set; }  // redirect URI and platform type
-    public LoginMode LoginMode { get; set; } = LoginMode.Redirect;
-}
+```html
+<script src="_content/Rystem.Authentication.Social.Blazor/socialauthentications.js"></script>
 ```
 
-### `SocialParameter`
+Without that script, local storage helpers and language cookie helpers will not work.
 
-```csharp
-public sealed class SocialParameter
-{
-    public string? ClientId { get; set; }
-}
-```
+## Configuration model
 
-### `PlatformConfig`
+`SocialLoginAppSettings` currently exposes:
 
-Controls how the redirect URI is built and which login mode is used:
+- `ApiUrl`
+- `Google`
+- `Facebook`
+- `Microsoft`
+- `Platform`
+- `LoginMode`
 
-```csharp
-public sealed class PlatformConfig
-{
-    public PlatformType Type { get; set; } = PlatformType.Auto;
-    public string? RedirectPath { get; set; }
-    public LoginMode LoginMode { get; set; } = LoginMode.Redirect;
-}
-```
+Important runtime note: the built-in `<SocialLogin>` component currently renders only Microsoft and Google buttons, even though `SocialLoginAppSettings` also exposes `Facebook`.
 
-**`RedirectPath` smart detection** (applied in `SocialLoginManager.GetFullRedirectUri()`):
+Another important detail: the current runtime flow is effectively driven by `Platform.LoginMode`; the top-level `LoginMode` property exists on the settings type but is not the part the runtime actively reads during callback handling.
 
-| `RedirectPath` value | Result |
-|---|---|
-| Contains `"://"` | Used as-is (mobile deep link, e.g. `"myapp://oauth/callback"`) |
-| Starts with `"/"` | Prepended with `NavigationManager.BaseUri` |
-| Empty | Defaults to `{BaseUri}/account/login` |
+### Platform behavior
 
-### `PlatformType`
+`Platform.RedirectPath` is interpreted like this by `SocialLoginManager.GetFullRedirectUri()`:
 
-```csharp
-public enum PlatformType
-{
-    Web = 0,
-    iOS = 1,
-    Android = 2,
-    Auto = 3    // auto-detect at runtime
-}
-```
+- full URI if it contains `://`
+- web-relative path if it starts with `/`
+- default to `/account/login` under the current base URI when omitted
 
-### `LoginMode`
-
-```csharp
-public enum LoginMode
-{
-    Redirect = 0,   // navigate in same window (default)
-    Popup = 1       // open in new tab (not yet implemented in Blazor)
-}
-```
-
----
+`Platform.LoginMode` exists, but popup support is not meaningfully implemented in this Blazor package. In practice the flow is redirect-oriented.
 
 ## Components
 
-### `<SocialAuthentication TUser="...">`
+### `SocialAuthentication<TUser>`
 
-Wraps the authenticated section of the app. Renders `LoginPage` when the user is not logged in; otherwise cascades `SocialUser` (the wrapper) and `LogoutCallback` to all child content.
+`SocialAuthentication<TUser>` wraps authenticated content.
+
+- when no user is loaded, it renders `<SocialLogin>` plus optional `LoginPage`
+- when a user is loaded, it cascades `SocialUser` and `LogoutCallback`
+- if the user implements `ILocalizedSocialUser`, it persists the language locally
+
+Sample usage from `src/Authentication/Tests/RystemAuthentication.Social.TestBlazorApp/Components/Routes.razor`:
 
 ```razor
-<SocialAuthentication TUser="AppUser" SetUser="OnUserSet">
-    <ChildContent>
-        <!-- accessible when authenticated -->
-        <!-- access user via cascading parameter below -->
-    </ChildContent>
+<SocialAuthenticationRouter AppAssembly="typeof(Program).Assembly"
+                            DefaultLayout="typeof(Layout.MainLayout)"
+                            TUser="SocialUser"
+                            SetUser="SetUserAsync">
     <LoginPage>
-        <MyLoginPage />
+        <h1>Your customization here.</h1>
     </LoginPage>
-</SocialAuthentication>
-```
-
-Parameters:
-
-| Parameter | Type | Description |
-|---|---|---|
-| `ChildContent` | `RenderFragment` | Rendered when authenticated |
-| `LoginPage` | `RenderFragment?` | Rendered inside `<SocialLogin>` when not authenticated |
-| `SetUser` | `SetUser<TUser>?` | Async callback invoked after login with the resolved user |
-
-Access the user from any descendant component:
-
-```razor
-@code {
-    [CascadingParameter(Name = "SocialUser")]
-    public SocialUserWrapper<AppUser>? User { get; set; }
-
-    [CascadingParameter(Name = "LogoutCallback")]
-    public SocialLogout? Logout { get; set; }
-}
-```
-
-### `<SocialAuthenticationRouter TUser="...">`
-
-Drop-in replacement for Blazor's `<Router>`. Wraps all routes inside `<SocialAuthentication>`.
-
-```razor
-<SocialAuthenticationRouter
-    TUser="AppUser"
-    AppAssembly="typeof(App).Assembly"
-    DefaultLayout="typeof(MainLayout)"
-    LoginPage="@(() => @<LoginPage />)"
-    SetUser="OnUserSet">
-    <NotFound>
-        <p>Page not found.</p>
-    </NotFound>
 </SocialAuthenticationRouter>
 ```
 
-Parameters:
+### `SocialAuthenticationRouter<TUser>`
 
-| Parameter | Type | Description |
-|---|---|---|
-| `AppAssembly` | `Assembly` | App assembly for route discovery |
-| `DefaultLayout` | `Type` | Default layout type |
-| `NotFoundLayout` | `Type?` | Layout for 404 pages (falls back to `DefaultLayout`) |
-| `LoginPage` | `RenderFragment?` | Login content |
-| `NotFound` | `RenderFragment?` | 404 content |
-| `SetUser` | `SetUser<TUser>?` | Callback after login |
+This is a wrapper around Blazor's router that nests every route inside `SocialAuthentication<TUser>`.
 
-### `<SocialLogin>`
+Use it when you want route-level protection with the package's built-in login shell.
 
-Renders Google and Microsoft login buttons, depending on which `ClientId` values are configured in `SocialLoginAppSettings`. `ChildContent` appears above the buttons.
+### `SocialLogin`
 
-```razor
-<SocialLogin>
-    <p>Sign in to continue.</p>
-</SocialLogin>
-```
+`SocialLogin` renders the built-in login buttons above optional child content.
 
-### `<SocialLogout>`
+Current built-in button support:
 
-Renders a logout button that clears the stored token and state.
+- Microsoft
+- Google
 
----
+### `SocialLogout`
+
+`SocialLogout` renders a logout button and participates in the package's local state cleanup flow.
 
 ## `SocialLoginManager`
 
-Injectable service for manual OAuth flow control.
+`SocialLoginManager` is the imperative entry point.
 
-```csharp
-public sealed class SocialLoginManager
-{
-    // Try to obtain a valid token: from storage, OAuth callback, or refresh
-    public Task<Token?> FetchTokenAsync();
+Key methods:
 
-    // Resolve the authenticated user from the API
-    public Task<SocialUserWrapper<TUser>?> MeAsync<TUser>() where TUser : ISocialUser, new();
+- `FetchTokenAsync()`
+- `MeAsync<TUser>()`
+- `LogoutAsync()`
+- `GetFullRedirectUri()`
 
-    // Clear token and state from localStorage
-    public ValueTask LogoutAsync();
+### Token resolution flow
 
-    // Build the full redirect URI using platform configuration
-    public string GetFullRedirectUri();
-}
-```
+`FetchTokenAsync()` currently does this:
 
-`FetchTokenAsync` resolution order:
+1. tries local storage token first
+2. if expired, tries refresh through `/api/Authentication/Social/Token?provider=DotNet&code=<refreshToken>`
+3. if no token, reads `code` and `state` from the current URI
+4. validates the stored local state
+5. exchanges the callback code with the server
 
-1. Token in localStorage and not expired â†’ return it
-2. Token expired â†’ exchange refresh token via the `DotNet` provider â†’ update storage â†’ return refreshed token
-3. No token â†’ read `?code=` + `?state=` from the current URL â†’ call `POST /api/Authentication/Social/Token` (with PKCE body if `code_verifier` is in storage) â†’ store and return new token
+The callback exchange includes:
 
----
+- `Origin` based on the current base URI
+- `redirectPath` from the current page path
+- optional request body containing `code_verifier`
 
-## Models
+### User loading flow
 
-### `Token`
+`MeAsync<TUser>()` calls `/api/Authentication/Social/User` with the bearer token. If that call returns `401`, it attempts a `DotNet` refresh first and retries.
 
-The bearer token returned by the server endpoint:
+When user loading succeeds, `SocialLoginAuthorizationHeaderProvider` is updated with the current bearer token so other consumers can read it.
 
-```csharp
-public sealed class Token
-{
-    public string AccessToken { get; set; }
-    public string RefreshToken { get; set; }
-    public bool IsExpired { get; set; }
-    public long ExpiresIn { get; set; }
-    public DateTime Expiring { get; set; }
-}
-```
+## Localization behavior
 
-### `SocialUserWrapper<TUser>`
+If the loaded user implements `ILocalizedSocialUser`, the package:
 
-Wraps the resolved user after a successful login:
+- stores the language through the JS helper
+- writes the `lang` cookie
+- updates `CultureInfo.CurrentCulture` and `CultureInfo.CurrentUICulture`
 
-```csharp
-public sealed class SocialUserWrapper<TUser> where TUser : ISocialUser, new()
-{
-    public required TUser User { get; set; }
-    public required string CurrentToken { get; set; }
-    public SocialLogout LogoutAsync { get; set; }
-}
+`UseSocialLoginAuthorization()` then applies that cookie through `LocalizationMiddleware` on later requests.
 
-public delegate ValueTask SocialLogout(bool forceReload);
-```
+## Important caveats
 
----
+### This package depends on the server package
 
-## Localization Support
+It expects a backend that exposes:
 
-If your user type implements `ILocalizedSocialUser`:
+- `/api/Authentication/Social/Token`
+- `/api/Authentication/Social/User`
 
-```csharp
-public class AppUser : ILocalizedSocialUser
-{
-    public string? Username { get; set; }
-    public string? Language { get; set; }  // e.g. "en", "it"
-}
-```
+Without `Rystem.Authentication.Social` on the server side, the Blazor flow cannot complete.
 
-After login, the Blazor client automatically persists the language to `localStorage`. The `LocalizationMiddleware` (registered via `UseSocialLoginAuthorization()`) reads it and sets `CultureInfo.CurrentUICulture` for each request.
+### The built-in UI is narrower than the config surface
 
----
+The settings type exposes `Facebook`, but the built-in `<SocialLogin>` component currently renders only Microsoft and Google buttons.
 
-## Full Setup Example
+### PKCE support is effectively Microsoft-specific today
 
-```csharp
-// Program.cs
-builder.Services.AddSocialLoginUI(settings =>
-{
-    settings.ApiUrl             = "https://api.example.com";
-    settings.Google.ClientId    = builder.Configuration["Google:ClientId"];
-    settings.Microsoft.ClientId = builder.Configuration["Microsoft:ClientId"];
-    settings.Platform.RedirectPath = "/account/login";
-});
+The current callback implementation looks for `microsoft_code_verifier` in local storage when building the token exchange request.
 
-var app = builder.Build();
-app.UseSocialLoginAuthorization();
-await app.RunAsync();
-```
+### `UseSocialLoginAuthorization()` is only localization middleware
 
-```razor
-@* App.razor *@
-<SocialAuthenticationRouter
-    TUser="AppUser"
-    AppAssembly="typeof(App).Assembly"
-    DefaultLayout="typeof(MainLayout)"
-    LoginPage="@(() => @<LoginPage />)" />
-```
+Despite its name, it does not configure auth handlers or attach bearer tokens to your API clients by itself.
 
----
+If you want repository/API client calls to reuse the stored social token, you need a separate integration layer. The sample app does that with `AddDefaultSocialLoginAuthorizationInterceptorForApiHttpClient()` from `RepositoryFramework.Api.Client.Authentication.BlazorServer` in `src/Authentication/Tests/RystemAuthentication.Social.TestBlazorApp/Program.cs`.
 
-## Provider Coverage
+### Logout cleanup is split across manager and component code
 
-| Provider | Client Buttons | Server Exchange |
-|---|---|---|
-| Google | âœ… | âœ… |
-| Microsoft | âœ… | âœ… |
-| Facebook | âœ… | âœ… |
-| GitHub | â€” | âœ… |
-| Amazon | â€” | âœ… |
-| LinkedIn | â€” | âœ… |
-| X (Twitter) | â€” | âœ… |
-| Instagram | â€” | âœ… |
-| Pinterest | â€” | âœ… |
-| TikTok | â€” | âœ… |
+`SocialLoginManager.LogoutAsync()` clears token storage and the in-memory authorization header, while `SocialAuthentication` also clears state and optionally forces a page reload.
 
-> The Blazor client renders buttons only for Google, Microsoft, and Facebook. All providers can be used via manual OAuth redirect through the server endpoint.
+## Grounded by sample and source files
+
+- `src/Authentication/Tests/RystemAuthentication.Social.TestBlazorApp/Program.cs`
+- `src/Authentication/Tests/RystemAuthentication.Social.TestBlazorApp/Components/App.razor`
+- `src/Authentication/Tests/RystemAuthentication.Social.TestBlazorApp/Components/Routes.razor`
+- `src/Authentication/Rystem.Authentication.Social.Blazor/Services/SocialLoginManager.cs`
+- `src/Authentication/Rystem.Authentication.Social.Blazor/Components/SocialAuthentication.razor`
+- `src/Authentication/Rystem.Authentication.Social.Blazor/Components/SocialAuthenticationRouter.razor`
+
+Use this package when you want a Blazor UI and local-session wrapper around the server-side social-login endpoints, not when you need a fully standalone auth system.

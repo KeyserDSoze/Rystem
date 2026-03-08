@@ -1,10 +1,8 @@
-﻿# Rystem.Api.Client.Authentication.BlazorWasm
+# Rystem.Api.Client.Authentication.BlazorWasm
 
-[![NuGet](https://img.shields.io/nuget/v/Rystem.Api.Client.Authentication.BlazorWasm)](https://www.nuget.org/packages/Rystem.Api.Client.Authentication.BlazorWasm)
+`Rystem.Api.Client.Authentication.BlazorWasm` adds bearer-token request enhancers for generated `Rystem.Api.Client` proxies in Blazor WebAssembly applications.
 
-OpenID Connect / Azure AD authentication interceptor for `Rystem.Api.Client` on **Blazor WebAssembly**. Automatically attaches a Bearer token to every outgoing API request using `Microsoft.Identity.Web` MSAL token acquisition.
-
-Target framework: `net10.0`
+Like the Blazor Server package, it is an enhancer layer, not a full auth/client registration package.
 
 ## Installation
 
@@ -12,89 +10,89 @@ Target framework: `net10.0`
 dotnet add package Rystem.Api.Client.Authentication.BlazorWasm
 ```
 
----
+## What this package adds
 
-## Prerequisites
+The package exposes:
 
-Configure MSAL authentication in your Blazor WASM `Program.cs`:
+| Method | Scope |
+| --- | --- |
+| `AddAuthenticationForAllEndpoints(settings)` | all generated clients |
+| `AddAuthenticationForEndpoint<T>(settings)` | one generated client |
+
+`AuthorizationSettings` currently exposes only:
+
+- `Scopes`
+
+There are no social-auth variants in this package.
+
+## Typical Blazor WASM setup
 
 ```csharp
 var scopes = new[] { builder.Configuration["AzureAd:Scopes"]! };
 
-builder.Services
-    .AddMsalAuthentication(options =>
-    {
-        builder.Configuration.Bind("AzureAd", options.ProviderOptions.Authentication);
-        options.ProviderOptions.DefaultAccessTokenScopes.Add(scopes[0]);
-    });
-```
-
----
-
-## JWT / Microsoft Identity interceptor
-
-### Apply to all endpoint clients
-
-```csharp
-builder.Services.AddAuthenticationForAllEndpoints(settings =>
-{
-    settings.Scopes = scopes;   // string[] of OAuth2 scopes
-});
-```
-
-### Apply only to a specific interface
-
-```csharp
-builder.Services.AddAuthenticationForEndpoint<IProductService>(settings =>
-{
-    settings.Scopes = scopes;
-});
-```
-
-Both methods register a `TokenManager` as an `IRequestEnhancer` that acquires a token from the MSAL cache and attaches it as `Bearer <token>` to every HTTP request.
-
----
-
-## Complete Blazor WASM example
-
-```csharp
-// Program.cs — Blazor WASM
-var builder = WebAssemblyHostBuilder.CreateDefault(args);
-var scopes  = new[] { builder.Configuration["AzureAd:Scopes"]! };
-
-// MSAL
 builder.Services.AddMsalAuthentication(options =>
 {
     builder.Configuration.Bind("AzureAd", options.ProviderOptions.Authentication);
     options.ProviderOptions.DefaultAccessTokenScopes.Add(scopes[0]);
 });
 
-// Shared endpoint declarations (same as server)
 builder.Services.AddBusiness();
 
-// Register HTTP clients
 builder.Services.AddClientsForAllEndpointsApi(http =>
-    http.ConfigurationHttpClientForApi(c => c.BaseAddress = new Uri("https://api.myapp.io")));
+{
+    http.ConfigurationHttpClientForApi(client =>
+    {
+        client.BaseAddress = new Uri("https://api.myapp.io");
+    });
+});
 
-// Attach token to all requests
-builder.Services.AddAuthenticationForAllEndpoints(s => s.Scopes = scopes);
-
-await builder.Build().RunAsync();
+builder.Services.AddAuthenticationForAllEndpoints(settings =>
+{
+    settings.Scopes = scopes;
+});
 ```
 
----
+## Token flow
 
-## API reference
+The package registers a request enhancer (`TokenManager` / `TokenManager<T>`) that:
 
-| Method | Scope | Description |
-|--------|-------|-------------|
-| `AddAuthenticationForAllEndpoints(settings)` | All clients | Registers MSAL `TokenManager` for all endpoint clients |
-| `AddAuthenticationForEndpoint<T>(settings)` | One interface | Registers MSAL `TokenManager` only for interface `T` |
+1. asks `IAccessTokenProvider` for an access token
+2. caches the last token in memory
+3. refreshes it when it is missing or within five minutes of expiry
+4. attaches it as `Bearer <token>` to the outgoing request
 
-> **Note:** The Blazor WASM package does not include the social-login variants. Use [`Rystem.Api.Client.Authentication.BlazorServer`](../Rystem.Api.Client.Authentication.BlazorServer) if you need social login.
+If `Scopes` is configured, token acquisition uses those scopes. Otherwise it requests the default token.
 
-### `AuthorizationSettings`
+## Important caveats
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `Scopes` | `string[]` | OAuth2 / OIDC scopes requested when acquiring the token from MSAL |
+### This package does not register clients
+
+You still need:
+
+- `Rystem.Api.Client`
+- shared endpoint registrations
+- generated client registration with `AddClientsForAllEndpointsApi(...)` or `AddClientForEndpointApi<T>(...)`
+
+### Endpoint-specific settings are weaker than they look
+
+The package exposes `AddAuthenticationForEndpoint<T>(...)`, but the base token manager currently resolves `AuthorizationSettings` without using the named client key.
+
+So per-endpoint auth settings are not as isolated as the API shape suggests.
+
+### Failed acquisition handling is rough
+
+When token acquisition fails, the current implementation can produce an empty token string rather than a cleaner null-or-challenge flow.
+
+So treat this package as a lightweight enhancer, not as a replacement for the richer `AuthorizationMessageHandler` patterns in custom Blazor WASM code.
+
+### No social helpers here
+
+If you need the separate social-login helpers from this repo, they are not part of the WASM auth package.
+
+## Grounded by source files
+
+- `src/Api/Client/Rystem.Api.Client.Authentication.BlazorWasm/DefaultInterceptor/ServiceCollectionExtensionsForAuthenticator.cs`
+- `src/Api/Client/Rystem.Api.Client.Authentication.BlazorWasm/Authorization/TokenManager.cs`
+- `src/Api/Test/Rystem.Api.Test.Domain/ServiceCollectionExtensions.cs`
+
+Use this package when you already have Blazor WebAssembly MSAL auth configured and you want generated `Rystem.Api.Client` calls to pick up bearer tokens automatically.

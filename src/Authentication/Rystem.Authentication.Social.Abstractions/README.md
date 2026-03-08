@@ -1,100 +1,96 @@
 # Rystem.Authentication.Social.Abstractions
 
-[![Version](https://img.shields.io/nuget/v/Rystem.Authentication.Social.Abstractions)](https://www.nuget.org/packages/Rystem.Authentication.Social.Abstractions)
-[![Downloads](https://img.shields.io/nuget/dt/Rystem.Authentication.Social.Abstractions)](https://www.nuget.org/packages/Rystem.Authentication.Social.Abstractions)
+`Rystem.Authentication.Social.Abstractions` contains the shared contracts and models used by the Authentication/Social packages.
 
-Shared models and interfaces used by all Rystem social authentication libraries.
+It is the common .NET vocabulary between:
 
----
+- `Rystem.Authentication.Social`
+- `Rystem.Authentication.Social.Blazor`
 
-## Install
+The TypeScript client mirrors many of the same concepts, but it does not consume this package directly.
+
+## Installation
 
 ```bash
 dotnet add package Rystem.Authentication.Social.Abstractions
 ```
 
----
+## What this package adds
 
-## Models
+The core public types are:
 
-### `ProviderType`
+- `ProviderType`
+- `ISocialUser`
+- `ILocalizedSocialUser`
+- `TokenResponse`
+- `TokenCheckerSettings`
+- `RystemClaimTypes`
 
-Identifies the OAuth provider for a token exchange request:
+## `ProviderType`
 
-```csharp
-public enum ProviderType
-{
-    DotNet,
-    Google,
-    Microsoft,
-    Facebook,
-    GitHub,
-    Amazon,
-    Linkedin,
-    X,
-    Instagram,
-    Pinterest,
-    TikTok
-}
-```
+`ProviderType` identifies the server-side token checker to use.
 
-`DotNet` is the internal .NET bearer token provider, used for token refresh via the `DotNetTokenChecker`.
+Current values are:
 
----
+- `DotNet`
+- `Google`
+- `Microsoft`
+- `Facebook`
+- `GitHub`
+- `Amazon`
+- `Linkedin`
+- `X`
+- `Instagram`
+- `Pinterest`
+- `TikTok`
 
-### `ISocialUser`
+Important note: `DotNet` is not a social provider. It is the internal provider used when refreshing bearer tokens that were already issued by the server package.
 
-Base interface for the authenticated user model:
+## `ISocialUser`
+
+`ISocialUser` is the minimum user contract across the stack.
 
 ```csharp
 public interface ISocialUser
 {
     string? Username { get; set; }
-    static ISocialUser Empty { get; }
-    static ISocialUser OnlyUsername(string? username);
 }
 ```
 
-- `Empty` — returns a `DefaultSocialUser` with a null username
-- `OnlyUsername(username)` — creates a minimal `DefaultSocialUser` with only the username set
+The interface also exposes static helpers in the current implementation:
 
-Implement this interface to define your application-specific user type.
+- `ISocialUser.Empty`
+- `ISocialUser.OnlyUsername(username)`
 
----
+Those helpers are used by the server package when no custom `ISocialUserProvider` is present.
 
-### `ILocalizedSocialUser`
+## `ILocalizedSocialUser`
 
-Extends `ISocialUser` with a language preference:
+`ILocalizedSocialUser` extends `ISocialUser` with:
 
 ```csharp
-public interface ILocalizedSocialUser : ISocialUser
-{
-    string? Language { get; set; }
-}
+string? Language { get; set; }
 ```
 
-When a Blazor client detects that the authenticated user implements `ILocalizedSocialUser`, the language value is automatically persisted to `localStorage` and applied via the localization middleware. The claim type used is `RystemClaimTypes.Language`.
+This matters mainly for the Blazor package, where the login flow can persist a language choice and feed the localization middleware.
 
----
+## `TokenResponse`
 
-### `TokenResponse`
-
-Result returned by a successful OAuth code exchange:
+`TokenResponse` is the normalized result of a successful provider check inside the server package.
 
 ```csharp
 public sealed class TokenResponse
 {
     public required string Username { get; set; }
     public required List<Claim> Claims { get; set; }
-    public static TokenResponse? Empty => null;
 }
 ```
 
----
+Important detail: `TokenResponse.Empty` is currently just `null`.
 
-### `TokenCheckerSettings`
+## `TokenCheckerSettings`
 
-Passed to `ITokenChecker` to carry the redirect URI and any additional OAuth parameters:
+`TokenCheckerSettings` carries request context from the token endpoint into a provider-specific token checker.
 
 ```csharp
 public sealed class TokenCheckerSettings
@@ -102,41 +98,57 @@ public sealed class TokenCheckerSettings
     public string? Domain { get; set; }
     public string? RedirectPath { get; set; }
     public Dictionary<string, string>? AdditionalParameters { get; set; }
-
-    public string GetRedirectUri();
-    public string? GetParameter(string key);
-    public TokenCheckerSettings WithParameter(string key, string value);
 }
 ```
 
-`GetRedirectUri()` combines `Domain` and `RedirectPath` into the full callback URL:
+Use cases:
 
-```csharp
-// Domain = "https://app.example.com", RedirectPath = "/account/login"
-settings.GetRedirectUri(); // -> "https://app.example.com/account/login"
-```
+- `Domain` comes from `Origin` or `Referer`
+- `RedirectPath` lets a client communicate the callback path it used
+- `AdditionalParameters` carries provider-specific extras such as PKCE `code_verifier`
 
-`AdditionalParameters` carries provider-specific extras such as `code_verifier` for PKCE:
+Helper methods:
+
+- `GetRedirectUri()` combines `Domain` and `RedirectPath`
+- `GetParameter(key)` reads from `AdditionalParameters`
+- `WithParameter(key, value)` appends a parameter fluently
+
+Example:
 
 ```csharp
 var settings = new TokenCheckerSettings
 {
     Domain = "https://app.example.com",
     RedirectPath = "/account/login"
-};
-settings.WithParameter("code_verifier", pkceVerifier);
+}.WithParameter("code_verifier", verifier);
+
+string redirectUri = settings.GetRedirectUri();
 ```
 
----
+## `RystemClaimTypes`
 
-### `RystemClaimTypes`
+This package currently defines one custom claim constant:
 
-Custom claim type constants:
+- `RystemClaimTypes.Language`
 
-```csharp
-public static class RystemClaimTypes
-{
-    // Two-letter ISO 639-1 language code (e.g. "en", "it")
-    public const string Language = "http://schemas.rystem.org/claims/language";
-}
-```
+It is intended for language values such as `en`, `it`, or `es` and is used by the sample social user provider plus the Blazor localization flow.
+
+## Important caveats
+
+### This package is shared-model oriented, not truly dependency-minimal
+
+Even though it is called `Abstractions`, its project file currently references token and OIDC-related packages. So it is not a pure POCO-only dependency.
+
+### `DotNet` is easy to misunderstand
+
+If you see `ProviderType.DotNet`, think refresh-token reuse inside the server package, not an external login provider.
+
+## Grounded by source files
+
+- `src/Authentication/Rystem.Authentication.Social.Abstractions/Models/ProviderType.cs`
+- `src/Authentication/Rystem.Authentication.Social.Abstractions/Models/ISocialUser.cs`
+- `src/Authentication/Rystem.Authentication.Social.Abstractions/Models/ILocalizedSocialUser.cs`
+- `src/Authentication/Rystem.Authentication.Social.Abstractions/Models/TokenResponse.cs`
+- `src/Authentication/Rystem.Authentication.Social.Abstractions/Models/TokenCheckerSettings.cs`
+
+Use this package when you need the shared Authentication/Social contracts without taking a dependency on the full server or Blazor runtime package.

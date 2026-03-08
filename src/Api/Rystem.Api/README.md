@@ -1,10 +1,11 @@
-﻿# Rystem.Api
+# Rystem.Api
 
-[![NuGet](https://img.shields.io/nuget/v/Rystem.Api)](https://www.nuget.org/packages/Rystem.Api)
+`Rystem.Api` is the shared metadata package behind the Api area.
 
-Core package for the **Rystem.Api** framework. Turns any .NET interface registered in DI into a minimal-API endpoint automatically — no controllers, no routing boilerplate. The same interface is then consumed by the client package (`Rystem.Api.Client`) as a strongly-typed HttpClient proxy.
+It does not expose routes by itself and it does not create HTTP clients by itself. Instead, it records endpoint definitions from interfaces so that:
 
-Target framework: `net10.0`
+- `Rystem.Api.Server` can map them as minimal APIs
+- `Rystem.Api.Client` can create runtime HTTP proxies from the same definitions
 
 ## Installation
 
@@ -12,157 +13,197 @@ Target framework: `net10.0`
 dotnet add package Rystem.Api
 ```
 
----
-
-## Packages overview
+## Package boundaries
 
 | Package | Role |
-|---------|------|
-| **`Rystem.Api`** | Core: endpoint configuration, attributes, builder API |
-| `Rystem.Api.Server` | Maps endpoints to ASP.NET Core minimal-API routes, OpenAPI/Swagger/Scalar |
-| `Rystem.Api.Client` | Generates strongly-typed HttpClient proxy for each registered interface |
-| `Rystem.Api.Client.Authentication.BlazorServer` | JWT / Social auth interceptor for Blazor Server |
-| `Rystem.Api.Client.Authentication.BlazorWasm` | JWT auth interceptor for Blazor WASM |
+| --- | --- |
+| `Rystem.Api` | shared endpoint metadata, binding attributes, `IHttpFile`, and builder APIs |
+| `Rystem.Api.Server` | ASP.NET Core mapping, OpenAPI, Swagger, Scalar |
+| `Rystem.Api.Client` | runtime `DispatchProxy` HTTP clients |
+| `Rystem.Api.Client.Authentication.BlazorServer` | request enhancers for Blazor Server token flows |
+| `Rystem.Api.Client.Authentication.BlazorWasm` | request enhancers for Blazor WebAssembly token flows |
 
----
+## Architecture
 
-## How it works
+The core flow is:
 
-1. Register your DI service as usual (`AddTransient<IProductService, ProductService>`).
-2. Call `AddEndpoint<IProductService>(...)` to declare it as an API endpoint.
-3. Call `app.UseEndpointApi()` to map all declared endpoints to minimal-API routes.
-4. Optionally call `AddClientsForAllEndpointsApi(...)` on the client to get a proxy that calls those routes.
+1. register your interface implementation in DI on the server
+2. call `ConfigureEndpoints(...)` once to set shared defaults
+3. call `AddEndpoint<T>(...)` or `AddEndpointWithFactory<T>(...)` to record API metadata
+4. let `Rystem.Api.Server` map those endpoints with `UseEndpointApi()`
+5. let `Rystem.Api.Client` build proxies from the same endpoint registrations
 
-Routes follow the pattern: `{BasePath}{EndpointName}/{MethodName}`  
-Default: `api/IProductService/GetProduct`
+Internally, endpoint definitions are stored in a singleton `EndpointsManager`.
 
----
+Because of that, shared configuration should be done before or together with endpoint registration. In practice, treat `ConfigureEndpoints(...)` as startup configuration, not something to call later.
 
-## Endpoint registration
+## Minimal shared registration
 
-### Simple registration
-
-```csharp
-services.AddEndpoint<IProductService>(builder =>
-{
-    // all public methods are automatically discovered
-});
-```
-
-### Full customisation
+This pattern is what the sample domain project does in `src/Api/Test/Rystem.Api.Test.Domain/ServiceCollectionExtensions.cs`.
 
 ```csharp
 services
-    .ConfigureEndpoints(x =>
+    .ConfigureEndpoints(options =>
     {
-        x.BasePath = "api/v2/";        // default: "api/"
-        x.RemoveAsyncSuffix = true;    // GetProductAsync → GetProduct (default: true)
+        options.BasePath = "rapi/";
     })
-    .AddEndpoint<IProductService>(builder =>
+    .AddEndpoint<ISalubry>(endpoint =>
     {
-        builder
-            .SetEndpointName("Products")                    // override route segment (default: interface name minus "I")
-            .SetMethodName(x => x.GetProductAsync, "Get")  // rename a method
-            .Remove(x => x.InternalMethodAsync)            // hide a method from the API
-            .AddAuthorizationForAll("AdminPolicy")          // require policy on all methods
-            .AddAuthorization(x => x.DeleteProductAsync, "SuperAdminPolicy"); // single method
-    })
-    // Factory-named service: one endpoint per registered factory name
-    .AddEndpointWithFactory<IEmbeddingService>(builder =>
-    {
-        builder.SetupParameter(
-            x => x.SearchAsync,
-            "query",
-            p => p.Example = "example query");  // Swagger example
+        endpoint.SetEndpointName("Salubriend");
+        endpoint.AddAuthorizationForAll("policy");
     });
 ```
 
-### Named-factory services
+That registration is shared metadata. You still need:
 
-When a service is registered multiple times under different factory names, use `AddEndpointWithFactory<T>`. The framework resolves all registered factory names at startup and generates one endpoint per name automatically:
+- a real DI implementation on the server
+- `UseEndpointApi()` from `Rystem.Api.Server`
+- `AddClientsForAllEndpointsApi(...)` or `AddClientForEndpointApi<T>(...)` from `Rystem.Api.Client`
 
-```csharp
-// DI
-services.AddFactory<IEmbeddingService, OpenAiEmbeddingService>(EmbeddingType.OpenAi);
-services.AddFactory<IEmbeddingService, CohereEmbeddingService>(EmbeddingType.Cohere);
+## Defaults and route shape
 
-// API
-services.AddEndpointWithFactory<IEmbeddingService>();
-// generates:
-//   POST api/EmbeddingService/OpenAi/Search
-//   POST api/EmbeddingService/Cohere/Search
-```
+`EndpointsManager` defaults are:
 
-For a specific named instance (not auto-discovery):
+| Setting | Default |
+| --- | --- |
+| `BasePath` | `api/` |
+| `RemoveAsyncSuffix` | `true` |
 
-```csharp
-services.AddEndpoint<ISalubry>(builder => { ... }, name: "Doma");
-```
+`EndpointValue` defaults are:
 
----
+- endpoint name = interface name without the leading `I`
+- method name = CLR method name, optionally without `Async`
 
-## `ApiEndpointBuilder<T>` method reference
-
-| Method | Description |
-|--------|-------------|
-| `SetEndpointName(name)` | Override the route segment (default: type name without `I` prefix) |
-| `SetMethodName(expr, name)` | Rename a method in the route |
-| `SetMethodName(MethodInfo, name)` | Rename by reflection |
-| `Remove(expr)` | Exclude a method from the API |
-| `Remove(name)` | Exclude by method name |
-| `AddAuthorization(expr)` | Require authentication on a method (any authenticated user) |
-| `AddAuthorization(expr, policies)` | Require named policies on a method |
-| `AddAuthorizationForAll()` | Require authentication on all methods |
-| `AddAuthorizationForAll(policies)` | Require named policies on all methods |
-| `SetupParameter(expr, paramName, setup)` | Override parameter binding/example for a specific parameter |
-
----
-
-## Parameter binding attributes
-
-Decorate interface method parameters to control how ASP.NET Core binds and how the client sends them:
-
-| Attribute | Binding source | Notes |
-|-----------|---------------|-------|
-| `[Query]` | Query string | `Name` overrides the query key; `IsRequired` (default `true`) |
-| `[Path(Index = n)]` | Route path segment | `Index` selects which `{param}` slot; `-1` = all |
-| `[Header]` | Request header | `Name` overrides the header name |
-| `[Cookie]` | Request cookie | `Name` overrides the cookie name |
-| `[Body]` | JSON request body | `IsRequired` (default `true`) |
-| `[Form]` | Multipart form-data field | `Name` overrides the form key |
-
-Parameters **without** an attribute are bound automatically:
-- Primitive types → query string
-- Complex types / `Stream` / `IFormFile` / `IHttpFile` → body (triggers POST + multipart if multiple streams)
-
-### Example
+So this interface:
 
 ```csharp
-public interface IDocumentService
+public interface IProductService
 {
-    Task<bool> UploadAsync(
-        [Path(Index = 0)] string folderId,
-        [Query] string fileName,
-        [Header] string correlationId,
-        [Cookie(Name = "tenant")] string tenantId,
-        [Form(Name = "file")] Stream content,
-        [Form(Name = "meta")] DocumentMetadata metadata);
-
-    Task<Document?> GetAsync([Query] string id);
-    Task<bool> DeleteAsync([Body] DeleteRequest request);
+    Task<Product?> GetAsync(string id);
 }
 ```
 
-The framework automatically selects `GET` or `POST` based on whether complex/stream parameters exist, and uses multipart encoding when multiple streams/form fields are present.
+becomes this route shape by default:
 
----
+```text
+api/ProductService/Get?id=...
+```
 
-## `EndpointsManager` (global settings)
+If a method has path-bound parameters, the placeholders are appended after the method segment.
 
-Configure via `ConfigureEndpoints`:
+## Registration APIs
 
-| Property | Default | Description |
-|----------|---------|-------------|
-| `BasePath` | `"api/"` | URL prefix for all generated routes |
-| `RemoveAsyncSuffix` | `true` | Strip `Async` from method names in the route |
+| Method | Purpose |
+| --- | --- |
+| `ConfigureEndpoints(Action<EndpointsManager>)` | configure shared defaults like `BasePath` and async-suffix trimming |
+| `AddEndpoint<T>(Action<ApiEndpointBuilder<T>>, name?)` | register one interface as one endpoint set |
+| `AddEndpointWithFactory<T>(Action<ApiEndpointBuilder<T>>?)` | declare a factory-backed endpoint set to be expanded server-side |
 
+The optional `name` on `AddEndpoint<T>(..., name)` targets a specific named factory instance.
+
+On the server, that means the endpoint is resolved through `IFactory<T>`. On the client, the matching named proxy is also a factory-backed registration rather than a plain default interface registration.
+
+## `ApiEndpointBuilder<T>`
+
+The actual public builder surface is:
+
+| Method | Purpose |
+| --- | --- |
+| `SetEndpointName(name)` | override the endpoint segment |
+| `SetMethodName(expr, name)` | rename a method by expression |
+| `SetMethodName(methodInfo, name)` | rename a method by `MethodInfo` |
+| `Remove(methodInfo)` | exclude a method |
+| `Remove(methodName)` | exclude a method by stored key |
+| `AddAuthorization(expr)` | require authenticated access on one method |
+| `AddAuthorization(expr, params policies)` | require named policies on one method |
+| `AddAuthorizationForAll()` | require authentication on all methods |
+| `AddAuthorizationForAll(params policies)` | require named policies on all methods |
+| `SetupParameter(expr, parameterName, setup)` | override parameter metadata by expression |
+| `SetupParameter(methodInfo, parameterName, setup)` | override parameter metadata by `MethodInfo` |
+
+### Recommendation for async methods
+
+The expression-based lookup methods are less reliable when `RemoveAsyncSuffix = true`, because route names and expression names can diverge.
+
+For async methods, prefer the `MethodInfo` overloads when you need precise customization.
+
+Example:
+
+```csharp
+var getMethod = typeof(ISalubry).GetMethod(nameof(ISalubry.GetAsync))!;
+
+services.AddEndpoint<ISalubry>(endpoint =>
+{
+    endpoint.SetEndpointName("Salubriend");
+    endpoint.SetMethodName(getMethod, "Gimme");
+    endpoint.SetupParameter(getMethod, "id", parameter =>
+    {
+        parameter.Location = ApiParameterLocation.Body;
+        parameter.Example = 56;
+    });
+});
+```
+
+## Parameter binding attributes
+
+These attributes are the shared binding contract for both server and client packages.
+
+| Attribute | Meaning |
+| --- | --- |
+| `[Query]` | bind from query string |
+| `[Path(Index = n)]` | bind from path segments |
+| `[Header]` | bind from request headers |
+| `[Cookie]` | bind from cookies |
+| `[Body]` | bind from request body |
+| `[Form]` | bind from multipart form-data |
+
+Properties on these attributes include:
+
+- `Name` for query/header/cookie/form overrides
+- `IsRequired` on all binding attributes
+- `Index` on `[Path]`
+
+## Default parameter behavior
+
+Without an attribute:
+
+- primitive values default to query binding
+- non-primitive values default to body binding
+- `CancellationToken` is recognized specially
+- `Stream`, `IFormFile`, and `IHttpFile` are treated as streamed body values
+
+`POST` and multipart behavior are inferred later from this metadata by the server and client packages.
+
+## `IHttpFile`
+
+`Rystem.Api` also defines `IHttpFile`, a lightweight file abstraction used by the generated API pipeline.
+
+Use it when you want an interface-level file type that is not tied directly to ASP.NET Core's `IFormFile`.
+
+## Important caveats
+
+### All interface methods are discovered
+
+Registration currently uses `typeof(T).GetMethods()`.
+
+That means property getters are also exposed unless you remove them. The sample `ITeamCalculator` in `src/Api/Test/Rystem.Api.Test.Domain/ITeamCalculator.cs` would expose getter methods such as `get_IsLive` if left untouched.
+
+### Overloads are auto-suffixed
+
+If an interface contains overloaded methods, the builder keeps them unique by renaming later ones to `_2`, `_3`, and so on.
+
+### Factory expansion is a server concern
+
+`AddEndpointWithFactory<T>()` records the intent to expand named factory endpoints, but the actual fan-out happens in `Rystem.Api.Server` during `UseEndpointApi()`.
+
+The client package does not currently perform the same automatic expansion from factory names.
+
+## Grounded by sample files
+
+- `src/Api/Test/Rystem.Api.Test.Domain/ServiceCollectionExtensions.cs`
+- `src/Api/Test/Rystem.Api.Test.Domain/IColam.cs`
+- `src/Api/Test/Rystem.Api.Test.Domain/ISalubry.cs`
+- `src/Api/Test/Rystem.Api.Test.Domain/ITeamCalculator.cs`
+- `src/Api/Test/Rystem.Api.Test.Domain/IEmbeddingService.cs`
+
+Use this package when you want to define the shared API contract once and let the server and client packages interpret it consistently.
