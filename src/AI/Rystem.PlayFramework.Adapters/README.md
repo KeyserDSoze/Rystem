@@ -1,7 +1,8 @@
 # Rystem.PlayFramework.Adapters
 
-Azure OpenAI adapter for [Rystem.PlayFramework](https://github.com/KeyserDSoze/Rystem).  
-Supports **Responses API**, automatic **file upload** via Files API, **SHA256-based multi-level caching**, and **Voice Pipeline** (Whisper STT + TTS-1).
+`Rystem.PlayFramework.Adapters` is the Azure OpenAI adapter package for `Rystem.PlayFramework`.
+
+It registers named `IChatClient` and `IVoiceAdapter` instances, defaults to the Azure OpenAI Responses API, and adds a file-upload wrapper for non-image, non-audio content.
 
 ## Installation
 
@@ -9,159 +10,168 @@ Supports **Responses API**, automatic **file upload** via Files API, **SHA256-ba
 dotnet add package Rystem.PlayFramework.Adapters
 ```
 
----
+## What this package adds
 
-## Azure OpenAI
+The public registration methods are:
 
-### Basic Usage (default registration)
+- `AddAdapterForAzureOpenAI(...)`
+- `AddVoiceAdapterForAzureOpenAI(...)`
+
+These methods register singleton factory-backed services so they can be referenced by PlayFramework instance name.
+
+## Registering a chat adapter
+
+Unnamed registration:
 
 ```csharp
 builder.Services.AddAdapterForAzureOpenAI(settings =>
 {
-    settings.Endpoint = new Uri("https://YOUR-RESOURCE.openai.azure.com/");
-    settings.ApiKey = "YOUR-API-KEY";
+    settings.Endpoint = new Uri("https://your-resource.openai.azure.com/");
+    settings.ApiKey = builder.Configuration["AzureOpenAI:Key"];
     settings.Deployment = "gpt-4o";
 });
 ```
 
-### Named Factory (matches PlayFramework name)
+Named registration, which is the most common pattern with PlayFramework:
 
 ```csharp
 builder.Services.AddAdapterForAzureOpenAI("default", settings =>
 {
-    settings.Endpoint = new Uri("https://YOUR-RESOURCE.openai.azure.com/");
-    settings.ApiKey = "YOUR-API-KEY";
-    settings.Deployment = "gpt-4o";
+    settings.Endpoint = new Uri(builder.Configuration["AzureOpenAI:Endpoint"]!);
+    settings.ApiKey = builder.Configuration["AzureOpenAI:Key"]!;
+    settings.Deployment = builder.Configuration["AzureOpenAI:Deployment"] ?? "gpt-4o";
+});
+
+builder.Services.AddPlayFramework("default", framework =>
+{
+    framework.WithChatClient("default");
 });
 ```
 
-### Azure Managed Identity
+Managed identity mode:
 
 ```csharp
 builder.Services.AddAdapterForAzureOpenAI("default", settings =>
 {
-    settings.Endpoint = new Uri("https://YOUR-RESOURCE.openai.azure.com/");
-    settings.UseAzureCredential = true; // Uses DefaultAzureCredential
-    settings.Deployment = "gpt-4o";
-});
-```
-
-### Configuration
-
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `Endpoint` | `Uri?` | — | Azure OpenAI endpoint URI (**required**) |
-| `ApiKey` | `string?` | — | API key (required unless `UseAzureCredential = true`) |
-| `UseAzureCredential` | `bool` | `false` | Use `DefaultAzureCredential` (Managed Identity / Azure CLI) |
-| `Deployment` | `string` | `"gpt-4o"` | Model deployment name |
-| `UseResponsesApi` | `bool` | `true` | Use the Responses API (supports `input_file`, `input_image`) |
-| `EnableFileUpload` | `bool` | `true` | Automatically upload non-image files via the Files API |
-
-### File Upload
-
-When `UseResponsesApi` and `EnableFileUpload` are both `true` (the default), non-image files (PDF, DOCX, CSV, etc.) are automatically:
-
-1. **Uploaded** to Azure OpenAI via the Files API
-2. **Referenced** by `file_id` in the Responses API request
-3. **Cached** to avoid re-uploading the same content (SHA256 hash-based deduplication)
-
-#### Cache Strategy (first match wins)
-
-| Priority | Provider | Registration |
-|---|---|---|
-| 1 | `IDistributedCache` | `services.AddStackExchangeRedisCache(...)` or similar |
-| 2 | `IMemoryCache` | `services.AddMemoryCache()` |
-| 3 | In-memory `Dictionary` | Automatic fallback (no registration needed) |
-
----
-
-## Voice Adapter (Whisper + TTS-1)
-
-The adapter package also provides an `IVoiceAdapter` implementation for the PlayFramework **voice pipeline** (STT → LLM → TTS). It uses **Whisper** for speech-to-text and **TTS-1** for text-to-speech.
-
-### Basic Usage
-
-```csharp
-builder.Services.AddVoiceAdapterForAzureOpenAI(settings =>
-{
-    settings.Endpoint = new Uri("https://YOUR-RESOURCE.openai.azure.com/");
-    settings.ApiKey = "YOUR-API-KEY";
-    settings.SttDeployment = "whisper";   // Whisper model deployment name
-    settings.TtsDeployment = "tts-1";     // TTS model deployment name
-});
-```
-
-### Named Factory
-
-```csharp
-builder.Services.AddVoiceAdapterForAzureOpenAI("default", settings =>
-{
-    settings.Endpoint = new Uri("https://YOUR-RESOURCE.openai.azure.com/");
-    settings.ApiKey = "YOUR-API-KEY";
-    settings.SttDeployment = "whisper";
-    settings.TtsDeployment = "tts-1";
-    settings.TtsVoice = "nova";           // alloy, echo, fable, onyx, nova, shimmer
-});
-
-// Wire it up in PlayFramework
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-    .WithVoice("default")  // matches the voice adapter factory name
-    .AddScene("chat", "Conversation", scene => { }));
-```
-
-### Azure Managed Identity
-
-```csharp
-builder.Services.AddVoiceAdapterForAzureOpenAI("default", settings =>
-{
-    settings.Endpoint = new Uri("https://YOUR-RESOURCE.openai.azure.com/");
+    settings.Endpoint = new Uri("https://your-resource.openai.azure.com/");
     settings.UseAzureCredential = true;
-    settings.SttDeployment = "whisper";
-    settings.TtsDeployment = "tts-1";
+    settings.Deployment = "gpt-4o";
 });
 ```
 
-### Configuration
+## Chat adapter settings
 
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `Endpoint` | `Uri?` | — | Azure OpenAI endpoint URI (**required**) |
-| `ApiKey` | `string?` | — | API key (required unless `UseAzureCredential = true`) |
-| `UseAzureCredential` | `bool` | `false` | Use `DefaultAzureCredential` (Managed Identity / Azure CLI) |
-| `SttDeployment` | `string` | `"whisper"` | Whisper model deployment name for STT |
-| `TtsDeployment` | `string` | `"tts-1"` | TTS model deployment name |
-| `TtsVoice` | `string` | `"alloy"` | Voice: `alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer` |
-| `TtsOutputFormat` | `string` | `"mp3"` | Output format: `mp3`, `opus`, `aac`, `flac`, `wav`, `pcm` |
-| `TtsSpeed` | `float` | `1.0` | Speech speed multiplier (0.25 – 4.0) |
+`AdapterSettings` exposes:
 
-### How It Works
+| Property | Meaning |
+| --- | --- |
+| `Endpoint` | Azure OpenAI endpoint |
+| `ApiKey` | API key when not using managed identity |
+| `UseAzureCredential` | use `DefaultAzureCredential` instead of `ApiKey` |
+| `Deployment` | deployment/model name, default `gpt-4o` |
+| `UseResponsesApi` | use `GetResponsesClient(...)` instead of chat completions |
+| `EnableFileUpload` | wrap the chat client with file-upload behavior |
+| `AudioMode` | `None`, `MultiModal`, or `SpeechToText` |
+| `SpeechToTextDeployment` | required when `AudioMode` is `SpeechToText` |
 
-1. **STT**: Audio bytes are sent to the Whisper deployment → returns transcribed text + detected language
-2. **TTS**: Text is sent to the TTS-1 deployment with the configured voice → returns audio bytes
+## File upload behavior
 
-The PlayFramework voice pipeline orchestrates the complete flow:
+When both of these are true:
+
+- `UseResponsesApi = true`
+- `EnableFileUpload = true`
+
+the adapter wraps the inner `IChatClient` with `MultiModalChatClient`.
+
+That wrapper:
+
+- uploads non-image, non-audio `DataContent` through the Files API
+- replaces inline content with `HostedFileContent(file_id)`
+- caches uploads by SHA256 hash
+- tries remote file reuse by filename if hash lookup misses
+
+Cache priority is:
+
+1. `IDistributedCache`
+2. `IMemoryCache`
+3. internal in-memory dictionary
+
+## Audio modes
+
+The chat adapter supports three audio paths:
+
+- `AudioMode.None` - audio is passed through as-is
+- `AudioMode.MultiModal` - audio is sent inline to a model that natively supports it
+- `AudioMode.SpeechToText` - audio is transcribed through Whisper and injected as text
+
+Example:
+
+```csharp
+builder.Services.AddAdapterForAzureOpenAI("default", settings =>
+{
+    settings.Endpoint = new Uri("https://your-resource.openai.azure.com/");
+    settings.ApiKey = "...";
+    settings.Deployment = "gpt-4o";
+    settings.AudioMode = AudioMode.SpeechToText;
+    settings.SpeechToTextDeployment = "whisper";
+});
 ```
-User Audio → Whisper (STT) → PlayFramework Scenes → Sentence Accumulator → TTS-1 → Audio Chunks (SSE)
+
+## Voice adapter
+
+The same package also registers `IVoiceAdapter` for the PlayFramework voice pipeline.
+
+```csharp
+builder.Services.AddVoiceAdapterForAzureOpenAI("default", settings =>
+{
+    settings.Endpoint = new Uri(builder.Configuration["AzureOpenAI:Endpoint"]!);
+    settings.ApiKey = builder.Configuration["AzureOpenAI:Key"]!;
+    settings.SttDeployment = "whisper";
+    settings.TtsDeployment = "tts-1";
+    settings.TtsVoice = "alloy";
+});
+
+builder.Services.AddPlayFramework("default", framework =>
+{
+    framework.WithVoice("default");
+});
 ```
 
-When voice mode is active, a **voice-style system instruction** is automatically injected to make the LLM respond conversationally (no tables, no markdown). This is fully customizable via `VoiceSettings.VoiceStyleInstruction`.
+`VoiceAdapterSettings` exposes:
 
-See the [PlayFramework README](https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework#%EF%B8%8F-voice-pipeline-stt--llm--tts) for full voice pipeline configuration.
+| Property | Meaning |
+| --- | --- |
+| `Endpoint` | Azure OpenAI endpoint |
+| `ApiKey` | API key when not using managed identity |
+| `UseAzureCredential` | use `DefaultAzureCredential` |
+| `SttDeployment` | speech-to-text deployment, default `whisper` |
+| `TtsDeployment` | text-to-speech deployment, default `tts-1` |
+| `TtsVoice` | voice name, default `alloy` |
+| `TtsOutputFormat` | output format such as `mp3`, `wav`, `pcm` |
+| `TtsSpeed` | speech speed multiplier |
 
----
+## Important caveats
 
-## Related Packages
+### The streaming path blocks during file preprocessing
 
-- **[Rystem.PlayFramework.Adapters.FoundryLocal](https://www.nuget.org/packages/Rystem.PlayFramework.Adapters.FoundryLocal)** — Run AI models locally for dev/testing using Microsoft.AI.Foundry.Local SDK.
+`GetStreamingResponseAsync(...)` preprocesses uploadable files with a sync wait via `GetAwaiter().GetResult()`. It works, but it is not the cleanest async path.
 
-## Dependencies
+### Remote file reuse is filename-based after hash miss
 
-- [Rystem.PlayFramework](https://www.nuget.org/packages/Rystem.PlayFramework)
-- [Azure.AI.OpenAI](https://www.nuget.org/packages/Azure.AI.OpenAI) (2.8.0-beta.1)
-- [Microsoft.Extensions.AI.OpenAI](https://www.nuget.org/packages/Microsoft.Extensions.AI.OpenAI) (10.3.0)
-- [Azure.Identity](https://www.nuget.org/packages/Azure.Identity)
+If the local content-hash cache misses, the wrapper checks Azure's existing file list by filename. That is convenient, but it is not a content-identity guarantee.
 
-## License
+### Images and audio are not part of the file-upload wrapper
 
-MIT — see [LICENSE](https://github.com/KeyserDSoze/Rystem/blob/master/LICENSE.txt)
+The Files API wrapper only handles non-image, non-audio binary content. Images stay inline, and audio is handled through the adapter's audio-mode logic.
+
+### Factory names should match your PlayFramework names
+
+If you register the adapter as `"default"`, your PlayFramework builder should typically reference `WithChatClient("default")` and `WithVoice("default")`.
+
+## Grounded by source files
+
+- `src/AI/Rystem.PlayFramework.Adapters/ServiceCollectionExtensions.cs`
+- `src/AI/Rystem.PlayFramework.Adapters/MultiModalChatClient.cs`
+- `src/AI/Test/Rystem.PlayFramework.Api/Program.cs`
+
+Use this package when your PlayFramework backend should run on Azure OpenAI with optional file upload, speech-to-text, and voice output.

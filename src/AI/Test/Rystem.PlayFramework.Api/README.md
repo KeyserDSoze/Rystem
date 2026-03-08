@@ -1,248 +1,181 @@
-# Rystem PlayFramework Test API
+# Rystem.PlayFramework.Api Sample
 
-API .NET per testare il **Rystem PlayFramework** con il client TypeScript.
+`src/AI/Test/Rystem.PlayFramework.Api` is the local ASP.NET Core sample backend used to exercise the PlayFramework HTTP API and the TypeScript client workspace.
 
-## 🚀 Quick Start
+It is not the library package itself. It is a runnable sample that wires:
 
-### 1. Configura Azure OpenAI (Opzionale)
+- `Rystem.PlayFramework`
+- `Rystem.PlayFramework.Adapters`
+- optional `Rystem.PlayFramework.Adapters.FoundryLocal`
+- in-memory cache and repository persistence for the `default` factory
+- HTTP endpoints through `MapPlayFramework(...)`
 
-Per usare risposte AI reali, configura le credenziali Azure OpenAI:
+## What the sample currently does
 
-**Opzione A: User Secrets (Raccomandato per development)**
+The sample registers two PlayFramework factories in `Program.cs`:
+
+- `default` - the main sample backend, with cache, repository persistence, planning, telemetry, client tools, calculator tools, shape tools, and voice endpoints
+- `foundry` - a second factory intended for Foundry Local experiments
+
+The HTTP surface is mapped under:
+
+- `POST /api/ai/default`
+- `POST /api/ai/default/streaming`
+- `GET /api/ai/default/conversations`
+- `GET /api/ai/default/conversations/{conversationKey}`
+- `DELETE /api/ai/default/conversations/{conversationKey}`
+- `PATCH /api/ai/default/conversations/{conversationKey}/visibility`
+- `POST /api/ai/default/voice`
+- `POST /api/ai/foundry`
+- `POST /api/ai/foundry/streaming`
+
+It also exposes:
+
+- `GET /health`
+- OpenAPI + Scalar in development
+
+## Run the sample
+
+From this folder:
 
 ```bash
-cd src/AI/Test/Rystem.PlayFramework.Api
+dotnet run
+```
+
+The launch settings currently use:
+
+```text
+https://localhost:7248
+http://localhost:5158
+```
+
+## Optional Azure OpenAI configuration
+
+If you want the `default` factory to talk to Azure OpenAI, configure:
+
+```bash
 dotnet user-secrets set "AzureOpenAI:Endpoint" "https://<your-resource>.openai.azure.com/"
 dotnet user-secrets set "AzureOpenAI:Key" "<your-api-key>"
 dotnet user-secrets set "AzureOpenAI:Deployment" "gpt-4o"
 ```
 
-**Opzione B: appsettings.Development.json**
+Optional voice settings:
+
+```bash
+dotnet user-secrets set "AzureOpenAI:Voice:SttDeployment" "whisper"
+dotnet user-secrets set "AzureOpenAI:Voice:TtsDeployment" "tts-1"
+dotnet user-secrets set "AzureOpenAI:Voice:TtsVoice" "alloy"
+dotnet user-secrets set "AzureOpenAI:Voice:TtsOutputFormat" "mp3"
+dotnet user-secrets set "AzureOpenAI:Voice:TtsSpeed" "1.0"
+```
+
+If those settings are missing, the sample falls back to a direct `MockChatClient` registration so the API can still be exercised locally.
+
+## Frontend pairing
+
+The sample frontend workspace lives in `src/AI/Rystem.PlayFramework.Client`.
+
+Run it with:
+
+```bash
+npm install
+npm run dev
+```
+
+That workspace is Vite-based, so the default local URL is typically:
+
+```text
+http://localhost:5173
+```
+
+## Request shape
+
+The sample uses the real `PlayFrameworkRequest` contract, so the payload is based on `message`, top-level `conversationKey`, top-level `clientInteractionResults`, and nested `settings`.
+
+Example step-by-step request:
 
 ```json
 {
-  "AzureOpenAI": {
-    "Endpoint": "https://<your-resource>.openai.azure.com/",
-    "Key": "<your-api-key>",
-    "Deployment": "gpt-4o"
+  "message": "Calculate 5 * 7",
+  "settings": {
+    "executionMode": "Scene",
+    "sceneName": "Calculator"
   }
 }
 ```
 
-> ⚠️ **IMPORTANTE**: Non committare mai le API keys! Usa User Secrets o variabili d'ambiente.
+Token-streaming uses the same body shape against:
 
-### 2. Avvia l'API
-
-```bash
-cd src/AI/Test/Rystem.PlayFramework.Api
-dotnet run
-```
-
-L'API sarà disponibile su:
-- **HTTPS**: https://localhost:5001
-- **HTTP**: http://localhost:5000
-
-### 3. Test con il Client TypeScript
-
-Apri un altro terminale e avvia il client React:
-
-```bash
-cd src/AI/Rystem.PlayFramework.Client
-npm start
-```
-
-L'app sarà disponibile su http://localhost:3000 (o altra porta se occupata).
-
----
-
-## 📡 Endpoints
-
-### Step-by-Step Streaming
-```
-POST /api/ai/default
-Content-Type: application/json
-
-{
-  "prompt": "Hello, how are you?",
-  "sceneName": "Chat"
-}
-```
-
-**Risponde con SSE**: Ogni step del PlayFramework come evento separato (Planning, Running, Completed).
-
-### Token-Level Streaming
-```
+```text
 POST /api/ai/default/streaming
-Content-Type: application/json
-
-{
-  "prompt": "Tell me a story",
-  "sceneName": "Chat"
-}
 ```
 
-**Risponde con SSE**: Ogni chunk di testo come evento separato (più granulare).
+## Sample scenes
 
-### Conversation Management (se Repository abilitato)
+The `default` factory currently includes these scenes:
 
-#### List Conversations
-```
-GET /api/ai/default/conversations?searchText=weather&orderBy=TimestampDescending&take=20
-```
+- `General Requests` - general conversation, browser/client tools, and browser commands
+- `Calculator` - arithmetic through `ICalculatorService`
+- `Shape Operations` - shape descriptions and area calculations through `IShapeService`
+- `Technical Documentation Estimator` - long-form estimation prompting for Microsoft-centric project sizing
 
-Ottieni lista conversazioni con filtri:
-- `searchText` - Cerca nei messaggi
-- `includePublic` - Includi conversazioni pubbliche (default: `true`)
-- `includePrivate` - Includi conversazioni private (default: `true`)
-- `orderBy` - Ordinamento: `TimestampDescending` | `TimestampAscending`
-- `skip` - Offset paginazione
-- `take` - Dimensione pagina
+Those display names are normalized internally when scenes are registered. For direct scene execution, names with spaces become underscore-based keys such as `General_Requests`, `Shape_Operations`, and `Technical_Documentation_Estimator`.
 
-#### Get Conversation
-```
-GET /api/ai/default/conversations/{conversationKey}
-```
+The sample also adds a main actor and enables:
 
-Ottieni singola conversazione (richiede autorizzazione per private).
+- default guardrails
+- in-memory cache with 30 minute expiration
+- repository persistence for conversations
+- planning with max recursion depth `5`
+- retry and telemetry
+- voice pipeline on the `default` factory
 
-#### Delete Conversation
-```
-DELETE /api/ai/default/conversations/{conversationKey}
-```
+## Conversation persistence
 
-Elimina conversazione (solo owner).
+Conversation endpoints are enabled only because the sample does both:
 
-#### Update Visibility
-```
-PATCH /api/ai/default/conversations/{conversationKey}/visibility
-Content-Type: application/json
+- calls `UseRepository()` in the `default` PlayFramework builder
+- registers `IRepository<StoredConversation, string>` with the matching factory name `default`
 
-{
-  "isPublic": true
-}
-```
+That repository is in-memory, so conversation data is reset when the app restarts.
 
-Cambia visibilità pubblico/privato (solo owner).
+## CORS and local dev behavior
 
-> **Nota**: Per abilitare questi endpoints, aggiungi `.UseRepository()` nella configurazione PlayFramework in `Program.cs`.
-
-### Health Check
-```
-GET /health
-```
-
-Verifica che l'API sia online.
-
----
-
-## 🎭 Scene Configurate
-
-### **Chat** (default)
-Conversazione generale e risposta a domande con AI assistant amichevole.
-
-**Actors configurati:**
-- ✅ Risposte chiare, concise e accurate
-- ✅ Conversazione amichevole e coinvolgente  
-- ✅ Ammette onestamente quando non sa qualcosa
-
-**Esempio:**
-```json
-{
-  "prompt": "What is the capital of France?",
-  "sceneName": "Chat"
-}
-```
-
----
-
-## 🔧 Configurazione
-
-### CORS
-
-CORS è configurato per permettere richieste da:
-- `http://localhost:3000` (Create React App default)
-- `http://localhost:5173` (Vite default)
-- `http://localhost:5174` (Vite alternativo)
-
-Per aggiungere altre origini, modifica `Program.cs`:
+The sample uses:
 
 ```csharp
-policy.WithOrigins("http://localhost:3000", "http://localhost:YOUR_PORT")
+policy.AllowAnyOrigin()
+      .AllowAnyHeader()
+      .AllowAnyMethod();
 ```
 
-### PlayFramework Settings
+So it is intentionally permissive for local testing. It is not a production CORS configuration.
 
-Modifica le impostazioni in `Program.cs`:
+## Important caveats
 
-```csharp
-.Configure(settings =>
-{
-    settings.Planning.Enabled = true;           // Planning automatico
-    settings.Summarization.Enabled = false;     // Disabilita summarization
-    settings.MaxTokenBudget = 4000;            // Budget massimo token
-})
-```
+### The sample request body is not `prompt`
 
----
+Older examples sometimes show `prompt` and top-level `sceneName`. The current API uses `message` and `settings.sceneName`.
 
-## 🧪 Testing
+### The `foundry` factory is only partially wired by default
 
-### Con cURL
+`Program.cs` maps `foundry` endpoints, but the actual `AddAdapterForFoundryLocal(...)` registration is commented out. Uncomment and configure that section before expecting `foundry` routes to work.
 
-**Step-by-Step:**
-```bash
-curl -X POST https://localhost:5001/api/ai/default \
-  -H "Content-Type: application/json" \
-  -d '{"prompt":"Hello!","sceneName":"Chat"}' \
-  --insecure
-```
+### The `foundry` conversation path is not fully aligned out of the box
 
-**Token Streaming:**
-```bash
-curl -X POST https://localhost:5001/api/ai/default/streaming \
-  -H "Content-Type: application/json" \
-  -d '{"prompt":"Tell me a joke","sceneName":"Chat"}' \
-  --insecure
-```
+The sample repository registration is only named `default`, while `foundry` also enables conversation endpoints. If you want persisted conversations for `foundry`, add a matching repository registration for that factory too.
 
-### Con il Client TypeScript
+### The Azure adapter path deserves a quick review before relying on it
 
-Vedi [Rystem.PlayFramework.Client README](../../Rystem.PlayFramework.Client/src/rystem/README.md)
+The sample registers Azure OpenAI as a named adapter and falls back to a direct `MockChatClient` when Azure settings are absent. If you customize the sample, keep PlayFramework factory names, chat-client names, repository names, and voice-adapter names aligned.
 
----
+## Useful references
 
-## 🐛 Troubleshooting
+- `src/AI/Test/Rystem.PlayFramework.Api/Program.cs`
+- `src/AI/Rystem.PlayFramework/README.md`
+- `src/AI/Rystem.PlayFramework.Adapters/README.md`
+- `src/AI/Rystem.PlayFramework.Adapters.FoundryLocal/README.md`
+- `src/AI/Rystem.PlayFramework.Client/README.md`
+- `src/AI/Rystem.PlayFramework.Client/src/rystem/README.md`
 
-### "Azure OpenAI credentials not configured"
-
-Se non hai configurato Azure OpenAI, l'API userà un **MockChatClient** che risponde con testo mock. Le funzionalità SSE e streaming funzionano comunque per testare l'integrazione.
-
-### CORS errors nel browser
-
-Verifica che l'origine del client sia nelle allowed origins in `Program.cs`.
-
-### Certificate SSL errors
-
-Per testing locale, usa `--insecure` con curl o accetta il certificato self-signed nel browser.
-
----
-
-## 📚 Risorse
-
-- **PlayFramework Documentation**: [src/AI/Rystem.PlayFramework/README.md](../../Rystem.PlayFramework/README.md)
-- **TypeScript Client**: [src/AI/Rystem.PlayFramework.Client/src/rystem/README.md](../../Rystem.PlayFramework.Client/src/rystem/README.md)
-- **API Examples**: [AUTHORIZATION_EXAMPLE.md](../../Rystem.PlayFramework/Api/AUTHORIZATION_EXAMPLE.md)
-
----
-
-## 🎯 Next Steps
-
-1. ✅ Aggiungi più Scene per casi d'uso specifici
-2. ✅ Configura autenticazione/autorizzazione per production
-3. ✅ Aggiungi Tools/MCP per funzionalità avanzate
-4. ✅ Implementa caching per ottimizzare performance
-5. ✅ Aggiungi logging e monitoring
-
----
-
-**Happy coding!** 🚀
+Use this sample when you want a runnable local backend for PlayFramework HTTP and client integration testing.

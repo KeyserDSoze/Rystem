@@ -1,8 +1,8 @@
 # Rystem.PlayFramework.Adapters.FoundryLocal
 
-Foundry Local adapter for [Rystem.PlayFramework](https://github.com/KeyserDSoze/Rystem).  
-Run AI models **locally** on your device for development and testing — no cloud, no API keys.  
-Uses the **[Microsoft.AI.Foundry.Local](https://github.com/microsoft/Foundry-Local)** SDK to automatically download, load, and start a local OpenAI-compatible web service.
+`Rystem.PlayFramework.Adapters.FoundryLocal` registers local-model adapters for `Rystem.PlayFramework` through Microsoft Foundry Local.
+
+It is aimed at development, demos, and local experimentation where you want an OpenAI-compatible endpoint without a cloud provider.
 
 ## Installation
 
@@ -10,96 +10,129 @@ Uses the **[Microsoft.AI.Foundry.Local](https://github.com/microsoft/Foundry-Loc
 dotnet add package Rystem.PlayFramework.Adapters.FoundryLocal
 ```
 
-> **Note:** This package includes native ONNX runtime dependencies. Consuming projects **must** specify a `RuntimeIdentifier`:
->
-> ```xml
-> <PropertyGroup>
->   <RuntimeIdentifier>win-x64</RuntimeIdentifier>
->   <!-- Or: linux-x64, osx-arm64, etc. -->
-> </PropertyGroup>
-> ```
-
-### NuGet Feed Configuration
-
-The Foundry Local SDK requires the ORT feed. Add a `nuget.config` in your project:
+This package includes native/runtime-specific dependencies. Your consuming app should declare an appropriate runtime identifier.
 
 ```xml
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <packageSources>
-    <clear />
-    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
-    <add key="ORT" value="https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/ORT/nuget/v3/index.json" />
-  </packageSources>
-  <packageSourceMapping>
-    <packageSource key="nuget.org">
-      <package pattern="*" />
-    </packageSource>
-    <packageSource key="ORT">
-      <package pattern="*Foundry*" />
-    </packageSource>
-  </packageSourceMapping>
-</configuration>
+<PropertyGroup>
+  <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+</PropertyGroup>
 ```
+
+The project itself ships multiple supported runtime identifiers, but your app still needs to target one that matches its deployment environment.
 
 ## Prerequisites
 
+Foundry Local itself must be installed.
+
+Examples:
+
 ```bash
-# Install Foundry Local
-winget install Microsoft.FoundryLocal   # Windows
-brew tap microsoft/foundrylocal && brew install foundrylocal  # macOS
+winget install Microsoft.FoundryLocal
 ```
 
-## Usage
+```bash
+brew tap microsoft/foundrylocal && brew install foundrylocal
+```
+
+The SDK also requires the ORT NuGet feed, so keep the feed configuration described by the package in your consuming solution when needed.
+
+## Registering a local chat adapter
 
 ```csharp
 using Rystem.PlayFramework.Adapters.FoundryLocal;
 
-builder.Services.AddAdapterForFoundryLocal("default", settings =>
+builder.Services.AddAdapterForFoundryLocal("foundry", settings =>
 {
     settings.Model = "phi-4-mini";
-    // settings.WebServiceUrl = "http://127.0.0.1:5272";  // default
-    // settings.AppName = "Rystem.PlayFramework";          // default
+    settings.WebServiceUrl = "http://127.0.0.1:5272";
+    settings.AppName = "Rystem.PlayFramework";
+});
+
+builder.Services.AddPlayFramework("foundry", framework =>
+{
+    framework.WithChatClient("foundry");
 });
 ```
 
-The adapter automatically:
-1. Initializes **FoundryLocalManager**
-2. **Downloads** the model (skips if already cached)
-3. **Loads** the model into memory
-4. **Starts** the OpenAI-compatible web service
-5. Creates an `OpenAIClient` pointed at the local endpoint
+## What happens on first use
 
-## Configuration
+When the adapter is first resolved, it does real work immediately:
 
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `Model` | `string` | `"phi-4-mini"` | Model alias (run `foundry model list` to see available) |
-| `WebServiceUrl` | `string` | `"http://127.0.0.1:5272"` | URL where the local web service listens |
-| `AppName` | `string` | `"Rystem.PlayFramework"` | Application name for Foundry identification |
-| `FoundryLogLevel` | `LogLevel` | `Information` | Foundry Local SDK log level |
-| `OnDownloadProgress` | `Action<float>?` | `null` | Optional callback for model download progress (0–100%) |
+1. initialize `FoundryLocalManager`
+2. query the local model catalog
+3. download the selected model if needed
+4. load the model into memory
+5. start the local OpenAI-compatible web service
+6. create an `IChatClient` against `{WebServiceUrl}/v1`
 
-## Available Models
+That means startup or first-request latency can be significant, especially on a fresh machine.
 
-Run `foundry model list` to see models for your hardware. Common aliases:
+## Chat adapter settings
 
-| Alias | Size | Notes |
-|---|---|---|
-| `phi-4-mini` | ~2.4 GB | Good for general testing |
-| `qwen2.5-0.5b` | ~0.5 GB | Lightweight, fast |
-| `gpt-oss-20b` | ~20 GB | Larger, needs 16 GB VRAM (CUDA) |
+`FoundryLocalSettings` exposes:
 
-## Dependencies
+| Property | Meaning |
+| --- | --- |
+| `Model` | model alias, default `phi-4-mini` |
+| `AppName` | app identifier used by Foundry Local |
+| `WebServiceUrl` | base URL for the local OpenAI-compatible service |
+| `FoundryLogLevel` | Foundry SDK log level |
+| `OnDownloadProgress` | optional progress callback |
+| `AudioMode` | `None`, `MultiModal`, or `SpeechToText` |
+| `SpeechToTextModel` | required when `AudioMode` is `SpeechToText` |
 
-- [Rystem.PlayFramework](https://www.nuget.org/packages/Rystem.PlayFramework)
-- [Microsoft.AI.Foundry.Local](https://github.com/microsoft/Foundry-Local) (0.8.2.1)
-- [Microsoft.Extensions.AI.OpenAI](https://www.nuget.org/packages/Microsoft.Extensions.AI.OpenAI) (10.3.0)
+## Voice adapter
 
-## Related Packages
+The package also registers local `IVoiceAdapter` support.
 
-- **[Rystem.PlayFramework.Adapters](https://www.nuget.org/packages/Rystem.PlayFramework.Adapters)** — Azure OpenAI adapter (Responses API, file upload, caching). Lightweight, no native dependencies.
+```csharp
+builder.Services.AddVoiceAdapterForFoundryLocal("foundry", settings =>
+{
+    settings.SttModel = "whisper";
+    settings.TtsModel = "tts";
+    settings.WebServiceUrl = "http://127.0.0.1:5272";
+});
 
-## License
+builder.Services.AddPlayFramework("foundry", framework =>
+{
+    framework.WithVoice("foundry");
+});
+```
 
-MIT — see [LICENSE](https://github.com/KeyserDSoze/Rystem/blob/master/LICENSE.txt)
+`VoiceAdapterSettings` exposes:
+
+| Property | Meaning |
+| --- | --- |
+| `SttModel` | local speech-to-text model alias |
+| `TtsModel` | local text-to-speech model alias |
+| `TtsVoice` | voice name |
+| `TtsOutputFormat` | output format |
+| `TtsSpeed` | speech speed multiplier |
+| `WebServiceUrl` | local service URL |
+| `OnDownloadProgress` | optional progress callback |
+
+## Important caveats
+
+### First resolution is heavy
+
+The adapter performs blocking initialization, download, model loading, and service startup on first use. Treat it as a dev/test adapter rather than something that hides infrastructure startup cost.
+
+### The voice adapter assumes Foundry Local is already initialized
+
+The voice path reads `FoundryLocalManager.Instance` directly. In practice, register and initialize the chat adapter before relying on `AddVoiceAdapterForFoundryLocal(...)`.
+
+### Hardware and model availability matter
+
+Available models depend on your platform and hardware. `foundry model list` is the source of truth for what your machine can actually run.
+
+### This package also targets `net10.0`
+
+Like the rest of the PlayFramework area, this package currently targets `net10.0`.
+
+## Grounded by source files
+
+- `src/AI/Rystem.PlayFramework.Adapters.FoundryLocal/ServiceCollectionExtensions.cs`
+- `src/AI/Rystem.PlayFramework.Adapters.FoundryLocal/FoundryLocalSettings.cs`
+- `src/AI/Rystem.PlayFramework.Adapters.FoundryLocal/VoiceAdapterSettings.cs`
+
+Use this package when you want PlayFramework backed by local Foundry models and you accept the native/runtime setup that comes with it.

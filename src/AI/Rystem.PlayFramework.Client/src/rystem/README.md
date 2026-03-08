@@ -1,2311 +1,578 @@
-# 🎮 Rystem PlayFramework Client
+# rystem.playframework.client
 
-[![npm version](https://img.shields.io/npm/v/@rystem/playframework-client.svg)](https://www.npmjs.com/package/@rystem/playframework-client)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7%2B-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+`rystem.playframework.client` is the published TypeScript client for the PlayFramework HTTP API.
 
-> **Official TypeScript/JavaScript client for [Rystem PlayFramework](https://rystem.net) HTTP API**
+It wraps PlayFramework SSE endpoints, auto-runs client-side tools, supports conversation CRUD and the server voice endpoint, and also ships browser-native helpers such as `AIContentConverter`, `ContentUrlConverter`, `VoiceRecorder`, and `BrowserVoiceClient`.
 
-Production-ready client with full support for:
-- ✅ **Step-by-step streaming** (SSE) - Each scene/actor as separate event
-- ✅ **Token-level streaming** (SSE) - Real-time text chunks
-- ✅ **Client-side tools** - Camera, geolocation, file picker, microphone
-- ✅ **Multi-modal content** - Images, audio, video, PDFs, URIs
-- ✅ **React hooks** - `usePlayFramework()` for easy integration
-- ✅ **Execution modes** - Direct, Planning, DynamicChaining, Scene
-- ✅ **Configurable** - Headers, retry, error handling, timeouts
-- ✅ **Type-safe** - Full TypeScript definitions
-- ✅ **Browser Voice** - Client-side STT/TTS via Web Speech API (zero-latency, no server needed)
-
----
-
-## 📦 Installation
+## Installation
 
 ```bash
-npm install @rystem/playframework-client
+npm install rystem.playframework.client
 ```
 
-Or with yarn:
-```bash
-yarn add @rystem/playframework-client
-```
+The current package name in `package.json` is `rystem.playframework.client`.
 
----
+## What this package expects from the server
 
-## 🚀 Quick Start
-
-### 1. Configure Client
-
-```typescript
-import { PlayFrameworkServices } from "@rystem/playframework-client";
-
-// Configure factory (once at app startup)
-await PlayFrameworkServices.configure("default", "http://localhost:5158/api/ai", settings => {
-    settings.timeout = 120_000; // 2 minutes
-    settings.maxReconnectAttempts = 3;
-    settings.reconnectBaseDelay = 1000;
-});
-```
-
-### 2. Use Client (Vanilla JS/TS)
-
-```typescript
-const client = PlayFrameworkServices.resolve("default");
-
-// Step-by-step streaming
-for await (const step of client.executeStepByStep({
-    message: "Tell me a joke"
-})) {
-    console.log(`[${step.status}] ${step.message}`);
-}
-// Output:
-// [planning] Analyzing request...
-// [executingScene] Generating joke...
-// [completed] Why did the chicken cross the road? To get to the other side!
-
-// Token-level streaming (real-time chunks)
-for await (const chunk of client.executeTokenStreaming({
-    message: "Write a short story"
-})) {
-    process.stdout.write(chunk.streamingChunk || "");
-}
-// Output: "Once" → " upon" → " a" → " time" → "..."
-```
-
-### 3. Use with React
-
-```tsx
-import { usePlayFramework } from "@rystem/playframework-client";
-import { useState } from "react";
-
-function ChatComponent() {
-    const client = usePlayFramework("default");
-    const [messages, setMessages] = useState<string[]>([]);
-    const [loading, setLoading] = useState(false);
-
-    const handleSend = async (input: string) => {
-        setLoading(true);
-        const newMessages: string[] = [];
-
-        try {
-            for await (const step of client.executeStepByStep({
-                message: input
-            })) {
-                if (step.streamingChunk) {
-                    // Real-time token streaming
-                    newMessages.push(step.streamingChunk);
-                } else if (step.message) {
-                    // Step-by-step message
-                    newMessages.push(`[${step.status}] ${step.message}`);
-                }
-                setMessages([...newMessages]);
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div>
-            <input onKeyDown={e => e.key === 'Enter' && handleSend(e.currentTarget.value)} />
-            <div>
-                {messages.map((msg, i) => <div key={i}>{msg}</div>)}
-            </div>
-        </div>
-    );
-}
-```
-
----
-
-## 🎯 Core Features
-
-### Step-by-Step vs Token Streaming
-
-**Step-by-Step** (`executeStepByStep`):
-- Returns each **scene/actor execution** as separate event
-- Best for: Multi-step workflows, debugging, progress tracking
-- Example: Planning → Actor1 → Actor2 → Completed
-
-**Token Streaming** (`executeTokenStreaming`):
-- Returns **individual text chunks** as they're generated
-- Best for: Real-time chat UIs, typewriter effects
-- Example: "Hello" → " world" → "!" → "..."
-
-```typescript
-// Step-by-step - structured workflow
-for await (const step of client.executeStepByStep({ message: "..." })) {
-    console.log(step.status);        // "planning", "executingScene", "completed"
-    console.log(step.sceneName);     // "ChatScene"
-    console.log(step.message);       // Full response
-}
-
-// Token streaming - real-time chunks
-for await (const chunk of client.executeTokenStreaming({ message: "..." })) {
-    console.log(chunk.streamingChunk); // "Hello", " world", "!"
-}
-```
-
----
-
-## 🛠️ Client-Side Tools
-
-Execute **browser-specific operations** (camera, geolocation, file picker) when LLM requests them.
-
-### Server Setup (C#)
+This client assumes a backend that maps PlayFramework under a base path such as:
 
 ```csharp
-services.AddPlayFramework(builder =>
+app.MapPlayFramework("default", settings =>
 {
-    builder.AddScene("vision", "Analyze user photos", scene =>
-    {
-        scene.OnClient(client =>
-        {
-            client.AddTool("capturePhoto", "Take photo from camera");
-            client.AddTool("getCurrentLocation", "Get GPS coordinates");
-            client.AddTool("selectFiles", "Open file picker");
-        });
-    });
+    settings.BasePath = "/api/ai";
+    settings.EnableConversationEndpoints = true;
+    settings.EnableVoiceEndpoints = true;
 });
 ```
 
-### Client Setup (TypeScript)
+When you configure the TypeScript client with:
+
+```text
+http://localhost:5158/api/ai
+```
+
+the library appends `/{factoryName}` itself.
+
+So for the `default` factory it calls:
+
+- `POST http://localhost:5158/api/ai/default`
+- `POST http://localhost:5158/api/ai/default/streaming`
+- `GET http://localhost:5158/api/ai/default/conversations`
+- `POST http://localhost:5158/api/ai/default/voice`
+
+## Architecture
+
+The package is built around:
+
+- `PlayFrameworkServices`
+- `PlayFrameworkClient`
+- `ClientInteractionRegistry`
+- `AIContentConverter`
+- `ContentUrlConverter`
+- `VoiceRecorder`
+- `BrowserVoiceClient`
+- `usePlayFramework`
+
+The usual lifecycle is:
+
+1. configure one or more client factories with `PlayFrameworkServices.configure(...)`
+2. resolve a `PlayFrameworkClient`
+3. call `executeStepByStep(...)` or `executeTokenStreaming(...)`
+4. optionally register browser-side tools through `getClientRegistry()`
+5. optionally use conversation or voice helpers
+
+## Example: bootstrap one client
+
+`PlayFrameworkServices.configure(...)` is async and should usually run during application startup.
 
 ```typescript
-import { PlayFrameworkServices, AIContentConverter } from "@rystem/playframework-client";
+import { PlayFrameworkServices } from "rystem.playframework.client";
+
+await PlayFrameworkServices.configure("default", "http://localhost:5158/api/ai", async settings => {
+  settings.timeout = 120_000;
+  settings.maxReconnectAttempts = 3;
+  settings.reconnectBaseDelay = 1000;
+
+  settings.addHeadersEnricher(async (_url, _method, headers) => {
+    return {
+      ...Object.fromEntries(new Headers(headers).entries()),
+      Authorization: `Bearer ${localStorage.getItem("token") ?? ""}`
+    };
+  });
+
+  settings.addErrorHandler(async (_url, _method, _headers, _body, error) => {
+    if (error instanceof Error && error.message.includes("401")) {
+      localStorage.removeItem("token");
+    }
+    return false;
+  });
+});
 
 const client = PlayFrameworkServices.resolve("default");
-const registry = client.getClientRegistry();
-
-// Register camera tool
-registry.register("capturePhoto", async () => {
-    const content = await AIContentConverter.fromCamera(
-        { video: { facingMode: "environment" } }, // Rear camera
-        1920, 1080
-    );
-    return [content];
-});
-
-// Register geolocation tool
-registry.register("getCurrentLocation", async () => {
-    const content = await AIContentConverter.fromGeolocation({ timeout: 10_000 });
-    return [content];
-});
-
-// Register file picker
-registry.register("selectFiles", async (args?: { accept?: string }) => {
-    return new Promise((resolve) => {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = args?.accept || "*/*";
-        input.onchange = async () => {
-            const contents = await AIContentConverter.fromMultipleFiles(input.files!);
-            resolve(contents);
-        };
-        input.click();
-    });
-});
 ```
 
-**Client automatically resumes execution after tool completion!**
+If you only configure one factory, `resolve()` with no name returns the first configured client:
 
 ```typescript
-for await (const step of client.executeStepByStep({ message: "Take a photo and describe it" })) {
-    console.log(step.status);
-    // 1. "executingScene" - LLM requests camera
-    // 2. "awaitingClient" - Client executes tool
-    // 3. "executingScene" - LLM analyzes photo
-    // 4. "completed" - Final response
-}
+const defaultClient = PlayFrameworkServices.resolve();
 ```
 
-### AIContentConverter Helpers
+## Example: configure multiple factories
+
+The sample workspace in `src/AI/Rystem.PlayFramework.Client/src/App.tsx` configures both `default` and `foundry` against the same base path.
 
 ```typescript
-// Camera (returns Base64 JPEG)
-const photo = await AIContentConverter.fromCamera();
+await Promise.all([
+  PlayFrameworkServices.configure("default", "http://localhost:5158/api/ai", settings => {
+    settings.timeout = 120_000;
+  }),
+  PlayFrameworkServices.configure("foundry", "http://localhost:5158/api/ai", settings => {
+    settings.timeout = 120_000;
+  })
+]);
 
-// Geolocation (returns JSON with lat/lng)
-const location = await AIContentConverter.fromGeolocation();
-
-// File upload (returns Base64 data)
-const file = await AIContentConverter.fromFile(fileInput.files[0]);
-
-// Multiple files
-const files = await AIContentConverter.fromMultipleFiles(fileInput.files);
-
-// Microphone (returns Base64 audio)
-const audio = await AIContentConverter.fromMicrophone(5000); // 5 seconds
-
-// Plain text
-const text = AIContentConverter.fromText("Hello world");
+const cloudClient = PlayFrameworkServices.resolve("default");
+const localClient = PlayFrameworkServices.resolve("foundry");
 ```
 
----
+This is useful when the backend exposes multiple PlayFramework factories with different scenes or model providers.
 
-## 🎛️ Execution Modes
+## Example: step-by-step streaming
 
-Control **how scenes are selected and executed**:
+`executeStepByStep(...)` yields full `AiSceneResponse` events as the backend progresses through planning, scene execution, tool calls, and final output.
 
 ```typescript
-import { PlayFrameworkRequest } from "@rystem/playframework-client";
+import type { PlayFrameworkRequest } from "rystem.playframework.client";
 
 const request: PlayFrameworkRequest = {
-    message: "Book a flight to Paris",
-    settings: {
-        executionMode: "Planning", // Direct | Planning | DynamicChaining | Scene
-        maxRecursionDepth: 5,
-        enableSummarization: true,
-        enableDirector: false
-    }
-};
-```
-
-### Available Modes
-
-| Mode | Description | Use Case |
-|------|-------------|----------|
-| `Direct` | Single scene, no planning | Simple queries, fast responses |
-| `Planning` | Upfront multi-step plan | Known workflows (booking, checkout) |
-| `DynamicChaining` | LLM decides next step live | Exploratory tasks (research, debugging) |
-| `Scene` | Execute specific scene by name | Resuming after client interaction |
-
----
-
-## 📸 Multi-Modal Content
-
-Send **images, audio, video, PDFs, URIs** with your request:
-
-```typescript
-import { PlayFrameworkRequest, ContentItem } from "@rystem/playframework-client";
-
-const request: PlayFrameworkRequest = {
-    message: "Describe this image and summarize the PDF",
-    contents: [
-        {
-            type: "image",
-            data: "iVBORw0KGgoAAAANSUhEUgAA...",
-            mediaType: "image/png"
-        },
-        {
-            type: "data",
-            data: "JVBERi0xLjQKJeLjz9M...",
-            mediaType: "application/pdf"
-        },
-        {
-            type: "uri",
-            uri: "https://example.com/document.pdf",
-            mediaType: "application/pdf"
-        },
-        {
-            type: "text",
-            text: "Additional context"
-        }
-    ]
+  message: "Calculate 12 * 7",
+  metadata: {
+    userId: "user-42",
+    tenantId: "tenant-a"
+  },
+  settings: {
+    executionMode: "Scene",
+    sceneName: "Calculator"
+  }
 };
 
 for await (const step of client.executeStepByStep(request)) {
-    console.log(step.message);
+  console.log(step.status, step.sceneName, step.message);
+
+  if (step.totalTokens != null || step.totalCost != null) {
+    console.log("usage", step.totalTokens, step.totalCost);
+  }
 }
 ```
 
----
+This calls:
 
-## ⚙️ Configuration & Settings
-
-### Global Configuration
-
-```typescript
-import { PlayFrameworkServices } from "@rystem/playframework-client";
-
-await PlayFrameworkServices.configure("premium", "https://api.example.com/api/ai", settings => {
-    // Timeout (ms)
-    settings.timeout = 120_000; // 2 minutes
-
-    // Reconnection on SSE failures
-    settings.maxReconnectAttempts = 3;
-    settings.reconnectBaseDelay = 1000; // 1 second
-
-    // Default headers
-    settings.defaultHeaders = {
-        "Content-Type": "application/json",
-        "X-App-Version": "1.0.0"
-    };
-
-    // Dynamic headers (auth token)
-    settings.addHeadersEnricher(async (url, method, headers, body) => {
-        const token = await getAuthToken();
-        return {
-            ...headers,
-            "Authorization": `Bearer ${token}`
-        };
-    });
-
-    // Error handling with retry
-    settings.addErrorHandler(async (url, method, headers, body, error) => {
-        if (error.message.includes("401")) {
-            await refreshAuthToken();
-            return true; // Retry
-        }
-        return false; // Don't retry
-    });
-});
+```text
+POST {baseUrl}/{factoryName}
 ```
 
-### Per-Request Settings
+Common yielded statuses include:
+
+- `initializing`
+- `planning`
+- `executingScene`
+- `functionRequest`
+- `functionCompleted`
+- `running`
+- `awaitingClient`
+- `commandClient`
+
+Completion and error markers are handled internally by the client runtime rather than surfaced as normal yielded events.
+
+## Example: token streaming
+
+`executeTokenStreaming(...)` still yields `AiSceneResponse` objects, but the text arrives through `streamingChunk`.
 
 ```typescript
-const request: PlayFrameworkRequest = {
-    message: "Your query",
-    settings: {
-        // Execution mode
-        executionMode: "Planning",              // Direct | Planning | DynamicChaining | Scene
+let finalText = "";
 
-        // Planning settings
-        maxRecursionDepth: 5,                   // Max planning depth
-        maxDynamicScenes: 10,                   // Max scenes in DynamicChaining
+for await (const chunk of client.executeTokenStreaming({
+  message: "Write a short summary of PlayFramework",
+  settings: {
+    executionMode: "Direct"
+  }
+})) {
+  if (chunk.streamingChunk) {
+    finalText += chunk.streamingChunk;
+    console.log(chunk.streamingChunk);
+  }
+}
 
-        // Features
-        enableSummarization: true,              // Auto-summarize long contexts
-        enableDirector: false,                  // Multi-scene orchestration
-        enableStreaming: true,                  // Token-level streaming
+console.log("final", finalText);
+```
 
-        // Model overrides
-        modelId: "gpt-4o",                      // Override default model
-        temperature: 0.7,                       // 0.0 - 2.0
-        maxTokens: 4096,                        // Max response tokens
+This calls:
 
-        // Caching
-        cacheBehavior: "Default",               // Default | Avoidable | Forever
-        conversationKey: "user-123-session-1",  // Unique conversation ID
+```text
+POST {baseUrl}/{factoryName}/streaming
+```
 
-        // Budget
-        maxBudget: 0.50,                        // Max cost in USD (null = unlimited)
+## Request model
 
-        // Scene selection (Scene mode only)
-        sceneName: "SpecificScene"              // Execute specific scene
-    },
-    metadata: {
-        userId: "user-123",
-        sessionId: "session-abc",
-        customKey: "customValue"
-    }
+The main request type is `PlayFrameworkRequest`.
+
+```typescript
+const request = {
+  message: "Book a flight to Paris",
+  metadata: {
+    userId: "123",
+    tenantId: "tenant-a"
+  },
+  settings: {
+    executionMode: "Planning",
+    maxRecursionDepth: 5,
+    sceneName: "Travel"
+  },
+  conversationKey: "conversation-123"
 };
 ```
 
----
+The `settings` object mirrors the server-side `SceneRequestSettings`, including:
 
-## 🔄 Conversation State & Caching
+- `executionMode`
+- `sceneName`
+- `conversationKey`
+- `clientInteractionResults`
+- `enableStreaming`
+- `enableSummarization`
+- `enableDirector`
+- `maxRecursionDepth`
 
-Use `conversationKey` to maintain **multi-turn conversations**:
+The request can also include `contents` for multi-modal inputs.
 
-```typescript
-const conversationKey = crypto.randomUUID();
+## Example: send files and multi-modal contents
 
-// First request
-for await (const step of client.executeStepByStep({
-    message: "What's the weather in Paris?",
-    settings: { conversationKey }
-})) {
-    console.log(step.message);
-}
-
-// Follow-up request (uses cached context)
-for await (const step of client.executeStepByStep({
-    message: "And in London?",
-    settings: { conversationKey }
-})) {
-    console.log(step.message); // LLM remembers Paris context
-}
-```
-
----
-
-## 💾 Conversation Management (Repository Pattern)
-
-If the backend has **Repository persistence enabled**, you can manage conversations using REST endpoints.
-
-### List Conversations
-
-```typescript
-import { ConversationSortOrder } from "@rystem/playframework-client";
-
-// Get conversations with filters
-const conversations = await client.listConversations({
-    searchText: "weather",                          // Search in message text
-    includePublic: true,                            // Include public conversations
-    includePrivate: true,                           // Include private conversations
-    orderBy: ConversationSortOrder.TimestampDescending, // Sort by newest first
-    skip: 0,                                        // Pagination offset
-    take: 50                                        // Page size
-});
-
-console.log(conversations);
-// [
-//   {
-//     conversationKey: "abc-123",
-//     userId: "user@example.com",
-//     isPublic: false,
-//     timestamp: "2025-01-15T10:30:00Z",
-//     messages: [...],
-//     executionState: {...}
-//   }
-// ]
-```
-
-### Get Single Conversation
-
-```typescript
-const conversation = await client.getConversation("abc-123");
-
-if (conversation) {
-    console.log(conversation.messages); // Full message history
-    console.log(conversation.isPublic); // Public vs private
-} else {
-    console.log("Conversation not found or unauthorized");
-}
-```
-
-**Authorization**: Private conversations require userId match (set via backend `IAuthorizationLayer`).
-
-### Delete Conversation
-
-```typescript
-// Owner-only operation
-await client.deleteConversation("abc-123");
-console.log("Conversation deleted");
-```
-
-**Response:**
-- ✅ Success - Conversation deleted
-- ❌ `403 Forbidden` - Not the owner
-- ❌ `404 Not Found` - Conversation not found
-
-### Update Visibility (Public/Private)
-
-```typescript
-// Toggle conversation visibility (owner-only)
-const updated = await client.updateConversationVisibility("abc-123", true);
-console.log(`Conversation is now ${updated.isPublic ? "public" : "private"}`);
-```
-
-### React Example: Conversation List UI
-
-```tsx
-import { useState, useEffect } from "react";
-import { usePlayFramework, StoredConversation, ConversationSortOrder } from "@rystem/playframework-client";
-
-function ConversationList() {
-    const client = usePlayFramework("default");
-    const [conversations, setConversations] = useState<StoredConversation[]>([]);
-    const [searchText, setSearchText] = useState("");
-    const [showPublic, setShowPublic] = useState(true);
-    const [showPrivate, setShowPrivate] = useState(true);
-    const [loading, setLoading] = useState(false);
-
-    const loadConversations = async () => {
-        setLoading(true);
-        try {
-            const result = await client.listConversations({
-                searchText: searchText || undefined,
-                includePublic: showPublic,
-                includePrivate: showPrivate,
-                orderBy: ConversationSortOrder.TimestampDescending,
-                take: 100
-            });
-            setConversations(result);
-        } catch (error) {
-            console.error("Failed to load conversations:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        loadConversations();
-    }, [showPublic, showPrivate]);
-
-    const handleDelete = async (key: string) => {
-        if (!window.confirm("Delete this conversation?")) return;
-        try {
-            await client.deleteConversation(key);
-            await loadConversations(); // Reload list
-        } catch (error: any) {
-            alert(`Failed to delete: ${error.message}`);
-        }
-    };
-
-    const handleLoadConversation = async (key: string) => {
-        const conv = await client.getConversation(key);
-        if (conv) {
-            // Load conversation into chat UI
-            console.log("Loaded:", conv.messages);
-        }
-    };
-
-    return (
-        <div>
-            <h2>Conversations</h2>
-
-            {/* Search & Filters */}
-            <input
-                type="text"
-                placeholder="Search messages..."
-                value={searchText}
-                onChange={e => setSearchText(e.target.value)}
-            />
-            <button onClick={loadConversations}>Search</button>
-
-            <label>
-                <input
-                    type="checkbox"
-                    checked={showPublic}
-                    onChange={e => setShowPublic(e.target.checked)}
-                />
-                Public
-            </label>
-            <label>
-                <input
-                    type="checkbox"
-                    checked={showPrivate}
-                    onChange={e => setShowPrivate(e.target.checked)}
-                />
-                Private
-            </label>
-
-            {/* Conversation List */}
-            {loading ? (
-                <div>Loading...</div>
-            ) : (
-                <ul>
-                    {conversations.map(conv => (
-                        <li key={conv.conversationKey}>
-                            <div onClick={() => handleLoadConversation(conv.conversationKey)}>
-                                <strong>{new Date(conv.timestamp).toLocaleString()}</strong>
-                                <span style={{ color: conv.isPublic ? "green" : "red" }}>
-                                    {conv.isPublic ? "Public" : "Private"}
-                                </span>
-                                <p>{conv.messages[0]?.text || "Empty conversation"}</p>
-                                <small>{conv.messages.length} messages</small>
-                            </div>
-                            <button onClick={() => handleDelete(conv.conversationKey)}>Delete</button>
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </div>
-    );
-}
-```
-
-### Backend Setup Required
-
-For conversation management to work, the backend must:
-
-1. **Enable Repository persistence:**
-   ```csharp
-   builder.Services.AddPlayFramework("default", pb => pb
-       .UseRepository());
-   ```
-
-2. **Enable conversation endpoints:**
-   ```csharp
-   app.MapPlayFramework("default", settings =>
-   {
-       settings.EnableConversationEndpoints = true;
-   });
-   ```
-
-See [Backend README](../../../README.md) for full setup guide.
-
----
-
-## 🔄 Combining Stored Conversations with Live Streaming
-
-This section shows how to **load historic messages** from `StoredConversation` and **continue the conversation** with live SSE streaming.
-
-### Understanding the Two Models
-
-PlayFramework uses **two different models** for different purposes:
-
-| Model | Purpose | When | Format | Content |
-|-------|---------|------|--------|---------|
-| **`AiSceneResponse`** | Real-time execution tracking | During `executeStepByStep()` / `executeTokenStreaming()` | SSE (Server-Sent Events) | Status updates, streaming chunks, scene metadata |
-| **`StoredConversation`** | Persistent conversation history | When loading from repository via REST API | JSON | Complete messages, user metadata, execution state |
-
-**Why two models?**
-- `AiSceneResponse` contains **temporary execution metadata** (status, sceneName, functionName) needed for real-time UI updates
-- `StoredConversation` contains **only essential data** (messages, userId, timestamp) for efficient storage and querying
-
-### Complete Example: Chat with History
-
-```tsx
-import React, { useState, useEffect } from 'react';
-import { usePlayFramework, StoredConversation, AiSceneResponse } from '@rystem/playframework-client';
-
-interface ChatMessage {
-    role: 'user' | 'assistant';
-    text: string;
-    isStreaming?: boolean;  // Distinguishes streaming vs historic messages
-    status?: string;        // For showing execution status
-}
-
-function ChatWithHistory() {
-    const client = usePlayFramework('default');
-
-    // State
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [input, setInput] = useState('');
-    const [conversationKey, setConversationKey] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-
-    // 📥 LOAD: Load historic conversation from repository
-    const loadConversation = async (key: string) => {
-        try {
-            // Fetch from REST API → StoredConversation
-            const stored = await client.getConversation(key);
-
-            if (!stored) {
-                alert('Conversation not found or unauthorized');
-                return;
-            }
-
-            // Convert StoredMessage[] → ChatMessage[]
-            const historicMessages: ChatMessage[] = stored.messages.map(msg => ({
-                role: msg.role as 'user' | 'assistant',
-                text: msg.text || '',
-                isStreaming: false  // Historic messages are complete
-            }));
-
-            setMessages(historicMessages);
-            setConversationKey(stored.conversationKey);
-
-            console.log(`✅ Loaded ${stored.messages.length} messages from conversation ${key}`);
-        } catch (error) {
-            console.error('Failed to load conversation:', error);
-            alert(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-    };
-
-    // 📤 SEND: Send message and stream response
-    const sendMessage = async () => {
-        if (!input.trim() || loading) return;
-
-        const userMessage = input;
-        setInput('');
-        setLoading(true);
-
-        // Add user message to UI
-        const userMsg: ChatMessage = { role: 'user', text: userMessage };
-        setMessages(prev => [...prev, userMsg]);
-
-        // Add placeholder for assistant response
-        const assistantMsg: ChatMessage = { 
-            role: 'assistant', 
-            text: '', 
-            isStreaming: true,  // Flag: currently streaming
-            status: 'initializing'
-        };
-        setMessages(prev => [...prev, assistantMsg]);
-
-        try {
-            // 🔄 Stream from PlayFramework → AiSceneResponse events
-            for await (const step of client.executeStepByStep({
-                message: userMessage,
-                settings: {
-                    conversationKey: conversationKey || undefined,  // Resume existing or start new
-                    enableStreaming: true
-                }
-            })) {
-                // Update conversationKey from first response
-                if (step.conversationKey && !conversationKey) {
-                    setConversationKey(step.conversationKey);
-                }
-
-                // Update message with streaming chunks
-                if (step.streamingChunk) {
-                    setMessages(prev => {
-                        const updated = [...prev];
-                        const last = updated[updated.length - 1];
-                        last.text += step.streamingChunk;
-                        last.status = step.status;
-                        return updated;
-                    });
-                }
-
-                // Update status (planning, executingScene, etc.)
-                else if (step.status) {
-                    setMessages(prev => {
-                        const updated = [...prev];
-                        const last = updated[updated.length - 1];
-                        last.status = step.status;
-                        return updated;
-                    });
-                }
-            }
-
-            // Mark streaming as complete
-            setMessages(prev => {
-                const updated = [...prev];
-                const last = updated[updated.length - 1];
-                last.isStreaming = false;
-                delete last.status;
-                return updated;
-            });
-
-        } catch (error) {
-            console.error('Streaming error:', error);
-            setMessages(prev => {
-                const updated = [...prev];
-                updated[updated.length - 1] = {
-                    role: 'assistant',
-                    text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                    isStreaming: false,
-                    status: 'error'
-                };
-                return updated;
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // 🗑️ CLEAR: Start new conversation
-    const clearConversation = () => {
-        setMessages([]);
-        setConversationKey(null);
-    };
-
-    return (
-        <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif' }}>
-            <h1>💬 PlayFramework Chat</h1>
-
-            {/* Conversation Info */}
-            <div style={{ 
-                padding: '10px', 
-                marginBottom: '10px', 
-                backgroundColor: '#f0f0f0', 
-                borderRadius: '8px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-            }}>
-                <div>
-                    {conversationKey ? (
-                        <>
-                            <strong>Conversation:</strong> {conversationKey.substring(0, 8)}...
-                            <span style={{ marginLeft: '10px', color: '#666' }}>
-                                ({messages.length} messages)
-                            </span>
-                        </>
-                    ) : (
-                        <span style={{ color: '#999' }}>New conversation</span>
-                    )}
-                </div>
-                <button 
-                    onClick={clearConversation}
-                    style={{
-                        padding: '5px 15px',
-                        borderRadius: '6px',
-                        border: '1px solid #ccc',
-                        backgroundColor: '#fff',
-                        cursor: 'pointer'
-                    }}
-                >
-                    Clear
-                </button>
-            </div>
-
-            {/* Messages */}
-            <div style={{ 
-                height: '500px', 
-                overflowY: 'auto', 
-                border: '1px solid #ddd', 
-                borderRadius: '8px',
-                padding: '15px', 
-                marginBottom: '15px',
-                backgroundColor: '#fafafa'
-            }}>
-                {messages.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: '#999', marginTop: '50px' }}>
-                        <p>No messages yet. Start a conversation or load an existing one.</p>
-                        <button 
-                            onClick={() => loadConversation('some-conversation-key')}
-                            style={{
-                                padding: '8px 16px',
-                                borderRadius: '6px',
-                                border: '1px solid #61dafb',
-                                backgroundColor: '#61dafb',
-                                color: '#fff',
-                                cursor: 'pointer',
-                                marginTop: '10px'
-                            }}
-                        >
-                            Load Example Conversation
-                        </button>
-                    </div>
-                ) : (
-                    messages.map((msg, i) => (
-                        <div
-                            key={i}
-                            style={{
-                                padding: '12px',
-                                margin: '8px 0',
-                                borderRadius: '12px',
-                                backgroundColor: msg.role === 'user' ? '#e3f2fd' : '#fff',
-                                border: msg.role === 'assistant' ? '1px solid #e0e0e0' : 'none',
-                                maxWidth: '85%',
-                                marginLeft: msg.role === 'user' ? 'auto' : '0',
-                                marginRight: msg.role === 'user' ? '0' : 'auto',
-                            }}
-                        >
-                            <div style={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                marginBottom: '6px',
-                                fontSize: '12px',
-                                color: '#666'
-                            }}>
-                                <strong style={{ color: msg.role === 'user' ? '#1976d2' : '#388e3c' }}>
-                                    {msg.role === 'user' ? '👤 You' : '🤖 AI'}
-                                </strong>
-
-                                {/* Show streaming indicator or status */}
-                                {msg.isStreaming && (
-                                    <span style={{ 
-                                        color: '#ff6b6b',
-                                        fontStyle: 'italic',
-                                        fontSize: '11px'
-                                    }}>
-                                        {msg.status || 'streaming'} ●
-                                    </span>
-                                )}
-                            </div>
-
-                            <div style={{ 
-                                whiteSpace: 'pre-wrap', 
-                                wordBreak: 'break-word',
-                                lineHeight: '1.5'
-                            }}>
-                                {msg.text || '...'}
-                            </div>
-                        </div>
-                    ))
-                )}
-            </div>
-
-            {/* Input */}
-            <div style={{ display: 'flex', gap: '10px' }}>
-                <input
-                    type="text"
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && !loading && sendMessage()}
-                    placeholder={loading ? 'AI is responding...' : 'Type your message...'}
-                    disabled={loading}
-                    style={{
-                        flex: 1,
-                        padding: '12px 16px',
-                        fontSize: '15px',
-                        borderRadius: '8px',
-                        border: '1px solid #ddd',
-                        outline: 'none'
-                    }}
-                />
-                <button
-                    onClick={sendMessage}
-                    disabled={loading || !input.trim()}
-                    style={{
-                        padding: '12px 24px',
-                        fontSize: '15px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        backgroundColor: loading ? '#ccc' : '#61dafb',
-                        color: loading ? '#666' : '#fff',
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                        fontWeight: 600
-                    }}
-                >
-                    {loading ? 'Sending...' : 'Send'}
-                </button>
-            </div>
-
-            {/* Helper Text */}
-            <div style={{ 
-                marginTop: '15px', 
-                fontSize: '13px', 
-                color: '#666',
-                textAlign: 'center'
-            }}>
-                💡 Messages are automatically saved to the repository when backend persistence is enabled.
-                <br />
-                Use the conversation list to browse and load previous conversations.
-            </div>
-        </div>
-    );
-}
-
-export default ChatWithHistory;
-```
-
-### Key Features Demonstrated
-
-✅ **Load Historic Messages**: Converts `StoredMessage[]` → `ChatMessage[]`  
-✅ **Continue Conversation**: Uses same `conversationKey` to resume context  
-✅ **Real-Time Streaming**: Updates UI with `AiSceneResponse` chunks  
-✅ **Status Indicators**: Shows execution status during streaming  
-✅ **Seamless UX**: Historic + streaming messages in same UI  
-
-### Flow Diagram
-
-```
-1. User clicks "Load Conversation"
-   ↓
-2. GET /api/ai/default/conversations/{key}
-   ↓
-3. Receives StoredConversation (REST JSON)
-   ├─ messages: StoredMessage[]
-   ├─ conversationKey: "abc-123"
-   └─ timestamp, userId, isPublic
-   ↓
-4. Convert to ChatMessage[] and display
-   ↓
-5. User types new message
-   ↓
-6. POST /api/ai/default (SSE streaming)
-   settings: { conversationKey: "abc-123" }
-   ↓
-7. Receives AiSceneResponse events (SSE)
-   ├─ status: "planning" → "executingScene" → "streaming"
-   ├─ streamingChunk: "Hello", " world", "!"
-   └─ conversationKey: "abc-123" (same as before)
-   ↓
-8. Backend loads context from cache/repository
-   ↓
-9. LLM generates response using historic context
-   ↓
-10. Response streamed to UI in real-time
-    ↓
-11. Backend saves new messages to repository
-    ↓
-12. Conversation continues seamlessly
-```
-
-### Best Practices
-
-1. **Separate concerns**: Use `StoredMessage` for storage, `AiSceneResponse` for streaming
-2. **Flag streaming state**: Add `isStreaming` flag to distinguish live vs historic
-3. **Show status**: Display execution status (`planning`, `executingScene`) during streaming
-4. **Handle errors**: Wrap streaming in try-catch and show error messages
-5. **Auto-save**: Backend automatically persists conversations when repository is enabled
-
----
-
-## 📸 Multi-Modal Content (Images, Audio, Video, PDFs)
-
-PlayFramework supports **base64-encoded media content** in messages. The client provides helper utilities to convert Base64 data to Blob URLs for browser display.
-
-### ContentUrlConverter Helper
-
-Converts `AIContent` (base64 data) to Blob URLs that can be used in HTML `<img>`, `<audio>`, `<video>`, and `<iframe>` elements.
-
-```typescript
-import { ContentUrlConverter, AIContent } from "@rystem/playframework-client";
-
-const content: AIContent = {
-    type: "data",
-    data: "iVBORw0KGgoAAAANSUhEUgAA...",  // Base64 JPEG
-    mediaType: "image/jpeg"
-};
-
-// Convert to Blob URL
-const url = ContentUrlConverter.toBlobUrl(content);
-
-// Use in <img> tag
-<img src={url} alt="Image" />
-
-// IMPORTANT: Cleanup when done (frees memory!)
-ContentUrlConverter.revokeUrl(url);
-```
-
-### API Methods
-
-#### `toBlob(content: AIContent): Blob | null`
-Decodes Base64 string to Blob object.
-
-```typescript
-const blob = ContentUrlConverter.toBlob(content);
-```
-
-#### `toBlobUrl(content: AIContent, cacheKey?: string): string | null`
-Creates `blob:` URL for browser display. Supports optional caching.
-
-```typescript
-const url = ContentUrlConverter.toBlobUrl(content, 'image-123');
-```
-
-#### `revokeUrl(url: string, cacheKey?: string): void`
-Revokes Blob URL to free memory. **Always call this when done!**
-
-```typescript
-ContentUrlConverter.revokeUrl(url, 'image-123');
-```
-
-#### `clearCache(): void`
-Revokes all cached URLs at once.
-
-```typescript
-ContentUrlConverter.clearCache();
-```
-
-#### `downloadAsFile(content: AIContent, filename?: string): void`
-Triggers browser download.
-
-```typescript
-ContentUrlConverter.downloadAsFile(content, 'image.jpg');
-```
-
-#### `getFileExtension(mediaType?: string): string`
-Maps MIME type to file extension.
-
-```typescript
-const ext = ContentUrlConverter.getFileExtension('image/jpeg'); // ".jpg"
-```
-
----
-
-### React Example: Image Viewer
-
-```tsx
-import { useState, useEffect } from 'react';
-import { ContentUrlConverter, AIContent } from "@rystem/playframework-client";
-
-interface ImageViewerProps {
-    content: AIContent;
-}
-
-function ImageViewer({ content }: ImageViewerProps) {
-    const [url, setUrl] = useState<string | null>(null);
-
-    useEffect(() => {
-        // Create Blob URL when component mounts
-        const blobUrl = ContentUrlConverter.toBlobUrl(content, `image-${Date.now()}`);
-        setUrl(blobUrl);
-
-        // Cleanup when component unmounts (important for memory!)
-        return () => {
-            if (blobUrl) {
-                ContentUrlConverter.revokeUrl(blobUrl);
-            }
-        };
-    }, [content]);
-
-    if (!url) return <div>Loading image...</div>;
-
-    return (
-        <div>
-            <img src={url} alt="Image" style={{ maxWidth: '100%' }} />
-            <button onClick={() => ContentUrlConverter.downloadAsFile(content, 'image.jpg')}>
-                Download
-            </button>
-        </div>
-    );
-}
-```
-
----
-
-### React Example: Auto-Detection Content Viewer
-
-```tsx
-import { ContentUrlConverter, AIContent } from "@rystem/playframework-client";
-
-function ContentViewer({ content }: { content: AIContent }) {
-    const mediaType = content.mediaType?.toLowerCase() || '';
-    const [url, setUrl] = useState<string | null>(null);
-
-    useEffect(() => {
-        const blobUrl = ContentUrlConverter.toBlobUrl(content);
-        setUrl(blobUrl);
-
-        return () => {
-            if (blobUrl) ContentUrlConverter.revokeUrl(blobUrl);
-        };
-    }, [content]);
-
-    if (!url) return <div>Loading...</div>;
-
-    // Image
-    if (mediaType.startsWith('image/')) {
-        return <img src={url} alt="Image" style={{ maxWidth: '100%' }} />;
-    }
-
-    // Audio
-    if (mediaType.startsWith('audio/')) {
-        return (
-            <audio controls style={{ width: '100%' }}>
-                <source src={url} type={mediaType} />
-            </audio>
-        );
-    }
-
-    // Video
-    if (mediaType.startsWith('video/')) {
-        return (
-            <video controls style={{ maxWidth: '100%' }}>
-                <source src={url} type={mediaType} />
-            </video>
-        );
-    }
-
-    // PDF
-    if (mediaType === 'application/pdf') {
-        return (
-            <iframe
-                src={url}
-                title="PDF Document"
-                style={{ width: '100%', height: '600px', border: '1px solid #ddd' }}
-            />
-        );
-    }
-
-    // Fallback for unknown types
-    return (
-        <div>
-            <p>📎 Attachment: {content.mediaType || 'unknown type'}</p>
-            <button onClick={() => ContentUrlConverter.downloadAsFile(content)}>
-                Download File
-            </button>
-        </div>
-    );
-}
-```
-
----
-
-### includeContents Parameter
-
-When loading conversations, control whether to fetch base64 content:
-
-```typescript
-// ❌ List conversations WITHOUT media (faster, smaller payload)
-const list = await client.listConversations({
-    includeContents: false,  // Default: false
-    take: 50
-});
-
-// ✅ Load single conversation WITH media (for display)
-const conv = await client.getConversation(key, true);  // includeContents=true
-```
-
-**Why this matters:**
-
-| Operation | includeContents | Payload Size | Speed |
-|-----------|----------------|--------------|-------|
-| List 100 conversations | `false` | ~50 KB | ⚡ Fast (~50ms) |
-| List 100 conversations | `true` | ~5-50 MB | 🐢 Slow (~500ms) |
-| Get single conversation | `true` | ~50-500 KB | ✅ Acceptable |
-
-**Best Practice**: Always use `includeContents=false` for list operations, `true` only when loading a conversation for display.
-
----
-
-### Full Example: Chat with Multi-Modal Support
-
-```tsx
-import { useState, useEffect } from 'react';
-import { usePlayFramework, StoredMessage, AIContent, ContentUrlConverter } from "@rystem/playframework-client";
-
-function ChatWithMedia() {
-    const client = usePlayFramework('default');
-    const [messages, setMessages] = useState<StoredMessage[]>([]);
-    const [conversationKey, setConversationKey] = useState<string | null>(null);
-
-    const loadConversation = async (key: string) => {
-        // Load conversation WITH contents
-        const conv = await client.getConversation(key, true);
-
-        if (conv) {
-            setMessages(conv.messages);
-            setConversationKey(conv.conversationKey);
-        }
-    };
-
-    return (
-        <div>
-            <h1>Chat with Media Support</h1>
-
-            {messages.map((msg, i) => (
-                <div key={i} style={{ 
-                    backgroundColor: msg.role === 'user' ? '#e3f2fd' : '#fff',
-                    padding: '12px',
-                    margin: '8px 0',
-                    borderRadius: '8px'
-                }}>
-                    <strong>{msg.role === 'user' ? '👤 You' : '🤖 AI'}</strong>
-                    <p>{msg.text}</p>
-
-                    {/* Display attached content (images, PDFs, etc.) */}
-                    {msg.contents && msg.contents.length > 0 && (
-                        <div style={{ marginTop: '8px' }}>
-                            {msg.contents.map((content, idx) => (
-                                <ContentViewer key={idx} content={content} />
-                            ))}
-                        </div>
-                    )}
-                </div>
-            ))}
-
-            <button onClick={() => loadConversation('example-key')}>
-                Load Example Conversation
-            </button>
-        </div>
-    );
-}
-```
-
----
-
-### Memory Management Best Practices
-
-1. **Always cleanup Blob URLs**: Use `useEffect` cleanup function in React
-2. **Use caching for repeated content**: Pass `cacheKey` parameter
-3. **Clear cache on unmount**: Call `ContentUrlConverter.clearCache()` when appropriate
-4. **Lazy load media**: Only convert to Blob URL when needed for display
-5. **Use includeContents wisely**: Exclude contents from list operations
-
-**Example cleanup:**
-```tsx
-useEffect(() => {
-    const url = ContentUrlConverter.toBlobUrl(content);
-    setImageUrl(url);
-
-    // Cleanup when component unmounts
-    return () => {
-        if (url) ContentUrlConverter.revokeUrl(url);
-    };
-}, [content]);
-
-// Clear all on app unmount
-useEffect(() => {
-    return () => ContentUrlConverter.clearCache();
-}, []);
-```
-
----
-
-## 🎙️ Browser Voice (Web Speech API)
-
-The client includes a fully client-side voice pipeline using the **Web Speech API**. This provides zero-latency speech recognition (STT) and text-to-speech (TTS) directly in the browser — no server-side Whisper or TTS-1 required.
-
-> **Note:** Browser voice uses the browser's built-in speech engines. For higher quality (OpenAI Whisper + TTS-1), use the [server-side voice pipeline](#server-side-voice-pipeline) instead.
-
-### Browser Support
-
-| Feature | Chrome | Edge | Safari | Firefox |
-|---|---|---|---|---|
-| SpeechRecognition | ✅ | ✅ | ✅ | ❌ |
-| SpeechSynthesis | ✅ | ✅ | ✅ | ✅ |
-
-### Quick Start
+The request model accepts `ContentItem[]`, while `AIContentConverter` helps you build the base64 payloads in the browser.
 
 ```typescript
 import {
-    PlayFrameworkServices,
-    BrowserVoiceClient,
-} from "@rystem/playframework-client";
+  AIContentConverter,
+  type ContentItem,
+  type PlayFrameworkRequest
+} from "rystem.playframework.client";
 
-// 1. Configure PlayFramework client
-await PlayFrameworkServices.configure("default", "http://localhost:5158/api/ai");
+async function buildRequest(file: File): Promise<PlayFrameworkRequest> {
+  const converted = await AIContentConverter.fromFile(file);
+
+  const contents: ContentItem[] = [
+    {
+      type: "file",
+      data: converted.data,
+      mediaType: converted.mediaType,
+      name: file.name
+    }
+  ];
+
+  return {
+    message: "Summarize the attached document and extract the risks.",
+    contents,
+    settings: {
+      executionMode: "Planning"
+    }
+  };
+}
+
+const request = await buildRequest(selectedFile);
+
+for await (const step of client.executeStepByStep(request)) {
+  console.log(step.status, step.message);
+}
+```
+
+Browser helpers available in this package include:
+
+- `AIContentConverter.fromFile(...)`
+- `AIContentConverter.fromMultipleFiles(...)`
+- `AIContentConverter.fromCamera(...)`
+- `AIContentConverter.fromGeolocation(...)`
+- `AIContentConverter.fromMicrophone(...)`
+- `AIContentConverter.fromText(...)`
+
+## Example: render or download returned contents
+
+`AiSceneResponse.contents` can include generated images, audio, or files. `ContentUrlConverter` is the browser-side helper for previewing or downloading them.
+
+```typescript
+import { ContentUrlConverter } from "rystem.playframework.client";
+
+for await (const step of client.executeStepByStep({
+  message: "Generate an image of a blue robot"
+})) {
+  const media = step.contents?.[0];
+  if (!media) continue;
+
+  const url = ContentUrlConverter.toBlobUrl(media, `response-${Date.now()}`);
+  if (url) {
+    console.log("preview", url);
+  }
+
+  ContentUrlConverter.downloadAsFile(media, "playframework-output");
+}
+```
+
+Remember to revoke blob URLs you keep around:
+
+```typescript
+ContentUrlConverter.revokeUrl(url, cacheKey);
+```
+
+## Example: client-side tools and commands
+
+When the server emits `awaitingClient` or `commandClient`, the library can execute browser-side tools locally and resume automatically.
+
+This is the same pattern used by the sample app in `src/AI/Rystem.PlayFramework.Client/src/App.tsx`.
+
+```typescript
+import {
+  AIContentConverter,
+  CommandResultHelper,
+  PlayFrameworkServices
+} from "rystem.playframework.client";
+
 const client = PlayFrameworkServices.resolve("default");
-
-// 2. Create browser voice client
-const voice = new BrowserVoiceClient(
-    client,
-    { lang: "it-IT" },                    // STT options
-    { lang: "it-IT", rate: 1.0 },          // TTS options
-);
-
-// 3. Full voice loop: listen → LLM → speak
-for await (const event of voice.executeWithBrowserVoice()) {
-    if (event.voiceStatus === "recognized") {
-        console.log("User said:", event.transcript);
-    }
-    if (event.response?.message) {
-        console.log("AI:", event.response.message);
-    }
-    if (event.voiceStatus === "speechComplete") {
-        console.log("Done speaking.");
-    }
-}
-```
-
-### BrowserSpeechRecognizer
-
-Wraps `SpeechRecognition` / `webkitSpeechRecognition` for speech-to-text.
-
-```typescript
-import { BrowserSpeechRecognizer } from "@rystem/playframework-client";
-
-const recognizer = new BrowserSpeechRecognizer({ lang: "en-US" });
-
-// One-shot recognition (returns a Promise)
-const text = await recognizer.listen(10000); // 10s timeout
-console.log("You said:", text);
-
-// Continuous recognition with callbacks
-recognizer.start({
-    onResult: (result) => console.log(result.transcript, result.isFinal),
-    onEnd: () => console.log("Stopped"),
-    onError: (err) => console.error(err),
-});
-
-// Change language at runtime
-recognizer.setLang("it-IT");
-
-// Stop / abort
-recognizer.stop();  // graceful
-recognizer.abort(); // immediate
-```
-
-#### Options
-
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `lang` | `string` | Browser default | BCP-47 language code (e.g. `'it-IT'`, `'en-US'`) |
-| `interimResults` | `boolean` | `true` | Return partial results while speaking |
-| `continuous` | `boolean` | `false` | Auto-restart recognition on end |
-| `maxAlternatives` | `number` | `1` | Max recognition alternatives |
-
-### BrowserSpeechSynthesizer
-
-Wraps `SpeechSynthesis` for text-to-speech, with built-in **sentence accumulation** for streaming scenarios and **Markdown stripping**.
-
-```typescript
-import { BrowserSpeechSynthesizer } from "@rystem/playframework-client";
-
-const synth = new BrowserSpeechSynthesizer({ lang: "it-IT", rate: 1.1 });
-
-// Simple: speak a complete text
-await synth.speak("Ciao, come stai?");
-
-// Streaming: feed chunks as they arrive from the LLM
-synth.feedChunk("Ciao, ");
-synth.feedChunk("come stai? ");
-synth.feedChunk("Tutto bene.");
-await synth.flushAndWait(); // speak remaining buffer and wait
-
-// Cancel ongoing speech
-synth.cancel();
-
-// Change language at runtime
-synth.setLang("en-US");
-
-// Strip Markdown before speaking
-const clean = BrowserSpeechSynthesizer.stripMarkdown("**Hello** _world_");
-// → "Hello world"
-```
-
-#### Options
-
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `lang` | `string` | Browser default | BCP-47 language code |
-| `rate` | `number` | `1` | Speech rate (0.1 – 10) |
-| `pitch` | `number` | `1` | Pitch (0 – 2) |
-| `volume` | `number` | `1` | Volume (0 – 1) |
-| `voiceName` | `string` | Auto | Preferred voice name (e.g. `'Google italiano'`) |
-| `sentenceDelimiters` | `string[]` | `['.','!','?','\n']` | Characters that trigger sentence flush |
-| `minCharsBeforeSpeak` | `number` | `20` | Min chars before flushing a sentence |
-
-#### Streaming Sentence Accumulation
-
-When using `feedChunk()`, text is buffered until a sentence delimiter is found and the buffer reaches `minCharsBeforeSpeak`. This prevents TTS from speaking tiny fragments:
-
-```
-feedChunk("Ciao, ")           → buffer: "Ciao, " (no delimiter → wait)
-feedChunk("come stai? ")      → "Ciao, come stai?" → speaks! (delimiter '?' found)
-feedChunk("Bene. Grazie.")    → "Bene." → speaks! then "Grazie." → speaks!
-```
-
-### BrowserVoiceClient
-
-Orchestrates the full voice loop: **STT → PlayFramework → TTS**.
-
-```typescript
-import { BrowserVoiceClient } from "@rystem/playframework-client";
-
-const voice = new BrowserVoiceClient(
-    client,                           // PlayFrameworkClient
-    { lang: "it-IT" },                // BrowserSpeechRecognizerOptions
-    { lang: "it-IT", rate: 1.0 },     // BrowserSpeechSynthesizerOptions
-);
-
-// Step-by-step mode (default) — speaks complete step messages
-for await (const ev of voice.executeWithBrowserVoice({
-    streamingMode: "stepByStep",
-})) {
-    console.log(ev.voiceStatus, ev.response?.status);
-}
-
-// Token streaming mode — speaks tokens as they arrive
-for await (const ev of voice.executeWithBrowserVoice({
-    streamingMode: "tokenStreaming",
-})) {
-    if (ev.response?.streamingChunk) {
-        process.stdout.write(ev.response.streamingChunk);
-    }
-}
-
-// Skip STT — send text directly and speak the response
-for await (const ev of voice.speakResponse("Tell me a joke", "stepByStep")) {
-    // TTS speaks the AI response
-}
-
-// Cancel everything
-voice.cancelAll();
-
-// Or cancel just audio (text stream continues)
-voice.cancelSpeech();
-
-// Or cancel the HTTP stream + audio
-voice.cancelStream();
-
-// Check if a flow is active
-console.log(voice.isStreaming);
-```
-
-#### Options (`BrowserVoiceOptions`)
-
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `text` | `string` | — | Skip STT, use this text directly |
-| `streamingMode` | `'stepByStep'` \| `'tokenStreaming'` | `'stepByStep'` | How to stream the LLM interaction |
-| `request` | `Partial<PlayFrameworkRequest>` | — | Base request (settings, conversationKey, etc.) |
-| `recognitionTimeoutMs` | `number` | `15000` | STT listening timeout |
-| `signal` | `AbortSignal` | — | Cancel the entire voice flow |
-| `speakResponse` | `boolean` | `true` | Whether TTS speaks the LLM response |
-| `useVoiceStyle` | `boolean` | `true` | When `true`, tells the server to inject a voice-style system instruction (conversational tone, no tables/markdown). Set to `false` to keep rich formatting even in voice mode |
-
-#### Voice Events
-
-| `voiceStatus` | Description |
-|---|---|
-| `'recognizing'` | STT is listening for speech |
-| `'recognized'` | STT captured the transcript |
-| `'speaking'` | TTS is speaking |
-| `'speechComplete'` | TTS finished all queued speech |
-
-#### Status Filtering
-
-In `stepByStep` mode, the client automatically skips non-speakable statuses (system messages, tool calls, planning, etc.) and only speaks `running`, `completed`, and `streaming` responses.
-
-#### Voice-Style Responses
-
-By default, the `BrowserVoiceClient` sets `isVoiceMode: true` on every request. This tells the server to inject a system instruction that makes the LLM respond in a **conversational, speech-friendly style**:
-
-- No tables, bullet lists, numbered lists, or markdown formatting
-- Short, clear sentences with natural discourse markers
-- Numbers spelled out when small ("three" instead of "3")
-- Concise responses aimed at ~30 seconds of spoken delivery
-
-If the user explicitly asks for a table or structured format, the LLM will still provide it.
-
-**To disable** (keep rich formatting even in voice mode):
-
-```typescript
-for await (const ev of voice.executeWithBrowserVoice({
-    useVoiceStyle: false,  // voice I/O but formatted responses
-})) { ... }
-```
-
-The voice-style instruction is fully customizable on the server via `VoiceSettings.VoiceStyleInstruction`.
-
-### React Example: Voice Chat
-
-```tsx
-import { usePlayFramework, BrowserVoiceClient } from "@rystem/playframework-client";
-import { useState, useRef, useEffect } from "react";
-
-function VoiceChat() {
-    const client = usePlayFramework("default");
-    const [listening, setListening] = useState(false);
-    const [transcript, setTranscript] = useState("");
-    const [response, setResponse] = useState("");
-    const [lang, setLang] = useState(navigator.language || "en-US");
-    const voiceRef = useRef<BrowserVoiceClient | null>(null);
-
-    useEffect(() => {
-        voiceRef.current = new BrowserVoiceClient(
-            client,
-            { lang },
-            { lang, rate: 1.0 },
-        );
-    }, [client]);
-
-    // Sync language changes
-    useEffect(() => {
-        if (voiceRef.current) {
-            voiceRef.current.getRecognizer().setLang(lang);
-            voiceRef.current.getSynthesizer().setLang(lang);
-        }
-    }, [lang]);
-
-    const handleVoice = async () => {
-        if (!voiceRef.current) return;
-        setListening(true);
-        setTranscript("");
-        setResponse("");
-
-        try {
-            for await (const event of voiceRef.current.executeWithBrowserVoice({
-                streamingMode: "tokenStreaming",
-            })) {
-                if (event.voiceStatus === "recognized") {
-                    setTranscript(event.transcript ?? "");
-                }
-                if (event.response?.streamingChunk) {
-                    setResponse(prev => prev + event.response!.streamingChunk);
-                }
-            }
-        } finally {
-            setListening(false);
-        }
-    };
-
-    return (
-        <div>
-            <select value={lang} onChange={e => setLang(e.target.value)}>
-                <option value="en-US">English</option>
-                <option value="it-IT">Italiano</option>
-                <option value="es-ES">Español</option>
-                <option value="fr-FR">Français</option>
-                <option value="de-DE">Deutsch</option>
-            </select>
-
-            <button onClick={handleVoice} disabled={listening}>
-                {listening ? "🎤 Listening..." : "🎤 Speak"}
-            </button>
-
-            {transcript && <p><strong>You:</strong> {transcript}</p>}
-            {response && <p><strong>AI:</strong> {response}</p>}
-        </div>
-    );
-}
-```
-
-### Server-Side Voice Pipeline
-
-For production scenarios requiring higher-quality STT/TTS (OpenAI Whisper + TTS-1), the server-side voice pipeline handles everything server-side. See the [backend README](https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework) for the `WithVoice()` builder and `IVoiceAdapter` setup.
-
-### Choosing Between Browser and Server Voice
-
-| Aspect | Browser Voice | Server Voice |
-|---|---|---|
-| **Latency** | Zero (local) | Network round-trip |
-| **Quality** | Browser engine dependent | OpenAI Whisper + TTS-1 (high) |
-| **Languages** | Depends on browser/OS voices | All Whisper-supported languages |
-| **Cost** | Free | OpenAI API costs |
-| **Privacy** | Audio stays on device | Audio sent to server |
-| **Offline** | Works offline (TTS only) | Requires server |
-| **Setup** | Zero config | Requires `IVoiceAdapter` + Azure OpenAI |
-
----
-
-## 🚫 Cancellation
-
-The client provides **three levels of cancellation** that work across all endpoints.
-When the HTTP stream is aborted the .NET server automatically receives a cancelled `CancellationToken` and stops processing.
-
-### 1. Cancel via `AbortController` (all endpoints)
-
-Every method that performs a network call accepts an `AbortSignal`.
-Create an `AbortController`, pass its signal, and call `controller.abort()` to cancel:
-
-```typescript
-const controller = new AbortController();
-
-// Works with step-by-step, token streaming, voice, and all conversation methods
-const stream = client.executeStepByStep(
-    { message: "Long task..." },
-    controller.signal
-);
-
-try {
-    for await (const step of stream) {
-        console.log(step.message);
-    }
-} catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-        console.log("Request cancelled");
-    }
-}
-
-// Cancel after 5 seconds
-setTimeout(() => controller.abort(), 5000);
-```
-
-The same pattern applies to every endpoint:
-
-```typescript
-// Token streaming
-client.executeTokenStreaming(request, controller.signal);
-
-// Server voice pipeline
-client.executeVoice({ audio: blob, signal: controller.signal });
-
-// Conversation management
-client.listConversations(params, controller.signal);
-client.getConversation(key, false, controller.signal);
-client.deleteConversation(key, controller.signal);
-```
-
-### 2. BrowserVoiceClient — Granular Cancellation
-
-`BrowserVoiceClient` exposes **four** cancellation methods with different granularity:
-
-| Method | Audio (TTS) | HTTP Stream | Recognition | Use Case |
-|---|---|---|---|---|
-| `cancelSpeech()` | ✅ Stopped | ❌ Continues | ❌ Continues | Mute audio but keep reading text |
-| `cancelStream()` | ✅ Stopped | ✅ Aborted | ❌ — | Stop text + audio (no more data from server) |
-| `stopRecognition()` | ❌ — | ❌ — | ✅ Stopped | Stop listening for speech |
-| `cancelAll()` | ✅ Stopped | ✅ Aborted | ✅ Stopped | Stop everything at once |
-
-#### Stop audio only (keep text streaming)
-
-```typescript
-const voice = new BrowserVoiceClient(client, { lang: 'en-US' });
-
-// Start voice flow
-const flowPromise = (async () => {
-    for await (const event of voice.executeWithBrowserVoice({ text: "Tell me a story" })) {
-        // You still receive text events even after cancelSpeech()
-        if (event.response?.message) {
-            appendToUI(event.response.message);
-        }
-    }
-})();
-
-// Stop audio after 3 seconds, but keep receiving text
-setTimeout(() => voice.cancelSpeech(), 3000);
-```
-
-#### Stop the API call (cancel HTTP stream)
-
-```typescript
-// Cancel via the built-in method — aborts the HTTP/SSE connection
-voice.cancelStream();
-
-// Or pass an AbortSignal via options for external control
-const controller = new AbortController();
-const flow = voice.executeWithBrowserVoice({ signal: controller.signal });
-// ...
-controller.abort(); // Same effect as cancelStream()
-```
-
-#### Stop everything at once
-
-```typescript
-// Stops recognition + aborts HTTP stream + cancels TTS
-voice.cancelAll();
-```
-
-#### Check if a flow is active
-
-```typescript
-if (voice.isStreaming) {
-    // A voice flow is in progress
-    voice.cancelAll();
-}
-```
-
-#### React example — Stop buttons
-
-```tsx
-function VoiceChat() {
-    const voiceRef = useRef<BrowserVoiceClient>(null);
-    const [messages, setMessages] = useState<string[]>([]);
-
-    const start = async () => {
-        for await (const event of voiceRef.current!.executeWithBrowserVoice()) {
-            if (event.response?.message) {
-                setMessages(prev => [...prev, event.response!.message!]);
-            }
-        }
-    };
-
-    return (
-        <div>
-            <button onClick={start}>🎤 Speak</button>
-            {/* Stop audio only — text still streams */}
-            <button onClick={() => voiceRef.current?.cancelSpeech()}>🔇 Mute</button>
-            {/* Stop the API call + audio */}
-            <button onClick={() => voiceRef.current?.cancelStream()}>⏹ Stop</button>
-            {/* Stop everything including recognition */}
-            <button onClick={() => voiceRef.current?.cancelAll()}>🚫 Cancel All</button>
-
-            {messages.map((m, i) => <p key={i}>{m}</p>)}
-        </div>
-    );
-}
-```
-
-### 3. Timeout-Based Cancellation
-
-Timeouts are configured globally via `PlayFrameworkSettings.timeout` (in ms).
-When set, every request is automatically aborted after the timeout expires:
-
-```typescript
-const settings: PlayFrameworkSettings = {
-    baseUrl: '/api/play',
-    factoryName: 'assistant',
-    timeout: 30000, // 30-second timeout for ALL requests
-    // ...
-};
-```
-
-When a user-provided `AbortSignal` and a timeout are both present, the client combines them
-so that whichever fires first cancels the request.
-
----
-
-## 📊 Response Status Types
-
-```typescript
-type AiResponseStatus =
-    | "initializing"              // Starting execution
-    | "loadingCache"              // Loading cached conversation context
-    | "executingMainActors"       // Running global system prompts
-    | "planning"                  // Creating execution plan
-    | "executingScene"            // Running scene/actor
-    | "functionRequest"           // Calling server-side tool
-    | "functionCompleted"         // Tool call completed
-    | "toolSkipped"               // Tool was skipped
-    | "streaming"                 // Streaming text chunks
-    | "running"                   // General execution in progress
-    | "summarizing"               // Summarizing conversation
-    | "directorDecision"          // Director evaluating results
-    | "generatingFinalResponse"   // Generating final response
-    | "savingCache"               // Saving to cache
-    | "savingMemory"              // Saving conversation memory
-    | "awaitingClient"            // Waiting for client-side tool response
-    | "commandClient"             // Fire-and-forget command sent to client
-    | "completed"                 // Success
-    | "budgetExceeded"            // Max cost exceeded
-    | "error"                     // Failure
-    | "unauthorized";             // Authorization failed
-```
-
----
-
-## 🧪 Testing
-
-```typescript
-import { PlayFrameworkClient, PlayFrameworkSettings } from "@rystem/playframework-client";
-
-describe("PlayFramework Client", () => {
-    it("should stream responses", async () => {
-        const settings = new PlayFrameworkSettings("default", "http://localhost:5158/api/ai");
-        const client = new PlayFrameworkClient(settings);
-
-        const responses: string[] = [];
-
-        for await (const step of client.executeStepByStep({ message: "Test" })) {
-            if (step.message) responses.push(step.message);
-        }
-
-        expect(responses.length).toBeGreaterThan(0);
-    });
-});
-```
-
----
-
-## 📚 API Reference
-
-### `PlayFrameworkServices`
-
-Static service locator for managing named `PlayFrameworkClient` instances.
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `configure` | `(name: string, baseUrl: string, configure?: (settings: PlayFrameworkSettings) => void \| Promise<void>): Promise<PlayFrameworkSettings>` | Register and configure a named client factory |
-| `resolve` | `(name?: string): PlayFrameworkClient` | Get client by name (defaults to first registered) |
-| `getClient` | `(name: string): PlayFrameworkClient` | Get client by exact name (throws if not found) |
-| `getDefaultClient` | `(): PlayFrameworkClient` | Get the first registered client |
-| `getSettings` | `(name: string): PlayFrameworkSettings` | Get settings by name (throws if not found) |
-| `isConfigured` | `(name: string): boolean` | Check if a named client exists |
-| `remove` | `(name: string): void` | Remove a named client and its settings |
-| `clear` | `(): void` | Remove all clients and settings |
-
-```typescript
-// Configure
-await PlayFrameworkServices.configure("chat", "http://localhost:5158/api/ai");
-
-// Resolve
-const client = PlayFrameworkServices.resolve("chat");
-
-// Check & remove
-if (PlayFrameworkServices.isConfigured("chat")) {
-    PlayFrameworkServices.remove("chat");
-}
-```
-
----
-
-### `PlayFrameworkClient`
-
-Main client for executing AI requests via SSE streaming.
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `executeStepByStep` | `(request: PlayFrameworkRequest, signal?: AbortSignal): AsyncIterableIterator<AiSceneResponse>` | Step-by-step streaming (one event per scene completion) |
-| `executeTokenStreaming` | `(request: PlayFrameworkRequest, signal?: AbortSignal): AsyncIterableIterator<AiSceneResponse>` | Token-level streaming (one event per text chunk) |
-| `getClientRegistry` | `(): ClientInteractionRegistry` | Get the client-side tool/command registry |
-| `getConversation` | `(conversationKey: string): Promise<StoredConversation \| null>` | Load a stored conversation by key |
-| `getConversations` | `(sortOrder?: ConversationSortOrder): Promise<StoredConversation[]>` | List conversations for the authenticated user |
-| `deleteConversation` | `(conversationKey: string): Promise<boolean>` | Delete a stored conversation |
-
----
-
-### `ClientInteractionRegistry`
-
-Registry for client-side tools and commands invoked by the AI during execution.
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `register` | `<TArgs>(toolName: string, handler: ClientTool<TArgs>): void` | Register a tool (server waits for response) |
-| `registerCommand` | `<TArgs>(toolName: string, handler: ClientCommand<TArgs>, options?: CommandOptions): void` | Register a fire-and-forget command |
-| `execute` | `(request: ClientInteractionRequest): Promise<ClientInteractionResult>` | Execute a registered tool/command |
-| `has` | `(toolName: string): boolean` | Check if a tool/command is registered |
-| `isCommand` | `(toolName: string): boolean` | Check if the registration is a command |
-| `getCommandOptions` | `(toolName: string): CommandOptions \| undefined` | Get the command's feedback options |
-| `getToolNames` | `(): string[]` | List all registered tool/command names |
-| `unregister` | `(toolName: string): boolean` | Remove a registration |
-| `clear` | `(): void` | Remove all registrations |
-
-**Types:**
-
-```typescript
-type ClientTool<TArgs = any> = (args?: TArgs) => Promise<AIContent[]>;
-type ClientCommand<TArgs = any> = (args?: TArgs) => Promise<CommandResult>;
-type CommandFeedbackMode = 'never' | 'onError' | 'always';
-
-interface CommandOptions {
-    feedbackMode?: CommandFeedbackMode;
-}
-```
-
-```typescript
-// Tool — server waits for the result
-registry.register("myTool", async (args?: { key: string }) => {
-    return [AIContentConverter.fromText(args?.key || "default")];
-});
-
-// Command — fire-and-forget, feedback optional
-registry.registerCommand("showNotification", async (args?: { text: string }) => {
-    showToast(args?.text ?? "");
-    return CommandResult.ok();
-}, { feedbackMode: 'onError' });
-```
-
----
-
-### `AIContentConverter`
-
-#### Static Methods
-
-- `fromCamera(constraints?, width?, height?): Promise<AIContent>` - Capture photo
-- `fromGeolocation(options?): Promise<AIContent>` - Get GPS coordinates
-- `fromFile(file: File | Blob): Promise<AIContent>` - Convert file to Base64
-- `fromMultipleFiles(files: FileList): Promise<AIContent[]>` - Convert multiple files
-- `fromMicrophone(durationMs?: number, mimeType?: string): Promise<AIContent>` - Record audio
-- `fromText(text: string): AIContent` - Create text content
-
----
-
-## 🎨 React Hook (`usePlayFramework`)
-
-```tsx
-import { usePlayFramework } from "@rystem/playframework-client";
-
-function MyComponent() {
-    const client = usePlayFramework("default");
-
-    const handleClick = async () => {
-        for await (const step of client.executeStepByStep({ message: "Hello" })) {
-            console.log(step);
-        }
-    };
-
-    return <button onClick={handleClick}>Send</button>;
-}
-```
-
----
-
-## � Client Commands (Fire-and-Forget)
-
-Commands are client-side tools that the server invokes but **does not wait for a response**. Use them for UI side effects (toasts, navigation, animations, etc.).
-
-### Registering Commands
-
-```typescript
 const registry = client.getClientRegistry();
 
-// Simple command — no feedback to server
-registry.registerCommand("showToast", async (args?: { text: string }) => {
-    showNotification(args?.text ?? "");
-    return CommandResult.ok();
+registry.register("getCurrentLocation", async () => {
+  const content = await AIContentConverter.fromGeolocation({ timeout: 10_000 });
+  return [content];
 });
 
-// Command with error feedback — server receives failure info
-registry.registerCommand("navigateTo", async (args?: { url: string }) => {
-    try {
-        window.location.href = args?.url ?? "/";
-        return CommandResult.ok();
-    } catch (e) {
-        return CommandResult.fail(`Navigation failed: ${e}`);
+registry.register<{ question?: string }>("getUserConfirmation", async (args) => {
+  const confirmed = window.confirm(args?.question ?? "Do you confirm?");
+  return [AIContentConverter.fromText(confirmed ? "confirmed" : "denied")];
+});
+
+registry.registerCommand("logUserAction", async (args?: { action?: string }) => {
+  console.log("action", args?.action);
+  return CommandResultHelper.ok();
+}, { feedbackMode: "never" });
+
+registry.registerCommand("saveToLocalStorage", async (args?: { key: string; value: string }) => {
+  if (!args) {
+    return CommandResultHelper.fail("Missing args");
+  }
+  localStorage.setItem(args.key, args.value);
+  return CommandResultHelper.ok(`Saved ${args.key}`);
+}, { feedbackMode: "always" });
+```
+
+Supported command feedback modes are:
+
+- `never`
+- `onError`
+- `always`
+
+Important behavior:
+
+- `PlayFrameworkClient` executes registered tools automatically when the server asks for them
+- tool names must match what the server emits after its own normalization
+- auto-resume uses the returned `conversationKey` and `clientInteractionResults` behind the scenes
+- if a tool is missing, the library sends back an error result instead of silently succeeding
+
+## Example: conversation management
+
+`PlayFrameworkClient` exposes:
+
+- `listConversations(...)`
+- `getConversation(...)`
+- `deleteConversation(...)`
+- `updateConversationVisibility(...)`
+
+Example:
+
+```typescript
+import {
+  ConversationSortOrder,
+  PlayFrameworkServices
+} from "rystem.playframework.client";
+
+const client = PlayFrameworkServices.resolve("default");
+
+const conversations = await client.listConversations({
+  searchText: "weather",
+  orderBy: ConversationSortOrder.TimestampDescending,
+  includePublic: true,
+  includePrivate: true,
+  skip: 0,
+  take: 20
+});
+
+const selected = conversations[0];
+
+if (selected) {
+  const fullConversation = await client.getConversation(selected.conversationKey, true);
+  console.log(fullConversation?.messages.length);
+
+  await client.updateConversationVisibility(selected.conversationKey, true);
+  await client.deleteConversation(selected.conversationKey);
+}
+```
+
+These methods call:
+
+```text
+{baseUrl}/{factoryName}/conversations
+```
+
+They only work when the server has both:
+
+- `UseRepository()` and a matching `IRepository<StoredConversation, string>` registration
+- `EnableConversationEndpoints = true` in `MapPlayFramework(...)`
+
+## Example: server voice endpoint
+
+`executeVoice(...)` targets the PlayFramework HTTP voice endpoint and streams `VoiceEvent` objects back.
+
+```typescript
+import {
+  PlayFrameworkServices,
+  VoiceRecorder
+} from "rystem.playframework.client";
+
+const client = PlayFrameworkServices.resolve("default");
+const recorder = new VoiceRecorder({ mode: "pushToTalk" });
+
+await recorder.start({
+  onRecorded: async (blob) => {
+    for await (const event of client.executeVoice({
+      audio: blob,
+      conversationKey: "voice-conversation-1",
+      metadata: { userId: "user-42" }
+    })) {
+      if (event.type === "transcription") {
+        console.log("user said", event.text);
+      }
+      if (event.type === "scene") {
+        console.log(event.status, event.message);
+      }
+      if (event.type === "audio") {
+        console.log("received audio chunk", event.audio?.length ?? 0);
+      }
     }
-}, { feedbackMode: 'onError' });
+  }
+});
 
-// Command with always-feedback — server always gets the result
-registry.registerCommand("playSound", async (args?: { soundId: string }) => {
-    await audioPlayer.play(args?.soundId ?? "notification");
-    return CommandResult.ok("Sound played");
-}, { feedbackMode: 'always' });
+// In push-to-talk mode you stop manually.
+recorder.stop();
 ```
 
-### `CommandResult` Helper
+This calls:
+
+```text
+POST {baseUrl}/{factoryName}/voice
+```
+
+It only works when the server enables the PlayFramework voice endpoint and has a matching `IVoiceAdapter`.
+
+## Example: browser-native voice flow
+
+`BrowserVoiceClient` is different from `executeVoice(...)`.
+
+It does not use the server voice endpoint. Instead it uses browser speech recognition plus browser speech synthesis and sends the recognized text through the normal PlayFramework SSE endpoints.
 
 ```typescript
-interface CommandResult {
-    success: boolean;
-    message?: string;
-}
+import {
+  BrowserVoiceClient,
+  PlayFrameworkServices
+} from "rystem.playframework.client";
 
-// Factory methods
-CommandResult.ok();                   // { success: true }
-CommandResult.ok("Done");            // { success: true, message: "Done" }
-CommandResult.fail("Reason");        // { success: false, message: "Reason" }
+const client = PlayFrameworkServices.resolve("default");
+
+if (BrowserVoiceClient.isSupported()) {
+  const voice = new BrowserVoiceClient(
+    client,
+    { lang: "en-US" },
+    { lang: "en-US" }
+  );
+
+  for await (const event of voice.executeWithBrowserVoice({
+    streamingMode: "tokenStreaming",
+    request: {
+      metadata: { userId: "user-42" },
+      settings: {
+        executionMode: "Scene",
+        sceneName: "General_Requests"
+      }
+    }
+  })) {
+    if (event.voiceStatus === "recognized") {
+      console.log("transcript", event.transcript);
+    }
+    if (event.response?.streamingChunk) {
+      console.log(event.response.streamingChunk);
+    }
+  }
+}
 ```
 
-### `CommandFeedbackMode`
+Useful notes:
 
-| Mode | Behavior |
-|------|----------|
-| `'never'` | Server ignores the command's result (default) |
-| `'onError'` | Server receives feedback only when `success: false` |
-| `'always'` | Server always receives the command's result |
+- `BrowserVoiceClient.isSupported()` checks browser STT + TTS support
+- `speakResponse(...)` is a shortcut when you already have the input text
+- `cancelSpeech()`, `cancelStream()`, and `cancelAll()` are available for UI controls
+- scene names used in direct scene execution must match the server's normalized scene name, so a server scene like `AddScene("General Requests", ...)` is addressed as `General_Requests`
 
----
+## `usePlayFramework`
 
-## 📋 `ClientInteractionRequest` Model
+The library exports `usePlayFramework(name?)`, but it is only a convenience accessor over `PlayFrameworkServices.resolve(name)`.
 
-When the server invokes a client-side tool or command, it sends this object:
+It does not manage React state or subscribe to updates by itself.
+
+So even though the name looks React-specific, it is effectively a thin helper rather than a stateful hook system.
 
 ```typescript
-interface ClientInteractionRequest {
-    interactionId: string;                          // Unique ID for this invocation
-    toolName: string;                               // Registered tool/command name
-    description?: string;                           // Human-readable description
-    arguments?: Record<string, any>;                // Arguments from AI
-    argumentsSchema?: string;                       // JSON Schema string
-    timeoutSeconds: number;                         // Max time to wait (tools only)
-    isCommand?: boolean;                            // true = fire-and-forget command
-    feedbackMode?: 'never' | 'onError' | 'always'; // Command feedback mode
+import { usePlayFramework } from "rystem.playframework.client";
+
+const client = usePlayFramework("default");
+
+for await (const step of client.executeStepByStep({ message: "Hello" })) {
+  console.log(step.message);
 }
 ```
 
----
+## Useful exports
 
-## 📋 `ClientInteractionResult` Model
+Besides the main client classes, the package also exports:
 
-The response your tool handler returns to the server:
+- `AIContentConverter`
+- `ContentUrlConverter`
+- `VoiceRecorder`
+- `BrowserSpeechRecognizer`
+- `BrowserSpeechSynthesizer`
+- `BrowserVoiceClient`
+- `ConversationSortOrder`
+- `CommandResultHelper`
 
-```typescript
-interface AIContent {
-    type: "text" | "data";
-    text?: string;           // For type "text"
-    data?: string;           // Base64-encoded (for type "data")
-    mediaType?: string;      // e.g., "image/jpeg", "audio/webm"
-}
+## Important caveats
 
-interface ClientInteractionResult {
-    interactionId: string;   // Must match the request
-    contents: AIContent[];   // Tool output
-    error?: string;          // Error message (if failed)
-    executedAt: string;      // ISO 8601 timestamp
-}
-```
+### The final `completed` marker is consumed internally
 
----
+`PlayFrameworkClient` treats `status === "completed"` as an internal stop marker and does not yield that marker to callers as a final event.
 
-## 📋 `ExecutionState` and `ExecutionPhase`
+### `status === "error"` throws
 
-The `ExecutionState` object tracks the AI orchestration progress during execution:
+Server error markers are converted into thrown exceptions rather than yielded error events.
 
-```typescript
-type ExecutionPhase =
-    | "notStarted"
-    | "initialized"
-    | "sceneSelected"
-    | "executingScene"
-    | "awaitingClient"
-    | "sceneCompleted"
-    | "chaining"
-    | "generatingFinalResponse"
-    | "completed"
-    | "completedNoResponse"
-    | "budgetExceeded"
-    | "sceneNotFound"
-    | "tooManyToolRequests"
-    | "break"
-    | "unauthorized";
+### Library code logs to the console
 
-interface ExecutionState {
-    phase: ExecutionPhase;                          // Current execution phase
-    executedSceneOrder: string[];                   // Scene names in execution order
-    executedScenes: Record<string, any[]>;          // Scene name → results
-    executedTools: string[];                        // Tool names invoked
-    accumulatedCost: number;                        // Total $ cost so far
-    currentSceneName?: string | null;               // Currently running scene
-}
-```
+The current runtime includes several `console.log`, `console.warn`, and `console.error` calls.
 
----
+### Auto-resume depends on registered tools
 
-## 📋 `AiSceneResponse` Full Model
+If the server asks for a client-side tool and the registry does not contain it, the library sends back an error result rather than magically handling the operation.
 
-Each SSE event yields an `AiSceneResponse`:
+### `baseUrl` must point to the PlayFramework base path only
 
-```typescript
-interface AiSceneResponse {
-    status: AiResponseStatus;
-    sceneName?: string;
-    functionName?: string;
-    functionArguments?: string;
-    message?: string;                // Final response text (step-by-step)
-    streamingChunk?: string;         // Partial text (token streaming)
-    isStreamingComplete?: boolean;
-    errorMessage?: string;
-    inputTokens?: number;
-    cachedInputTokens?: number;
-    outputTokens?: number;
-    totalTokens?: number;
-    cost?: number;                   // Cost for this step
-    totalCost?: number;              // Accumulated total cost
-    conversationKey?: string;
-    continuationToken?: string;      // Token for resuming after client tool
-    clientInteractionRequest?: ClientInteractionRequest;
-    timestamp?: string;
-    metadata?: Record<string, any>;
-    contents?: Array<{
-        type: string;
-        text?: string;
-        data?: string;               // Base64 encoded
-        mediaType?: string;
-    }>;
-}
-```
+Use a base such as `http://localhost:5158/api/ai`, not `http://localhost:5158/api/ai/default`. The library appends `/{factoryName}` itself.
 
----
+### Many helpers are browser-only
 
-## 📋 `StoredMessage` Full Model
+`AIContentConverter.fromCamera(...)`, `AIContentConverter.fromGeolocation(...)`, `AIContentConverter.fromMicrophone(...)`, `VoiceRecorder`, and `BrowserSpeech*` utilities depend on browser APIs and are not SSR-safe by default.
 
-Each message in a `StoredConversation.messages` array:
+### Browser voice and server voice are different paths
 
-```typescript
-interface StoredMessage {
-    businessType: number;                           // Internal type discriminator
-    label?: string | null;                          // Optional label (e.g., scene name)
-    role: string;                                   // "user" | "assistant" | "system" | "tool"
-    text?: string | null;                           // Plain text content
-    contents?: any[] | null;                        // Multi-modal content items
-    additionalProperties?: Record<string, any> | null; // Extra metadata
-}
-```
+`BrowserVoiceClient` uses browser STT/TTS plus normal SSE endpoints. `executeVoice(...)` uses the server-side `/voice` endpoint with a server `IVoiceAdapter`.
 
----
+### `usePlayFramework(...)` is not a real reactive hook
 
-## 📋 `ContentItem` Full Model
+It is only a resolver helper over `PlayFrameworkServices.resolve(...)`.
 
-Used in `PlayFrameworkRequest.contents` for multi-modal input:
+## Grounded by source files
 
-```typescript
-interface ContentItem {
-    type: "text" | "image" | "audio" | "video" | "file" | "uri";
-    text?: string;           // For type "text"
-    data?: string;           // Base64-encoded binary data
-    uri?: string;            // For type "uri"
-    mediaType?: string;      // MIME type (e.g., "image/png", "audio/webm")
-    name?: string;           // Optional filename
-}
-```
+- `src/AI/Rystem.PlayFramework.Client/src/rystem/src/servicecollection/PlayFrameworkServices.ts`
+- `src/AI/Rystem.PlayFramework.Client/src/rystem/src/servicecollection/PlayFrameworkSettings.ts`
+- `src/AI/Rystem.PlayFramework.Client/src/rystem/src/engine/PlayFrameworkClient.ts`
+- `src/AI/Rystem.PlayFramework.Client/src/rystem/src/engine/ClientInteractionRegistry.ts`
+- `src/AI/Rystem.PlayFramework.Client/src/rystem/src/utils/AIContentConverter.ts`
+- `src/AI/Rystem.PlayFramework.Client/src/rystem/src/utils/ContentUrlConverter.ts`
+- `src/AI/Rystem.PlayFramework.Client/src/rystem/src/utils/VoiceRecorder.ts`
+- `src/AI/Rystem.PlayFramework.Client/src/rystem/src/utils/BrowserVoiceClient.ts`
+- `src/AI/Rystem.PlayFramework.Client/src/rystem/src/hooks/hooks.ts`
+- `src/AI/Rystem.PlayFramework.Client/src/App.tsx`
 
----
-
-## �📁 Where to Place This README
-
-This README should be placed in:
-```
-src/AI/Rystem.PlayFramework.Client/src/rystem/README.md
-```
-
-This is the **library source** directory that gets published to npm.
-
----
-
-## 🔗 Links
-
-- 📖 **Documentation**: https://rystem.net/playframework
-- 💻 **GitHub**: https://github.com/KeyserDSoze/Rystem
-- 📦 **npm**: https://www.npmjs.com/package/@rystem/playframework-client
-- 🎯 **MCP Tools**: https://rystem.net/mcp
-
----
-
-## 📄 License
-
-MIT © [Alessandro Rapiti](https://github.com/KeyserDSoze)
-
----
-
-## 🤝 Contributing
-
-Contributions welcome! Please open an issue or PR.
-
-1. Fork the repo
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## 💡 Examples
-
-### Complete Chat Application
-
-```tsx
-import React, { useState, useRef, useEffect } from 'react';
-import { usePlayFramework, AIContentConverter } from '@rystem/playframework-client';
-
-interface Message {
-    role: 'user' | 'assistant';
-    text: string;
-    status?: string;
-}
-
-function ChatApp() {
-    const client = usePlayFramework('default');
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [input, setInput] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [conversationKey] = useState(crypto.randomUUID());
-
-    // Register client tools
-    useEffect(() => {
-        const registry = client.getClientRegistry();
-
-        registry.register('getCurrentLocation', async () => {
-            const content = await AIContentConverter.fromGeolocation();
-            return [content];
-        });
-
-        registry.register('getUserConfirmation', async (args?: { question?: string }) => {
-            const confirmed = window.confirm(args?.question ?? 'Do you confirm?');
-            return [AIContentConverter.fromText(confirmed ? 'confirmed' : 'denied')];
-        });
-    }, [client]);
-
-    const handleSend = async () => {
-        if (!input.trim() || loading) return;
-
-        const userMessage: Message = { role: 'user', text: input };
-        setMessages(prev => [...prev, userMessage]);
-        setInput('');
-        setLoading(true);
-
-        try {
-            const assistantMessage: Message = { role: 'assistant', text: '', status: 'initializing' };
-            setMessages(prev => [...prev, assistantMessage]);
-
-            for await (const step of client.executeStepByStep({
-                message: input,
-                settings: {
-                    conversationKey,
-                    executionMode: 'Direct',
-                    enableStreaming: true
-                }
-            })) {
-                setMessages(prev => {
-                    const updated = [...prev];
-                    const last = updated[updated.length - 1];
-
-                    if (step.streamingChunk) {
-                        last.text += step.streamingChunk;
-                    } else if (step.message) {
-                        last.text = step.message;
-                    }
-                    last.status = step.status;
-
-                    return updated;
-                });
-            }
-        } catch (error) {
-            console.error('Chat error:', error);
-            setMessages(prev => [...prev, {
-                role: 'assistant',
-                text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                status: 'error'
-            }]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-            <h1>PlayFramework Chat</h1>
-
-            <div style={{ height: '500px', overflowY: 'auto', border: '1px solid #ccc', padding: '10px', marginBottom: '10px' }}>
-                {messages.map((msg, i) => (
-                    <div key={i} style={{
-                        padding: '10px',
-                        margin: '5px 0',
-                        borderRadius: '8px',
-                        backgroundColor: msg.role === 'user' ? '#e3f2fd' : '#f5f5f5',
-                        textAlign: msg.role === 'user' ? 'right' : 'left'
-                    }}>
-                        <strong>{msg.role === 'user' ? 'You' : 'AI'}</strong>
-                        {msg.status && <small style={{ color: '#666', marginLeft: '8px' }}>[{msg.status}]</small>}
-                        <div>{msg.text}</div>
-                    </div>
-                ))}
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px' }}>
-                <input
-                    type="text"
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleSend()}
-                    placeholder="Type a message..."
-                    disabled={loading}
-                    style={{ flex: 1, padding: '10px', fontSize: '16px' }}
-                />
-                <button onClick={handleSend} disabled={loading} style={{ padding: '10px 20px', fontSize: '16px' }}>
-                    {loading ? 'Sending...' : 'Send'}
-                </button>
-            </div>
-        </div>
-    );
-}
-
-export default ChatApp;
-```
-
----
-
-**Made with ❤️ by the Rystem team**
+Use this package when you want a typed client for a PlayFramework backend, including SSE execution, browser tool continuation, conversations, and both server-side and browser-side voice flows.

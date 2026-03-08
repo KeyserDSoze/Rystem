@@ -1,34 +1,66 @@
 # PlayFramework Observability Stack
 
-Complete observability setup with **Jaeger** (tracing), **Prometheus** (metrics), and **Grafana** (visualization).
+`src/AI/Rystem.PlayFramework/observability` is a local Docker-based observability bundle for PlayFramework.
 
-## 🚀 Quick Start (5 minutes)
+It gives you a ready-made stack with:
 
-### 1. Configure Your Application
+- Jaeger for traces
+- Prometheus for scraping, recording rules, and alert evaluation
+- Grafana for dashboards
+- Node Exporter for optional host metrics
+
+This folder is infrastructure and dashboard material. It does not automatically instrument your PlayFramework application for you. Your app still needs OpenTelemetry tracing, metrics export, and a `/metrics` endpoint.
+
+## What is in this folder
+
+- `docker-compose.yml` - local stack definition
+- `prometheus/prometheus.yml` - scrape targets
+- `prometheus/recording-rules.yml` - pre-aggregated queries used by dashboards
+- `prometheus/alerts.yml` - Prometheus alert rules
+- `grafana/provisioning/datasources/datasources.yml` - preconfigured `Prometheus` and `Jaeger` datasources
+- `grafana/provisioning/dashboards/dashboards.yml` - dashboard auto-provisioning
+- `grafana/dashboards/*.json` - the PlayFramework dashboards themselves
+
+## What you still need in your app
+
+The PlayFramework telemetry primitives are inside the main package:
+
+- `PlayFrameworkActivitySource.SourceName` = `Rystem.PlayFramework`
+- `PlayFrameworkMetrics.MeterName` = `Rystem.PlayFramework`
+
+PlayFramework emits activities and meters, but your app must connect them to OpenTelemetry exporters.
+
+## Example: instrument a PlayFramework backend
+
+This is the minimum shape you need in your application to make the observability stack useful.
 
 ```csharp
-// Program.cs
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Rystem.PlayFramework;
+using Rystem.PlayFramework.Telemetry;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add PlayFramework with telemetry
-builder.Services.AddPlayFramework(play =>
+builder.Services.AddPlayFramework("default", framework =>
 {
-    play.WithTelemetry(telemetry =>
-    {
-        telemetry.EnableTracing = true;
-        telemetry.EnableMetrics = true;
-        telemetry.SamplingRate = 1.0; // 100% in dev, 0.1 (10%) in production
-    });
-    
-    play.AddScene(scene => scene.WithName("Demo"));
+    framework
+        .WithTelemetry(telemetry =>
+        {
+            telemetry.EnableTracing = true;
+            telemetry.EnableMetrics = true;
+            telemetry.SamplingRate = 1.0;
+            telemetry.CustomAttributes = new()
+            {
+                ["deployment.environment"] = builder.Environment.EnvironmentName,
+                ["service.version"] = "1.0.0"
+            };
+        })
+        .AddScene("General Requests", "General conversation", _ => { });
 });
 
-// Configure OpenTelemetry Exporters
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource.AddService("playframework-api"))
     .WithTracing(tracing =>
@@ -49,268 +81,238 @@ builder.Services.AddOpenTelemetry()
             .AddMeter(PlayFrameworkMetrics.MeterName)
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation()
-            .AddPrometheusExporter();  // Expose /metrics endpoint
+            .AddPrometheusExporter();
     });
 
 var app = builder.Build();
 
-// Important: Enable Prometheus scraping
-app.MapPrometheusScrapingEndpoint();  // Exposes /metrics
+app.MapPrometheusScrapingEndpoint();
 
 app.Run();
 ```
 
-### 2. Start Observability Stack
+Without the OTLP exporter and `MapPrometheusScrapingEndpoint()`, Jaeger and Prometheus have nothing to collect.
+
+The snippet only shows the observability wiring. Keep your normal PlayFramework chat-client or adapter registration in place as well.
+
+## Start the local stack
+
+From this folder:
 
 ```bash
-cd observability
-docker-compose up -d
+docker compose up -d
 ```
 
-Wait 30 seconds for all services to start.
+The stack defined in `docker-compose.yml` exposes:
 
-### 3. Access Dashboards
+| Service | URL | Purpose |
+| --- | --- | --- |
+| Grafana | `http://localhost:3000` | dashboards |
+| Jaeger | `http://localhost:16686` | trace search and timelines |
+| Prometheus | `http://localhost:9090` | metrics and alert rule evaluation |
+| Node Exporter | `http://localhost:9100` | host-level machine metrics |
 
-| Service    | URL                          | Credentials    | Purpose                    |
-|------------|------------------------------|----------------|----------------------------|
-| Grafana    | http://localhost:3000        | admin/admin    | Metrics visualization      |
-| Jaeger     | http://localhost:16686       | None           | Distributed tracing        |
-| Prometheus | http://localhost:9090        | None           | Metrics storage/queries    |
+Grafana credentials are currently:
 
-### 4. Import Dashboards (Auto-provisioned)
-
-Dashboards are automatically imported on startup:
-- **PlayFramework - Overview** (main dashboard)
-- **PlayFramework - Performance Deep Dive** (latency analysis)
-- **PlayFramework - Cost Tracking** (billing insights)
-
-If they don't appear, manually import from `grafana/dashboards/` folder:
-1. Go to Grafana → Dashboards → Import
-2. Upload JSON file
-3. Select "Prometheus" datasource
-
----
-
-## 📊 What You'll See
-
-### Overview Dashboard
-- **Scene Execution Rate** (requests/sec)
-- **Success Rate** (%)
-- **Active Scenes** (concurrent)
-- **Hourly Cost** ($)
-- **Cache Hit Ratio** (%)
-- **P95 Latency** (ms)
-- **Token Usage Rate** (tokens/sec)
-
-### Performance Dashboard
-- **Latency Percentiles** (P50/P95/P99)
-- **Tool Call Duration**
-- **Cache Operation Latency**
-- **LLM Call Duration**
-- **Throughput by Scene**
-
-### Cost Tracking Dashboard
-- **Hourly/Daily/Monthly Projections**
-- **Cost by Scene**
-- **Cache Savings**
-- **Top 5 Most Expensive Scenes**
-
----
-
-## 🔍 Example Traces in Jaeger
-
-```
-SceneManager.Execute [5.2s]
-  ├─ factory_name: production
-  ├─ scene.name: CustomerSupport
-  ├─ tokens.total: 350
-  ├─ cost: 0.0045
-  │
-  ├─ Scene.Execute [4.8s]
-  │   ├─ Tool.Execute: GetCustomerInfo [1.2s]
-  │   │   └─ tool.success: true
-  │   │
-  │   ├─ Cache.Get: prompt-hash-abc123 [2ms] ❌ MISS
-  │   │
-  │   └─ LLM.Call: gpt-4o [3.4s]
-  │       ├─ llm.provider: openai
-  │       ├─ llm.model: gpt-4o
-  │       ├─ tokens.prompt: 150
-  │       ├─ tokens.completion: 200
-  │       └─ cost: 0.0045
-  │
-  └─ Cache.Set: prompt-hash-abc123 [5ms]
+```text
+admin / admin
 ```
 
----
+## Important setup step: fix the Prometheus scrape target
 
-## 🔧 Configuration
-
-### Adjust Prometheus Scrape Target
-
-Edit `prometheus/prometheus.yml`:
+The provided `prometheus/prometheus.yml` currently points the PlayFramework scrape job to:
 
 ```yaml
-scrape_configs:
-  - job_name: 'playframework-api'
-    static_configs:
-      - targets: ['host.docker.internal:5000']  # Change to YOUR API port
+targets: ['host.docker.internal:5000']
 ```
 
-### Enable Alerts
+That is only a placeholder. You must change it to your real app port.
 
-Alerts are pre-configured in `prometheus/alerts.yml`:
-- High error rate (>5%)
-- High latency (P95 >10s)
-- High hourly cost (>$10/hour)
-- Low cache hit rate (<50%)
-- Tool failures (>10%)
+For example, the sample backend in this repo uses `http://localhost:5158`, so the scrape target should be:
 
-### Adjust Sampling Rate
-
-For production, reduce sampling to save costs:
-
-```csharp
-play.WithTelemetry(telemetry =>
-{
-    telemetry.SamplingRate = 0.1;  // 10% sampling
-});
+```yaml
+targets: ['host.docker.internal:5158']
 ```
 
----
-
-## 📈 Common Prometheus Queries
-
-### Cost Analysis
-```promql
-# Hourly cost projection
-sum(rate(playframework_cost_per_execution_usd_sum[5m])) * 3600
-
-# Cost per scene
-sum(rate(playframework_cost_per_execution_usd_sum[5m])) by (scene_name) * 3600
-
-# Cache savings per hour
-(sum(rate(playframework_cache_hits_total[5m])) * avg(playframework_cost_per_execution_usd)) * 3600
-```
-
-### Performance Analysis
-```promql
-# P95 latency by scene
-histogram_quantile(0.95, sum(rate(playframework_scene_duration_milliseconds_bucket[5m])) by (le, scene_name))
-
-# Throughput
-sum(rate(playframework_scene_executions_total[5m])) by (scene_name)
-
-# Success rate
-sum(rate(playframework_scene_executions_total{success="true"}[5m])) / sum(rate(playframework_scene_executions_total[5m]))
-```
-
-### Cache Analysis
-```promql
-# Hit ratio
-sum(rate(playframework_cache_hits_total[5m])) / (sum(rate(playframework_cache_hits_total[5m])) + sum(rate(playframework_cache_misses_total[5m])))
-
-# Cache latency P95
-histogram_quantile(0.95, sum(rate(playframework_cache_duration_milliseconds_bucket[5m])) by (le))
-```
-
----
-
-## 🛑 Stop/Restart
+After editing the file, reload Prometheus:
 
 ```bash
-# Stop all services
-docker-compose down
-
-# Stop and remove volumes (fresh start)
-docker-compose down -v
-
-# View logs
-docker-compose logs -f grafana
-docker-compose logs -f prometheus
-docker-compose logs -f jaeger
+docker compose restart prometheus
 ```
 
----
+Or trigger a config reload if lifecycle reload is enabled.
 
-## 🌐 Production Deployment
+## Docker host alias caveat
 
-### Azure Monitor / Application Insights
+The provided configuration uses `host.docker.internal`, which works well on Docker Desktop environments.
 
-```csharp
-.AddOtlpExporter(options =>
-{
-    options.Endpoint = new Uri("https://your-app-insights.azure.com/v1/traces");
-    options.Headers = $"Authorization=Bearer {apiKey}";
-});
+On Linux you may need to replace it with a reachable host IP or add the appropriate Docker host alias yourself.
+
+## What Grafana auto-provisions
+
+Grafana is preconfigured from:
+
+- `grafana/provisioning/datasources/datasources.yml`
+- `grafana/provisioning/dashboards/dashboards.yml`
+
+That means on startup it automatically creates:
+
+- datasource `Prometheus` -> `http://prometheus:9090`
+- datasource `Jaeger` -> `http://jaeger:16686`
+- folder `PlayFramework`
+- dashboards from `grafana/dashboards/`
+
+Current dashboard titles are:
+
+- `PlayFramework - Overview`
+- `PlayFramework - Performance Deep Dive`
+- `PlayFramework - Cost Tracking`
+
+## What PlayFramework emits
+
+From the source, PlayFramework emits:
+
+- activities such as `SceneManager.Execute`, `Scene.Execute`, `Tool.Execute`, `LLM.Call`, `Cache.Get`, `Cache.Set`
+- tags such as `playframework.factory_name`, `playframework.scene.name`, `playframework.scene.mode`, `playframework.cost.total`, `playframework.llm.tokens.total`
+- metrics through `PlayFrameworkMetrics`, including scene counts, tool counts, cache hits/misses, LLM call counts, durations, costs, and active gauges
+
+Examples from source files:
+
+- `PlayFrameworkActivitySource.Activities.SceneManagerExecute`
+- `PlayFrameworkActivitySource.Activities.SceneExecute`
+- `PlayFrameworkActivitySource.Activities.ToolExecute`
+- `PlayFrameworkActivitySource.Activities.LlmCall`
+- `PlayFrameworkMetrics.RecordSceneExecution(...)`
+- `PlayFrameworkMetrics.RecordToolCall(...)`
+- `PlayFrameworkMetrics.RecordCacheAccess(...)`
+- `PlayFrameworkMetrics.RecordLlmCall(...)`
+
+## Prometheus metric naming note
+
+Inside `PlayFrameworkMetrics.cs`, the meter names use dotted .NET style names such as:
+
+- `playframework.scene.executions`
+- `playframework.scene.duration`
+- `playframework.cost.per_execution`
+
+When exposed through the Prometheus exporter, those become normalized Prometheus names such as:
+
+- `playframework_scene_executions_total`
+- `playframework_scene_duration_milliseconds_bucket`
+- `playframework_cost_per_execution_usd_sum`
+
+That is why the Grafana dashboards and alert rules use underscored Prometheus names rather than the dotted meter names from C#.
+
+## Recording rules and dashboards
+
+The dashboards are intentionally built on top of the recording rules in `prometheus/recording-rules.yml`.
+
+Important recording rules include:
+
+- `playframework:success_rate:5m`
+- `playframework:scene_throughput:5m`
+- `playframework:scene_latency_p95:5m`
+- `playframework:cache_hit_ratio:5m`
+- `playframework:cost_per_hour:5m`
+- `playframework:tool_success_rate:5m`
+
+If dashboards show missing values, check both raw metrics and the recording rules.
+
+## Alerts in this stack
+
+Prometheus alert rules are included in `prometheus/alerts.yml`, for example:
+
+- high error rate
+- high scene latency
+- high projected hourly cost
+- low cache hit rate
+- high token usage
+- high tool failure rate
+- metrics endpoint down
+
+Important caveat: this stack does not include an `alertmanager` service.
+
+So alerts can still be evaluated in Prometheus, but notification delivery to Slack, email, or PagerDuty is not wired out of the box.
+
+## Example local validation flow
+
+1. instrument your app with OpenTelemetry and map `/metrics`
+2. change `prometheus/prometheus.yml` to the correct host port
+3. run `docker compose up -d`
+4. open `http://localhost:9090/targets` and verify the PlayFramework job is `UP`
+5. execute a few PlayFramework requests in your app
+6. open Jaeger and search for traces from service `playframework-api`
+7. open Grafana and inspect the `PlayFramework` folder
+
+## Example queries you can run in Prometheus
+
+```promql
+# overall success rate
+playframework:success_rate:5m
+
+# projected hourly cost
+playframework:cost_per_hour:5m
+
+# p95 latency by scene
+playframework:scene_latency_p95:5m
+
+# cache hit ratio
+playframework:cache_hit_ratio:5m
+
+# raw throughput by scene
+sum(rate(playframework_scene_executions_total[5m])) by (scene_name)
 ```
 
-### AWS CloudWatch
+## Troubleshooting
 
-```csharp
-.AddOtlpExporter(options =>
-{
-    options.Endpoint = new Uri("https://cloudwatch-otel.us-east-1.amazonaws.com");
-});
-```
+### No metrics in Prometheus
 
-### Datadog
+- verify your app exposes `/metrics`
+- verify `app.MapPrometheusScrapingEndpoint()` is present
+- verify the target port in `prometheus/prometheus.yml`
+- verify `http://localhost:9090/targets` shows the job as `UP`
 
-```csharp
-.AddOtlpExporter(options =>
-{
-    options.Endpoint = new Uri("https://api.datadoghq.com");
-    options.Headers = $"DD-API-KEY={apiKey}";
-});
-```
+### No traces in Jaeger
 
----
+- verify your app adds `.AddSource(PlayFrameworkActivitySource.SourceName)`
+- verify the OTLP exporter points to `http://localhost:4317`
+- verify your app is actually executing PlayFramework requests
 
-## 🆘 Troubleshooting
+### Dashboards show no data
 
-### Metrics not appearing in Prometheus
+- verify Prometheus has raw metrics first
+- verify recording rules loaded successfully in Prometheus
+- verify Grafana datasource `Prometheus` is healthy
+- widen the dashboard time range if you only generated a few requests
 
-1. Check `/metrics` endpoint: http://localhost:5000/metrics
-2. Verify Prometheus scraping: http://localhost:9090/targets
-3. Check `prometheus/prometheus.yml` target address
+### Alert rules exist but nothing notifies anyone
 
-### Traces not appearing in Jaeger
+- expected with the current files; there is no Alertmanager service in `docker-compose.yml`
 
-1. Verify OTLP exporter endpoint: `http://localhost:4317`
-2. Check sampling rate (0.0 = disabled)
-3. Verify `PlayFrameworkActivitySource.SourceName` is added to tracing
+## Important caveats
 
-### Dashboards not loading in Grafana
+### The sample API in this repo is not fully instrumented out of the box
 
-1. Check Grafana logs: `docker-compose logs grafana`
-2. Verify datasources: Grafana → Configuration → Data Sources
-3. Manually import dashboards from `grafana/dashboards/`
+`src/AI/Test/Rystem.PlayFramework.Api/Program.cs` enables PlayFramework metrics at the builder level, but it does not currently add the OpenTelemetry exporters or map `/metrics` for this Docker stack. You still need to wire that yourself.
 
-### High CPU usage
+### Some telemetry settings are more granular than the runtime currently enforces
 
-1. Reduce scrape interval in `prometheus.yml` (15s → 30s)
-2. Decrease sampling rate (1.0 → 0.1)
-3. Disable PII logging (IncludeLlmPrompts, IncludeLlmResponses)
+Flags like `TraceScenes`, `TraceTools`, `TraceLlmCalls`, `TraceCacheOperations`, `TracePlanning`, `TraceSummarization`, `TraceDirector`, and `TraceMcpOperations` exist on `TelemetrySettings`, but the current implementation relies much more heavily on the broad `EnableTracing` and `EnableMetrics` switches than those fine-grained toggles.
 
----
+### Prompt and response capture needs privacy review
 
-## 📚 Resources
+`IncludeLlmPrompts` and `IncludeLlmResponses` can expose sensitive data. Keep them off unless you intentionally want payload-level tracing and have reviewed the privacy implications.
 
-- **OpenTelemetry Docs**: https://opentelemetry.io/docs/
-- **Prometheus Docs**: https://prometheus.io/docs/
-- **Grafana Docs**: https://grafana.com/docs/
-- **Jaeger Docs**: https://www.jaegertracing.io/docs/
-- **PlayFramework Telemetry**: See `TELEMETRY.md`
+## Useful references
 
----
+- `src/AI/Rystem.PlayFramework/Telemetry/PlayFrameworkActivitySource.cs`
+- `src/AI/Rystem.PlayFramework/Telemetry/PlayFrameworkMetrics.cs`
+- `src/AI/Rystem.PlayFramework/Telemetry/TelemetrySettings.cs`
+- `src/AI/Rystem.PlayFramework/Docs/TELEMETRY.md`
+- `src/AI/Rystem.PlayFramework/observability/docker-compose.yml`
+- `src/AI/Rystem.PlayFramework/observability/prometheus/prometheus.yml`
+- `src/AI/Rystem.PlayFramework/observability/prometheus/recording-rules.yml`
+- `src/AI/Rystem.PlayFramework/observability/prometheus/alerts.yml`
+- `src/AI/Rystem.PlayFramework/observability/grafana/README.md`
 
-## 🎓 Next Steps
-
-1. ✅ Start observability stack
-2. ✅ Run your application with telemetry enabled
-3. ✅ Open Grafana and explore dashboards
-4. ✅ Simulate load and watch metrics update
-5. ✅ Search traces in Jaeger
-6. ✅ Set up alerts for production
-
-**Questions?** Check `TELEMETRY.md` for detailed telemetry documentation.
+Use this folder when you want a local Grafana + Prometheus + Jaeger stack around a PlayFramework app that you have already instrumented.

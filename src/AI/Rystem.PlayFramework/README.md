@@ -1,2041 +1,675 @@
-# 🎮 Rystem PlayFramework
+# Rystem.PlayFramework
 
-[![NuGet](https://img.shields.io/nuget/v/Rystem.PlayFramework.svg)](https://www.nuget.org/packages/Rystem.PlayFramework/)
-[![.NET](https://img.shields.io/badge/.NET-10.0-purple)](https://dotnet.microsoft.com/)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+`Rystem.PlayFramework` is the orchestration core of the AI area.
 
-> **Orchestrated AI execution framework with multi-modal support, client-side tools, and advanced planning**
+It is a named, scene-based execution framework built around `Microsoft.Extensions.AI` chat clients. You register one or more PlayFramework instances, attach scenes, actors, tools, cache, persistence, and optional voice, memory, telemetry, or rate-limit behavior, then execute them either programmatically or through HTTP SSE endpoints.
 
-Production-ready framework for building **AI-powered applications** with:
-- 🎭 **Scene-Based Architecture** - Organize AI workflows into reusable scenes
-- 🔧 **Server & Client Tools** - Execute code on server or browser/mobile
-- 🧠 **Execution Modes** - Direct, Planning, DynamicChaining, Scene
-- 📸 **Multi-Modal Content** - Images, audio, video, PDFs, URIs
-- 🔄 **Streaming** - Step-by-step or token-level SSE
-- ⚖️ **Load Balancing & Fallback** - Multi-provider reliability
-- 💰 **Cost Tracking** - Per-request budget limits
-- 🔐 **Authorization** - Policy-based access control
-- 🛡️ **Guardrails** - Prevent hallucinations and out-of-scope responses
-- 📊 **Observability** - Logging, telemetry, metrics
-- 🎙️ **Voice Pipeline** - STT → LLM → TTS with sentence-level streaming
-
----
-
-## 📦 Installation
+## Installation
 
 ```bash
 dotnet add package Rystem.PlayFramework
-dotnet add package Rystem.PlayFramework.Providers.OpenAI  # Or other providers
 ```
 
-**Supported Providers:**
-- OpenAI (GPT-4, GPT-4o, o1, o3)
-- Azure OpenAI
-- Anthropic (Claude)
-- Google (Gemini)
-- Ollama (Local models)
+For real model access you also need one or more chat-client registrations. In practice that usually means an adapter package such as:
 
----
-
-## 🚀 Quick Start
-
-### 1. Define a Scene
-
-```csharp
-public interface IWeatherService
-{
-    Task<string> GetWeatherAsync(string city);
-}
-
-public class WeatherService : IWeatherService
-{
-    public async Task<string> GetWeatherAsync(string city)
-    {
-        // Call weather API
-        return $"The weather in {city} is sunny, 24°C";
-    }
-}
+```bash
+dotnet add package Rystem.PlayFramework.Adapters
 ```
 
-### 2. Register PlayFramework
+If you want HTTP endpoints, the HTTP mapping extensions live in this package under the `Rystem.PlayFramework.Api` namespace. There is no separate `Rystem.PlayFramework.Api` library package in this repo.
+
+## Architecture
+
+The core entry points are:
+
+- `AddPlayFramework(...)`
+- `MapPlayFramework(...)`
+- `ISceneManager`
+- `IPlayFramework`
+
+The lifecycle is:
+
+1. register a named PlayFramework instance
+2. attach one or more named `IChatClient` registrations
+3. add scenes, actors, and tools
+4. optionally enable cache, repository persistence, memory, telemetry, rate limiting, and voice
+5. execute through `ISceneManager.ExecuteAsync(...)` or the HTTP API
+
+Each PlayFramework instance is factory-based. The name can be a `string` or `Enum`, and resolution happens through `IFactory<ISceneManager>` or the `IPlayFramework` wrapper.
+
+## Example: minimal HTTP backend
+
+This follows the real patterns used in `src/AI/Test/Rystem.PlayFramework.Api/Program.cs` and the factory tests.
 
 ```csharp
+using RepositoryFramework;
+using Rystem.PlayFramework;
+using Rystem.PlayFramework.Adapters;
+using Rystem.PlayFramework.Api;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Register chat client (IChatClient implementation from Microsoft.Extensions.AI)
-builder.Services.AddChatClient<OpenAIChatClient>("gpt-4o");
+builder.Services.AddMemoryCache();
 
-builder.Services.AddPlayFramework("default", pb => pb
-    // Reference the registered chat client by name
-    .WithChatClient("gpt-4o")
+builder.Services.AddAdapterForAzureOpenAI("default", settings =>
+{
+    settings.Endpoint = new Uri(builder.Configuration["AzureOpenAI:Endpoint"]!);
+    settings.ApiKey = builder.Configuration["AzureOpenAI:Key"]!;
+    settings.Deployment = builder.Configuration["AzureOpenAI:Deployment"] ?? "gpt-4o";
+});
 
-    // Add operational boundaries (prevents hallucinations)
-    .UseDefaultGuardrails()
+builder.Services.AddSingleton<ICalculatorService, CalculatorService>();
 
-    // Add scene with service tool
-    .AddScene("weather", "Get weather information", scene => scene
-        .WithService<IWeatherService>(s => s
-            .WithMethod(x => x.GetWeatherAsync(default!), "getWeather", "Get weather for a city")))
-
-    // Add cache for conversation state
-    .AddCache(cache => cache
-        .WithMemory()
-        .WithExpiration(TimeSpan.FromMinutes(30)))
-
-    // Add custom authorization layer (optional)
-    .AddAuthorizationLayer<CustomAuthorizationLayer>());
-
-// Register services
-builder.Services.AddSingleton<IWeatherService, WeatherService>();
+builder.Services.AddPlayFramework("default", framework =>
+{
+    framework
+        .WithChatClient("default")
+        .UseDefaultGuardrails()
+        .AddCache(cache =>
+        {
+            cache.WithMemory()
+                 .WithExpiration(TimeSpan.FromMinutes(30));
+        })
+        .AddMainActor("You are a helpful assistant.")
+        .AddScene("Calculator", "Arithmetic operations", scene =>
+        {
+            scene
+                .WithDescriptionFromTools()
+                .WithService<ICalculatorService>(tools =>
+                {
+                    tools
+                        .WithMethod<double>(x => x.Add(default, default), "Add", "Add two numbers")
+                        .WithMethod<double>(x => x.Multiply(default, default), "Multiply", "Multiply two numbers");
+                });
+        });
+});
 
 var app = builder.Build();
 
-// Map HTTP endpoints
-app.MapPlayFramework(settings =>
+app.MapPlayFramework("default", settings =>
 {
     settings.BasePath = "/api/ai";
-    settings.RequireAuthentication = false;
 });
 
 app.Run();
-```
 
-### 3. Test the API
-
-```bash
-curl -X POST http://localhost:5158/api/ai/default \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "What is the weather in Milan?"
-  }'
-```
-
-**Response (SSE stream):**
-```json
-{"status":"executingScene","sceneName":"weather","message":"Executing weather scene"}
-{"status":"completed","message":"The weather in Milan is sunny, 24°C","totalCost":0.0023}
-```
-
----
-
-## 🎭 Scene Definition
-
-### Scene with Multiple Tools
-
-```csharp
 public interface ICalculatorService
 {
-    double Add(double augend, double addend);
-    double Subtract(double minuend, double subtrahend);
-    double Multiply(double multiplicand, double multiplier);
-    double Divide(double dividend, double divisor);
+    double Add(double left, double right);
+    double Multiply(double left, double right);
 }
 
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-    .AddScene("calculator", "Perform arithmetic operations", scene => scene
-        .WithService<ICalculatorService>(s => s
-            .WithMethod(x => x.Add(default, default), "add", "Add two numbers")
-            .WithMethod(x => x.Subtract(default, default), "subtract", "Subtract two numbers")
-            .WithMethod(x => x.Multiply(default, default), "multiply", "Multiply two numbers")
-            .WithMethod(x => x.Divide(default, default), "divide", "Divide two numbers"))));
+public sealed class CalculatorService : ICalculatorService
+{
+    public double Add(double left, double right) => left + right;
+    public double Multiply(double left, double right) => left * right;
+}
 ```
 
-### Scene with Actors (System Prompt)
+With that setup, the main endpoints are:
 
-Scenes use **actors** to provide system prompts and context:
+```text
+POST /api/ai/default
+POST /api/ai/default/streaming
+```
+
+## Example: programmatic execution
+
+The smallest runtime API is `ISceneManager`.
 
 ```csharp
-.AddScene("assistant", "General purpose assistant", scene => scene
-    .WithActors(actors => actors
-        .AddActor("You are a helpful AI assistant. Be concise and accurate."))
-    .WithService<IAssistantService>(s => s
-        .WithMethod(x => x.Search(default!), "search", "Search for information")))
+public sealed class AssistantService
+{
+    private readonly ISceneManager _sceneManager;
+
+    public AssistantService(IFactory<ISceneManager> factory)
+        => _sceneManager = factory.Create("default");
+
+    public async Task RunAsync()
+    {
+        var metadata = new Dictionary<string, object>
+        {
+            ["userId"] = "user-42",
+            ["tenantId"] = "tenant-a"
+        };
+
+        var settings = new SceneRequestSettings
+        {
+            ExecutionMode = SceneExecutionMode.Scene,
+            SceneName = "Calculator",
+            ConversationKey = "conversation-42"
+        };
+
+        await foreach (var step in _sceneManager.ExecuteAsync("What is 12 * 7?", metadata, settings))
+        {
+            Console.WriteLine($"[{step.Status}] {step.Message}");
+        }
+    }
+}
 ```
 
-### Scene with Client-Side Tools
+If you want a lighter wrapper over the factory pattern, inject `IPlayFramework` and call:
 
-Execute tools on **browser/mobile** (camera, geolocation, file picker):
+- `Create(...)`
+- `CreateOrDefault(...)`
+- `Exists(...)`
+
+Example:
 
 ```csharp
-.AddScene("vision", "Analyze user photos", scene => scene
-    .OnClient(client => client
-        .AddTool("capturePhoto", "Take photo from camera")
-        .AddTool("getCurrentLocation", "Get GPS coordinates")
-        .AddTool("selectFiles", "Open file picker"))
-    .WithService<IVisionService>(s => s
-        .WithMethod(x => x.AnalyzeImage(default!), "analyzeImage", "Analyze an image")))
+public sealed class MultiBotService
+{
+    private readonly IPlayFramework _playFramework;
+
+    public MultiBotService(IPlayFramework playFramework)
+        => _playFramework = playFramework;
+
+    public async Task RunAsync()
+    {
+        var manager = _playFramework.Create("default");
+
+        await foreach (var step in manager.ExecuteAsync("Hello"))
+        {
+            Console.WriteLine(step.Message);
+        }
+    }
+}
 ```
 
-**Client-side implementation** (TypeScript):
-```typescript
-registry.register("capturePhoto", async () => {
-    const content = await AIContentConverter.fromCamera();
-    return [content];
+## Example: multi-modal input helpers
+
+`ISceneManager.ExecuteAsync(...)` also accepts `MultiModalInput`, and the package includes convenience constructors for common cases.
+
+```csharp
+var input = MultiModalInput.FromImageUrl(
+    text: "Describe the important details in this image.",
+    imageUrl: "https://example.com/photo.png",
+    mimeType: "image/png");
+
+await foreach (var step in sceneManager.ExecuteAsync(input))
+{
+    Console.WriteLine($"[{step.Status}] {step.Message}");
+}
+```
+
+Available helpers include:
+
+- `MultiModalInput.FromText(...)`
+- `MultiModalInput.FromImageUrl(...)`
+- `MultiModalInput.FromImageBytes(...)`
+- `MultiModalInput.FromAudioUrl(...)`
+- `MultiModalInput.FromAudioBytes(...)`
+- `MultiModalInput.FromFileUrl(...)`
+- `MultiModalInput.FromFileBytes(...)`
+
+## Example: load balancing and fallback
+
+PlayFramework can use multiple named chat clients for the same factory. The primary pool handles normal traffic, and the fallback chain is only used when the primary pool fails.
+
+This matches the patterns covered by `LoadBalancingAndFallbackTests.cs`.
+
+```csharp
+using Rystem.PlayFramework;
+using Rystem.PlayFramework.Adapters;
+
+builder.Services.AddAdapterForAzureOpenAI("primary-1", settings =>
+{
+    settings.Endpoint = new Uri(builder.Configuration["AzureOpenAI:Endpoint"]!);
+    settings.ApiKey = builder.Configuration["AzureOpenAI:Key"]!;
+    settings.Deployment = "gpt-4o";
+});
+
+builder.Services.AddAdapterForAzureOpenAI("primary-2", settings =>
+{
+    settings.Endpoint = new Uri(builder.Configuration["AzureOpenAI:Endpoint"]!);
+    settings.ApiKey = builder.Configuration["AzureOpenAI:Key"]!;
+    settings.Deployment = "gpt-4o-mini";
+});
+
+builder.Services.AddAdapterForAzureOpenAI("fallback-1", settings =>
+{
+    settings.Endpoint = new Uri(builder.Configuration["AzureOpenAI:Endpoint"]!);
+    settings.ApiKey = builder.Configuration["AzureOpenAI:Key"]!;
+    settings.Deployment = "gpt-4o-mini";
+});
+
+builder.Services.AddPlayFramework("router", framework =>
+{
+    framework
+        .WithChatClient("primary-1")
+        .WithChatClient("primary-2")
+        .WithLoadBalancingMode(LoadBalancingMode.RoundRobin)
+        .WithChatClientAsFallback("fallback-1")
+        .WithFallbackMode(FallbackMode.Sequential)
+        .WithRetryPolicy(maxAttempts: 2, baseDelaySeconds: 0.5)
+        .AddScene("General Requests", "General conversation", _ => { });
 });
 ```
 
-See [Client Interaction Guide](Docs/CLIENT_INTERACTION_ARCHITECTURE_V2.md) for details.
+Important behavior:
 
----
+- `WithChatClient(...)` adds clients to the primary pool
+- `WithChatClientAsFallback(...)` adds clients to the fallback chain
+- `WithLoadBalancingMode(...)` controls the primary pool order
+- `WithFallbackMode(...)` controls fallback ordering
+- `WithRetry(...)` and `WithRetryPolicy(...)` both configure transient retry behavior
 
-## 🎛️ Execution Modes
+## Example: scenes, actors, and service tools
 
-Control **how scenes are selected and executed**:
+Scenes are the main unit of orchestration.
 
-```csharp
-var settings = new SceneRequestSettings
-{
-    ExecutionMode = SceneExecutionMode.Planning, // Direct | Planning | DynamicChaining | Scene
-    MaxRecursionDepth = 5,
-    EnableSummarization = true
-};
+`SceneBuilder` exposes the main extension points:
 
-// Use via ISceneManager (programmatic)
-await foreach (var response in sceneManager.ExecuteAsync(
-    "Book a flight to Paris and reserve a hotel",
-    settings: settings))
-{
-    Console.WriteLine(response.Message);
-}
-```
+- `WithService<TService>(...)`
+- `WithActors(...)`
+- `WithMcpServer(...)`
+- `OnClient(...)`
+- `WithCacheExpiration(...)`
+- `WithDescriptionFromTools()`
 
-### Mode Comparison
-
-| Mode | Description | Use Case |
-|------|-------------|----------|
-| **Direct** | Single scene, no planning | Simple queries, fast responses |
-| **Planning** | Upfront multi-step plan | Known workflows (booking, checkout) |
-| **DynamicChaining** | LLM decides next step live | Exploratory tasks (research, debugging) |
-| **Scene** | Execute specific scene by name | Resuming after client interaction |
-
-### Enable Planning
+Example with service tools:
 
 ```csharp
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-    .WithPlanning(planning =>
-    {
-        planning.MaxRecursionDepth = 5;
-        planning.Enabled = true;
-    })
-    .AddScene(...));
-```
+builder.Services.AddSingleton<IWeatherService, WeatherService>();
 
-### Enable Dynamic Chaining
-
-Dynamic chaining is set per-request via `SceneRequestSettings.ExecutionMode`:
-
-```csharp
-var settings = new SceneRequestSettings
+builder.Services.AddPlayFramework("default", framework =>
 {
-    ExecutionMode = SceneExecutionMode.DynamicChaining,
-    MaxDynamicScenes = 10
-};
-```
-
----
-
-## 🔧 Multi-Modal Content
-
-### Send Images
-
-```csharp
-// Via HTTP API (PlayFrameworkRequest)
-var request = new PlayFrameworkRequest
-{
-    Message = "Describe this image",
-    Contents = new List<ContentItem>
-    {
-        new()
+    framework
+        .WithChatClient("default")
+        .AddMainActor("Answer clearly and explain tradeoffs when useful.")
+        .AddScene("Weather", "Weather queries", scene =>
         {
-            Type = "image",
-            Data = Convert.ToBase64String(imageBytes),
-            MediaType = "image/jpeg",
-            Name = "photo.jpg"
-        }
-    }
-};
+            scene
+                .WithDescriptionFromTools()
+                .WithActors(actors =>
+                {
+                    actors.AddActor("Use the available weather tools before guessing.");
+                    actors.AddActor("If the user asks for a forecast, mention the requested city explicitly.");
+                })
+                .WithService<IWeatherService>(tools =>
+                {
+                    tools
+                        .WithMethod<string>(x => x.GetCurrent(default!), "GetCurrent", "Get current weather for a city")
+                        .WithMethod<string>(x => x.GetForecast(default!, default), "GetForecast", "Get forecast for a city and number of days");
+                });
+        });
+});
 
-// Via ISceneManager (programmatic)
-var input = MultiModalInput.FromImageBytes("Describe this image", imageBytes, "image/jpeg");
-await foreach (var response in sceneManager.ExecuteAsync(input))
+public interface IWeatherService
 {
-    Console.WriteLine(response.Message);
+    string GetCurrent(string city);
+    string GetForecast(string city, int days);
 }
 ```
 
-### Send Audio
+Important naming detail: scene names are normalized when they are registered. For example, `AddScene("General Requests", ...)` becomes `General_Requests` internally. If you later set `SceneRequestSettings.SceneName`, use the normalized name.
+
+## Example: client tools and continuation
+
+`OnClient(...)` is how a scene asks the browser or mobile client to execute something locally, then resume the conversation.
+
+This is the same pattern exercised in `ClientInteractionTests.cs` and in the TypeScript client workspace.
 
 ```csharp
-new ContentItem
+builder.Services.AddMemoryCache();
+
+builder.Services.AddPlayFramework("default", framework =>
 {
-    Type = "audio",
-    Data = Convert.ToBase64String(audioBytes),
-    MediaType = "audio/mp3",
-    Name = "recording.mp3"
-}
+    framework
+        .WithChatClient("default")
+        .AddCache(cache =>
+        {
+            cache.WithMemory()
+                 .WithExpiration(TimeSpan.FromMinutes(10));
+        })
+        .AddScene("Browser Assistant", "Needs browser-side tools", scene =>
+        {
+            scene
+                .WithActors(actors =>
+                {
+                    actors.AddActor("When the user asks for the current location, call the client tool.");
+                })
+                .OnClient(client =>
+                {
+                    client
+                        .AddTool("getCurrentLocation", "Get the user's current location", timeoutSeconds: 15)
+                        .AddCommand("trackAnalytics", "Track a browser-side analytics event", feedbackMode: CommandFeedbackMode.OnError, timeoutSeconds: 5);
+                })
+                .WithCacheExpiration(TimeSpan.FromMinutes(5));
+        });
+});
 ```
 
-### Send PDFs via URI
+Important behavior:
+
+- `OnClient(...)` marks the scene as cache-dependent
+- continuation state is stored between the server request and the client response
+- the HTTP or TypeScript client is expected to send `conversationKey` plus `clientInteractionResults` when resuming
+- the published TypeScript client in `src/AI/Rystem.PlayFramework.Client/src/rystem` already automates most of this flow
+
+## Execution modes
+
+The runtime supports four execution modes:
+
+- `Direct`
+- `Planning`
+- `DynamicChaining`
+- `Scene`
+
+You can set a default at registration time:
 
 ```csharp
-new ContentItem
+builder.Services.AddPlayFramework("default", framework =>
 {
-    Type = "uri",
-    Uri = "https://example.com/document.pdf",
-    MediaType = "application/pdf"
-}
+    framework
+        .WithChatClient("default")
+        .WithExecutionMode(SceneExecutionMode.Planning)
+        .WithPlanning(settings =>
+        {
+            settings.MaxRecursionDepth = 5;
+        })
+        .AddScene("Calculator", "Arithmetic operations", _ => { })
+        .AddScene("Weather", "Weather queries", _ => { });
+});
 ```
 
----
-
-## ⚙️ Configuration & Settings
-
-### Global Settings
-
-```csharp
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-
-    // Planning
-    .WithPlanning(planning =>
-    {
-        planning.Enabled = true;
-        planning.MaxRecursionDepth = 5;
-    })
-
-    // Summarization
-    .WithSummarization(summarization =>
-    {
-        summarization.Enabled = true;
-        summarization.CharacterThreshold = 15_000;    // Summarize after 15K characters
-        summarization.ResponseCountThreshold = 20;    // Or after 20 responses
-    })
-
-    // Director (multi-scene orchestration)
-    .WithDirector(director =>
-    {
-        director.Enabled = true;
-        director.MaxReExecutions = 3;
-    })
-
-    // Cache (for conversation state)
-    .AddCache(cache => cache
-        .WithMemory()                                 // In-memory cache
-        .WithExpiration(TimeSpan.FromMinutes(30)))
-
-    // Rate Limiting
-    .WithRateLimit(rateLimit => rateLimit
-        .TokenBucket(capacity: 10000, refillRate: 1000)
-        .GroupBy("userId")
-        .WaitOnExceeded(TimeSpan.FromSeconds(30)))
-
-    // Cost Tracking
-    .WithCostTracking("USD", inputCostPer1K: 0.01m, outputCostPer1K: 0.03m)
-
-    // Guardrails (operational boundaries)
-    .UseDefaultGuardrails());  // Prevents hallucinations and out-of-scope responses
-    // OR: .UseCustomGuardrails("You must only answer questions about...");
-```
-
-### Per-Request Settings
+Or override per request:
 
 ```csharp
 var settings = new SceneRequestSettings
 {
-    // Execution mode
-    ExecutionMode = SceneExecutionMode.Planning,
-
-    // Planning
-    MaxRecursionDepth = 5,
-    MaxDynamicScenes = 10,
-
-    // Features
-    EnableSummarization = true,
-    EnableDirector = false,
-    EnableStreaming = true,
-
-    // Model overrides
-    ModelId = "gpt-4o",
-    Temperature = 0.7f,
-    MaxTokens = 4096,
-
-    // Caching
-    CacheBehavior = CacheBehavior.Default,
-    ConversationKey = "user-123-session-1",
-
-    // Budget
-    MaxBudget = 0.50m, // $0.50 max cost
-
-    // Scene selection
-    SceneName = "SpecificScene" // For SceneExecutionMode.Scene
+    ExecutionMode = SceneExecutionMode.Scene,
+    SceneName = "Calculator"
 };
 
-// Via HTTP API (PlayFrameworkRequest)
-var request = new PlayFrameworkRequest
+await foreach (var step in sceneManager.ExecuteAsync("5 * 7", settings: settings))
 {
-    Message = "Your query",
-    Settings = settings,
-    Metadata = new Dictionary<string, object>
-    {
-        { "userId", "user-123" },
-        { "sessionId", "session-abc" }
-    }
+}
+```
+
+Use `SceneExecutionMode.Scene` when you already know the target scene and want to bypass scene selection.
+
+## Example: memory across requests
+
+Memory is separate from conversation persistence. It is about loading and saving summarized context across calls.
+
+This matches the patterns used in `MemoryTests.cs`.
+
+```csharp
+builder.Services.AddPlayFramework("default", framework =>
+{
+    framework
+        .WithChatClient("default")
+        .WithMemory(memory => memory
+            .WithDefaultMemoryStorage("userId")
+            .WithMaxSummaryLength(1000))
+        .AddScene("Assistant", "General conversation", _ => { });
+});
+```
+
+Then pass matching metadata when executing:
+
+```csharp
+var metadata = new Dictionary<string, object>
+{
+    ["userId"] = "user-42"
 };
 
-// Via ISceneManager (programmatic)
-await foreach (var response in sceneManager.ExecuteAsync(
-    "Your query",
-    metadata: new Dictionary<string, object> { { "userId", "user-123" } },
-    settings: settings))
+var settings = new SceneRequestSettings
 {
-    Console.WriteLine(response.Message);
+    ExecutionMode = SceneExecutionMode.Direct,
+    ConversationKey = "conversation-42"
+};
+
+await foreach (var _ in sceneManager.ExecuteAsync("My name is Alessandro", metadata, settings))
+{
+}
+
+await foreach (var _ in sceneManager.ExecuteAsync("What is my name?", metadata, settings))
+{
 }
 ```
 
----
+Important behavior:
 
-## 🔄 Conversation State & Caching
+- `WithDefaultMemoryStorage("userId")` isolates memory by metadata key
+- `WithDefaultMemoryStorage("userId", "tenantId")` creates a composite key
+- without `WithMemory(...)`, no memory is loaded or saved
 
-Use `conversationKey` for **multi-turn conversations**:
+## Example: rate limiting by metadata
+
+Rate limiting is also metadata-driven. The test coverage shows the intended usage clearly.
 
 ```csharp
-var conversationKey = Guid.NewGuid().ToString();
-var settings = new SceneRequestSettings { ConversationKey = conversationKey };
-
-// First request
-await foreach (var response in sceneManager.ExecuteAsync(
-    "What's the weather in Paris?", settings: settings))
+builder.Services.AddPlayFramework("default", framework =>
 {
-    Console.WriteLine(response.Message);
-}
+    framework
+        .WithChatClient("default")
+        .WithRateLimit(limit => limit
+            .GroupBy("userId")
+            .TokenBucket(capacity: 3, refillRate: 1)
+            .RejectOnExceeded())
+        .AddScene("Assistant", "General conversation", _ => { });
+});
+```
 
-// Follow-up request (uses cached context)
-await foreach (var response in sceneManager.ExecuteAsync(
-    "And in London?", settings: settings))
+And the request metadata drives the grouping key:
+
+```csharp
+var metadata = new Dictionary<string, object>
 {
-    Console.WriteLine(response.Message);
-}
-// LLM remembers Paris context!
-```
+    ["userId"] = "user-42"
+};
 
-### Cache Configuration
-
-**In-Memory** (single-server):
-```csharp
-.AddCache(cache => cache
-    .WithMemory()
-    .WithExpiration(TimeSpan.FromMinutes(30)))
-```
-
-**Distributed** (IDistributedCache — Redis, SQL Server, etc.):
-```csharp
-// First register IDistributedCache in DI
-builder.Services.AddStackExchangeRedisCache(options =>
-    options.Configuration = "localhost:6379");
-
-// Then use distributed cache
-.AddCache(cache => cache
-    .WithDistributed()
-    .WithExpiration(TimeSpan.FromMinutes(60)))
-```
-
-**Custom cache** implementation:
-```csharp
-.AddCache(cache => cache
-    .WithCustomCache<MyCustomCache>()
-    .WithExpiration(TimeSpan.FromMinutes(30)))
-```
-
----
-
-## 💾 Conversation Persistence (Repository Pattern)
-
-PlayFramework supports **persistent storage** of conversations using **Rystem Repository Pattern**. This enables:
-- ✅ **Multi-user** conversation history
-- ✅ **Public/Private** conversations
-- ✅ **Search & filtering** across conversations
-- ✅ **Authorization** checks (owner-only access)
-- ✅ **REST API** for conversation management
-
-### Enable Repository Persistence
-
-```csharp
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-    .AddScene(...)
-
-    // Enable caching (required for Repository to work)
-    .AddCache(cache => cache
-        .WithMemory()
-        .WithExpiration(TimeSpan.FromMinutes(30)))
-
-    // Enable repository persistence
-    .UseRepository());
-```
-
-### StoredConversation Model
-
-```csharp
-public sealed class StoredConversation
+await foreach (var step in sceneManager.ExecuteAsync("Hello", metadata))
 {
-    public required string ConversationKey { get; init; }  // Unique ID (primary key)
-    public string? UserId { get; init; }                   // Owner (from IAuthorizationLayer)
-    public bool IsPublic { get; set; }                     // Public vs Private
-    public DateTime Timestamp { get; init; }               // Created/Updated
-    public required List<StoredMessage> Messages { get; init; } // Conversation history
-    public ExecutionState? ExecutionState { get; init; }    // Planning/Director state
+    Console.WriteLine($"[{step.Status}] {step.Message}");
 }
 ```
 
-### Conversation Authorization
+If you prefer waiting instead of immediate rejection:
 
-Conversations are **automatically saved** with:
-- **UserId** from `IAuthorizationLayer.AuthorizeAsync()` or `settings.UserId`
-- **IsPublic** flag (default: `false`)
-
-**Private conversations** require userId match when loading from repository:
 ```csharp
-// In SceneManager
-if (!storedConversation.IsPublic && storedConversation.UserId != currentUserId)
+builder.Services.AddPlayFramework("default", framework =>
 {
-    return AiSceneResponse.Unauthorized("Access denied to private conversation");
-}
+    framework
+        .WithChatClient("default")
+        .WithRateLimit(limit => limit
+            .GroupBy("userId")
+            .TokenBucket(capacity: 1, refillRate: 10)
+            .WaitOnExceeded(TimeSpan.FromSeconds(5)))
+        .AddScene("Assistant", "General conversation", _ => { });
+});
 ```
 
-### REST API Endpoints
+## HTTP API
 
-Enable conversation management endpoints:
+`MapPlayFramework(...)` maps SSE-oriented endpoints.
+
+### Named mapping
 
 ```csharp
 app.MapPlayFramework("default", settings =>
 {
     settings.BasePath = "/api/ai";
-    settings.EnableConversationEndpoints = true;  // Enable CRUD endpoints
-    settings.MaxConversationsPageSize = 100;      // Max results per query
-});
-```
-
-**Available endpoints:**
-
-#### List Conversations
-**GET** `/api/ai/default/conversations`
-
-Query parameters:
-- `searchText` - Filter by message content
-- `includePublic` - Include public conversations (default: `true`)
-- `includePrivate` - Include private conversations (default: `true`)
-- `orderBy` - Sort order: `TimestampDescending` | `TimestampAscending` (default: `TimestampDescending`)
-- `skip` - Pagination offset (default: `0`)
-- `take` - Page size (default: `50`, max: `MaxConversationsPageSize`)
-
-**Example:**
-```bash
-curl "http://localhost:5158/api/ai/default/conversations?searchText=weather&orderBy=TimestampDescending&take=20"
-```
-
-**Response:**
-```json
-[
-  {
-    "conversationKey": "abc-123",
-    "userId": "user@example.com",
-    "isPublic": false,
-    "timestamp": "2025-01-15T10:30:00Z",
-    "messages": [...],
-    "executionState": {...}
-  }
-]
-```
-
-#### Get Conversation
-**GET** `/api/ai/default/conversations/{conversationKey}`
-
-Returns single conversation. **Authorization check**: private conversations require userId match.
-
-**Response:**
-- `200 OK` - Conversation found and authorized
-- `403 Forbidden` - Private conversation, unauthorized
-- `404 Not Found` - Conversation not found
-
-#### Delete Conversation
-**DELETE** `/api/ai/default/conversations/{conversationKey}`
-
-**Owner-only** operation. Requires userId match.
-
-**Response:**
-- `204 No Content` - Successfully deleted
-- `403 Forbidden` - Not the owner
-- `404 Not Found` - Conversation not found
-
-#### Update Visibility
-**PATCH** `/api/ai/default/conversations/{conversationKey}/visibility`
-
-**Request:**
-```json
-{
-  "isPublic": true
-}
-```
-
-Toggles conversation between public/private. **Owner-only** operation.
-
-**Response:**
-- `200 OK` - Returns updated conversation
-- `403 Forbidden` - Not the owner
-- `404 Not Found` - Conversation not found
-
-### Custom Query Example
-
-Use Rystem Repository to build custom queries:
-
-```csharp
-var repository = repositoryFactory.Create("default");
-
-// Find conversations for specific user
-var userConversations = await repository
-    .Where(x => x.UserId == "user@example.com")
-    .OrderByDescending(x => x.Timestamp)
-    .Take(50)
-    .ToListAsEntityAsync();
-
-// Search by message content
-var searchResults = await repository
-    .Where(x => x.Messages.Any(m => m.Text.Contains("weather")))
-    .ToListAsEntityAsync();
-
-// Public conversations only
-var publicConversations = await repository
-    .Where(x => x.IsPublic)
-    .OrderByDescending(x => x.Timestamp)
-    .ToListAsEntityAsync();
-```
-
-### Storage Backends
-
-PlayFramework uses `.UseRepository()` (parameterless) to enable persistence. The underlying repository storage is configured separately using Rystem Repository Framework's standard `IServiceCollection` extensions:
-
-```csharp
-// 1. Enable repository in PlayFramework
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-    .AddScene(...)
-    .AddCache(cache => cache.WithMemory())
-    .UseRepository());
-
-// 2. Configure storage backend via Rystem Repository Framework
-// Entity Framework Core:
-builder.Services.AddRepository<StoredConversation, string>(repo =>
-    repo.WithEntityFramework<AppDbContext>());
-
-// Or Cosmos DB:
-builder.Services.AddRepository<StoredConversation, string>(repo =>
-    repo.WithCosmosDb("connection-string", "database", "container"));
-
-// Or In-Memory (testing):
-builder.Services.AddRepository<StoredConversation, string>(repo =>
-    repo.WithInMemory());
-```
-
-### Multi-Tenant Scenarios
-
-Use **Factory Pattern** for tenant-specific repositories:
-
-```csharp
-// Register multiple factories
-builder.Services.AddPlayFramework("tenant-a", pb => pb
-    .WithChatClient("gpt-4o")
-    .UseRepository());
-
-builder.Services.AddPlayFramework("tenant-b", pb => pb
-    .WithChatClient("gpt-4o")
-    .UseRepository());
-
-// Map separate endpoints
-app.MapPlayFramework("tenant-a", settings =>
-{
-    settings.BasePath = "/api/ai";
     settings.EnableConversationEndpoints = true;
-});
-
-app.MapPlayFramework("tenant-b", settings =>
-{
-    settings.BasePath = "/api/ai";
-    settings.EnableConversationEndpoints = true;
+    settings.EnableVoiceEndpoints = true;
 });
 ```
 
-**Endpoints:**
-- `/api/ai/tenant-a` - Chat for Tenant A
-- `/api/ai/tenant-a/conversations` - Conversations for Tenant A
-- `/api/ai/tenant-b` - Chat for Tenant B
-- `/api/ai/tenant-b/conversations` - Conversations for Tenant B
+Routes:
 
----
+- `POST /api/ai/default`
+- `POST /api/ai/default/streaming`
+- `GET /api/ai/default/conversations`
+- `GET /api/ai/default/conversations/{conversationKey}`
+- `DELETE /api/ai/default/conversations/{conversationKey}`
+- `PATCH /api/ai/default/conversations/{conversationKey}/visibility`
+- `POST /api/ai/default/voice`
 
-## 📸 Multi-Modal Content (Images, Audio, Video, PDFs)
+### Example request body
 
-PlayFramework supports **base64-encoded media content** in messages. To optimize performance and reduce payload size, the `includeContents` parameter controls whether to include or exclude media when fetching conversations.
+The HTTP request model is `PlayFrameworkRequest`:
 
-### Overview
-
-**StoredMessage** model supports multi-modal content:
-```csharp
-public class StoredMessage
-{
-    public string Role { get; set; }       // user | assistant | system | tool
-    public string? Text { get; set; }      // Text content
-    public List<AIContent>? Contents { get; set; } // Multi-modal attachments
-}
-
-public class AIContent
-{
-    public string Type { get; set; }       // "text" | "data"
-    public string? Text { get; set; }      // For type="text"
-    public string? Data { get; set; }      // Base64 encoded (for type="data")
-    public string? MediaType { get; set; } // MIME type: image/jpeg, audio/mp3, application/pdf
-}
-```
-
-### includeContents Parameter
-
-By default, `Contents` are **excluded** from list operations to reduce bandwidth and improve performance. Use `includeContents=true` when you need to display media.
-
-#### REST API Examples
-
-**List conversations WITHOUT media (faster, smaller payload):**
-```bash
-GET /api/ai/default/conversations?includeContents=false&take=50
-```
-
-**Get single conversation WITH media (for display):**
-```bash
-GET /api/ai/default/conversations/abc-123?includeContents=true
-```
-
-**Response without contents:**
 ```json
 {
-  "conversationKey": "abc-123",
-  "userId": "user@example.com",
-  "isPublic": false,
-  "timestamp": "2025-01-15T10:30:00Z",
-  "messages": [
-    {
-      "role": "user",
-      "text": "Analyze this image",
-      "contents": null  // ← Excluded to reduce payload
-    }
-  ]
-}
-```
-
-**Response with contents:**
-```json
-{
-  "conversationKey": "abc-123",
-  "messages": [
-    {
-      "role": "user",
-      "text": "Analyze this image",
-      "contents": [
-        {
-          "type": "data",
-          "data": "iVBORw0KGgoAAAANSUhEUgAA...",  // ← Base64 image
-          "mediaType": "image/jpeg"
-        }
-      ]
-    },
-    {
-      "role": "assistant",
-      "text": "The image shows a sunset over mountains.",
-      "contents": null
-    }
-  ]
-}
-```
-
-### Storage Optimization with Repository Framework
-
-PlayFramework uses **Repository Framework metadata** to control content inclusion:
-
-```csharp
-var result = await queryBuilder
-    .Skip(parameters.Skip)
-    .Take(pageSize)
-    .AddMetadata(nameof(parameters.IncludeContents), parameters.IncludeContents.ToString())
-    .ToListAsEntityAsync();
-```
-
-**Backend automatically excludes Contents** when `includeContents=false`:
-```csharp
-if (!includeContents)
-{
-    foreach (var message in conversation.Messages)
-    {
-        message.Contents = null;  // Reduce JSON payload size
-    }
-}
-```
-
-### When to Use includeContents
-
-| Operation | includeContents | Reason |
-|-----------|----------------|--------|
-| **List conversations** | `false` (default) | Faster, smaller payload - only need titles/previews |
-| **Load single conversation for display** | `true` | Need to render images/PDFs/audio in UI |
-| **Search conversations** | `false` | Only searching text content |
-| **Export conversation** | `true` | Full conversation with attachments |
-
-### Performance Impact
-
-**Without contents** (includeContents=false):
-- ✅ 100 conversations ≈ **50 KB** payload
-- ✅ Query time: **~50ms**
-
-**With contents** (includeContents=true):
-- ⚠️ 100 conversations ≈ **5-50 MB** payload (depending on images/PDFs)
-- ⚠️ Query time: **~500ms**
-
-**Best Practice**: Always use `includeContents=false` for list operations, `true` only when loading a single conversation for display.
-
-### Frontend Integration
-
-For TypeScript/React clients, see [PlayFramework TypeScript Client README](../Rystem.PlayFramework.Client/src/rystem/README.md) for:
-- `ContentUrlConverter` helper (Base64 → Blob URL conversion)
-- React viewer components (ImageViewer, AudioPlayer, VideoPlayer, PDFViewer)
-- Memory management best practices
-
----
-
-### Authorization Best Practices
-
-1. **HTTP Policies** - Validate JWT tokens, require authentication
-2. **IAuthorizationLayer** - Extract `userId` for ownership
-3. **Repository Checks** - Prevent cross-user access to private conversations
-
-**Example flow:**
-```csharp
-public class CustomAuthorizationLayer : IAuthorizationLayer
-{
-    public async Task<AuthorizationResult> AuthorizeAsync(
-        SceneContext context,
-        SceneRequestSettings settings,
-        CancellationToken cancellationToken)
-    {
-        // Extract userId from JWT claims (set by HTTP middleware)
-        if (!context.Metadata.TryGetValue("userId", out var userId))
-        {
-            return new AuthorizationResult
-            {
-                IsAuthorized = false,
-                Reason = "User ID not found"
-            };
-        }
-
-        // Return userId for conversation ownership
-        return new AuthorizationResult
-        {
-            IsAuthorized = true,
-            UserId = userId.ToString()
-        };
-    }
-}
-```
-
-**Middleware to extract userId:**
-```csharp
-app.Use(async (context, next) =>
-{
-    if (context.User.Identity?.IsAuthenticated == true)
-    {
-        var userId = context.User.Identity.Name;
-        // Will be available in PlayFramework via context.Metadata["userId"]
-    }
-    await next();
-});
-```
-
-See [Repository Pattern Documentation](https://rystem.net/mcp/tools/repository-setup.md) for more storage options.
-
----
-
-## 🎙️ Voice Pipeline (STT → LLM → TTS)
-
-PlayFramework includes a built-in **voice pipeline** that orchestrates the full audio flow:
-
-1. **Speech-to-Text (STT)** — Transcribe user audio (e.g., OpenAI Whisper)
-2. **LLM Execution** — Send transcription through PlayFramework's scene engine with streaming
-3. **Sentence Accumulation** — Buffer streaming tokens into natural sentences
-4. **Text-to-Speech (TTS)** — Synthesize each sentence and stream audio chunks back
-
-The pipeline automatically detects the user's spoken language and instructs the LLM to respond in the same language.
-
-### 1. Register the Voice Adapter
-
-You need an `IVoiceAdapter` implementation. The **Rystem.PlayFramework.Adapters** package provides one for Azure OpenAI (Whisper + TTS-1):
-
-```bash
-dotnet add package Rystem.PlayFramework.Adapters
-```
-
-```csharp
-// Register voice adapter (Whisper for STT, TTS-1 for speech synthesis)
-builder.Services.AddVoiceAdapterForAzureOpenAI("default", voice =>
-{
-    voice.Endpoint = new Uri("https://YOUR-RESOURCE.openai.azure.com/");
-    voice.ApiKey = "YOUR-API-KEY";
-    voice.SttDeployment = "whisper";   // Whisper model deployment
-    voice.TtsDeployment = "tts-1";     // TTS model deployment
-    voice.TtsVoice = "alloy";          // alloy, echo, fable, onyx, nova, shimmer
-    voice.TtsOutputFormat = "mp3";     // mp3, opus, aac, flac, wav, pcm
-    voice.TtsSpeed = 1.0f;             // 0.25 to 4.0
-});
-```
-
-### 2. Enable Voice in PlayFramework Builder
-
-```csharp
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-
-    // Enable voice pipeline
-    .WithVoice("default")  // factory name of the IVoiceAdapter
-
-    // Optional: customize voice settings
-    // .WithVoice("default", voice =>
-    // {
-    //     voice.SentenceDelimiters = ".!?\n";
-    //     voice.MinCharsBeforeTts = 20;
-    //     voice.MaxCharsBeforeTts = 500;
-    //     voice.LanguageInstruction = "IMPORTANT: You must respond in {language}.";
-    // })
-
-    .AddScene("chat", "General conversation", scene => { }));
-```
-
-### 3. Map Voice Endpoint
-
-The voice endpoint is automatically mapped when `EnableVoiceEndpoints` is true (default):
-
-```csharp
-app.MapPlayFramework(settings =>
-{
-    settings.BasePath = "/api/ai";
-    settings.EnableVoiceEndpoints = true; // default
-});
-```
-
-This creates a `POST /api/ai/{factoryName}/voice` endpoint that accepts `multipart/form-data` with:
-
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `audio` | file | ✅ | Audio file (MP3, WAV, OGG, FLAC, M4A, WEBM) |
-| `conversationKey` | string | ❌ | Conversation key for context |
-| `metadata` | JSON string | ❌ | Custom metadata |
-
-### 4. Response Format (SSE)
-
-The endpoint streams Server-Sent Events with different event types:
-
-```json
-// 1. Transcription result
-data: { "type": "transcription", "text": "What's the weather?" }
-
-// 2. Scene events (tool calls, status updates)
-data: { "type": "scene", "status": "executingScene", "message": "Checking weather..." }
-
-// 3. Audio chunks (base64-encoded audio for each sentence)
-data: { "type": "audio", "text": "The weather in Rome is sunny.", "audio": "//uQxAA..." }
-
-// 4. Completion
-data: { "type": "completed" }
-```
-
-### VoiceSettings Reference
-
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `SentenceDelimiters` | `string` | `".!?\n"` | Characters that trigger TTS for accumulated text |
-| `MinCharsBeforeTts` | `int` | `20` | Min chars before sending a sentence to TTS |
-| `MaxCharsBeforeTts` | `int` | `500` | Max chars before forcing a TTS chunk |
-| `LanguageInstruction` | `string?` | `"IMPORTANT: You must respond in {language}."` | System instruction template; `{language}` is replaced with STT-detected language |
-| `VoiceStyleInstruction` | `string?` | *(built-in conversational prompt)* | System instruction injected when voice mode is active. Tells the LLM to respond conversationally (no tables, no markdown). Set to `null` to disable |
-
-### Voice-Style Responses (`IsVoiceMode`)
-
-When voice mode is active, PlayFramework automatically injects a **voice-style system instruction** that tells the LLM to:
-
-- Respond in a natural, conversational tone
-- Avoid tables, lists, markdown, and special characters
-- Use discourse markers and natural connectors
-- Keep responses concise (~30 seconds spoken)
-- Still provide structured output if explicitly requested by the user
-
-This is triggered automatically by:
-- **Server voice** (`VoicePipeline`) — sets `IsVoiceMode = true` internally
-- **Browser voice** (client sends `isVoiceMode: true` in the request settings)
-
-The instruction text is fully customizable:
-
-```csharp
-frameworkBuilder.WithVoice("default", voice =>
-{
-    // Custom voice style instruction
-    voice.VoiceStyleInstruction = "Respond as if you are a radio presenter. Be energetic and concise.";
-
-    // Or disable it entirely
-    // voice.VoiceStyleInstruction = null;
-});
-```
-
-Clients can also opt out per-request by sending `isVoiceMode: false` in the settings (the TypeScript client exposes this as `useVoiceStyle: false`).
-
-### Implementing a Custom Voice Adapter
-
-You can implement `IVoiceAdapter` for any STT/TTS provider:
-
-```csharp
-public class MyVoiceAdapter : IVoiceAdapter
-{
-    public async Task<TranscriptionResult> TranscribeAsync(
-        ReadOnlyMemory<byte> audioData,
-        string? fileName = null,
-        CancellationToken cancellationToken = default)
-    {
-        // Your STT logic here
-        var text = await MySTTService.TranscribeAsync(audioData);
-        var language = "english"; // detected language
-        return new TranscriptionResult(text, language);
-    }
-
-    public async Task<ReadOnlyMemory<byte>> SynthesizeAsync(
-        string text,
-        CancellationToken cancellationToken = default)
-    {
-        // Your TTS logic here
-        return await MyTTSService.SynthesizeAsync(text);
-    }
-}
-
-// Register
-services.AddFactory<IVoiceAdapter>(
-    (sp, _) => new MyVoiceAdapter(),
-    "my-voice",
-    ServiceLifetime.Singleton);
-
-// Use
-frameworkBuilder.WithVoice("my-voice");
-```
-
-### Client-Side Voice Alternative
-
-For zero-latency client-side voice using the browser's Web Speech API (no server-side Whisper/TTS needed), see the [TypeScript client voice documentation](https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework.Client/src/rystem#%EF%B8%8F-browser-voice-web-speech-api).
-
----
-
-## ⚖️ Load Balancing & Fallback
-
-Use **multiple LLM providers** for reliability.
-
-**Step 1:** Register chat clients in DI:
-```csharp
-// Register IChatClient implementations
-builder.Services.AddChatClient<OpenAIPrimaryChatClient>("openai-primary");
-builder.Services.AddChatClient<OpenAISecondaryChatClient>("openai-secondary");
-builder.Services.AddChatClient<AzureBackupChatClient>("azure-backup");
-builder.Services.AddChatClient<ClaudeFallbackChatClient>("claude-fallback");
-```
-
-**Step 2:** Configure in PlayFramework builder:
-```csharp
-builder.Services.AddPlayFramework("default", pb => pb
-    // Primary pool (load-balanced)
-    .WithChatClient("openai-primary")
-    .WithChatClient("openai-secondary")
-    .WithChatClient("azure-backup")
-    .WithLoadBalancingMode(LoadBalancingMode.RoundRobin) // None | Sequential | RoundRobin | Random
-
-    // Fallback chain (if primary pool fails)
-    .WithChatClientAsFallback("claude-fallback")
-    .WithFallbackMode(FallbackMode.Sequential)           // Sequential | RoundRobin | Random
-
-    // Retry policy
-    .WithRetryPolicy(maxAttempts: 3, baseDelaySeconds: 1.0)
-
-    .AddScene(...));
-```
-
----
-
-## 🚫 Rate Limiting
-
-**Token Bucket** strategy (recommended):
-
-```csharp
-.WithRateLimit(rateLimit => rateLimit
-    .TokenBucket(capacity: 10000, refillRate: 1000)   // 10K capacity, refill 1K/interval
-    .GroupBy("userId")                                 // Per-user rate limiting
-    .WaitOnExceeded(TimeSpan.FromSeconds(30)))          // Wait up to 30s when rate exceeded
-```
-
-**Sliding Window:**
-```csharp
-.WithRateLimit(rateLimit => rateLimit
-    .SlidingWindow(maxRequests: 60, interval: TimeSpan.FromMinutes(1))
-    .RejectOnExceeded())                                // Reject immediately
-```
-
-**Fixed Window:**
-```csharp
-.WithRateLimit(rateLimit => rateLimit
-    .FixedWindow(maxRequests: 100, interval: TimeSpan.FromHours(1)))
-```
-
-**Concurrent:**
-```csharp
-.WithRateLimit(rateLimit => rateLimit
-    .Concurrent(maxConcurrent: 5))                      // Max 5 concurrent requests
-```
-
----
-
-## 📊 Observability
-
-### Logging
-
-```csharp
-builder.Services.AddLogging(logging =>
-{
-    logging.AddConsole();
-    logging.AddApplicationInsights();
-    logging.SetMinimumLevel(LogLevel.Information);
-});
-```
-
-**Log Output:**
-```
-[13:45:23 INF] 🎯 Trying LoadBalanced client: openai-primary (Attempt 1/3)
-[13:45:24 INF] ✅ LoadBalanced client openai-primary succeeded (Tokens: 150→89, Cost: $0.0023)
-[13:45:24 INF] ⚙️ Executing tool: GetWeatherAsync (City: Milan)
-[13:45:24 INF] ✅ Scene 'weather' completed (Cost: $0.0023, Tokens: 239)
-```
-
-### Telemetry
-
-```csharp
-builder.Services.AddOpenTelemetry()
-    .WithMetrics(metrics => metrics
-        .AddMeter("Rystem.PlayFramework"))
-    .WithTracing(tracing => tracing
-        .AddSource("Rystem.PlayFramework"));
-```
-
-**Metrics:**
-- `playframework.request.duration`
-- `playframework.request.cost`
-- `playframework.request.tokens`
-- `playframework.scene.executions`
-
----
-
-## 🔐 Authorization
-
-PlayFramework supports **two levels of authorization**:
-
-1. **HTTP Endpoint Authorization** - ASP.NET Core policies (token validation, claims, roles)
-2. **Business Logic Authorization** - Custom `IAuthorizationLayer` (user permissions, quotas, feature flags)
-
-### HTTP Endpoint Authorization (ASP.NET Core Policies)
-
-Apply standard ASP.NET Core authorization at the **HTTP endpoint level**:
-
-```csharp
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("Authenticated", policy => 
-        policy.RequireAuthenticatedUser());
-
-    options.AddPolicy("PlayFrameworkAccess", policy =>
-        policy.RequireClaim("feature", "ai"));
-
-    options.AddPolicy("PremiumUser", policy =>
-        policy.RequireClaim("subscription", "premium"));
-});
-
-app.MapPlayFramework(settings =>
-{
-    settings.BasePath = "/api/ai";
-    settings.RequireAuthentication = true;
-    settings.AuthorizationPolicies = new List<string>
-    {
-        "Authenticated",
-        "PlayFrameworkAccess"
-    };
-});
-```
-
-**When to use**: Token validation, JWT claims, role-based access, rate limiting policies.
-
----
-
-### Business Logic Authorization (IAuthorizationLayer)
-
-Implement **custom authorization logic** that runs **after initialization** but **before scene execution**:
-
-```csharp
-public class CustomAuthorizationLayer : IAuthorizationLayer
-{
-    private readonly IUserService _userService;
-    private readonly ILogger<CustomAuthorizationLayer> _logger;
-
-    public CustomAuthorizationLayer(
-        IUserService userService,
-        ILogger<CustomAuthorizationLayer> logger)
-    {
-        _userService = userService;
-        _logger = logger;
-    }
-
-    public async Task<AuthorizationResult> AuthorizeAsync(
-        SceneContext context,
-        SceneRequestSettings settings,
-        CancellationToken cancellationToken)
-    {
-        // Extract userId from metadata
-        if (!context.Metadata.TryGetValue("userId", out var userIdObj) || userIdObj is not string userId)
-        {
-            return new AuthorizationResult
-            {
-                IsAuthorized = false,
-                Reason = "User ID not found in request metadata"
-            };
-        }
-
-        // Check user quota
-        var user = await _userService.GetUserAsync(userId, cancellationToken);
-        if (user.MonthlyQuota <= 0)
-        {
-            _logger.LogWarning("User {UserId} exceeded monthly quota", userId);
-            return new AuthorizationResult
-            {
-                IsAuthorized = false,
-                Reason = $"Monthly quota exceeded. Resets on {user.QuotaResetDate:yyyy-MM-dd}"
-            };
-        }
-
-        // Check feature flag for specific scene
-        if (settings.SceneName == "PremiumScene" && !user.HasFeature("premium-scenes"))
-        {
-            return new AuthorizationResult
-            {
-                IsAuthorized = false,
-                Reason = "Premium subscription required for this feature"
-            };
-        }
-
-        // Check budget limits
-        if (settings.MaxBudget.HasValue && settings.MaxBudget.Value > user.MaxBudgetPerRequest)
-        {
-            return new AuthorizationResult
-            {
-                IsAuthorized = false,
-                Reason = $"Requested budget ${settings.MaxBudget.Value} exceeds user limit ${user.MaxBudgetPerRequest}"
-            };
-        }
-
-        // All checks passed
-        _logger.LogInformation("User {UserId} authorized (Quota: {Quota}, Features: {Features})",
-            userId, user.MonthlyQuota, string.Join(", ", user.Features));
-
-        return new AuthorizationResult
-        {
-            IsAuthorized = true
-        };
-    }
-}
-```
-
-**Register in PlayFramework:**
-```csharp
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-    .AddScene(...)
-    .AddAuthorizationLayer<CustomAuthorizationLayer>());
-
-// Register dependencies
-builder.Services.AddSingleton<IUserService, UserService>();
-```
-
-**Response when authorization fails:**
-```json
-{
-  "status": "error",
-  "errorMessage": "Authorization failed: Monthly quota exceeded. Resets on 2025-03-01",
-  "message": "You are not authorized to perform this action."
-}
-```
-
-**When to use**:
-- ✅ User-specific quotas (requests per month, tokens per day)
-- ✅ Feature flags (beta features, premium scenes)
-- ✅ Budget limits (max cost per request/user)
-- ✅ Time-based restrictions (business hours only)
-- ✅ Content filtering (block specific inputs)
-- ✅ Multi-tenancy (tenant-specific permissions)
-
-**Execution flow:**
-1. **HTTP Request** → ASP.NET Core policies check (JWT, claims, roles)
-2. **Initialization** → Load cache, initialize context, execute main actors
-3. **Authorization Layer** → Custom business logic checks ← **YOU ARE HERE**
-4. **Scene Execution** → If authorized, execute selected scenes
-5. **Response** → Return results
-
----
-
-### Combining Both Levels
-
-```csharp
-// 1. HTTP Endpoint Authorization (ASP.NET Core)
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("Authenticated", policy => 
-        policy.RequireAuthenticatedUser());
-});
-
-app.MapPlayFramework(settings =>
-{
-    settings.BasePath = "/api/ai";
-    settings.RequireAuthentication = true;
-    settings.AuthorizationPolicies = new List<string> { "Authenticated" };
-});
-
-// 2. Business Logic Authorization (IAuthorizationLayer)
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-    .AddAuthorizationLayer<CustomAuthorizationLayer>());
-```
-
-**Both must pass** for execution to proceed:
-- ❌ **Fail at HTTP level** → 401/403 HTTP error (no execution)
-- ✅ **Pass HTTP level** → Continue to initialization
-- ❌ **Fail at business level** → Custom error response (after initialization)
-- ✅ **Pass business level** → Execute scenes
-
-See [AUTHORIZATION_EXAMPLE.md](AUTHORIZATION_EXAMPLE.md) for comprehensive examples.
-
----
-
-## 🛡️ Guardrails (Operational Boundaries)
-
-**Guardrails** prevent the AI from **hallucinating** or responding to requests **outside the system's capabilities**. When enabled, a system prompt is automatically added at the beginning of every new conversation to define what the AI can and cannot do.
-
-### Why Use Guardrails?
-
-Without guardrails, LLMs may:
-- ❌ Invent tools or scenes that don't exist
-- ❌ Reference external systems or APIs not available
-- ❌ Respond to questions unrelated to your application's purpose
-- ❌ Hallucinate function signatures or parameters
-
-**With guardrails**, the AI:
-- ✅ Uses ONLY registered scenes, actors, and tools
-- ✅ Stays within the defined context
-- ✅ Suggests alternatives when a request is out of scope
-- ✅ Asks for clarification instead of inventing capabilities
-
-### Enable Default Guardrails
-
-The **default prompt** (~150 tokens) instructs the AI to operate strictly within available capabilities:
-
-```csharp
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-    .UseDefaultGuardrails()  // Adds default operational boundaries
-    .AddScene("weather", "Get weather information", scene => scene
-        .WithService<IWeatherService>(s => s
-            .WithMethod(x => x.GetWeatherAsync(default!), "getWeather", "Get weather for a city")))
-    .AddScene("calculator", "Perform calculations", scene => scene
-        .WithService<ICalculatorService>(s => s
-            .WithMethod(x => x.Add(default, default), "add", "Add two numbers"))));
-```
-
-**Default prompt:**
-```plaintext
-You are a PlayFramework AI orchestrator. You can ONLY respond using:
-- Available Scenes (specialized handlers for specific tasks)
-- Available Actors (context providers and data enrichers)
-- Available Tools (functions you can call)
-
-RULES:
-1. Use ONLY the scenes, actors, and tools explicitly registered in this system
-2. If a request is outside available capabilities, explain what you CAN do instead
-3. When selecting a scene, match user intent to scene purpose
-4. When calling tools, use exact function signatures provided
-5. Stay within the context provided by main actors and system context
-6. Do NOT invent capabilities, hallucinate tools, or reference external systems
-
-If unsure, ask for clarification within your available capabilities.
-```
-
-### Enable Custom Guardrails
-
-Define **your own boundaries** for domain-specific applications:
-
-```csharp
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-    .UseCustomGuardrails(@"
-        You are an AI assistant for the XYZ Corporation customer support system.
-
-        CAPABILITIES:
-        - Check order status (GetOrderStatus tool)
-        - Process returns (InitiateReturn tool)
-        - Answer product questions using product database
-
-        RESTRICTIONS:
-        - Do NOT discuss pricing, discounts, or promotions (direct to sales team)
-        - Do NOT process refunds over $500 (escalate to manager)
-        - Do NOT share customer data from other accounts
-        - Stay professional and empathetic
-
-        If a request is outside these capabilities, politely explain what you CAN help with.
-    ")
-    .AddScene("orders", "Manage customer orders", scene => scene
-        .WithService<IOrderService>(s => s
-            .WithMethod(x => x.GetOrderStatus(default!), "getOrderStatus", "Check order status")
-            .WithMethod(x => x.InitiateReturn(default!), "initiateReturn", "Start a return"))));
-```
-
-### When to Use Guardrails
-
-| Scenario | Recommendation |
-|----------|---------------|
-| **General-purpose chatbot** | ✅ Use default guardrails |
-| **Domain-specific app** (e.g., HR, finance, healthcare) | ✅ Use custom guardrails with strict policies |
-| **Open exploration** (research assistant, creative writing) | ⚠️ Consider disabling (but monitor for misuse) |
-| **Production systems** | ✅ Always enable (default or custom) |
-
-### Execution Flow with Guardrails
-
-1. **New Conversation** → Guardrails prompt added as **first system message**
-2. **Context & Actors** → Main actors provide additional context
-3. **User Message** → User's actual request
-4. **Scene Selection** → LLM chooses scene based on guardrails + context
-5. **Tool Execution** → LLM uses only allowed tools
-
-**Note:** Guardrails are only added for **new conversations** (not when resuming from cache).
-
-### Example Behavior
-
-**Without Guardrails:**
-```
-User: "Can you book a flight to Paris?"
-AI: "Sure! I'll use the FlightBookingAPI to search for flights..." ❌ (invented tool)
-```
-
-**With Default Guardrails:**
-```
-User: "Can you book a flight to Paris?"
-AI: "I don't have a flight booking capability. I can help with: weather information and calculations. Would you like to check the weather in Paris instead?" ✅
-```
-
-**With Custom Guardrails (customer support):**
-```
-User: "Can you give me a 50% discount?"
-AI: "I'm not able to discuss pricing or discounts. Please contact our sales team at sales@xyz.com for promotional offers." ✅
-```
-
-### Best Practices
-
-1. **✅ Enable in production** - Always use guardrails to prevent unexpected behavior
-2. **✅ Keep prompts concise** - Guardrails consume tokens in every request (~100-200 tokens)
-3. **✅ Test edge cases** - Verify AI rejects out-of-scope requests gracefully
-4. **✅ Combine with authorization** - Use `IAuthorizationLayer` for user-specific restrictions
-5. **✅ Monitor logs** - Track when guardrails prevent hallucinations
-
----
-
-## 📡 API Endpoints
-
-### Step-by-Step Streaming (SSE)
-
-**POST** `/api/ai/{factoryName}`
-
-**Request:**
-```json
-{
-  "message": "What's the weather in Milan?",
+  "message": "What is the weather in Milan?",
+  "contents": [],
+  "metadata": {
+    "userId": "123"
+  },
   "settings": {
-    "executionMode": "Direct",
-    "maxBudget": 0.10
-  }
+    "executionMode": "Planning",
+    "maxRecursionDepth": 5
+  },
+  "conversationKey": null,
+  "clientInteractionResults": null
 }
 ```
 
-**Response (text/event-stream):**
-```
-data: {"status":"executingScene","sceneName":"weather","message":"Calling weather API"}
-
-data: {"status":"streaming","streamingChunk":"The weather"}
-
-data: {"status":"streaming","streamingChunk":" in Milan"}
-
-data: {"status":"completed","message":"The weather in Milan is sunny, 24°C"}
-```
-
-### Token-Level Streaming
-
-**POST** `/api/ai/{factoryName}/streaming`
-
-Returns **individual text chunks** as they're generated.
-
-### Non-Streaming
-
-Set `enableStreaming: false` in settings to get full response at once.
-
----
-
-## 🧪 Testing
-
-### Unit Test Example
-
-```csharp
-[Fact]
-public async Task Scene_Should_Execute_Successfully()
-{
-    // Arrange
-    var services = new ServiceCollection();
-    services.AddChatClient<MockChatClient>("mock");
-    services.AddPlayFramework("test", pb => pb
-        .WithChatClient("mock")
-        .AddScene("weather", "Get weather", scene => scene
-            .WithService<IWeatherService>(s => s
-                .WithMethod(x => x.GetWeatherAsync(default!), "getWeather", "Get weather for a city"))));
-
-    services.AddSingleton<IWeatherService, WeatherService>();
-
-    var provider = services.BuildServiceProvider();
-    var factory = provider.GetRequiredService<IPlayFramework>();
-    var sceneManager = factory.Create("test")!;
-
-    // Act
-    AiSceneResponse? lastResponse = null;
-    await foreach (var response in sceneManager.ExecuteAsync("Weather in Milan?"))
-    {
-        lastResponse = response;
-    }
-
-    // Assert
-    Assert.NotNull(lastResponse);
-    Assert.Equal(AiResponseStatus.Completed, lastResponse.Status);
-    Assert.Contains("Sunny", lastResponse.Message);
-}
-```
-
----
-
-## 💡 Complete Example
-
-### E-Commerce Assistant
-
-```csharp
-public interface IProductService
-{
-    Task<List<Product>> SearchProductsAsync(string query);
-    Task<Product> GetProductDetailsAsync(int productId);
-}
-
-public interface ICartService
-{
-    Task AddToCartAsync(int productId, int quantity);
-    Task<Cart> GetCartAsync(string userId);
-}
-
-builder.Services.AddChatClient<OpenAIChatClient>("gpt-4o");
-
-builder.Services.AddPlayFramework("shop", pb => pb
-    .WithChatClient("gpt-4o")
-
-    // Search scene
-    .AddScene("product-search", "Search for products", scene => scene
-        .WithActors(actors => actors
-            .AddActor("You are a helpful shopping assistant. Help users find products."))
-        .WithService<IProductService>(s => s
-            .WithMethod(x => x.SearchProductsAsync(default!), "searchProducts", "Search for products")
-            .WithMethod(x => x.GetProductDetailsAsync(default), "getProductDetails", "Get product details")))
-
-    // Cart scene
-    .AddScene("cart-management", "Manage shopping cart", scene => scene
-        .WithService<ICartService>(s => s
-            .WithMethod(x => x.AddToCartAsync(default, default), "addToCart", "Add product to cart")
-            .WithMethod(x => x.GetCartAsync(default!), "getCart", "Get user cart")))
-
-    // Confirmation scene (client-side)
-    .AddScene("checkout", "Complete purchase", scene => scene
-        .OnClient(client => client
-            .AddTool("getUserConfirmation", "Ask user to confirm purchase"))
-        .WithService<ICheckoutService>(s => s
-            .WithMethod(x => x.ProcessPaymentAsync(default!), "processPayment", "Process payment")))
-
-    // Enable planning for multi-step workflows
-    .WithPlanning(planning =>
-    {
-        planning.Enabled = true;
-        planning.MaxRecursionDepth = 5;
-    })
-
-    // Cache for conversation state
-    .AddCache(cache => cache
-        .WithMemory()
-        .WithExpiration(TimeSpan.FromMinutes(30)))
-
-    // Rate limiting
-    .WithRateLimit(rateLimit => rateLimit
-        .TokenBucket(capacity: 5000, refillRate: 500)
-        .GroupBy("userId")
-        .WaitOnExceeded(TimeSpan.FromSeconds(10))));
-
-app.MapPlayFramework("shop", settings =>
-{
-    settings.BasePath = "/api/shop";
-    settings.RequireAuthentication = true;
-});
-```
-
-**Usage:**
-```bash
-curl -X POST http://localhost:5158/api/shop/shop \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{
-    "message": "Find me a red t-shirt, size M, add to cart and checkout",
-    "settings": {
-      "executionMode": "Planning",
-      "conversationKey": "user-123-session-1"
-    }
-  }'
-```
-
-**Flow:**
-1. **Planning** - Creates plan: Search → Add to Cart → Checkout
-2. **Product Search** - Calls `SearchProductsAsync("red t-shirt")`
-3. **Cart Management** - Calls `AddToCartAsync(productId, quantity)`
-4. **Checkout** - Triggers client-side confirmation → Calls `ProcessPaymentAsync`
-
----
-
-## 🧠 Conversation Memory
-
-Persist **conversation memory** across sessions with automatic summarization:
-
-```csharp
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-    .WithMemory(memory => memory
-        .WithDefaultMemoryStorage("userId", "tenantId")  // Storage keys
-        .WithMaxSummaryLength(2000)                       // Max chars for summary
-        .WithSystemPrompt("Summarize the key points of this conversation")
-        .WithIncludePreviousMemory(true))                 // Include prior memory in context
-    .AddScene(...));
-```
-
-**Custom storage:**
-```csharp
-.WithMemory(memory => memory
-    .WithCustomStorage<RedisMemoryStorage>()
-    .WithCustomMemory<CustomMemorySummarizer>())
-```
-
----
-
-## 🔍 RAG (Retrieval-Augmented Generation)
-
-Add **vector search** context to scenes:
-
-```csharp
-// Register RAG service
-builder.Services.AddRagService<AzureSearchRagService>();
-
-// Global RAG
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-    .WithRag(rag =>
-    {
-        rag.TopK = 10;
-        rag.SearchAlgorithm = VectorSearchAlgorithm.CosineSimilarity;
-        rag.MinimumScore = 0.7;
-    })
-    .AddScene(...));
-
-// Per-scene RAG (override or disable)
-.AddScene("search", "Search documents", scene => scene
-    .WithRag(rag => { rag.TopK = 5; })       // Override for this scene
-    .WithService<ISearchService>(...))
-
-.AddScene("calculator", "Math only", scene => scene
-    .WithoutRag())                             // Disable RAG for this scene
-```
-
----
-
-## 🌐 Web Search
-
-Add **real-time web search** to scenes:
-
-```csharp
-// Register web search service
-builder.Services.AddWebSearchService<BingWebSearchService>();
-
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-    .WithWebSearch(ws =>
-    {
-        ws.MaxResults = 10;
-        ws.SafeSearch = true;
-        ws.Market = "en-US";
-        ws.Freshness = WebSearchFreshness.Week;
-    })
-    .AddScene(...));
-
-// Per-scene web search
-.AddScene("news", "Get latest news", scene => scene
-    .WithWebSearch(ws => { ws.Freshness = WebSearchFreshness.Day; }))
-
-.AddScene("math", "Calculations", scene => scene
-    .WithoutWebSearch())
-```
-
----
-
-## 🔌 MCP Server Integration
-
-Connect to **Model Context Protocol** servers:
-
-```csharp
-.AddScene("dev-tools", "Development tools", scene => scene
-    .WithMcpServer("mcp-server-name")
-    .WithService<IDevService>(...))
-```
-
----
-
-## 🎭 Main Actors (Global System Prompts)
-
-Add **global system prompts** that apply to all scenes:
-
-```csharp
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-
-    // Static system prompt
-    .AddMainActor("You are a professional assistant for Acme Corp.")
-
-    // Dynamic prompt (from context)
-    .AddMainActor(context =>
-        $"Current user: {context.Metadata.GetValueOrDefault("userName")}")
-
-    // Async dynamic prompt
-    .AddMainActor(async (context, ct) =>
-    {
-        var userService = context.ServiceProvider.GetRequiredService<IUserService>();
-        var user = await userService.GetUserAsync(context.Metadata["userId"].ToString()!, ct);
-        return $"User preferences: {user.Preferences}";
-    }, cacheForSubsequentCalls: true)  // Cache after first call
-
-    // Custom IActor implementation
-    .AddMainActor<CustomActorService>()
-
-    .AddScene(...));
-```
-
----
-
-## 🏭 IPlayFramework Factory
-
-Access scene managers via the **factory pattern**:
-
-```csharp
-// Inject IPlayFramework
-public class MyService(IPlayFramework playFramework)
-{
-    public async Task ProcessAsync(string message)
-    {
-        // Create scene manager for a specific factory
-        var sceneManager = playFramework.Create("default");
-        if (sceneManager is null) return;
-
-        await foreach (var response in sceneManager.ExecuteAsync(message))
-        {
-            Console.WriteLine(response.Message);
-        }
-    }
-
-    // Check if factory exists
-    public bool IsAvailable(string name) => playFramework.Exists(name);
-}
-```
-
----
-
-## 📷 MultiModalInput
-
-Programmatic **multi-modal content creation**:
-
-```csharp
-// Text only
-var input = MultiModalInput.FromText("Hello!");
-
-// Image from URL
-var input = MultiModalInput.FromImageUrl("Describe this", "https://example.com/photo.jpg");
-
-// Image from bytes
-var input = MultiModalInput.FromImageBytes("Analyze this photo", imageBytes, "image/png");
-
-// Audio
-var input = MultiModalInput.FromAudioUrl("Transcribe this", "https://example.com/audio.mp3");
-var input = MultiModalInput.FromAudioBytes("Transcribe this", audioBytes, "audio/mp3");
-
-// File (PDF, etc.)
-var input = MultiModalInput.FromFileUrl("Summarize this document", "https://example.com/doc.pdf");
-var input = MultiModalInput.FromFileBytes("Summarize this", pdfBytes, "application/pdf");
-
-// Use with ISceneManager
-await foreach (var response in sceneManager.ExecuteAsync(input))
-{
-    Console.WriteLine(response.Message);
-
-    // Check for multi-modal response content
-    if (response.HasImage)
-    {
-        var image = response.GetImage();  // DataContent
-    }
-    if (response.HasAudio)
-    {
-        var audio = response.GetAudio();  // DataContent
-    }
-
-    // Get all images/audio/files
-    foreach (var img in response.GetAllImages()) { /* ... */ }
-}
-```
-
----
-
-## 🔧 Client-Side Commands
-
-Commands are **fire-and-forget** operations (unlike tools which are bidirectional):
-
-```csharp
-.AddScene("navigation", "Navigate the app", scene => scene
-    .OnClient(client => client
-        // Bidirectional tool (waits for client response)
-        .AddTool("getUserInput", "Ask user for input")
-
-        // Strongly-typed tool (auto-generates JSON schema from T)
-        .AddTool<LocationArgs>("getLocation", "Get GPS coordinates")
-
-        // Fire-and-forget command
-        .AddCommand("navigateTo", "Navigate to a page")
-
-        // Command with feedback mode
-        .AddCommand("playSound", "Play notification sound",
-            feedbackMode: CommandFeedbackMode.OnError,  // Never | OnError | Always
-            timeoutSeconds: 10)))
-```
-
----
-
-## 📊 Response Status Codes
-
-All possible `AiResponseStatus` values:
-
-| Status | Description |
-|--------|-------------|
-| `Completed` | Execution completed successfully |
-| `Streaming` | Streaming chunk in progress |
-| `ExecutingScene` | Currently executing a scene |
-| `ExecutingTool` | Calling a server-side tool |
-| `AwaitingClient` | Waiting for client-side tool response |
-| `CommandClient` | Fire-and-forget command sent to client |
-| `Planning` | Creating execution plan |
-| `ExecutingPlan` | Executing a plan step |
-| `Summarizing` | Summarizing conversation |
-| `Directing` | Director evaluating results |
-| `BudgetExceeded` | Request exceeded max budget |
-| `Error` | An error occurred |
-| `Unauthorized` | Authorization failed |
-| `RateLimited` | Rate limit exceeded |
-| `Cached` | Response served from cache |
-
----
-
-## 🔧 Custom Extensibility
-
-Override default implementations:
-
-```csharp
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-
-    // Custom planner (instead of DeterministicPlanner)
-    .AddCustomPlanner<MyPlanner>()
-
-    // Custom summarizer
-    .AddCustomSummarizer<MySummarizer>()
-
-    // Custom director
-    .AddCustomDirector<MyDirector>()
-
-    // Custom JSON serialization
-    .AddCustomJsonService<MyJsonService>()
-    // Or with factory
-    .AddCustomJsonService(sp => new MyJsonService(sp.GetRequiredService<IOptions<JsonOptions>>()))
-
-    // Custom context injection
-    .AddContext<MyContextProvider>()
-
-    // Default execution mode
-    .WithExecutionMode(SceneExecutionMode.Planning)
-
-    .AddScene(...));
-```
-
----
-
-## 💰 Per-Model & Per-Client Cost Tracking
-
-Fine-grained cost tracking:
-
-```csharp
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-    .WithChatClient("gpt-4o-mini")
-
-    // Global cost tracking
-    .WithCostTracking("USD", inputCostPer1K: 0.01m, outputCostPer1K: 0.03m)
-
-    // Per-model pricing
-    .WithModelCosts("gpt-4o", inputCostPer1K: 0.005m, outputCostPer1K: 0.015m)
-    .WithModelCosts("gpt-4o-mini", inputCostPer1K: 0.00015m, outputCostPer1K: 0.0006m)
-
-    // Per-client pricing (overrides model costs)
-    .WithClientCosts("azure-client", inputCostPer1K: 0.004m, outputCostPer1K: 0.012m)
-
-    .AddScene(...));
-```
-
----
-
-## 📡 Telemetry Configuration
-
-Fine-grained observability control:
-
-```csharp
-// Full control
-.WithTelemetry(telemetry =>
-{
-    telemetry.EnableTracing = true;
-    telemetry.EnableMetrics = true;
-    telemetry.TraceScenes = true;
-    telemetry.TraceTools = true;
-    telemetry.TraceLlmCalls = true;
-    telemetry.IncludeLlmPrompts = false;       // Don't log prompts (security)
-    telemetry.IncludeLlmResponses = false;      // Don't log responses (security)
-    telemetry.TracePlanning = true;
-    telemetry.TraceSummarization = true;
-    telemetry.SamplingRate = 0.5;               // 50% sampling
-})
-
-// Shortcuts
-.WithTracing(samplingRate: 1.0)  // Enable tracing only
-.WithMetrics()                    // Enable metrics only
-.WithoutTelemetry()               // Disable all telemetry
-```
-
----
-
-## � LLM Adapters
-
-PlayFramework requires an `IChatClient` (from **Microsoft.Extensions.AI**) to communicate with an LLM.  
-The companion library **[Rystem.PlayFramework.Adapters](https://www.nuget.org/packages/Rystem.PlayFramework.Adapters/)** provides ready-to-use adapters that register `IChatClient` with the factory pattern — matching your `AddPlayFramework("name", ...)` call.
+Example `curl` call against the step-by-step endpoint:
 
 ```bash
-dotnet add package Rystem.PlayFramework.Adapters
+curl -N https://localhost:7248/api/ai/default \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Calculate 5 * 7","settings":{"executionMode":"Scene","sceneName":"Calculator"}}' \
+  --insecure
 ```
 
-### Azure OpenAI Example
+Token-level streaming uses the same body shape against:
+
+```text
+POST /api/ai/default/streaming
+```
+
+### Unnamed mapping
 
 ```csharp
-// 1. Register the adapter (creates and registers IChatClient under the factory name "default")
-builder.Services.AddAdapterForAzureOpenAI("default", settings =>
+app.MapPlayFramework(configure: settings =>
 {
-    settings.Endpoint = new Uri("https://YOUR-RESOURCE.openai.azure.com/");
-    settings.ApiKey = "YOUR-API-KEY";
-    settings.Deployment = "gpt-4o";
-    // settings.UseResponsesApi = true;   // Responses API (default) — supports input_file, input_image
-    // settings.EnableFileUpload = true;   // Auto-upload files via Files API (default)
-    // settings.UseAzureCredential = true; // Use DefaultAzureCredential instead of API key
-});
-
-// 2. Register PlayFramework with the same factory name
-builder.Services.AddPlayFramework("default", frameworkBuilder =>
-{
-    frameworkBuilder
-        .AddMainActor("You are a helpful AI assistant.")
-        .AddScene("Chat", "General conversation.", sceneBuilder => { });
+    settings.BasePath = "/api/ai";
 });
 ```
 
-The adapter automatically handles:
-- **Responses API** with native `input_file` / `input_image` support
-- **File upload** via the Files API (PDFs, DOCX, XLSX, CSV, etc.) with SHA256-based cache deduplication
-- **Azure Managed Identity** via `DefaultAzureCredential`
+In the current implementation this maps the base path root and internally falls back to the `default` factory name. It does not create a dynamic `/{factoryName}` route despite what some comments suggest.
 
-### Foundry Local Example (local models for dev/testing)
+## Example: conversation persistence and CRUD endpoints
 
-```bash
-# Install Foundry Local (the adapter handles model download/load automatically)
-winget install Microsoft.FoundryLocal
-```
+PlayFramework has two separate storage concepts:
+
+- cache for in-flight execution state and client-tool continuation
+- repository persistence for stored conversations
+
+Enable stored conversations in the PlayFramework builder:
 
 ```csharp
-builder.Services.AddAdapterForFoundryLocal("default", settings =>
+builder.Services.AddPlayFramework("default", framework =>
 {
-    settings.Model = "phi-4-mini";
-    // Automatically downloads, loads, and starts the local web service
+    framework
+        .WithChatClient("default")
+        .UseRepository()
+        .AddScene("Assistant", "General conversation", _ => { });
 });
 ```
 
-> **Note:** Foundry Local includes native ONNX runtime dependencies — consuming projects need a `<RuntimeIdentifier>` (e.g., `win-x64`).
+Then register the matching repository separately with the same factory name:
 
-For full configuration options and cache strategy details, see the **[Rystem.PlayFramework.Adapters README](https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework.Adapters)**.
+```csharp
+builder.Services.AddRepository<StoredConversation, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithInMemory(name: "default");
+});
+```
 
----
+Finally, enable the HTTP endpoints:
 
-## 📚 Additional Resources
+```csharp
+app.MapPlayFramework("default", settings =>
+{
+    settings.BasePath = "/api/ai";
+    settings.EnableConversationEndpoints = true;
+});
+```
 
-- 📖 **Full Documentation**: https://rystem.net/playframework
-- 💻 **GitHub**: https://github.com/KeyserDSoze/Rystem
-- 📦 **NuGet**: https://www.nuget.org/packages/Rystem.PlayFramework
-- 🔌 **LLM Adapters**: https://www.nuget.org/packages/Rystem.PlayFramework.Adapters
-- 🎯 **MCP Tools**: https://rystem.net/mcp
-- 📘 **Client Interaction Guide**: [Docs/CLIENT_INTERACTION_ARCHITECTURE_V2.md](Docs/CLIENT_INTERACTION_ARCHITECTURE_V2.md)
-- 🔐 **Authorization Examples**: [AUTHORIZATION_EXAMPLE.md](AUTHORIZATION_EXAMPLE.md)
-- 📊 **Streaming Technical Details**: [Docs/STREAMING_TECHNICAL.md](Docs/STREAMING_TECHNICAL.md)
+Without that matching repository registration, conversation CRUD cannot work.
 
----
+## Example: voice pipeline
 
-## 🤝 Contributing
+Enable voice in the builder:
 
-Contributions welcome! Please open an issue or PR.
+```csharp
+builder.Services.AddVoiceAdapterForAzureOpenAI("default", settings =>
+{
+    settings.Endpoint = new Uri(builder.Configuration["AzureOpenAI:Endpoint"]!);
+    settings.ApiKey = builder.Configuration["AzureOpenAI:Key"]!;
+    settings.SttDeployment = "whisper";
+    settings.TtsDeployment = "tts-1";
+    settings.TtsVoice = "alloy";
+});
 
----
+builder.Services.AddPlayFramework("default", framework =>
+{
+    framework
+        .WithChatClient("default")
+        .WithVoice("default")
+        .AddScene("Assistant", "General conversation", _ => { });
+});
+```
 
-## 📄 License
+And enable the HTTP endpoint explicitly:
 
-MIT © [Alessandro Rapiti](https://github.com/KeyserDSoze)
+```csharp
+app.MapPlayFramework("default", settings =>
+{
+    settings.BasePath = "/api/ai";
+    settings.EnableVoiceEndpoints = true;
+});
+```
 
----
+That exposes:
 
-**Made with ❤️ by the Rystem team**
+```text
+POST /api/ai/default/voice
+```
+
+## Important caveats
+
+### Everything is factory-based
+
+Named PlayFramework instances, chat clients, repositories, and voice adapters all rely on matching factory names. A lot of runtime errors come from mismatched names rather than missing services.
+
+### `OnClient(...)` requires cache support
+
+Client-side tools depend on cached continuation state. In samples and tests this is usually `IMemoryCache` or `IDistributedCache` behind `AddCache(...)`.
+
+### Only token-bucket rate limiting is implemented
+
+`RateLimitBuilder` exposes `SlidingWindow`, `FixedWindow`, and `Concurrent`, but DI registration currently supports only `TokenBucket`.
+
+### Repository persistence is separate from memory
+
+`UseRepository()` stores conversations for CRUD endpoints. `WithMemory(...)` stores summarized conversational memory. They solve different problems and you often need both or neither.
+
+### The HTTP voice path resolves by PlayFramework factory name first
+
+The builder stores a `VoiceAdapterFactoryName`, but the HTTP endpoint effectively resolves `IVoiceAdapter` by PlayFramework factory name first, then unnamed default. Keep those names aligned.
+
+### Some API settings are less active than they look
+
+For example `DefaultFactoryName`, `EnableCompression`, and `MaxRequestBodySize` exist on `PlayFrameworkApiSettings`, but the current HTTP mapping path does not meaningfully use them.
+
+### This package targets `net10.0`
+
+The current project targets `net10.0` only.
+
+## Grounded by source and tests
+
+- `src/AI/Test/Rystem.PlayFramework.Api/Program.cs`
+- `src/AI/Test/Rystem.PlayFramework.Test/Tests/FactoryPatternTests.cs`
+- `src/AI/Test/Rystem.PlayFramework.Test/Tests/ClientInteractionTests.cs`
+- `src/AI/Test/Rystem.PlayFramework.Test/Tests/LoadBalancingAndFallbackTests.cs`
+- `src/AI/Test/Rystem.PlayFramework.Test/Tests/MemoryTests.cs`
+- `src/AI/Test/Rystem.PlayFramework.Test/Tests/RateLimitingTests.cs`
+- `src/AI/Test/Rystem.PlayFramework.Test/Tests/MultiModalTests.cs`
+
+Use this package when you want the orchestration engine itself. Add an adapter package when you want a concrete model provider, and add repository infrastructure when you want stored conversations.
