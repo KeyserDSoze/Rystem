@@ -632,6 +632,351 @@ That exposes:
 POST /api/ai/default/voice
 ```
 
+## Example: guardrails (operational boundaries)
+
+Guardrails prevent the LLM from hallucinating tools or responding outside the system's declared capabilities. When enabled, a system prompt is injected at the start of every new conversation.
+
+```csharp
+builder.Services.AddPlayFramework("default", framework =>
+{
+    framework
+        .WithChatClient("default")
+        // Default prompt: operate only within registered scenes/actors/tools
+        .UseDefaultGuardrails()
+        .AddScene("Calculator", "Arithmetic operations", _ => { });
+});
+```
+
+For domain-specific systems, replace the default prompt with a custom one:
+
+```csharp
+builder.Services.AddPlayFramework("default", framework =>
+{
+    framework
+        .WithChatClient("default")
+        .UseCustomGuardrails(
+            """
+            You are a customer support assistant for Acme Corp.
+            You can ONLY help with: order status, returns, and product questions.
+            Do NOT discuss pricing or process refunds over $500. Escalate those to the manager team.
+            """)
+        .AddScene("Orders", "Order management", _ => { });
+});
+```
+
+Important behavior:
+
+- Guardrails are added only for new conversations (not when resuming from cache)
+- The default prompt consumes approximately 100–150 tokens per request
+- Guardrails do not replace `IAuthorizationLayer`; they address prompt scope, not user permissions
+
+## Example: authorization layer
+
+`IAuthorizationLayer` runs after initialization but before scene execution. It is the right place for user-specific quota checks, feature flags, and budget enforcement.
+
+```csharp
+public sealed class CustomAuthorizationLayer : IAuthorizationLayer
+{
+    private readonly IUserService _userService;
+
+    public CustomAuthorizationLayer(IUserService userService)
+        => _userService = userService;
+
+    public async Task<AuthorizationResult> AuthorizeAsync(
+        SceneContext context,
+        SceneRequestSettings settings,
+        CancellationToken cancellationToken)
+    {
+        if (!context.Metadata.TryGetValue("userId", out var userIdObj))
+            return new AuthorizationResult { IsAuthorized = false, Reason = "userId not found in metadata" };
+
+        var user = await _userService.GetUserAsync(userIdObj.ToString()!, cancellationToken);
+
+        if (user.MonthlyQuota <= 0)
+            return new AuthorizationResult { IsAuthorized = false, Reason = "Monthly quota exceeded" };
+
+        return new AuthorizationResult { IsAuthorized = true };
+    }
+}
+```
+
+Register it in the PlayFramework builder:
+
+```csharp
+builder.Services.AddPlayFramework("default", framework =>
+{
+    framework
+        .WithChatClient("default")
+        .AddAuthorizationLayer<CustomAuthorizationLayer>()
+        .AddScene("Assistant", "General conversation", _ => { });
+});
+
+builder.Services.AddScoped<IUserService, UserService>();
+```
+
+HTTP-level authorization (ASP.NET Core policies) and `IAuthorizationLayer` are complementary:
+
+- HTTP policies run before any PlayFramework processing (token/claims validation)
+- `IAuthorizationLayer` runs after initialization (business logic, quotas, feature flags)
+
+## Example: director, summarization, and planning configuration
+
+The director evaluates the execution result and may re-run the scene. Summarization compresses conversation history when it grows too large. Both are configured on the builder.
+
+```csharp
+builder.Services.AddPlayFramework("default", framework =>
+{
+    framework
+        .WithChatClient("default")
+
+        // Planning: multi-step orchestration across scenes
+        .WithPlanning(planning =>
+        {
+            planning.MaxRecursionDepth = 5;
+        })
+
+        // Director: post-execution evaluation and optional re-execution
+        .WithDirector(director =>
+        {
+            director.Enabled = true;
+            director.MaxReExecutions = 3;
+        })
+
+        // Summarization: compresses history above thresholds
+        .WithSummarization(summarization =>
+        {
+            summarization.Enabled = true;
+            summarization.CharacterThreshold = 15_000;
+            summarization.ResponseCountThreshold = 20;
+        })
+
+        .AddScene("Assistant", "General conversation", _ => { });
+});
+```
+
+You can also override the director or summarizer with a custom implementation (see Custom extensibility below).
+
+## Example: main actors (dynamic and async variants)
+
+Beyond a static string, `AddMainActor` accepts a delegate or a typed service.
+
+```csharp
+builder.Services.AddPlayFramework("default", framework =>
+{
+    framework
+        .WithChatClient("default")
+
+        // Static
+        .AddMainActor("You are a professional assistant for Acme Corp.")
+
+        // Sync delegate from request metadata
+        .AddMainActor(context =>
+            $"Current user: {context.Metadata.GetValueOrDefault("userName")}")
+
+        // Async delegate — cached after the first call for the lifetime of the request
+        .AddMainActor(async (context, ct) =>
+        {
+            var svc = context.ServiceProvider.GetRequiredService<IUserService>();
+            var user = await svc.GetUserAsync(context.Metadata["userId"].ToString()!, ct);
+            return $"User preferences: {user.Preferences}";
+        }, cacheForSubsequentCalls: true)
+
+        // Typed service that implements IActor
+        .AddMainActor<CustomActorService>()
+
+        .AddScene("Assistant", "General conversation", _ => { });
+});
+```
+
+## Example: RAG and web search
+
+RAG and web search are both opt-in at framework level and can be overridden or disabled per scene.
+
+```csharp
+// Register your RAG implementation
+builder.Services.AddSingleton<IRagService, AzureSearchRagService>();
+
+// Register your web search implementation
+builder.Services.AddSingleton<IWebSearchService, BingWebSearchService>();
+
+builder.Services.AddPlayFramework("default", framework =>
+{
+    framework
+        .WithChatClient("default")
+
+        // Global RAG
+        .WithRag(rag =>
+        {
+            rag.TopK = 10;
+            rag.SearchAlgorithm = VectorSearchAlgorithm.CosineSimilarity;
+            rag.MinimumScore = 0.7;
+        })
+
+        // Global web search
+        .WithWebSearch(ws =>
+        {
+            ws.MaxResults = 10;
+            ws.SafeSearch = true;
+        })
+
+        // Scene that overrides RAG settings
+        .AddScene("Search", "Document search", scene =>
+        {
+            scene.WithRag(rag => { rag.TopK = 5; });
+        })
+
+        // Scene that disables both (e.g., pure arithmetic)
+        .AddScene("Calculator", "Arithmetic", scene =>
+        {
+            scene
+                .WithoutRag()
+                .WithoutWebSearch()
+                .WithService<ICalculatorService>(tools =>
+                {
+                    tools.WithMethod<double>(x => x.Add(default, default), "Add", "Add two numbers");
+                });
+        });
+});
+```
+
+## Example: MCP server integration
+
+A scene can connect to an external Model Context Protocol server to expose its tools alongside any registered services.
+
+```csharp
+builder.Services.AddPlayFramework("default", framework =>
+{
+    framework
+        .WithChatClient("default")
+        .AddScene("Dev Tools", "Development utilities", scene =>
+        {
+            scene
+                .WithMcpServer("mcp-server-name")
+                .WithService<IDevService>(tools =>
+                {
+                    tools.WithMethod<string>(x => x.GetStatus(), "GetStatus", "Get system status");
+                });
+        });
+});
+```
+
+The MCP server name must match a registered `IMcpServerManager` factory entry.
+
+## Example: cost tracking
+
+Cost tracking records input/output token costs per request and accumulates totals in `AiSceneResponse.TotalCost`.
+
+```csharp
+builder.Services.AddPlayFramework("default", framework =>
+{
+    framework
+        .WithChatClient("default")
+
+        // Global fallback pricing
+        .WithCostTracking("USD", inputCostPer1K: 0.01m, outputCostPer1K: 0.03m)
+
+        // Per-model pricing (overrides global)
+        .WithModelCosts("gpt-4o", inputCostPer1K: 0.005m, outputCostPer1K: 0.015m)
+        .WithModelCosts("gpt-4o-mini", inputCostPer1K: 0.00015m, outputCostPer1K: 0.0006m)
+
+        // Per-client pricing (overrides model costs)
+        .WithClientCosts("azure-client", inputCostPer1K: 0.004m, outputCostPer1K: 0.012m)
+
+        .AddScene("Assistant", "General conversation", _ => { });
+});
+```
+
+Per-request budget enforcement is done through `SceneRequestSettings.MaxBudget`. When the cumulative cost exceeds it, execution stops with status `BudgetExceeded`.
+
+## Example: custom extensibility
+
+Core pipeline components can be swapped out without forking the framework.
+
+```csharp
+builder.Services.AddPlayFramework("default", framework =>
+{
+    framework
+        .WithChatClient("default")
+
+        // Replace the built-in planner
+        .AddCustomPlanner<MyPlanner>()
+
+        // Replace the built-in summarizer
+        .AddCustomSummarizer<MySummarizer>()
+
+        // Replace the built-in director
+        .AddCustomDirector<MyDirector>()
+
+        // Replace the built-in JSON service (used for tool argument serialization)
+        .AddCustomJsonService<MyJsonService>()
+        // Or with a factory delegate
+        .AddCustomJsonService(sp => new MyJsonService(sp.GetRequiredService<IOptions<JsonOptions>>()))
+
+        // Inject additional context into SceneContext before execution
+        .AddContext<MyContextProvider>()
+
+        .AddScene("Assistant", "General conversation", _ => { });
+});
+```
+
+`IJsonService` is the most commonly replaced component. If the default `System.Text.Json`-based serialization does not handle a custom type (such as `AnyOf<T0, T1>` with non-standard converters), provide a custom implementation here.
+
+## Per-request settings reference
+
+`SceneRequestSettings` controls all per-call behavior and can be passed to both the programmatic API and the HTTP request body.
+
+| Property | Type | Description |
+|---|---|---|
+| `ExecutionMode` | `SceneExecutionMode` | `Direct`, `Planning`, `DynamicChaining`, `Scene` |
+| `SceneName` | `string?` | Target scene name (required for `Scene` mode). Use the normalized name (e.g. `General_Requests`) |
+| `ConversationKey` | `string?` | Key for multi-turn conversation state |
+| `MaxRecursionDepth` | `int` | Max planning depth |
+| `MaxDynamicScenes` | `int` | Max scenes in dynamic chaining |
+| `EnableSummarization` | `bool` | Override summarization on/off for this request |
+| `EnableDirector` | `bool` | Override director on/off for this request |
+| `CacheBehavior` | `CacheBehavior` | `Default`, `ForceRefresh`, `ReadOnly` |
+| `MaxBudget` | `decimal?` | Max allowed cost for this request |
+| `ModelId` | `string?` | Override model deployment |
+| `Temperature` | `float?` | Override temperature |
+| `MaxTokens` | `int?` | Override max output tokens |
+| `IsVoiceMode` | `bool` | Inject voice-style system instruction |
+| `UserId` | `string?` | Override user identity for conversation ownership |
+
+## Voice pipeline settings reference
+
+`VoiceSettings` controls sentence accumulation and language behavior.
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `SentenceDelimiters` | `string` | `".!?\n"` | Characters that flush accumulated text to TTS |
+| `MinCharsBeforeTts` | `int` | `20` | Min chars before flushing to TTS |
+| `MaxCharsBeforeTts` | `int` | `500` | Max chars before forcing a flush |
+| `LanguageInstruction` | `string?` | built-in | System instruction template; `{language}` is replaced with the STT-detected language |
+| `VoiceStyleInstruction` | `string?` | built-in | Instructs the LLM to respond conversationally (no markdown, no tables). Set to `null` to disable |
+
+## Response status codes reference
+
+All possible values of `AiResponseStatus`:
+
+| Status | Description |
+|---|---|
+| `Completed` | Execution finished successfully |
+| `Streaming` | Token-level streaming chunk in progress |
+| `ExecutingScene` | Engine is inside a scene |
+| `FunctionRequest` | Server-side tool call started |
+| `FunctionCompleted` | Server-side tool call finished |
+| `AwaitingClient` | Waiting for a client-side tool response |
+| `CommandClient` | Fire-and-forget command sent to client |
+| `Planning` | Creating an execution plan |
+| `ExecutingPlan` | Executing a plan step |
+| `Summarizing` | Compressing conversation history |
+| `Directing` | Director evaluating scene output |
+| `BudgetExceeded` | Request exceeded `MaxBudget` |
+| `Error` | Unhandled error during execution |
+| `Unauthorized` | `IAuthorizationLayer` rejected the request |
+| `RateLimited` | Rate limit exceeded with `RejectOnExceeded` |
+| `Cached` | Response served from conversation cache |
+
 ## Important caveats
 
 ### Everything is factory-based
