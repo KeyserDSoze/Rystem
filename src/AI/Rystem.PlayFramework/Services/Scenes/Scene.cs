@@ -15,13 +15,13 @@ internal sealed class Scene : IScene
     public List<AITool> AiTools { get; }
     public List<ISceneTool> Tools { get; }
     public AITool AiTool { get; }
-    public Scene(SceneConfiguration configuration)
+    public Scene(SceneConfiguration configuration, IJsonService? jsonService = null)
     {
         _config = configuration;
 
         // Create tools from service methods
         var serviceTools = _config.ServiceTools
-            .Select(st => new ServiceMethodTool(st))
+            .Select(st => new ServiceMethodTool(st, jsonService))
             .ToList();
 
         // Create tools from client interactions (OnClient)

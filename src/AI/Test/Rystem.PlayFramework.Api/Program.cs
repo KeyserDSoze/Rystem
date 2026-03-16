@@ -43,6 +43,9 @@ builder.Services.AddSingleton<ICalculatorService, CalculatorService>();
 // Register Shape Service (used by AnyOf repro scene)
 builder.Services.AddSingleton<IShapeService, ShapeService>();
 
+// Register User Lookup Service (used to reproduce nullable-Guid deserialization)
+builder.Services.AddSingleton<IUserLookupService, UserLookupService>();
+
 // Configure Azure OpenAI (from user secrets or appsettings)
 var azureOpenAIEndpoint = builder.Configuration["AzureOpenAI:Endpoint"];
 var azureOpenAIKey = builder.Configuration["AzureOpenAI:Key"];
@@ -208,6 +211,38 @@ builder.Services.AddPlayFramework("default", frameworkBuilder =>
                             "Calculates the area of a shape. Provide either a CircleArgs (with Radius) or a RectangleArgs (with Width and Height).")
                         .WithMethod<string>(x => x.GetShapeInfo(default!, default), "GetShapeInfo",
                             "Returns a full description of a shape plus optional area override. Shape identifier can be a name or numeric code; area override can be a number or a label string.");
+                });
+        })
+        .AddScene("User Lookup",
+            "Use this scene to retrieve user data or contract information. " +
+            "Keywords: 'user', 'utente', 'chi sono', 'contratto', 'contract', 'dati utente', 'user data', 'user info', " +
+            "'trova utente', 'find user', 'mostra contratto', 'show contract'.",
+            sceneBuilder =>
+        {
+            sceneBuilder
+                .WithDescriptionFromTools()
+                .WithActors(actorBuilder =>
+                {
+                    actorBuilder
+                        .AddActor("Look up user data and contract info accurately using the available tools.")
+                        .AddActor(
+                            "Both userId and contractId parameters are optional Guids. " +
+                            "When the user explicitly asks for anonymous/default data, call the method with null (pass null explicitly). " +
+                            "When the user provides a Guid string, pass it as the userId or contractId. " +
+                            "Known test users: '11111111-1111-1111-1111-111111111111' (Alice Rossi, Admin), '22222222-2222-2222-2222-222222222222' (Bob Bianchi, User). " +
+                            "Known test contracts: 'aaaa0000-0000-0000-0000-000000000001' (Alice), 'bbbb0000-0000-0000-0000-000000000002' (Bob).");
+                })
+                .WithService<IUserLookupService>(serviceBuilder =>
+                {
+                    serviceBuilder
+                        .WithMethod<UserData>(
+                            x => x.GetUserData(null),
+                            "GetUserData",
+                            "Returns data for a user given an optional userId (Guid). If not provided, returns anonymous session data.")
+                        .WithMethod<ContractInfo>(
+                            x => x.GetUserContract(null, null),
+                            "GetUserContract",
+                            "Returns the contract for a user. Both userId and contractId are optional Guids. If omitted, the default public contract is returned.");
                 });
         })
         .AddScene("Technical Documentation Estimator",

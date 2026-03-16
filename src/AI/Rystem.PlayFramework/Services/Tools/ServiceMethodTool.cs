@@ -14,9 +14,11 @@ internal sealed class ServiceMethodTool : ISceneTool
     private readonly ServiceToolConfiguration _config;
     private readonly bool _isGenericAsync;
     private readonly bool _withoutReturn;
+    private readonly IJsonService _jsonService;
 
-    public ServiceMethodTool(ServiceToolConfiguration config)
+    public ServiceMethodTool(ServiceToolConfiguration config, IJsonService? jsonService = null)
     {
+        _jsonService = jsonService ?? new DefaultJsonService();
         _config = config;
         Name = _config.ToolName;
         Description = _config.Description;
@@ -73,14 +75,14 @@ internal sealed class ServiceMethodTool : ISceneTool
             return default!;
     }
 
-    private static object?[] DeserializeArguments(string argumentsJson, ParameterInfo[] parameters, CancellationToken cancellationToken)
+    private object?[] DeserializeArguments(string argumentsJson, ParameterInfo[] parameters, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(argumentsJson) || argumentsJson == "{}")
         {
             return parameters.Length == 0 ? [] : new object?[parameters.Length];
         }
 
-        var argsDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(argumentsJson, JsonHelper.JsonSerializerOptions);
+        var argsDict = _jsonService.Deserialize<Dictionary<string, JsonElement>>(argumentsJson);
         if (argsDict == null)
         {
             return new object?[parameters.Length];
@@ -98,7 +100,19 @@ internal sealed class ServiceMethodTool : ISceneTool
             }
             else if (argsDict.TryGetValue(param.Name!, out var value))
             {
-                args[i] = JsonSerializer.Deserialize(value.GetRawText(), param.ParameterType, JsonHelper.JsonSerializerOptions);
+                // If the LLM explicitly sends null for this parameter, honour it:
+                // - for nullable types (Guid?, string, etc.) → null
+                // - for non-nullable value types → fall through to default/Activator
+                if (value.ValueKind == System.Text.Json.JsonValueKind.Null)
+                {
+                    var isNullable = !param.ParameterType.IsValueType
+                        || Nullable.GetUnderlyingType(param.ParameterType) != null;
+                    args[i] = isNullable ? null : Activator.CreateInstance(param.ParameterType);
+                }
+                else
+                {
+                    args[i] = _jsonService.Deserialize(value.GetRawText(), param.ParameterType);
+                }
             }
             else if (param.HasDefaultValue)
             {

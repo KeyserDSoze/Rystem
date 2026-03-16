@@ -57,6 +57,7 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
         List<AIFunction> mcpTools,
         IReadOnlyList<ClientInteractionDefinition>? clientInteractionDefinitions,
         string sceneName,
+        IJsonService? jsonService = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         // Deduplicate first
@@ -67,7 +68,7 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
                 functionCalls.Count - deduplicatedCalls.Count, functionCalls.Count, deduplicatedCalls.Count);
         }
 
-        var jsonService = new DefaultJsonService();
+        jsonService ??= new DefaultJsonService();
         var pendingCommands = new List<PendingCommand>();
 
         // Process ALL calls - separate Commands from immediate server tools

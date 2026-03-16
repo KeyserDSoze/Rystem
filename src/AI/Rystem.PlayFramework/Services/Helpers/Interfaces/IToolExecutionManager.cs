@@ -37,6 +37,7 @@ public interface IToolExecutionManager
         List<AIFunction> mcpTools,
         IReadOnlyList<ClientInteractionDefinition>? clientInteractionDefinitions,
         string sceneName,
+        IJsonService? jsonService = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -365,6 +365,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                 mcpTools,
                 scene.ClientInteractionDefinitions,
                 scene.Name,
+                _jsonService,
                 cancellationToken))
             {
                 var response = ConvertToolResult(result, scene.Name, context);
