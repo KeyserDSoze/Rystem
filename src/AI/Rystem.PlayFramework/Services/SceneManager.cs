@@ -30,6 +30,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private readonly IFactory<IMemory>? _memoryFactory;
     private readonly IFactory<IContext>? _contextFactory;
     private readonly IFactory<IAuthorizationLayer>? _authorizationLayerFactory;
+    private readonly IFactory<IJsonService>? _jsonServiceFactory;
     private readonly IFactory<IMemoryStorage>? _memoryStorageFactory;
     private readonly IFactory<IExecutionModeHandler> _executionModeHandlerFactory;
     private readonly IPlayFrameworkCache _playFrameworkCache;
@@ -52,6 +53,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private IMemoryStorage? _memoryStorage;
     private IContext? _context;
     private IAuthorizationLayer? _authorizationLayer;
+    private IJsonService? _jsonService;
     private IRepository<StoredConversation, string>? _repository;
 
     public SceneManager(
@@ -73,7 +75,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         IFactory<IMemoryStorage>? memoryStorageFactory = null,
         IFactory<IContext>? contextFactory = null,
         IFactory<IAuthorizationLayer>? authorizationLayerFactory = null,
-        IFactory<IRepository<StoredConversation, string>>? repositoryFactory = null)
+        IFactory<IRepository<StoredConversation, string>>? repositoryFactory = null,
+        IFactory<IJsonService>? jsonServiceFactory = null)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -84,6 +87,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _plannerFactory = plannerFactory;
         _contextFactory = contextFactory;
         _authorizationLayerFactory = authorizationLayerFactory;
+        _jsonServiceFactory = jsonServiceFactory;
         _summarizerFactory = summarizerFactory;
         _directorFactory = directorFactory;
         _executionModeHandlerFactory = executionModeHandlerFactory;
@@ -145,6 +149,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             availableScenes, _settings.ChatClientNames?.Count ?? 1, _settings.FallbackMode, _planner != null, _summarizer != null, _director != null, _settings.Cache.Enabled, _rateLimiter != null, _memory != null, _factoryName);
 
         _context = _contextFactory?.Create(name);
+        _jsonService = _jsonServiceFactory?.Create(name) ?? new DefaultJsonService();
         _authorizationLayer = _authorizationLayerFactory?.Create(name);
         _repository = _repositoryFactory?.Create(name);
 
@@ -385,7 +390,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         }
 
         // 4. Build the initial context system message (Context + MainActors combined)
-        context.BuildInitialContext(contextResult, mainActorOutputs);
+        context.BuildInitialContext(contextResult, mainActorOutputs, _jsonService);
 
         _logger.LogDebug("New context initialized with {MainActorCount} main actors, context result: {HasContext}, guardrails: {Guardrails} (Factory: {FactoryName})",
             mainActorOutputs.Count, contextResult != null, _settings.Guardrails.Enabled, _factoryName);

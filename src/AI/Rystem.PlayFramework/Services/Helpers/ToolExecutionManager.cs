@@ -239,7 +239,7 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
                 var argsJson = jsonService.Serialize(functionCall.Arguments ?? new Dictionary<string, object?>());
                 var toolResult = await sceneTool.ExecuteAsync(argsJson, context, cancellationToken);
 
-                var functionResult = CreateFunctionResult(functionCall, toolResult);
+                var functionResult = CreateFunctionResult(functionCall, toolResult, jsonService);
                 context.AddToolMessage(new ChatMessage(ChatRole.Tool, [functionResult]));
 
                 result = new ToolExecutionResult
@@ -532,11 +532,15 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
         return "Client tool executed successfully (no data returned)";
     }
 
-    private static FunctionResultContent CreateFunctionResult(FunctionCallContent functionCall, object? toolResult)
+    private static FunctionResultContent CreateFunctionResult(FunctionCallContent functionCall, object? toolResult, IJsonService jsonService)
     {
         var functionResult = new FunctionResultContent(functionCall.CallId, functionCall.Name);
 
-        if (toolResult is AIContent aiContent)
+        if (toolResult is null)
+        {
+            functionResult.Result = null;
+        }
+        else if (toolResult is AIContent aiContent)
         {
             functionResult.Result = aiContent;
         }
@@ -544,9 +548,18 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
         {
             functionResult.Result = aiContents;
         }
+        else if (toolResult is string s)
+        {
+            // Already a string - store as-is (no serialization needed)
+            functionResult.Result = s;
+        }
         else
         {
-            functionResult.Result = toolResult;
+            // Serialize complex objects to JSON string using the custom IJsonService
+            // so that any AnyOf<T,U> or other custom types are handled by the registered
+            // converters. OpenAIChatClient will then send this string as the tool result,
+            // preventing serialization failures when the default options encounter AnyOf.
+            functionResult.Result = jsonService.Serialize(toolResult, toolResult.GetType());
         }
 
         return functionResult;

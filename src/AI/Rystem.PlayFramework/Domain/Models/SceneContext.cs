@@ -114,7 +114,7 @@ public sealed class SceneContext
     /// Builds the initial system message (Context + MainActors).
     /// This message always has Message flag and is never removed.
     /// </summary>
-    public void BuildInitialContext(object? contextResult, IEnumerable<string> mainActorOutputs)
+    public void BuildInitialContext(object? contextResult, IEnumerable<string> mainActorOutputs, IJsonService? jsonService = null)
     {
         var builder = new StringBuilder();
 
@@ -122,7 +122,12 @@ public sealed class SceneContext
         if (contextResult != null)
         {
             builder.AppendLine("[Request Context]");
-            builder.AppendLine(contextResult is string asString ? asString : JsonSerializer.Serialize(contextResult, JsonHelper.JsonSerializerOptions));
+            string contextJson = contextResult is string asString
+                ? asString
+                : (jsonService != null
+                    ? jsonService.Serialize(contextResult, contextResult.GetType())
+                    : JsonSerializer.Serialize(contextResult, JsonHelper.JsonSerializerOptions));
+            builder.AppendLine(contextJson);
             builder.AppendLine();
         }
 
