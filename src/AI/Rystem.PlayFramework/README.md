@@ -719,6 +719,79 @@ HTTP-level authorization (ASP.NET Core policies) and `IAuthorizationLayer` are c
 - HTTP policies run before any PlayFramework processing (token/claims validation)
 - `IAuthorizationLayer` runs after initialization (business logic, quotas, feature flags)
 
+## Example: request context injection (IContext)
+
+`IContext` lets you inject dynamic, per-request context data into the system message at the start of every new conversation. The typical use case is enriching the LLM with information only available at runtime: the current user's profile, tenant settings, permissions, locale, or anything else that comes from the HTTP layer (JWT claims, headers, session).
+
+Implement the interface and return any object (or a plain string). If the return value is not a string it is serialized as JSON:
+
+```csharp
+public sealed class UserContextProvider : IContext
+{
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IUserService _userService;
+
+    public UserContextProvider(IHttpContextAccessor httpContextAccessor, IUserService userService)
+    {
+        _httpContextAccessor = httpContextAccessor;
+        _userService = userService;
+    }
+
+    public async Task<dynamic?> RetrieveAsync(
+        SceneContext context,
+        SceneRequestSettings settings,
+        CancellationToken cancellationToken)
+    {
+        var userId = _httpContextAccessor.HttpContext?.User.FindFirst("sub")?.Value;
+        if (userId is null) return null;
+
+        var user = await _userService.GetUserAsync(userId, cancellationToken);
+
+        return new
+        {
+            user.DisplayName,
+            user.Email,
+            user.Role,
+            user.PreferredLanguage
+        };
+    }
+}
+```
+
+Register it with `AddContext<T>()` in the PlayFramework builder:
+
+```csharp
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IUserService, UserService>();
+
+builder.Services.AddPlayFramework("default", framework =>
+{
+    framework
+        .WithChatClient("default")
+        .AddContext<UserContextProvider>()
+        .AddMainActor("You are a helpful assistant. Address the user by name when appropriate.")
+        .AddScene("Assistant", "General conversation", _ => { });
+});
+```
+
+At the start of each new conversation the framework calls `RetrieveAsync`, serializes the result, and prepends the following block to the system message (before main actor instructions):
+
+```
+[Request Context]
+{"displayName":"Alessandro","email":"a@example.com","role":"Admin","preferredLanguage":"it"}
+
+[System Instructions]
+- You are a helpful assistant. Address the user by name when appropriate.
+```
+
+Important behavior:
+
+- `RetrieveAsync` is called only once per **new** conversation. When resuming a cached or stored conversation the existing context is reused.
+- Returning `null` skips the `[Request Context]` block entirely.
+- Returning a `string` injects it verbatim; any other object is serialized to JSON.
+- `IContext` is transient by default. Services you inject into it may be scoped (e.g. `IHttpContextAccessor`).
+- Only one `IContext` implementation can be registered per named PlayFramework instance. A second call to `AddContext<T>()` replaces the previous registration.
+
 ## Example: director, summarization, and planning configuration
 
 The director evaluates the execution result and may re-run the scene. Summarization compresses conversation history when it grows too large. Both are configured on the builder.
