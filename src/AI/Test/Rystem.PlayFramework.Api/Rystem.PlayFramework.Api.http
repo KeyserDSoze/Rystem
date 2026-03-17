@@ -1,6 +1,50 @@
 @Rystem.PlayFramework.Api_HostAddress = http://localhost:5158
 
-GET {{Rystem.PlayFramework.Api_HostAddress}}/weatherforecast/
+# Health check
+GET {{Rystem.PlayFramework.Api_HostAddress}}/health
 Accept: application/json
+
+###
+
+# PlayFramework - Step-by-step SSE streaming (scene events)
+# Response includes cost per event (fields: cost, totalCost, inputTokens, outputTokens)
+POST {{Rystem.PlayFramework.Api_HostAddress}}/api/ai/default
+Content-Type: application/json
+Accept: text/event-stream
+
+{
+  "message": "What is 7 multiplied by 6?",
+  "metadata": {
+    "userId": "test-user"
+  }
+}
+
+###
+
+# PlayFramework - Token-level streaming (text chunks with cost)
+POST {{Rystem.PlayFramework.Api_HostAddress}}/api/ai/default/streaming
+Content-Type: application/json
+Accept: text/event-stream
+
+{
+  "message": "Explain the Pythagorean theorem briefly.",
+  "metadata": {
+    "userId": "test-user"
+  }
+}
+
+###
+
+# PlayFramework - Request with budget limit ($0.01 max)
+POST {{Rystem.PlayFramework.Api_HostAddress}}/api/ai/default
+Content-Type: application/json
+Accept: text/event-stream
+
+{
+  "message": "Tell me a long story about dragons.",
+  "settings": {
+    "maxBudget": 0.01
+  }
+}
 
 ###

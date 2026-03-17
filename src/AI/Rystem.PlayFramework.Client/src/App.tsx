@@ -31,6 +31,12 @@ interface ChatMessage {
     timestamp: Date;
     toolName?: string;
     contents?: AIContent[];
+    inputTokens?: number;
+    outputTokens?: number;
+    cachedInputTokens?: number;
+    totalTokens?: number;
+    cost?: number;
+    totalCost?: number;
 }
 
 type StreamMode = 'step' | 'token' | 'voice';
@@ -1222,6 +1228,25 @@ function App() {
                 timestamp: new Date()
             });
         }
+
+        // Cost data — attach to last assistant message when available
+        if ((step.inputTokens ?? 0) > 0 || (step.cost ?? 0) > 0 || (step.totalCost ?? 0) > 0) {
+            setMessages(prev => {
+                const idx = [...prev].map((m, i) => ({ m, i })).reverse().find(x => x.m.role === 'assistant')?.i;
+                if (idx === undefined) return prev;
+                const updated = [...prev];
+                updated[idx] = {
+                    ...updated[idx],
+                    inputTokens: step.inputTokens,
+                    outputTokens: step.outputTokens,
+                    cachedInputTokens: step.cachedInputTokens,
+                    totalTokens: step.totalTokens,
+                    cost: step.cost,
+                    totalCost: step.totalCost,
+                };
+                return updated;
+            });
+        }
     };
 
     // ── Key handler ───────────────────────────────────────────────────
@@ -1657,6 +1682,37 @@ function App() {
                                 {msg.contents.map((content, contentIdx) => (
                                     <ContentViewer key={contentIdx} content={content} />
                                 ))}
+                            </div>
+                        )}
+
+                        {/* Cost / token badge */}
+                        {msg.role === 'assistant' && (msg.inputTokens ?? 0) > 0 && (
+                            <div style={{
+                                marginTop: '8px',
+                                paddingTop: '6px',
+                                borderTop: '1px solid #3a3a3a',
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: '6px',
+                                fontSize: '11px',
+                                color: '#888',
+                            }}>
+                                <span title="Input tokens">&#8593; {msg.inputTokens} in</span>
+                                {(msg.cachedInputTokens ?? 0) > 0 && (
+                                    <span title="Cached input tokens" style={{ color: '#6c9' }}>&#9830; {msg.cachedInputTokens} cached</span>
+                                )}
+                                <span title="Output tokens">&#8595; {msg.outputTokens} out</span>
+                                <span title="Total tokens">= {msg.totalTokens} total</span>
+                                {(msg.cost ?? 0) > 0 && (
+                                    <span title="Request cost" style={{ color: '#fa3', marginLeft: '4px' }}>
+                                        ${msg.cost!.toFixed(6)}
+                                    </span>
+                                )}
+                                {(msg.totalCost ?? 0) > 0 && (
+                                    <span title="Cumulative session cost" style={{ color: '#f88', marginLeft: '2px' }}>
+                                        (total: ${msg.totalCost!.toFixed(6)})
+                                    </span>
+                                )}
                             </div>
                         )}
                     </div>

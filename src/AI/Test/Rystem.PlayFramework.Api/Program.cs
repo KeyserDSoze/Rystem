@@ -95,6 +95,11 @@ else
 //    settings.AppName = "Rystem.PlayFramework.Test";
 //});
 
+// Load cost tracking configuration
+var costCurrency = builder.Configuration["AzureOpenAI:CostTracking:Currency"] ?? "USD";
+var inputCostPer1K = decimal.TryParse(builder.Configuration["AzureOpenAI:CostTracking:InputTokenCostPer1K"], out var ic) ? ic : 0.002m;
+var outputCostPer1K = decimal.TryParse(builder.Configuration["AzureOpenAI:CostTracking:OutputTokenCostPer1K"], out var oc) ? oc : 0.008m;
+
 // Configure PlayFramework with Chat scene
 builder.Services.AddPlayFramework("default", frameworkBuilder =>
 {
@@ -113,6 +118,7 @@ builder.Services.AddPlayFramework("default", frameworkBuilder =>
             planningSettings.MaxRecursionDepth = 5;
         })
         .WithRetry(maxAttempts: 3, baseDelaySeconds: 1.0)
+        .WithCostTracking(costCurrency, inputCostPer1K, outputCostPer1K)
         .WithTelemetry(telemetryBuilder =>
         {
             telemetryBuilder.EnableMetrics = true;

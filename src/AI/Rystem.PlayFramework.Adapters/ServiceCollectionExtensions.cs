@@ -55,7 +55,7 @@ public static class ServiceCollectionExtensions
 
         if (settings.UseResponsesApi)
         {
-            chatClient = azureClient.GetResponsesClient(settings.Deployment).AsIChatClient();
+            chatClient = azureClient.GetResponsesClient().AsIChatClient(settings.Deployment);
         }
         else
         {

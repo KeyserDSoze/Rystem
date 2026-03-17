@@ -112,7 +112,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
                     CalculatedCost = cost,
                     InputTokens = (int)(response.Usage?.InputTokenCount ?? 0),
                     OutputTokens = (int)(response.Usage?.OutputTokenCount ?? 0),
-                    CachedInputTokens = 0,
+                    CachedInputTokens = (int)(response.Usage?.CachedInputTokenCount ?? 0),
                     ClientName = clientInfo.ClientName
                 };
             }
@@ -328,14 +328,18 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
                 receivedExplicitCompletion = true;
             }
 
-            var inputTokens = (int)(update.Contents?.FirstOrDefault()?.GetType().GetProperty("InputTokens")?.GetValue(update.Contents.First()) ?? 0);
-            var outputTokens = (int)(update.Contents?.FirstOrDefault()?.GetType().GetProperty("OutputTokens")?.GetValue(update.Contents.First()) ?? 0);
+            // Usage is surfaced via UsageContent inside Contents (not on the update object itself)
+            var usageContent = update.Contents?.OfType<UsageContent>().FirstOrDefault();
+            var inputTokens = (int)(usageContent?.Details.InputTokenCount ?? 0);
+            var outputTokens = (int)(usageContent?.Details.OutputTokenCount ?? 0);
+            var cachedInputTokens = (int)(usageContent?.Details.CachedInputTokenCount ?? 0);
 
             var estimatedCost = 0m;
-            if (isComplete && costSettings != null)
+            if (usageContent != null && costSettings != null)
             {
                 estimatedCost = ((decimal)inputTokens / 1_000m) * costSettings.InputTokenCostPer1K +
-                              ((decimal)outputTokens / 1_000m) * costSettings.OutputTokenCostPer1K;
+                              ((decimal)outputTokens / 1_000m) * costSettings.OutputTokenCostPer1K +
+                              ((decimal)cachedInputTokens / 1_000m) * costSettings.CachedInputTokenCostPer1K;
             }
 
             yield return new ChatUpdateWithCost
@@ -344,7 +348,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
                 EstimatedCost = estimatedCost,
                 InputTokens = inputTokens,
                 OutputTokens = outputTokens,
-                CachedInputTokens = 0,
+                CachedInputTokens = cachedInputTokens,
                 IsComplete = isComplete,
                 ClientName = clientName,
                 IsError = false
@@ -445,8 +449,9 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
 
         var inputCost = ((decimal)(response.Usage.InputTokenCount ?? 0) / 1_000m) * settings.InputTokenCostPer1K;
         var outputCost = ((decimal)(response.Usage.OutputTokenCount ?? 0) / 1_000m) * settings.OutputTokenCostPer1K;
+        var cachedCost = ((decimal)(response.Usage.CachedInputTokenCount ?? 0) / 1_000m) * settings.CachedInputTokenCostPer1K;
 
-        return inputCost + outputCost;
+        return inputCost + outputCost + cachedCost;
     }
 
     #endregion
