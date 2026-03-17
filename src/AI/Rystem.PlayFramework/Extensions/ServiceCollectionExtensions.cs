@@ -109,6 +109,20 @@ public static class ServiceCollectionExtensions
         // Register default cost settings for direct IChatClient fallback
         services.AddFactory(builder.Settings.CostTracking, name, ServiceLifetime.Singleton);
 
+        // Register per-client cost settings so GetOrCreateCostSettings(clientName) resolves correctly
+        foreach (var (clientName, clientCostEntry) in builder.Settings.CostTracking.ClientCosts)
+        {
+            var clientTokenSettings = new TokenCostSettings
+            {
+                Enabled = true,
+                Currency = builder.Settings.CostTracking.Currency,
+                InputTokenCostPer1K = clientCostEntry.InputTokenCostPer1K,
+                OutputTokenCostPer1K = clientCostEntry.OutputTokenCostPer1K,
+                CachedInputTokenCostPer1K = clientCostEntry.CachedInputTokenCostPer1K,
+            };
+            services.AddFactory(clientTokenSettings, clientName, ServiceLifetime.Singleton);
+        }
+
         // Register default transient error detector if not customized
         if (!builder.HasCustomTransientErrorDetector)
         {

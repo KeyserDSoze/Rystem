@@ -11,7 +11,7 @@ using RepositoryFramework.InMemory;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ✅ Configure detailed logging to console
+// Configure detailed logging to console
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.Debug); // Show all logs including Debug

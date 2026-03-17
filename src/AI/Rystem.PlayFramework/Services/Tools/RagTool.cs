@@ -224,16 +224,16 @@ internal sealed class RagTool : ISceneTool
         var errorMessage = $$"""
             No IRagService registered for factory key {{keyDescription}}.
 
-            🔧 How to fix:
+            How to fix:
 
-            1️⃣ Register RAG service with factory key:
+            1. Register RAG service with factory key:
 
                services.AddRagService<YourRagService>(cost => 
                {
                    cost.CostPerThousandEmbeddingTokens = 0.0001m;
                }, name: "{{factoryKey}}");
 
-            2️⃣ Example with Azure AI Search:
+            2. Example with Azure AI Search:
 
                services.AddRagService<AzureAISearchRagService>(cost =>
                {
@@ -241,21 +241,21 @@ internal sealed class RagTool : ISceneTool
                    cost.CostPerThousandSearchTokens = 0m;
                }, name: "azure");
 
-            3️⃣ Example with Pinecone (using enum):
+            3. Example with Pinecone (using enum):
 
                services.AddRagService<PineconeRagService>(cost =>
                {
                    cost.CostPerThousandEmbeddingTokens = 0.0001m;
                }, name: RagProvider.Pinecone);
 
-            4️⃣ Example with default (no key):
+            4. Example with default (no key):
 
                services.AddRagService<YourRagService>(cost =>
                {
                    cost.CostPerThousandEmbeddingTokens = 0.0001m;
                });  // No name parameter = default
 
-            📖 Documentation: https://rystem.net/mcp/tools/repository-setup.md
+            Documentation: https://rystem.net/mcp/tools/repository-setup.md
             """;
 
         _logger.LogError(innerException,

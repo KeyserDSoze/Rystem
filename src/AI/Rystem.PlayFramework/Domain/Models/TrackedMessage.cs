@@ -12,15 +12,15 @@ namespace Rystem.PlayFramework;
 ///         <term>Type</term>
 ///         <description>Message | Cache | Memory | Resume</description>
 ///     </listheader>
-///     <item><term>InitialContext</term><description>✓ | ✓ | ✗ | ✗ (cached for reuse)</description></item>
-///     <item><term>MemoryContext</term><description>✓ | ✗ | ✗ | ✗ (loaded from storage)</description></item>
-///     <item><term>ExecutionCheckpoint</term><description>✓ | ✗ | ✗ | ✗ (derived from cached state)</description></item>
-///     <item><term>SceneActor</term><description>✓ | ✓ | ✗ | ✗ (scene-specific context)</description></item>
-///     <item><term>McpContext</term><description>✓ | ✓ | ✗ | ✗ (scene-specific context)</description></item>
-///     <item><term>User</term><description>✓ | ✓ | ✓ | ✓</description></item>
-///     <item><term>Assistant</term><description>✓ | ✓ | ✓ | ✓</description></item>
-///     <item><term>Tool</term><description>✓ | ✓ | ✗ | ✓</description></item>
-///     <item><term>Summary</term><description>✓ | ✓ | ✗ | ✗ (replaces summarized messages)</description></item>
+    ///     <item><term>InitialContext</term><description>Y | Y | N | N (cached for reuse)</description></item>
+    ///     <item><term>MemoryContext</term><description>Y | N | N | N (loaded from storage)</description></item>
+    ///     <item><term>ExecutionCheckpoint</term><description>Y | N | N | N (derived from cached state)</description></item>
+    ///     <item><term>SceneActor</term><description>Y | Y | N | N (scene-specific context)</description></item>
+    ///     <item><term>McpContext</term><description>Y | Y | N | N (scene-specific context)</description></item>
+    ///     <item><term>User</term><description>Y | Y | Y | Y</description></item>
+    ///     <item><term>Assistant</term><description>Y | Y | Y | Y</description></item>
+    ///     <item><term>Tool</term><description>Y | Y | N | Y</description></item>
+    ///     <item><term>Summary</term><description>Y | Y | N | N (replaces summarized messages)</description></item>
 /// </list>
 /// </remarks>
 [Flags]
@@ -210,7 +210,7 @@ public sealed class TrackedMessage
             builder.AppendLine($"Previously executed scenes ({state.ExecutedSceneOrder.Count}):");
             foreach (var sceneName in state.ExecutedSceneOrder)
             {
-                builder.AppendLine($"  ✓ {sceneName}");
+                builder.AppendLine($"  - {sceneName}");
 
                 // Add tool details if available
                 if (state.ExecutedScenes.TryGetValue(sceneName, out var tools) && tools.Count > 0)

@@ -217,9 +217,9 @@ internal sealed class WebSearchTool : ISceneTool
         var errorMessage = $$"""
             No IWebSearchService registered for factory key {{keyDescription}}.
 
-            🔧 How to fix:
+            How to fix:
 
-            1️⃣ Register web search service with factory key:
+            1. Register web search service with factory key:
 
                services.AddWebSearchService<YourWebSearchService>(cost => 
                {
@@ -227,7 +227,7 @@ internal sealed class WebSearchTool : ISceneTool
                    cost.CostPerResult = 0.0001m;     // $0.0001 per result
                }, name: "{{factoryKey}}");
 
-            2️⃣ Example with Bing Search API:
+            2. Example with Bing Search API:
 
                services.AddWebSearchService<BingSearchService>(cost =>
                {
@@ -235,7 +235,7 @@ internal sealed class WebSearchTool : ISceneTool
                    cost.MonthlyQuota = 1000;
                }, name: "bing");
 
-            3️⃣ Example with Google Custom Search (using enum):
+            3. Example with Google Custom Search (using enum):
 
                services.AddWebSearchService<GoogleSearchService>(cost =>
                {
@@ -243,14 +243,14 @@ internal sealed class WebSearchTool : ISceneTool
                    cost.MonthlyQuota = 10000;
                }, name: WebSearchProvider.Google);
 
-            4️⃣ Example with default (no key):
+            4. Example with default (no key):
 
                services.AddWebSearchService<YourWebSearchService>(cost =>
                {
                    cost.CostPerSearch = 0.005m;
                });  // No name parameter = default
 
-            📖 Documentation: https://rystem.net/mcp/tools/content-repository.md
+            Documentation: https://rystem.net/mcp/tools/content-repository.md
             """;
 
         _logger.LogError(innerException,

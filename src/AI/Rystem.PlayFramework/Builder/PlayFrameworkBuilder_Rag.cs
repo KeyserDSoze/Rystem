@@ -40,7 +40,7 @@ public static class PlayFrameworkBuilderRagExtensions
     /// });
     /// </example>
     /// <remarks>
-    /// ⚠️ Important: Before calling WithRag(), you must register an IRagService:
+    /// Important: Before calling WithRag(), you must register an IRagService:
     /// <code>
     /// services.AddRagService&lt;YourRagService&gt;(cost =>
     /// {

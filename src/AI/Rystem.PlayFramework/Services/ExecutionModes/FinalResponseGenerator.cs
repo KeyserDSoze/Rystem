@@ -49,7 +49,7 @@ internal sealed class FinalResponseGenerator : IFactoryName
         {
             // Streaming mode - use StreamingHelper
             await foreach (var streamUpdateWithCost in context.ChatClientManager.GetStreamingResponseAsync(
-                messages,  // ✅ Use conversation history + final prompt
+                messages,  // Use conversation history + final prompt
                 cancellationToken: cancellationToken))
             {
                 await foreach (var streamResponse in _dependencies.StreamingHelper.ProcessChunkAsync(
@@ -65,7 +65,7 @@ internal sealed class FinalResponseGenerator : IFactoryName
         {
             // Non-streaming mode
             var responseWithCost = await context.ChatClientManager.GetResponseAsync(
-                messages,  // ✅ Use conversation history + final prompt
+                messages,  // Use conversation history + final prompt
                 cancellationToken: cancellationToken);
 
             // Extract multi-modal contents from LLM response and save to conversation history

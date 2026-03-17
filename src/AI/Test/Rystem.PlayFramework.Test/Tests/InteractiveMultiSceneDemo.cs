@@ -180,7 +180,7 @@ Always explain your reasoning and show intermediate steps.")
             Console.WriteLine();
         }
 
-        Console.WriteLine($"\n📊 Summary:");
+        Console.WriteLine($"\nSummary:");
         Console.WriteLine($"   Scenes used: {string.Join(", ", scenesUsed)}");
         Console.WriteLine($"   Tools called: {toolsCalled.Count} ({string.Join(", ", toolsCalled)})");
     }
@@ -232,7 +232,7 @@ I need a comprehensive analysis:
         }
 
         // Summary
-        Console.WriteLine($"\n📊 Execution Summary:");
+        Console.WriteLine($"\nExecution Summary:");
         Console.WriteLine($"   Total responses: {responses.Count}");
         Console.WriteLine($"   Scenes used: {responses.Where(r => r.SceneName != null).Select(r => r.SceneName).Distinct().Count()}");
         Console.WriteLine($"   Tools called: {responses.Count(r => r.FunctionName != null)}");
@@ -240,7 +240,7 @@ I need a comprehensive analysis:
 
         var planningResponse = responses.FirstOrDefault(r => r.Status == AiResponseStatus.Planning);
         if (planningResponse != null)
-            Console.WriteLine($"   Planning: ✅ Used");
+            Console.WriteLine($"   Planning: Used");
     }
 
     /// <summary>
@@ -261,7 +261,7 @@ I need a comprehensive analysis:
             Console.WriteLine($"[{response.Status,-25}] {response.Message}");
 
             if (response.ErrorMessage != null)
-                Console.WriteLine($"  ⚠️ Error: {response.ErrorMessage}");
+                Console.WriteLine($"  Error: {response.ErrorMessage}");
 
             if (response.FunctionName != null)
                 Console.WriteLine($"  └─ Tool: {response.FunctionName}");
@@ -301,11 +301,11 @@ I need a comprehensive analysis:
                 if (response.SceneName != null && selectedScene == null)
                 {
                     selectedScene = response.SceneName;
-                    Console.WriteLine($"✅ Selected Scene: {selectedScene}");
+                    Console.WriteLine($"Selected Scene: {selectedScene}");
                 }
 
                 if (response.Status == AiResponseStatus.Running)
-                    Console.WriteLine($"📝 Response: {response.Message}");
+                    Console.WriteLine($"Response: {response.Message}");
             }
 
             Console.WriteLine();
@@ -339,32 +339,32 @@ I need a comprehensive analysis:
                 Console.WriteLine($"         {response.Message}");
 
             if (response.SceneName != null)
-                Console.WriteLine($"         🎬 Scene: {response.SceneName}");
+                Console.WriteLine($"         Scene: {response.SceneName}");
 
             if (response.FunctionName != null)
-                Console.WriteLine($"         🔧 Tool: {response.FunctionName}");
+                Console.WriteLine($"         Tool: {response.FunctionName}");
 
             if (response.Cost.HasValue)
-                Console.WriteLine($"         💰 Cost: ${response.Cost:F4}");
+                Console.WriteLine($"         Cost: ${response.Cost:F4}");
 
             Console.WriteLine();
         }
 
-        Console.WriteLine($"⏱️  Total execution time: {(DateTime.UtcNow - startTime).TotalMilliseconds:F0}ms");
+        Console.WriteLine($"Total execution time: {(DateTime.UtcNow - startTime).TotalMilliseconds:F0}ms");
     }
 
     private static string GetStatusIcon(AiResponseStatus status)
     {
         return status switch
         {
-            AiResponseStatus.Initializing => "🔄",
-            AiResponseStatus.Planning => "📋",
-            AiResponseStatus.ExecutingScene => "🎬",
-            AiResponseStatus.FunctionRequest => "🔧",
-            AiResponseStatus.FunctionCompleted => "✅",
-            AiResponseStatus.Running => "▶️",
-            AiResponseStatus.Completed => "🎉",
-            AiResponseStatus.Error => "❌",
+            AiResponseStatus.Initializing => "[init]",
+            AiResponseStatus.Planning => "[plan]",
+            AiResponseStatus.ExecutingScene => "[scene]",
+            AiResponseStatus.FunctionRequest => "[tool]",
+            AiResponseStatus.FunctionCompleted => "[done]",
+            AiResponseStatus.Running => "[run]",
+            AiResponseStatus.Completed => "[ok]",
+            AiResponseStatus.Error => "[err]",
             _ => "•"
         };
     }

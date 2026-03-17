@@ -271,7 +271,7 @@ Provide detailed step-by-step analysis with all intermediate calculations.
         Assert.NotNull(finalResponse?.Message);
         Assert.Contains("report", finalResponse.Message.ToLower());
 
-        Console.WriteLine($"\n📊 Execution Summary:");
+        Console.WriteLine($"\nExecution Summary:");
         Console.WriteLine($"   Total time: {executionTime:F2}s");
         Console.WriteLine($"   Scenes used: {scenesUsed.Count} ({string.Join(", ", scenesUsed)})");
         Console.WriteLine($"   Tools executed: {toolsExecuted.Count}");
@@ -609,7 +609,7 @@ Make it look like a real McKinsey report!
         Assert.Contains(responses, r => r.Status == AiResponseStatus.Completed);
 
         Console.WriteLine($"\n{'=',-80}");
-        Console.WriteLine("📊 EXECUTION METRICS");
+        Console.WriteLine("EXECUTION METRICS");
         Console.WriteLine($"{'=',-80}");
         Console.WriteLine($"Total Execution Time: {executionTime:F2}s");
         Console.WriteLine($"Total Responses: {responses.Count}");

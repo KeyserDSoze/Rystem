@@ -92,7 +92,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
         {
             try
             {
-                _logger.LogDebug("🎯 Trying {Phase} client: {Client} (Attempt {Attempt}/{MaxAttempts})",
+                _logger.LogDebug("Trying {Phase} client: {Client} (Attempt {Attempt}/{MaxAttempts})",
                     clientInfo.Phase, clientInfo.ClientName, clientInfo.Attempt, clientInfo.MaxAttempts);
 
                 var response = await clientInfo.Client.GetResponseAsync(chatMessages, options, cancellationToken);
@@ -102,7 +102,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
 
                 var cost = CalculateCost(response, clientInfo.CostSettings);
 
-                _logger.LogInformation("✅ {Phase} client {Client} succeeded (Attempt {Attempt}, Tokens: {Input}→{Output}, Cost: {Cost:F6})",
+                _logger.LogInformation("{Phase} client {Client} succeeded (Attempt {Attempt}, Tokens: {Input}->{Output}, Cost: {Cost:F6})",
                     clientInfo.Phase, clientInfo.ClientName, clientInfo.Attempt,
                     response.Usage?.InputTokenCount ?? 0, response.Usage?.OutputTokenCount ?? 0, cost);
 
@@ -124,13 +124,13 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
                 if (isTransient && clientInfo.Attempt < clientInfo.MaxAttempts)
                 {
                     var delay = TimeSpan.FromSeconds(_settings.RetryBaseDelaySeconds * Math.Pow(2, clientInfo.Attempt - 1));
-                    _logger.LogWarning("⚠️ Transient error from {Client} (Attempt {Attempt}/{MaxAttempts}), retrying in {Delay}s: {Error}",
+                    _logger.LogWarning("Transient error from {Client} (Attempt {Attempt}/{MaxAttempts}), retrying in {Delay}s: {Error}",
                         clientInfo.ClientName, clientInfo.Attempt, clientInfo.MaxAttempts, delay.TotalSeconds, ex.Message);
                     await Task.Delay(delay, cancellationToken);
                 }
                 else
                 {
-                    _logger.LogWarning("❌ {ErrorType} error from {Client}: {Error}",
+                    _logger.LogWarning("{ErrorType} error from {Client}: {Error}",
                         isTransient ? "Transient (max retries)" : "Non-transient", clientInfo.ClientName, ex.Message);
                 }
             }
@@ -157,7 +157,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
         {
             var streamSuccess = false;
 
-            _logger.LogDebug("🎯 Trying {Phase} streaming client: {Client}", clientInfo.Phase, clientInfo.ClientName);
+            _logger.LogDebug("Trying {Phase} streaming client: {Client}", clientInfo.Phase, clientInfo.ClientName);
 
             await foreach (var update in TryStreamFromClientAsync(
                 clientInfo.Client,
@@ -171,7 +171,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
 
                 if (update.IsError)
                 {
-                    _logger.LogWarning("⚠️ Streaming error from {Client}: {Error}", clientInfo.ClientName, update.ErrorMessage);
+                    _logger.LogWarning("Streaming error from {Client}: {Error}", clientInfo.ClientName, update.ErrorMessage);
                     break;
                 }
 
@@ -187,7 +187,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
 
             if (streamSuccess)
             {
-                _logger.LogInformation("✅ Streaming succeeded from {Phase} client: {Client}", clientInfo.Phase, clientInfo.ClientName);
+                _logger.LogInformation("Streaming succeeded from {Phase} client: {Client}", clientInfo.Phase, clientInfo.ClientName);
                 yield break;
             }
         }
@@ -230,7 +230,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning("⚠️ Failed to create client {Client}: {Error}", clientName, ex.Message);
+                        _logger.LogWarning("Failed to create client {Client}: {Error}", clientName, ex.Message);
                         break; // Skip this client entirely
                     }
 
@@ -250,7 +250,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
         // Phase 2: Fallback chain
         if (_settings.FallbackChatClientNames?.Count > 0)
         {
-            _logger.LogWarning("🔄 Primary pool exhausted, switching to fallback chain");
+            _logger.LogWarning("Primary pool exhausted, switching to fallback chain");
             var orderedClients = GetFallbackOrder(_settings.FallbackChatClientNames, _settings.FallbackMode);
 
             foreach (var clientName in orderedClients)
@@ -267,7 +267,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning("⚠️ Failed to create fallback client {Client}: {Error}", clientName, ex.Message);
+                        _logger.LogWarning("Failed to create fallback client {Client}: {Error}", clientName, ex.Message);
                         break;
                     }
 
@@ -288,7 +288,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
         var directClient = _serviceProvider.GetService<IChatClient>();
         if (directClient != null)
         {
-            _logger.LogWarning("🔄 No named clients configured, using direct IChatClient");
+            _logger.LogWarning("No named clients configured, using direct IChatClient");
             yield return new ClientAttemptInfo
             {
                 Client = directClient,
@@ -354,7 +354,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
         // If streaming ended without explicit FinishReason, emit a synthetic completion
         if (!receivedExplicitCompletion)
         {
-            _logger.LogDebug("📍 Streaming ended without explicit FinishReason, emitting synthetic completion for {Client}", clientName);
+            _logger.LogDebug("Streaming ended without explicit FinishReason, emitting synthetic completion for {Client}", clientName);
 
             yield return new ChatUpdateWithCost
             {
@@ -421,17 +421,18 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
         {
             var client = _chatClientFactory.Create(name)
                 ?? throw new InvalidOperationException($"IChatClient '{name}' not found in factory");
-            _logger.LogDebug("📦 Lazy-loaded chat client: {ClientName}", name);
+            _logger.LogDebug("Lazy-loaded chat client: {ClientName}", name);
             return client;
         })).Value;
 
     private TokenCostSettings? GetOrCreateCostSettings(string name) =>
         _costSettingsCache.GetOrAdd(name, _ => new Lazy<TokenCostSettings?>(() =>
         {
-            var settings = _costSettingsFactory.Create(name);
+            // Try client-specific settings first, then fall back to the global default
+            var settings = _costSettingsFactory.Create(name) ?? _defaultCostSettings;
             if (settings != null)
             {
-                _logger.LogDebug("📦 Lazy-loaded cost settings for: {ClientName} (Input: ${Input}/1K, Output: ${Output}/1K)",
+                _logger.LogDebug("Lazy-loaded cost settings for: {ClientName} (Input: ${Input}/1K, Output: ${Output}/1K)",
                     name, settings.InputTokenCostPer1K, settings.OutputTokenCostPer1K);
             }
             return settings;

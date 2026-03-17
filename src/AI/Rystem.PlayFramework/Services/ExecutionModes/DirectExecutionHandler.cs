@@ -190,7 +190,7 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
                 var scene = dependencies.SceneFactory.TryGetScene(selectedSceneName);
                 if (scene != null)
                 {
-                    // ✅ CRITICAL: Add tool result to conversation BEFORE entering scene
+                    // CRITICAL: Add tool result to conversation BEFORE entering scene
                     // OpenAI requires: assistant message with tool_calls → tool message with result
                     var toolResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
                     {
@@ -209,7 +209,7 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
                 }
                 else
                 {
-                    // ✅ Also add tool result for error case
+                    // Also add tool result for error case
                     var toolResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
                     {
                         Result = $"Error: Scene '{selectedSceneName}' not found"
@@ -239,7 +239,7 @@ internal sealed class DirectExecutionHandler : IExecutionModeHandler
         {
             yield return dependencies.ResponseHelper.CreateFinalResponse(
                 sceneName: null,
-                message: string.Empty, // ✅ Empty - text already streamed
+                message: string.Empty, // Empty - text already streamed
                 context: context,
                 inputTokens: totalInputTokens,
                 outputTokens: totalOutputTokens,

@@ -64,7 +64,7 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
         var deduplicatedCalls = DeduplicateToolCalls(functionCalls);
         if (deduplicatedCalls.Count != functionCalls.Count)
         {
-            _logger.LogInformation("🔧 Deduplicated {Removed} tool calls ({Original} → {New})",
+            _logger.LogInformation("Deduplicated {Removed} tool calls ({Original} -> {New})",
                 functionCalls.Count - deduplicatedCalls.Count, functionCalls.Count, deduplicatedCalls.Count);
         }
 
@@ -100,7 +100,7 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
                     context.AddToolMessage(new ChatMessage(ChatRole.Tool, [functionResult]));
 
                     _logger.LogInformation(
-                        "✅ Command '{ToolName}' auto-completed immediately (feedbackMode: Never). No client response needed.",
+                    "Command '{ToolName}' auto-completed immediately (feedbackMode: Never). No client response needed.",
                         functionCall.Name);
 
                     // Continue processing other calls
@@ -110,7 +110,7 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
                 // CLIENT TOOL - Add to pending list (will be processed after server tools)
                 pendingCommands.Add(new PendingCommand(clientRequest, functionCall));
 
-                _logger.LogDebug("📝 Added '{ToolName}' to pending {Type} list (feedbackMode: {FeedbackMode})",
+                _logger.LogDebug("Added '{ToolName}' to pending {Type} list (feedbackMode: {FeedbackMode})",
                     functionCall.Name,
                     clientRequest.IsCommand ? "Commands" : "Tools",
                     clientRequest.FeedbackMode);
@@ -190,7 +190,7 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
             // Yield ALL pending client interactions
             foreach (var pending in pendingCommands)
             {
-                _logger.LogInformation("🎯 Client {Type} '{ToolName}' pending execution (feedbackMode: {FeedbackMode})",
+                _logger.LogInformation("Client {Type} '{ToolName}' pending execution (feedbackMode: {FeedbackMode})",
                     pending.Request.IsCommand ? "Command" : "Tool",
                     pending.Call.Name,
                     pending.Request.FeedbackMode);

@@ -389,7 +389,7 @@ Use the decideContinuation tool to indicate your decision.";
 
         foreach (var sceneName in context.ExecutedSceneOrder)
         {
-            builder.AppendLine($"✓ Executed scene: {sceneName}");
+            builder.AppendLine($"- Executed scene: {sceneName}");
 
             if (context.ExecutedScenes.TryGetValue(sceneName, out var tools))
             {

@@ -112,10 +112,10 @@ function registerClientTools(client: PlayFrameworkClient) {
         try {
             if (!args) throw new Error('Missing arguments');
             localStorage.setItem(args.key, args.value);
-            console.log(`[Command:Always] ✅ Saved "${args.key}" = "${args.value}" to localStorage`);
+            console.log(`[Command:Always] Saved "${args.key}" = "${args.value}" to localStorage`);
             return CommandResultHelper.ok(`Saved "${args.key}" to local storage`);
         } catch (error: any) {
-            console.log(`[Command:Always] ❌ Failed to save: ${error.message}`);
+            console.log(`[Command:Always] Failed to save: ${error.message}`);
             return CommandResultHelper.fail(`Storage error: ${error.message}`);
         }
     }, { feedbackMode: 'always' });
@@ -126,11 +126,11 @@ function registerClientTools(client: PlayFrameworkClient) {
             const title = args?.title ?? 'Notification';
             const message = args?.message ?? '';
             const type = args?.type ?? 'info';
-            console.log(`[Command:OnError] 🔔 Notification [${type}]: ${title} - ${message}`);
+            console.log(`[Command:OnError] Notification [${type}]: ${title} - ${message}`);
             window.alert(`[${type.toUpperCase()}] ${title}\n\n${message}`);
             return CommandResultHelper.ok(`Notification shown: ${title}`);
         } catch (error: any) {
-            console.log(`[Command:OnError] ❌ Notification failed: ${error.message}`);
+            console.log(`[Command:OnError] Notification failed: ${error.message}`);
             return CommandResultHelper.fail(`Notification error: ${error.message}`);
         }
     }, { feedbackMode: 'onError' });
@@ -426,7 +426,7 @@ function ContentViewer({ content }: ContentViewerProps) {
                 border: '1px solid #444',
             }}>
                 <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '6px' }}>
-                    📎 Attachment ({mediaType || 'unknown type'})
+                    Attachment ({mediaType || 'unknown type'})
                 </div>
                 <button
                     onClick={() => ContentUrlConverter.downloadAsFile(content, 'file')}
@@ -732,7 +732,7 @@ function App() {
         const key = conversationKey ?? crypto.randomUUID();
         if (!conversationKey) setConversationKey(key);
 
-        addMessage({ role: 'user', text: '🎤 [Voice message]', timestamp: new Date() });
+        addMessage({ role: 'user', text: '[Voice message]', timestamp: new Date() });
         addMessage({ role: 'assistant', text: '', timestamp: new Date() });
 
         try {
@@ -752,7 +752,7 @@ function App() {
                             // Find the last user message
                             for (let i = updated.length - 1; i >= 0; i--) {
                                 if (updated[i].role === 'user') {
-                                    updated[i] = { ...updated[i], text: `🎤 ${event.text}` };
+                                    updated[i] = { ...updated[i], text: `[Voice] ${event.text}` };
                                     break;
                                 }
                             }
@@ -837,7 +837,7 @@ function App() {
                 // Voice status events
                 if (event.voiceStatus === 'recognized' && event.transcript) {
                     setVoiceTranscript(event.transcript);
-                    addMessage({ role: 'user', text: `🎤 ${event.transcript}`, timestamp: new Date() });
+                    addMessage({ role: 'user', text: `[Voice] ${event.transcript}`, timestamp: new Date() });
                     addMessage({ role: 'assistant', text: '', timestamp: new Date() });
                 }
 
@@ -1058,7 +1058,7 @@ function App() {
 
         // Build user message with attachment info
         const attachLabel = attachments.length > 0
-            ? `\n📎 ${attachments.map(a => a.name || a.type).join(', ')}`
+            ? `\n[Attachments: ${attachments.map(a => a.name || a.type).join(', ')}]`
             : '';
         addMessage({ role: 'user', text: (text || '') + attachLabel, timestamp: new Date() });
 
@@ -1514,7 +1514,7 @@ function App() {
                                 fontWeight: mode === 'voice' ? 700 : 400,
                             }}
                         >
-                            🎤 Voice
+                             Voice
                         </button>
                     </div>
 
@@ -1569,7 +1569,7 @@ function App() {
                                 fontWeight: activeFactory === 'default' ? 700 : 400,
                             }}
                         >
-                            ☁ Azure OpenAI
+                             Azure OpenAI
                         </button>
                         <button
                             onClick={() => setActiveFactory('foundry')}
@@ -1583,7 +1583,7 @@ function App() {
                                 fontWeight: activeFactory === 'foundry' ? 700 : 400,
                             }}
                         >
-                            💻 Foundry Local
+                             Foundry Local
                         </button>
                     </div>
                     </div>
@@ -1602,7 +1602,7 @@ function App() {
                     <div style={{ textAlign: 'center', color: '#555', marginTop: '40px', fontSize: '14px' }}>
                         {mode === 'voice' ? (
                             <>
-                                <p style={{ fontSize: '32px', marginBottom: '8px' }}>🎤</p>
+                                <p style={{ fontSize: '32px', marginBottom: '8px' }}>[mic]</p>
                                 <p>Voice mode active ({voiceEngine === 'server' ? 'Server' : 'Browser'} engine). Tap the mic button to talk.</p>
                                 <p style={{ fontSize: '12px', color: '#444' }}>
                                     {voiceEngine === 'server'
@@ -1682,10 +1682,10 @@ function App() {
                             ? `data:${att.mediaType};base64,${att.data}`
                             : undefined;
 
-                        const icon = att.type === 'audio' ? '🎵'
-                            : att.type === 'video' ? '🎬'
-                            : att.type === 'image' ? '🖼️'
-                            : '📄';
+                        const icon = att.type === 'audio' ? '[audio]'
+                            : att.type === 'video' ? '[video]'
+                            : att.type === 'image' ? '[image]'
+                            : '[file]';
 
                         return (
                             <div key={i} style={{
@@ -1718,14 +1718,14 @@ function App() {
                                         background: 'none',
                                         border: 'none',
                                         color: '#d9534f',
-                                        cursor: 'pointer',
-                                        fontSize: '14px',
-                                        padding: '0 2px',
-                                        lineHeight: 1,
-                                    }}
-                                    title="Remove"
-                                >
-                                    ✕
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    padding: '0 2px',
+                                    lineHeight: 1,
+                                }}
+                                title="Remove"
+                            >
+                                x
                                 </button>
                             </div>
                         );
@@ -1770,7 +1770,7 @@ function App() {
                         lineHeight: 1,
                     }}
                 >
-                    📎
+                    [attach]
                 </button>
                 )}
                 <button
@@ -1782,7 +1782,7 @@ function App() {
                             ? (isRecording
                                 ? `Recording... ${recordingSeconds}s${voiceRecordingMode === 'vad' ? ' (auto-stop on silence)' : ''}`
                                 : isVoiceProcessing
-                                    ? 'Tap 🎤 to stop and start over'
+                                    ? 'Tap [mic] to stop and start over'
                                     : voiceRecordingMode === 'vad'
                                         ? 'Tap to talk (auto-stops on silence)'
                                         : voiceRecordingMode === 'pushToTalk'
@@ -1810,7 +1810,7 @@ function App() {
                         minWidth: (isRecording || isVoiceProcessing) ? '70px' : undefined,
                     }}
                 >
-                    {isRecording ? `⏺ ${recordingSeconds}s` : isVoiceProcessing ? '⏹' : '🎤'}
+                    {isRecording ? `[rec] ${recordingSeconds}s` : isVoiceProcessing ? '[stop]' : '[mic]'}
                 </button>
                 {mode !== 'voice' && (
                 <button
@@ -1828,7 +1828,7 @@ function App() {
                         lineHeight: 1,
                     }}
                 >
-                    📷
+                    [camera]
                 </button>
                 )}
 
@@ -1846,13 +1846,13 @@ function App() {
                             textAlign: 'center',
                         }}>
                             {voiceEngine === 'browser'
-                                ? (isVoiceProcessing ? '🗣️ Speaking... tap 🎤 to stop & restart' : 'Tap 🎤 — browser STT → LLM → browser TTS')
+                                ? (isVoiceProcessing ? 'Speaking... tap [mic] to stop & restart' : 'Tap [mic] — browser STT → LLM → browser TTS')
                                 : (isRecording
-                                    ? `Recording... ${recordingSeconds}s${voiceRecordingMode === 'vad' ? ' · listening for silence' : voiceRecordingMode === 'pushToTalk' ? ' · tap 🎤 to stop' : ' · release to send'}`
-                                    : isVoiceProcessing ? '🗣️ Responding... tap 🎤 to stop & restart'
-                                    : voiceRecordingMode === 'vad' ? 'Tap 🎤 — auto-stops on silence'
-                                    : voiceRecordingMode === 'pushToTalk' ? 'Tap 🎤 to start, tap again to stop & send'
-                                    : 'Hold 🎤 to talk, release to send')}
+                                    ? `Recording... ${recordingSeconds}s${voiceRecordingMode === 'vad' ? ' · listening for silence' : voiceRecordingMode === 'pushToTalk' ? ' · tap [mic] to stop' : ' · release to send'}`
+                                    : isVoiceProcessing ? 'Responding... tap [mic] to stop & restart'
+                                    : voiceRecordingMode === 'vad' ? 'Tap [mic] — auto-stops on silence'
+                                    : voiceRecordingMode === 'pushToTalk' ? 'Tap [mic] to start, tap again to stop & send'
+                                    : 'Hold [mic] to talk, release to send')}
                         </div>
                         {/* Voice engine selector */}
                         <select
@@ -1870,11 +1870,11 @@ function App() {
                                 cursor: (isRecording || isVoiceProcessing) ? 'not-allowed' : 'pointer',
                             }}
                         >
-                            <option value="server">🖥️ Server</option>
+                            <option value="server">Server</option>
                             <option value="browser"
                                 disabled={!BrowserVoiceClient.isSupported()}
                             >
-                                🌐 Browser{!BrowserVoiceClient.isSupported() ? ' (n/a)' : ''}
+                                Browser{!BrowserVoiceClient.isSupported() ? ' (n/a)' : ''}
                             </option>
                         </select>
                         {/* Recording mode (server only) / streaming mode (browser only) */}
@@ -1915,23 +1915,23 @@ function App() {
                                         cursor: isVoiceProcessing ? 'not-allowed' : 'pointer',
                                     }}
                                 >
-                                    <option value="it-IT">🇮🇹 Italiano</option>
-                                    <option value="en-US">🇺🇸 English</option>
-                                    <option value="en-GB">🇬🇧 English UK</option>
-                                    <option value="es-ES">🇪🇸 Español</option>
-                                    <option value="fr-FR">🇫🇷 Français</option>
-                                    <option value="de-DE">🇩🇪 Deutsch</option>
-                                    <option value="pt-BR">🇧🇷 Português</option>
-                                    <option value="ja-JP">🇯🇵 日本語</option>
-                                    <option value="zh-CN">🇨🇳 中文</option>
-                                    <option value="ko-KR">🇰🇷 한국어</option>
-                                    <option value="ar-SA">🇸🇦 العربية</option>
-                                    <option value="ru-RU">🇷🇺 Русский</option>
-                                    <option value="hi-IN">🇮🇳 हिन्दी</option>
-                                    <option value="nl-NL">🇳🇱 Nederlands</option>
-                                    <option value="pl-PL">🇵🇱 Polski</option>
-                                    <option value="sv-SE">🇸🇪 Svenska</option>
-                                    <option value="tr-TR">🇹🇷 Türkçe</option>
+                                    <option value="it-IT">it-IT Italiano</option>
+                                    <option value="en-US">en-US English</option>
+                                    <option value="en-GB">en-GB English UK</option>
+                                    <option value="es-ES">es-ES Español</option>
+                                    <option value="fr-FR">fr-FR Français</option>
+                                    <option value="de-DE">de-DE Deutsch</option>
+                                    <option value="pt-BR">pt-BR Português</option>
+                                    <option value="ja-JP">ja-JP 日本語</option>
+                                    <option value="zh-CN">zh-CN 中文</option>
+                                    <option value="ko-KR">ko-KR 한국어</option>
+                                    <option value="ar-SA">ar-SA العربية</option>
+                                    <option value="ru-RU">ru-RU Русский</option>
+                                    <option value="hi-IN">hi-IN हिन्दी</option>
+                                    <option value="nl-NL">nl-NL Nederlands</option>
+                                    <option value="pl-PL">pl-PL Polski</option>
+                                    <option value="sv-SE">sv-SE Svenska</option>
+                                    <option value="tr-TR">tr-TR Türkçe</option>
                                 </select>
                                 <select
                                     value={browserVoiceStreamingMode}
@@ -1996,7 +1996,7 @@ function App() {
                                     fontWeight: 600,
                                 }}
                             >
-                                ⏹ Stop
+                                Stop
                             </button>
                         ) : (
                             <button
@@ -2031,7 +2031,7 @@ function App() {
             }}>
                 <span>API: {API_BASE}/{activeFactory}</span>
                 <span>
-                    Mode: {mode === 'step' ? 'Step-by-Step' : mode === 'token' ? 'Token Streaming' : `🎤 Voice (${voiceEngine === 'server' ? 'Server' : 'Browser'})`}
+                    Mode: {mode === 'step' ? 'Step-by-Step' : mode === 'token' ? 'Token Streaming' : `Voice (${voiceEngine === 'server' ? 'Server' : 'Browser'})`}
                     {conversationKey && ` | Conv: ${conversationKey.substring(0, 8)}...`}
                     {voiceTranscript && mode === 'voice' && ` | "${voiceTranscript.substring(0, 30)}..."`}
                     </span>

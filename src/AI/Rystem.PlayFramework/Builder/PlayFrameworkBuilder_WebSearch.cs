@@ -37,7 +37,7 @@ public static class PlayFrameworkBuilderWebSearchExtensions
     /// });
     /// </example>
     /// <remarks>
-    /// ⚠️ Important: Before calling WithWebSearch(), you must register an IWebSearchService:
+    /// Important: Before calling WithWebSearch(), you must register an IWebSearchService:
     /// <code>
     /// services.AddWebSearchService&lt;YourWebSearchService&gt;(cost =>
     /// {

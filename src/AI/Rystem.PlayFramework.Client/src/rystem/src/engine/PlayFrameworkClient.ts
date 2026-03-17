@@ -175,7 +175,7 @@ export class PlayFrameworkClient {
                                     if (event.status === "awaitingClient" || event.status === "commandClient") {
                                         const interactionResponse = event as AiSceneResponse;
                                         const isCommand = event.status === "commandClient";
-                                        console.log(isCommand ? '🔥 [PlayFrameworkClient] Received CommandClient (fire-and-forget)' : '⏸️ [PlayFrameworkClient] Received AwaitingClient', ', tool:', interactionResponse.clientInteractionRequest?.toolName);
+                                        console.log(isCommand ? '[PlayFrameworkClient] Received CommandClient (fire-and-forget)' : '[PlayFrameworkClient] Received AwaitingClient', ', tool:', interactionResponse.clientInteractionRequest?.toolName);
 
                                         // Capture conversationKey from the response (server sets it for resume)
                                         if (interactionResponse.conversationKey) {
@@ -206,7 +206,7 @@ export class PlayFrameworkClient {
 
                     // Handle client interactions if any were received during this stream
                     if (shouldContinue && pendingInteractions.length > 0) {
-                        console.log(`🔧 [PlayFrameworkClient] Executing ${pendingInteractions.length} client interaction(s)`);
+                        console.log(`[PlayFrameworkClient] Executing ${pendingInteractions.length} client interaction(s)`);
 
                         // Execute ALL pending interactions in parallel
                         const allResults: ClientInteractionResult[] = [];
@@ -216,7 +216,7 @@ export class PlayFrameworkClient {
                             const clientRequest = interaction.clientInteractionRequest;
                             if (!clientRequest) continue;
 
-                            console.log(`🔧 [PlayFrameworkClient] Executing: ${clientRequest.toolName} (${clientRequest.isCommand ? 'command' : 'tool'})`);
+                            console.log(`[PlayFrameworkClient] Executing: ${clientRequest.toolName} (${clientRequest.isCommand ? 'command' : 'tool'})`);
 
                             const result = await this.clientRegistry.execute(clientRequest);
 
@@ -238,7 +238,7 @@ export class PlayFrameworkClient {
                         }
 
                         if (hasNonCommandInteraction || allResults.length > 0) {
-                            console.log(`✅ [PlayFrameworkClient] ${allResults.length} result(s) to send back, resuming`);
+                            console.log(`[PlayFrameworkClient] ${allResults.length} result(s) to send back, resuming`);
 
                             // Prepare resume request with ALL applicable results
                             // Use captured conversationKey so the server finds the batch in cache
@@ -248,14 +248,14 @@ export class PlayFrameworkClient {
                                 conversationKey: capturedConversationKey ?? currentRequest.conversationKey
                             };
 
-                            console.log('📤 [PlayFrameworkClient] Sending resume request with clientInteractionResults');
+                            console.log('[PlayFrameworkClient] Sending resume request with clientInteractionResults');
                             shouldContinue = true;
                         } else {
-                            console.log('✅ [PlayFrameworkClient] All interactions were fire-and-forget commands. No resume needed.');
+                            console.log('[PlayFrameworkClient] All interactions were fire-and-forget commands. No resume needed.');
                             shouldContinue = false;
                         }
                     } else {
-                        console.log('✅ [PlayFrameworkClient] Stream completed normally (no client interaction)');
+                        console.log('[PlayFrameworkClient] Stream completed normally (no client interaction)');
                         shouldContinue = false; // Normal completion or already closed by completed/error
                     }
                 } catch (error) {

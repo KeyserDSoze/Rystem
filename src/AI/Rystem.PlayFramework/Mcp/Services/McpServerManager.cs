@@ -241,9 +241,9 @@ internal sealed class McpServerManager : IMcpServerManager, IFactoryName
             var errorMessage = $$"""
                 MCP server not configured for factory key {{factoryKeyDisplay}}.
 
-                🔧 How to fix:
+                How to fix:
 
-                1️⃣ Register MCP server with factory key:
+                1. Register MCP server with factory key:
 
                    services.AddMcpServer(settings =>
                    {
@@ -251,7 +251,7 @@ internal sealed class McpServerManager : IMcpServerManager, IFactoryName
                        settings.Type = "http";
                    }, name: "{{_factoryName}}");
 
-                2️⃣ Example with stdio (local process):
+                2. Example with stdio (local process):
 
                    services.AddMcpServer(settings =>
                    {
@@ -260,7 +260,7 @@ internal sealed class McpServerManager : IMcpServerManager, IFactoryName
                        settings.Type = "stdio";
                    }, name: "local-mcp");
 
-                3️⃣ Example with enum:
+                3. Example with enum:
 
                    services.AddMcpServer(settings =>
                    {
@@ -268,21 +268,21 @@ internal sealed class McpServerManager : IMcpServerManager, IFactoryName
                        settings.Type = "http";
                    }, name: McpServerType.Custom);
 
-                4️⃣ Example with default (no key):
+                4. Example with default (no key):
 
                    services.AddMcpServer(settings =>
                    {
                        settings.Url = "http://localhost:3000";
                    });  // No name parameter = default
 
-                5️⃣ Then reference it in your scene:
+                5. Then reference it in your scene:
 
                    sceneBuilder.WithMcpServer("{{_factoryName}}", filter =>
                    {
                        filter.IncludeTools("file_*", "search_*");
                    });
 
-                📖 Documentation: https://rystem.net/mcp/integration
+                Documentation: https://rystem.net/mcp/integration
                 """;
 
             _logger.LogError("MCP server with factory key {FactoryKey} not configured", _factoryName);
