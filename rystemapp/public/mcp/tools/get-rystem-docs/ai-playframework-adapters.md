@@ -151,6 +151,55 @@ See the [PlayFramework README](https://github.com/KeyserDSoze/Rystem/tree/master
 
 ---
 
+## 💰 Cost Tracking
+
+Set `CostTracking` on `AdapterSettings` to record input/output token costs per LLM call and surface them on every `AiSceneResponse`.
+
+```csharp
+builder.Services.AddAdapterForAzureOpenAI("default", settings =>
+{
+    settings.Endpoint = new Uri("https://YOUR-RESOURCE.openai.azure.com/");
+    settings.ApiKey = "YOUR-API-KEY";
+    settings.Deployment = "gpt-4o";
+    settings.CostTracking = new TokenCostSettings
+    {
+        Enabled = true,
+        Currency = "USD",
+        InputTokenCostPer1K = 0.005m,
+        OutputTokenCostPer1K = 0.015m,
+        CachedInputTokenCostPer1K = 0.0025m, // optional: cached input is usually ~50% of regular
+    };
+});
+
+// PlayFramework builder — factory name MUST match the adapter name
+builder.Services.AddPlayFramework("default", pb => pb
+    .WithChatClient("default")  // ← must match adapter name, required for cost tracking to work
+    .AddScene("Chat", "General conversation.", sceneBuilder => { }));
+```
+
+### TokenCostSettings reference
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `Enabled` | `bool` | `true` | Enable or disable cost tracking |
+| `Currency` | `string` | `"USD"` | Currency label for display |
+| `InputTokenCostPer1K` | `decimal` | `0` | Cost per 1 000 input tokens |
+| `OutputTokenCostPer1K` | `decimal` | `0` | Cost per 1 000 output tokens |
+| `CachedInputTokenCostPer1K` | `decimal` | `0` | Cost per 1 000 cached input tokens |
+| `ModelCosts` | `Dictionary<string, ModelCostSettings>` | empty | Per-model price overrides |
+| `ClientCosts` | `Dictionary<string, ClientCostSettings>` | empty | Per-client price overrides |
+
+### How it works
+
+When `CostTracking` is set the adapter wraps the underlying `IChatClient` with `CostTrackingChatClient` — a `DelegatingChatClient` that reads `response.Usage` after every LLM call and embeds a `CostCalculation` in `AdditionalProperties`. The framework reads that value passively and surfaces it on:
+
+- `AiSceneResponse.Cost` — cost for the current LLM call
+- `AiSceneResponse.TotalCost` — cumulative cost across all calls in the request
+
+> ⚠️ **Critical**: `.WithChatClient("name")` in the PlayFramework builder must use the **same factory name** as the adapter registration. Without it the framework skips the adapter's cost wrapper and reports zero for all costs.
+
+---
+
 ## Related Packages
 
 - **[Rystem.PlayFramework.Adapters.FoundryLocal](https://www.nuget.org/packages/Rystem.PlayFramework.Adapters.FoundryLocal)** — Run AI models locally for dev/testing using Microsoft.AI.Foundry.Local SDK.

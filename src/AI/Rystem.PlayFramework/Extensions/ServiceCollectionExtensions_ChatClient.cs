@@ -88,21 +88,52 @@ public static class ServiceCollectionExtensions_ChatClient
         ServiceLifetime serviceLifetime = ServiceLifetime.Singleton)
         where TChatClient : class, IChatClient
     {
-        // Register the chat client with factory pattern
-        services.AddFactory<IChatClient, TChatClient>(
-            name: name,
-            lifetime: serviceLifetime);
-
         var costSettingsValue = new TokenCostSettings { Enabled = false };
         if (costSettings != null)
             costSettings.Invoke(costSettingsValue);
 
-        // Register token cost settings with same factory key
-        services.AddFactory(
-            costSettingsValue,
-            name: name,
-            lifetime: ServiceLifetime.Singleton);
+        // Register the chat client with factory pattern.
+        // When cost settings are provided, wrap with CostTrackingChatClient so the adapter owns
+        // cost calculation and embeds it into AdditionalProperties for ChatClientManager to read.
+        services.AddFactory<IChatClient>(
+            (sp, _) =>
+            {
+                TChatClient instance = Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance<TChatClient>(sp);
+                return costSettingsValue.Enabled
+                    ? new CostTrackingChatClient(instance, costSettingsValue)
+                    : (IChatClient)instance;
+            },
+            name,
+            serviceLifetime);
 
         return services;
+    }
+
+    /// <summary>
+    /// Registers an <see cref="IAudioCostCalculator"/> for a specific factory name (voice adapter name).
+    /// Use this to attach per-adapter STT/TTS pricing so the voice pipeline can calculate audio costs.
+    /// </summary>
+    public static IServiceCollection AddAudioCostTracking(
+        this IServiceCollection services,
+        AnyOf<string?, Enum>? name,
+        AudioCostSettings settings,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton)
+    {
+        services.AddFactory<IAudioCostCalculator>(new AudioCostCalculator(settings), name, lifetime);
+        return services;
+    }
+
+    /// <summary>
+    /// Registers an <see cref="IAudioCostCalculator"/> for a specific factory name using a configure action.
+    /// </summary>
+    public static IServiceCollection AddAudioCostTracking(
+        this IServiceCollection services,
+        AnyOf<string?, Enum>? name,
+        Action<AudioCostSettings> configure,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton)
+    {
+        var settings = new AudioCostSettings();
+        configure(settings);
+        return services.AddAudioCostTracking(name, settings, lifetime);
     }
 }

@@ -48,4 +48,11 @@ public sealed class VoiceAdapterSettings
     /// Optional callback invoked during model download to report progress (0–100%).
     /// </summary>
     public Action<float>? OnDownloadProgress { get; set; }
+
+    /// <summary>
+    /// Optional cost tracking settings for STT and TTS operations.
+    /// When set, an <see cref="IAudioCostCalculator"/> is registered and used by the voice pipeline
+    /// to calculate and report audio costs alongside LLM token costs.
+    /// </summary>
+    public AudioCostSettings? CostTracking { get; set; }
 }

@@ -69,6 +69,14 @@ dotnet user-secrets set "AzureOpenAI:Voice:TtsOutputFormat" "mp3"
 dotnet user-secrets set "AzureOpenAI:Voice:TtsSpeed" "1.0"
 ```
 
+Optional cost tracking settings:
+
+```bash
+dotnet user-secrets set "AzureOpenAI:CostTracking:Currency" "USD"
+dotnet user-secrets set "AzureOpenAI:CostTracking:InputTokenCostPer1K" "0.005"
+dotnet user-secrets set "AzureOpenAI:CostTracking:OutputTokenCostPer1K" "0.015"
+```
+
 If those settings are missing, the sample falls back to a direct `MockChatClient` registration so the API can still be exercised locally.
 
 ## Frontend pairing

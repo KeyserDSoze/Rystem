@@ -17,6 +17,15 @@ public sealed class VoiceResponse
     /// <summary>Scene response (for SceneEvent type — tool calls, status updates, etc.).</summary>
     public AiSceneResponse? SceneResponse { get; init; }
 
+    /// <summary>STT cost for this voice call (populated on Completed event).</summary>
+    public decimal SttCost { get; init; }
+
+    /// <summary>TTS cost for this voice call (populated on Completed event).</summary>
+    public decimal TtsCost { get; init; }
+
+    /// <summary>Total audio cost (STT + TTS). Populated on Completed event.</summary>
+    public decimal TotalVoiceCost => SttCost + TtsCost;
+
     internal static VoiceResponse Transcription(string text) => new()
     {
         Type = VoiceResponseType.Transcription,
@@ -37,9 +46,11 @@ public sealed class VoiceResponse
         Text = response.Message
     };
 
-    internal static VoiceResponse Completed() => new()
+    internal static VoiceResponse Completed(decimal sttCost = 0, decimal ttsCost = 0) => new()
     {
-        Type = VoiceResponseType.Completed
+        Type = VoiceResponseType.Completed,
+        SttCost = sttCost,
+        TtsCost = ttsCost
     };
 }
 

@@ -14,17 +14,20 @@ internal sealed class VoicePipeline
     private readonly IVoiceAdapter _voiceAdapter;
     private readonly VoiceSettings _voiceSettings;
     private readonly ILogger? _logger;
+    private readonly IAudioCostCalculator? _audioCostCalculator;
 
     public VoicePipeline(
         ISceneManager sceneManager,
         IVoiceAdapter voiceAdapter,
         VoiceSettings voiceSettings,
-        ILogger? logger = null)
+        ILogger? logger = null,
+        IAudioCostCalculator? audioCostCalculator = null)
     {
         _sceneManager = sceneManager;
         _voiceAdapter = voiceAdapter;
         _voiceSettings = voiceSettings;
         _logger = logger;
+        _audioCostCalculator = audioCostCalculator;
     }
 
     /// <summary>
@@ -51,12 +54,16 @@ internal sealed class VoicePipeline
 
         _logger?.LogInformation("Voice pipeline: transcribed -> \"{Transcript}\" (lang={Language})", transcript, detectedLanguage);
 
+        // Track STT cost
+        var sttCost = _audioCostCalculator?.CalculateStt(transcriptionResult.DurationSeconds ?? 0) ?? 0m;
+        var ttsCost = 0m;
+
         // Yield transcript event
         yield return VoiceResponse.Transcription(transcript);
 
         if (string.IsNullOrWhiteSpace(transcript))
         {
-            yield return VoiceResponse.Completed();
+            yield return VoiceResponse.Completed(sttCost, ttsCost);
             yield break;
         }
 
@@ -91,6 +98,7 @@ internal sealed class VoicePipeline
                     var remaining = accumulator.Flush();
                     if (remaining is not null)
                     {
+                        ttsCost += _audioCostCalculator?.CalculateTts(remaining.Length) ?? 0m;
                         var audio = await SynthesizeSafe(remaining, cancellationToken);
                         if (audio is not null)
                             yield return VoiceResponse.AudioChunk(audio.Value, remaining);
@@ -108,6 +116,7 @@ internal sealed class VoicePipeline
             if (sentence is not null)
             {
                 // 4. TTS: Synthesize the sentence
+                ttsCost += _audioCostCalculator?.CalculateTts(sentence.Length) ?? 0m;
                 var audio = await SynthesizeSafe(sentence, cancellationToken);
                 if (audio is not null)
                     yield return VoiceResponse.AudioChunk(audio.Value, sentence);
@@ -119,6 +128,7 @@ internal sealed class VoicePipeline
                 var remaining = accumulator.Flush();
                 if (remaining is not null)
                 {
+                    ttsCost += _audioCostCalculator?.CalculateTts(remaining.Length) ?? 0m;
                     var audio = await SynthesizeSafe(remaining, cancellationToken);
                     if (audio is not null)
                         yield return VoiceResponse.AudioChunk(audio.Value, remaining);
@@ -126,7 +136,7 @@ internal sealed class VoicePipeline
             }
         }
 
-        yield return VoiceResponse.Completed();
+        yield return VoiceResponse.Completed(sttCost, ttsCost);
     }
 
     private async Task<ReadOnlyMemory<byte>?> SynthesizeSafe(string text, CancellationToken ct)

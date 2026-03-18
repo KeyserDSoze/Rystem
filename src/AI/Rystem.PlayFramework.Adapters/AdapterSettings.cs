@@ -53,4 +53,13 @@ public sealed class AdapterSettings
     /// Required when <see cref="AudioMode"/> is <see cref="AudioMode.SpeechToText"/>.
     /// </summary>
     public string? SpeechToTextDeployment { get; set; }
+
+    /// <summary>
+    /// Optional per-adapter cost tracking settings.
+    /// When set, registers an <c>ICostCalculator</c> keyed by the adapter factory name,
+    /// enabling per-deployment or per-region pricing.
+    /// If null, cost tracking falls back to the PlayFramework factory-level settings or
+    /// the global <c>FallbackCostTrackingPlayFrameworkDefault</c> calculator.
+    /// </summary>
+    public TokenCostSettings? CostTracking { get; set; }
 }

@@ -47,11 +47,12 @@ internal sealed class AzureOpenAIVoiceAdapter : IVoiceAdapter
 
         var text = result.Value.Text;
         var language = result.Value.Language;
+        var durationSeconds = result.Value.Duration?.TotalSeconds;
 
-        _logger?.LogInformation("Transcription result ({Chars} chars, lang={Language}): \"{Preview}\"",
-            text.Length, language, text.Length > 100 ? text[..100] + "..." : text);
+        _logger?.LogInformation("Transcription result ({Chars} chars, lang={Language}, duration={Duration}s): \"{Preview}\"",
+            text.Length, language, durationSeconds?.ToString("F1") ?? "?", text.Length > 100 ? text[..100] + "..." : text);
 
-        return new TranscriptionResult(text, language);
+        return new TranscriptionResult(text, language, durationSeconds);
     }
 
     /// <inheritdoc />

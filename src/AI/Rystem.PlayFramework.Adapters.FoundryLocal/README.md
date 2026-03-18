@@ -80,6 +80,7 @@ That means startup or first-request latency can be significant, especially on a 
 | `OnDownloadProgress` | optional progress callback |
 | `AudioMode` | `None`, `MultiModal`, or `SpeechToText` |
 | `SpeechToTextModel` | required when `AudioMode` is `SpeechToText` |
+| `CostTracking` | `TokenCostSettings?` — when set, wraps the chat client with `CostTrackingChatClient` |
 
 ## Voice adapter
 
@@ -110,6 +111,42 @@ builder.Services.AddPlayFramework("foundry", framework =>
 | `TtsSpeed` | speech speed multiplier |
 | `WebServiceUrl` | local service URL |
 | `OnDownloadProgress` | optional progress callback |
+
+## Cost tracking
+
+Set `CostTracking` on `FoundryLocalSettings` to record input/output token costs per LLM call:
+
+```csharp
+builder.Services.AddAdapterForFoundryLocal("foundry", settings =>
+{
+    settings.Model = "phi-4-mini";
+    settings.CostTracking = new TokenCostSettings
+    {
+        Enabled = true,
+        Currency = "USD",
+        InputTokenCostPer1K = 0.0m,   // local models are free — set to 0 or your internal cost
+        OutputTokenCostPer1K = 0.0m,
+    };
+});
+```
+
+`TokenCostSettings` exposes:
+
+| Property | Meaning |
+| --- | --- |
+| `Enabled` | enable or disable cost tracking, default `true` |
+| `Currency` | currency label for display, default `USD` |
+| `InputTokenCostPer1K` | cost per 1 000 input tokens |
+| `OutputTokenCostPer1K` | cost per 1 000 output tokens |
+| `CachedInputTokenCostPer1K` | cost per 1 000 cached input tokens, default `0` |
+| `ModelCosts` | `Dictionary<string, ModelCostSettings>` per-model price overrides |
+| `ClientCosts` | `Dictionary<string, ClientCostSettings>` per-client price overrides |
+
+When `CostTracking` is set the adapter wraps the underlying `IChatClient` with `CostTrackingChatClient` — a `DelegatingChatClient` that reads `response.Usage` after every LLM call and embeds a `CostCalculation` into `AdditionalProperties`. `ChatClientManager` picks that value up passively and surfaces it as `AiSceneResponse.Cost` (per-call) and `AiSceneResponse.TotalCost` (cumulative across the full request).
+
+> **Critical**: you must call `.WithChatClient("name")` in `AddPlayFramework` with the **same factory name** used for the adapter. Without it the framework falls back to a direct `IChatClient` resolution path that does not see the cost wrapper and reports zero for all costs.
+
+---
 
 ## Important caveats
 

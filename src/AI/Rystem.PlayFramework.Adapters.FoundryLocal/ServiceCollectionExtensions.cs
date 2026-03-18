@@ -115,6 +115,11 @@ public static class ServiceCollectionExtensions
             chatClient = new SpeechToTextChatClient(chatClient, audioClient, sttLogger);
         }
 
+        // Wrap with CostTrackingChatClient so the adapter owns its own cost calculation.
+        // ChatClientManager reads cost from ChatResponse.AdditionalProperties — no DI wiring needed.
+        if (settings.CostTracking != null)
+            chatClient = new CostTrackingChatClient(chatClient, settings.CostTracking);
+
         return chatClient;
     }
 
@@ -163,6 +168,9 @@ public static class ServiceCollectionExtensions
             (sp, _) => CreateVoiceAdapter(sp, settings),
             name,
             ServiceLifetime.Singleton);
+
+        if (settings.CostTracking != null)
+            services.AddAudioCostTracking(name, settings.CostTracking);
 
         return services;
     }

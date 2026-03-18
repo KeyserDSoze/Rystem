@@ -51,6 +51,11 @@ var azureOpenAIEndpoint = builder.Configuration["AzureOpenAI:Endpoint"];
 var azureOpenAIKey = builder.Configuration["AzureOpenAI:Key"];
 var azureOpenAIDeployment = builder.Configuration["AzureOpenAI:Deployment"] ?? "gpt-4o";
 
+// Load cost tracking configuration
+var costCurrency = builder.Configuration["AzureOpenAI:CostTracking:Currency"] ?? "USD";
+var inputCostPer1K = decimal.TryParse(builder.Configuration["AzureOpenAI:CostTracking:InputTokenCostPer1K"], out var ic) ? ic : 0.002m;
+var outputCostPer1K = decimal.TryParse(builder.Configuration["AzureOpenAI:CostTracking:OutputTokenCostPer1K"], out var oc) ? oc : 0.008m;
+
 if (!string.IsNullOrEmpty(azureOpenAIEndpoint) && !string.IsNullOrEmpty(azureOpenAIKey))
 {
     builder.Services.AddAdapterForAzureOpenAI("default", settings =>
@@ -58,6 +63,15 @@ if (!string.IsNullOrEmpty(azureOpenAIEndpoint) && !string.IsNullOrEmpty(azureOpe
         settings.Endpoint = new Uri(azureOpenAIEndpoint);
         settings.ApiKey = azureOpenAIKey;
         settings.Deployment = azureOpenAIDeployment;
+        // Cost tracking is adapter-owned: CostTrackingChatClient wraps the inner client
+        // and embeds CostCalculation into each response's AdditionalProperties.
+        settings.CostTracking = new TokenCostSettings
+        {
+            Enabled = true,
+            Currency = costCurrency,
+            InputTokenCostPer1K = inputCostPer1K,
+            OutputTokenCostPer1K = outputCostPer1K,
+        };
     });
 
     // Register voice adapter (STT + TTS) — reuses the same Azure OpenAI endpoint & key
@@ -95,15 +109,11 @@ else
 //    settings.AppName = "Rystem.PlayFramework.Test";
 //});
 
-// Load cost tracking configuration
-var costCurrency = builder.Configuration["AzureOpenAI:CostTracking:Currency"] ?? "USD";
-var inputCostPer1K = decimal.TryParse(builder.Configuration["AzureOpenAI:CostTracking:InputTokenCostPer1K"], out var ic) ? ic : 0.002m;
-var outputCostPer1K = decimal.TryParse(builder.Configuration["AzureOpenAI:CostTracking:OutputTokenCostPer1K"], out var oc) ? oc : 0.008m;
-
 // Configure PlayFramework with Chat scene
 builder.Services.AddPlayFramework("default", frameworkBuilder =>
 {
     frameworkBuilder
+        .WithChatClient("default") // Connect to the Azure OpenAI adapter registered above
         .WithVoice("default") // Enable voice pipeline (STT → PlayFramework → TTS)
         .UseDefaultGuardrails()
         .AddCache(cacheBuilder =>
@@ -118,7 +128,6 @@ builder.Services.AddPlayFramework("default", frameworkBuilder =>
             planningSettings.MaxRecursionDepth = 5;
         })
         .WithRetry(maxAttempts: 3, baseDelaySeconds: 1.0)
-        .WithCostTracking(costCurrency, inputCostPer1K, outputCostPer1K)
         .WithTelemetry(telemetryBuilder =>
         {
             telemetryBuilder.EnableMetrics = true;

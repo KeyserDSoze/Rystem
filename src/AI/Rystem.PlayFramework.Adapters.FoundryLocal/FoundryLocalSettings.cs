@@ -60,4 +60,11 @@ public sealed class FoundryLocalSettings
     /// The model will be downloaded and loaded automatically alongside the chat model.
     /// </summary>
     public string? SpeechToTextModel { get; set; }
+
+    /// <summary>
+    /// Optional LLM token cost configuration.
+    /// When set, the adapter wraps the chat client with <see cref="CostTrackingChatClient"/>
+    /// so cost is calculated at the adapter level and embedded in every response.
+    /// </summary>
+    public TokenCostSettings? CostTracking { get; set; }
 }

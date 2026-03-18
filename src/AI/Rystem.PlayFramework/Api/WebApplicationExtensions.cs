@@ -699,7 +699,19 @@ public static class WebApplicationExtensions
             var sceneManager = sceneManagerFactory.Create(factoryName);
 
             // Create voice pipeline
-            var pipeline = new VoicePipeline(sceneManager, voiceAdapter, pfSettings.Voice, logger);
+            // Resolve optional IAudioCostCalculator for this factory (registered via VoiceAdapterSettings.CostTracking)
+            var audioCostCalculatorFactory = httpContext.RequestServices.GetService<IFactory<IAudioCostCalculator>>();
+            IAudioCostCalculator? audioCostCalculator = null;
+            if (audioCostCalculatorFactory is not null)
+            {
+                try { audioCostCalculator = audioCostCalculatorFactory.Create(factoryName); }
+                catch
+                {
+                    try { audioCostCalculator = audioCostCalculatorFactory.Create(); } catch { /* not configured */ }
+                }
+            }
+
+            var pipeline = new VoicePipeline(sceneManager, voiceAdapter, pfSettings.Voice, logger, audioCostCalculator);
 
             // Set response headers for SSE
             httpContext.Response.Headers.Append("Content-Type", "text/event-stream");
@@ -734,7 +746,10 @@ public static class WebApplicationExtensions
 
                     VoiceResponseType.Completed => new
                     {
-                        type = "completed"
+                        type = "completed",
+                        sttCost = voiceResponse.SttCost,
+                        ttsCost = voiceResponse.TtsCost,
+                        totalVoiceCost = voiceResponse.TotalVoiceCost
                     } as object,
 
                     _ => new { type = "unknown" } as object

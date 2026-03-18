@@ -937,29 +937,26 @@ The MCP server name must match a registered `IMcpServerManager` factory entry.
 
 ## Example: cost tracking
 
-Cost tracking records input/output token costs per request and accumulates totals in `AiSceneResponse.TotalCost`.
+Cost per call and cumulative totals are recorded in `AiSceneResponse.Cost` / `AiSceneResponse.TotalCost` when the adapter is configured with pricing. See the [Rystem.PlayFramework.Adapters README](https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework.Adapters#cost-tracking) for how to set `AdapterSettings.CostTracking`.
+
+Per-request budget enforcement uses `SceneRequestSettings.MaxBudget`. When the cumulative cost exceeds it, execution stops with status `BudgetExceeded`:
 
 ```csharp
-builder.Services.AddPlayFramework("default", framework =>
+var settings = new SceneRequestSettings
 {
-    framework
-        .WithChatClient("default")
-
-        // Global fallback pricing
-        .WithCostTracking("USD", inputCostPer1K: 0.01m, outputCostPer1K: 0.03m)
-
-        // Per-model pricing (overrides global)
-        .WithModelCosts("gpt-4o", inputCostPer1K: 0.005m, outputCostPer1K: 0.015m)
-        .WithModelCosts("gpt-4o-mini", inputCostPer1K: 0.00015m, outputCostPer1K: 0.0006m)
-
-        // Per-client pricing (overrides model costs)
-        .WithClientCosts("azure-client", inputCostPer1K: 0.004m, outputCostPer1K: 0.012m)
-
-        .AddScene("Assistant", "General conversation", _ => { });
-});
+    MaxBudget = 0.05m, // $0.05 maximum per request
+};
 ```
 
-Per-request budget enforcement is done through `SceneRequestSettings.MaxBudget`. When the cumulative cost exceeds it, execution stops with status `BudgetExceeded`.
+Response cost fields:
+
+| Field | Description |
+| --- | --- |
+| `AiSceneResponse.Cost` | cost of the current LLM call (null when no LLM call was made) |
+| `AiSceneResponse.TotalCost` | cumulative cost across all calls in this request |
+| `AiSceneResponse.InputTokens` | input tokens used in this call |
+| `AiSceneResponse.OutputTokens` | output tokens generated in this call |
+| `AiSceneResponse.CachedInputTokens` | cached input tokens used in this call |
 
 ## Example: custom extensibility
 

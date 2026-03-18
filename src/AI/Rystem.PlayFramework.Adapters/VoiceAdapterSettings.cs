@@ -47,4 +47,11 @@ public sealed class VoiceAdapterSettings
     /// Default: 1.0.
     /// </summary>
     public float TtsSpeed { get; set; } = 1.0f;
+
+    /// <summary>
+    /// Optional cost tracking settings for STT and TTS operations.
+    /// When set, an <see cref="IAudioCostCalculator"/> is registered and used by the voice pipeline
+    /// to calculate and report audio costs alongside LLM token costs.
+    /// </summary>
+    public AudioCostSettings? CostTracking { get; set; }
 }

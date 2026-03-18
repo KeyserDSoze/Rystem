@@ -15,7 +15,6 @@ namespace Rystem.PlayFramework;
 internal sealed class ChatClientManager : IChatClientManager, IFactoryName
 {
     private readonly IFactory<IChatClient> _chatClientFactory;
-    private readonly IFactory<TokenCostSettings> _costSettingsFactory;
     private readonly IFactory<PlayFrameworkSettings> _settingsFactory;
     private readonly IFactory<ITransientErrorDetector> _errorDetectorFactory;
     private readonly IServiceProvider _serviceProvider;
@@ -24,12 +23,10 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
 
     // Resolved dependencies (set via SetFactoryName)
     private PlayFrameworkSettings _settings = null!;
-    private TokenCostSettings? _defaultCostSettings;
     private ITransientErrorDetector _errorDetector = null!;
 
-    // Lazy client caches (thread-safe)
+    // Lazy client cache (thread-safe)
     private readonly ConcurrentDictionary<string, Lazy<IChatClient>> _clientCache = new();
-    private readonly ConcurrentDictionary<string, Lazy<TokenCostSettings?>> _costSettingsCache = new();
 
     // Load balancing state
     private int _roundRobinIndex = 0;
@@ -37,7 +34,6 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
 
     public ChatClientManager(
         IFactory<IChatClient> chatClientFactory,
-        IFactory<TokenCostSettings> costSettingsFactory,
         IFactory<PlayFrameworkSettings> settingsFactory,
         IFactory<ITransientErrorDetector> errorDetectorFactory,
         IServiceProvider serviceProvider,
@@ -45,13 +41,13 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
         Services.Helpers.IToolExecutionManager toolExecutionManager)
     {
         _chatClientFactory = chatClientFactory;
-        _costSettingsFactory = costSettingsFactory;
         _settingsFactory = settingsFactory;
         _errorDetectorFactory = errorDetectorFactory;
         _serviceProvider = serviceProvider;
         _logger = logger;
         _toolExecutionManager = toolExecutionManager;
     }
+
     public bool FactoryNameAlreadySetup { get; set; }
     public void SetFactoryName(AnyOf<string?, Enum>? name)
     {
@@ -59,25 +55,15 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
 
         _settings = _settingsFactory.Create(name)
             ?? throw new InvalidOperationException($"PlayFrameworkSettings not found for factory: {name?.ToString() ?? "default"}");
-        _defaultCostSettings = _costSettingsFactory.Create(name);
         _errorDetector = _errorDetectorFactory.Create(name)
             ?? throw new InvalidOperationException($"ITransientErrorDetector not found for factory: {name?.ToString() ?? "default"}");
     }
 
     public string? ModelId => null;
 
-    public string Currency
-    {
-        get
-        {
-            if (_settings?.ChatClientNames?.Count > 0)
-            {
-                var firstClientCostSettings = GetOrCreateCostSettings(_settings.ChatClientNames[0]);
-                return firstClientCostSettings?.Currency ?? "USD";
-            }
-            return _defaultCostSettings?.Currency ?? "USD";
-        }
-    }
+    /// <summary>Currency is read from the framework-level <see cref="TokenCostSettings"/> (set via WithCostTracking).
+    /// Adapters embed per-call costs via <see cref="CostTrackingChatClient"/>; this surfaces the configured currency for budget messages.</summary>
+    public string Currency => _settings?.CostTracking?.Currency ?? "USD";
 
     #region Main API Methods
 
@@ -100,19 +86,26 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
                 // Centralized deduplication using ToolExecutionManager
                 response = _toolExecutionManager.DeduplicateToolCalls(response);
 
-                var cost = CalculateCost(response, clientInfo.CostSettings);
+                // Cost is pre-calculated by CostTrackingChatClient inside the adapter (if configured).
+                var costCalc = response.AdditionalProperties?.TryGetValue(PlayFrameworkCostConstants.CostCalculationKey, out var costObj) == true
+                    ? costObj as CostCalculation
+                    : null;
+                var cost = costCalc?.TotalCost ?? 0m;
+                var inputTokens = (int)(response.Usage?.InputTokenCount ?? 0);
+                var outputTokens = (int)(response.Usage?.OutputTokenCount ?? 0);
+                var cachedInputTokens = (int)(response.Usage?.CachedInputTokenCount ?? 0);
 
                 _logger.LogInformation("{Phase} client {Client} succeeded (Attempt {Attempt}, Tokens: {Input}->{Output}, Cost: {Cost:F6})",
                     clientInfo.Phase, clientInfo.ClientName, clientInfo.Attempt,
-                    response.Usage?.InputTokenCount ?? 0, response.Usage?.OutputTokenCount ?? 0, cost);
+                    inputTokens, outputTokens, cost);
 
                 return new ChatResponseWithCost
                 {
                     Response = response,
                     CalculatedCost = cost,
-                    InputTokens = (int)(response.Usage?.InputTokenCount ?? 0),
-                    OutputTokens = (int)(response.Usage?.OutputTokenCount ?? 0),
-                    CachedInputTokens = (int)(response.Usage?.CachedInputTokenCount ?? 0),
+                    InputTokens = inputTokens,
+                    OutputTokens = outputTokens,
+                    CachedInputTokens = cachedInputTokens,
                     ClientName = clientInfo.ClientName
                 };
             }
@@ -162,7 +155,6 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
             await foreach (var update in TryStreamFromClientAsync(
                 clientInfo.Client,
                 clientInfo.ClientName,
-                clientInfo.CostSettings,
                 chatMessages,
                 options,
                 cancellationToken))
@@ -220,25 +212,21 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
             {
                 for (int attempt = 1; attempt <= _settings.MaxRetryAttempts; attempt++)
                 {
-                    IChatClient? client;
-                    TokenCostSettings? costSettings;
-
+                    IChatClient client;
                     try
                     {
                         client = GetOrCreateClient(clientName);
-                        costSettings = GetOrCreateCostSettings(clientName);
                     }
                     catch (Exception ex)
                     {
                         _logger.LogWarning("Failed to create client {Client}: {Error}", clientName, ex.Message);
-                        break; // Skip this client entirely
+                        break;
                     }
 
                     yield return new ClientAttemptInfo
                     {
                         Client = client,
                         ClientName = clientName,
-                        CostSettings = costSettings,
                         Phase = "LoadBalanced",
                         Attempt = attempt,
                         MaxAttempts = _settings.MaxRetryAttempts
@@ -257,13 +245,10 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
             {
                 for (int attempt = 1; attempt <= _settings.MaxRetryAttempts; attempt++)
                 {
-                    IChatClient? client;
-                    TokenCostSettings? costSettings;
-
+                    IChatClient client;
                     try
                     {
                         client = GetOrCreateClient(clientName);
-                        costSettings = GetOrCreateCostSettings(clientName);
                     }
                     catch (Exception ex)
                     {
@@ -275,7 +260,6 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
                     {
                         Client = client,
                         ClientName = clientName,
-                        CostSettings = costSettings,
                         Phase = "Fallback",
                         Attempt = attempt,
                         MaxAttempts = _settings.MaxRetryAttempts
@@ -288,12 +272,24 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
         var directClient = _serviceProvider.GetService<IChatClient>();
         if (directClient != null)
         {
+            // Wrap with CostTrackingChatClient only when cost tracking is both enabled AND
+            // has meaningful prices configured. This prevents accidentally double-wrapping an
+            // adapter-registered client (which is already wrapped) with zero-cost settings that
+            // would overwrite the correctly-calculated cost with 0.
+            var ct = _settings.CostTracking;
+            var hasMeaningfulCostConfig = ct.Enabled &&
+                (ct.InputTokenCostPer1K > 0 || ct.OutputTokenCostPer1K > 0 ||
+                 ct.CachedInputTokenCostPer1K > 0 || ct.ModelCosts.Count > 0 ||
+                 ct.ClientCosts.Count > 0);
+            IChatClient clientToUse = hasMeaningfulCostConfig
+                ? new CostTrackingChatClient(directClient, ct)
+                : directClient;
+
             _logger.LogWarning("No named clients configured, using direct IChatClient");
             yield return new ClientAttemptInfo
             {
-                Client = directClient,
+                Client = clientToUse,
                 ClientName = "direct",
-                CostSettings = _defaultCostSettings,
                 Phase = "Direct",
                 Attempt = 1,
                 MaxAttempts = 1
@@ -310,7 +306,6 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
     private async IAsyncEnumerable<ChatUpdateWithCost> TryStreamFromClientAsync(
         IChatClient client,
         string clientName,
-        TokenCostSettings? costSettings,
         IList<ChatMessage> chatMessages,
         ChatOptions? options,
         [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -328,19 +323,17 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
                 receivedExplicitCompletion = true;
             }
 
-            // Usage is surfaced via UsageContent inside Contents (not on the update object itself)
+            // Usage counts come from UsageContent inside Contents.
             var usageContent = update.Contents?.OfType<UsageContent>().FirstOrDefault();
             var inputTokens = (int)(usageContent?.Details.InputTokenCount ?? 0);
             var outputTokens = (int)(usageContent?.Details.OutputTokenCount ?? 0);
             var cachedInputTokens = (int)(usageContent?.Details.CachedInputTokenCount ?? 0);
 
-            var estimatedCost = 0m;
-            if (usageContent != null && costSettings != null)
-            {
-                estimatedCost = ((decimal)inputTokens / 1_000m) * costSettings.InputTokenCostPer1K +
-                              ((decimal)outputTokens / 1_000m) * costSettings.OutputTokenCostPer1K +
-                              ((decimal)cachedInputTokens / 1_000m) * costSettings.CachedInputTokenCostPer1K;
-            }
+            // Cost is pre-calculated by CostTrackingChatClient inside the adapter (if configured).
+            var costCalc = update.AdditionalProperties?.TryGetValue(PlayFrameworkCostConstants.CostCalculationKey, out var costObj) == true
+                ? costObj as CostCalculation
+                : null;
+            var estimatedCost = costCalc?.TotalCost ?? 0m;
 
             yield return new ChatUpdateWithCost
             {
@@ -429,31 +422,6 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
             return client;
         })).Value;
 
-    private TokenCostSettings? GetOrCreateCostSettings(string name) =>
-        _costSettingsCache.GetOrAdd(name, _ => new Lazy<TokenCostSettings?>(() =>
-        {
-            // Try client-specific settings first, then fall back to the global default
-            var settings = _costSettingsFactory.Create(name) ?? _defaultCostSettings;
-            if (settings != null)
-            {
-                _logger.LogDebug("Lazy-loaded cost settings for: {ClientName} (Input: ${Input}/1K, Output: ${Output}/1K)",
-                    name, settings.InputTokenCostPer1K, settings.OutputTokenCostPer1K);
-            }
-            return settings;
-        })).Value;
-
-    private decimal CalculateCost(ChatResponse response, TokenCostSettings? settings)
-    {
-        if (settings == null || response.Usage == null)
-            return 0m;
-
-        var inputCost = ((decimal)(response.Usage.InputTokenCount ?? 0) / 1_000m) * settings.InputTokenCostPer1K;
-        var outputCost = ((decimal)(response.Usage.OutputTokenCount ?? 0) / 1_000m) * settings.OutputTokenCostPer1K;
-        var cachedCost = ((decimal)(response.Usage.CachedInputTokenCount ?? 0) / 1_000m) * settings.CachedInputTokenCostPer1K;
-
-        return inputCost + outputCost + cachedCost;
-    }
-
     #endregion
 
     #region Internal Types
@@ -465,7 +433,6 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
     {
         public required IChatClient Client { get; init; }
         public required string ClientName { get; init; }
-        public TokenCostSettings? CostSettings { get; init; }
         public required string Phase { get; init; }
         public int Attempt { get; init; }
         public int MaxAttempts { get; init; }

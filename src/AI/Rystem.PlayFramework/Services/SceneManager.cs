@@ -680,14 +680,14 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         // Save to cache with Completed phase
         if (settings.CacheBehavior != CacheBehavior.Avoidable && _settings.Cache.Enabled && context.ConversationKey != null)
         {
-            yield return YieldStatus(AiResponseStatus.SavingCache, "Saving conversation");
+            yield return YieldStatus(AiResponseStatus.SavingCache, "Saving conversation", context.TotalCost);
             await SaveConversationAsync(context, cancellationToken);
         }
 
         // Save updated memory if enabled
         if (_memory != null && _memoryStorage != null && _settings.Memory?.Enabled == true && context.ConversationKey != null)
         {
-            yield return YieldStatus(AiResponseStatus.SavingMemory, "Saving conversation memory");
+            yield return YieldStatus(AiResponseStatus.SavingMemory, "Saving conversation memory", context.TotalCost);
 
             // Get messages for memory
             var memoryMessages = context.GetMessagesForMemory()

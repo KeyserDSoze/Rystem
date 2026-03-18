@@ -150,6 +150,47 @@ builder.Services.AddPlayFramework("default", framework =>
 | `TtsOutputFormat` | output format such as `mp3`, `wav`, `pcm` |
 | `TtsSpeed` | speech speed multiplier |
 
+## Cost tracking
+
+Set `CostTracking` on `AdapterSettings` to record input/output token costs per LLM call:
+
+```csharp
+builder.Services.AddAdapterForAzureOpenAI("default", settings =>
+{
+    settings.Endpoint = new Uri(builder.Configuration["AzureOpenAI:Endpoint"]!);
+    settings.ApiKey = builder.Configuration["AzureOpenAI:Key"]!;
+    settings.Deployment = "gpt-4o";
+    settings.CostTracking = new TokenCostSettings
+    {
+        Enabled = true,
+        Currency = "USD",
+        InputTokenCostPer1K = 0.005m,
+        OutputTokenCostPer1K = 0.015m,
+        CachedInputTokenCostPer1K = 0.0025m, // optional: cached input is usually ~50% of regular
+    };
+});
+```
+
+`TokenCostSettings` exposes:
+
+| Property | Meaning |
+| --- | --- |
+| `Enabled` | enable or disable cost tracking, default `true` |
+| `Currency` | currency label for display, default `USD` |
+| `InputTokenCostPer1K` | cost per 1 000 input tokens |
+| `OutputTokenCostPer1K` | cost per 1 000 output tokens |
+| `CachedInputTokenCostPer1K` | cost per 1 000 cached input tokens, default `0` |
+| `ModelCosts` | `Dictionary<string, ModelCostSettings>` per-model price overrides |
+| `ClientCosts` | `Dictionary<string, ClientCostSettings>` per-client price overrides |
+
+When `CostTracking` is set the adapter wraps the underlying `IChatClient` with `CostTrackingChatClient` — a `DelegatingChatClient` that reads `response.Usage` after every LLM call and embeds a `CostCalculation` into `AdditionalProperties`. `ChatClientManager` picks that value up passively and surfaces it as `AiSceneResponse.Cost` (per-call) and `AiSceneResponse.TotalCost` (cumulative across the full request).
+
+> **Critical**: you must call `.WithChatClient("name")` in `AddPlayFramework` with the **same factory name** used for the adapter. Without it the framework falls back to a direct `IChatClient` resolution path that does not see the cost wrapper and reports zero for all costs.
+
+See [Example: cost tracking](https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework#example-cost-tracking) in the PlayFramework README for budget enforcement, response fields, and per-model / per-client pricing.
+
+---
+
 ## Important caveats
 
 ### The streaming path blocks during file preprocessing

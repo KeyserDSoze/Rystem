@@ -1903,26 +1903,31 @@ builder.Services.AddPlayFramework("default", pb => pb
 
 ---
 
-## 💰 Per-Model & Per-Client Cost Tracking
+## 💰 Cost Tracking
 
-Fine-grained cost tracking:
+Cost per call and cumulative totals surface on every `AiSceneResponse` when the adapter is configured with pricing.
+
+Configure `AdapterSettings.CostTracking` on the adapter — see [Rystem.PlayFramework.Adapters › Cost Tracking](https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework.Adapters#cost-tracking).
+
+### Response fields
+
+| Field | Description |
+|---|---|
+| `AiSceneResponse.Cost` | cost for the current LLM call (null when no LLM call was made) |
+| `AiSceneResponse.TotalCost` | cumulative cost across all LLM calls in this request |
+| `AiSceneResponse.InputTokens` | input tokens used in this call |
+| `AiSceneResponse.OutputTokens` | output tokens generated in this call |
+| `AiSceneResponse.CachedInputTokens` | cached input tokens used in this call |
+
+### Budget enforcement
+
+Use `SceneRequestSettings.MaxBudget` to cap the total cost per request. When the cumulative cost exceeds the limit, execution stops with status `BudgetExceeded`:
 
 ```csharp
-builder.Services.AddPlayFramework("default", pb => pb
-    .WithChatClient("gpt-4o")
-    .WithChatClient("gpt-4o-mini")
-
-    // Global cost tracking
-    .WithCostTracking("USD", inputCostPer1K: 0.01m, outputCostPer1K: 0.03m)
-
-    // Per-model pricing
-    .WithModelCosts("gpt-4o", inputCostPer1K: 0.005m, outputCostPer1K: 0.015m)
-    .WithModelCosts("gpt-4o-mini", inputCostPer1K: 0.00015m, outputCostPer1K: 0.0006m)
-
-    // Per-client pricing (overrides model costs)
-    .WithClientCosts("azure-client", inputCostPer1K: 0.004m, outputCostPer1K: 0.012m)
-
-    .AddScene(...));
+var settings = new SceneRequestSettings
+{
+    MaxBudget = 0.05m, // $0.05 maximum per request
+};
 ```
 
 ---

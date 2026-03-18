@@ -60,9 +60,7 @@ public static class ServiceCollectionExtensions
         services.AddEngineFactory<PlayFrameworkSettings>();
         services.AddEngineFactory<List<SceneConfiguration>>();
         services.AddEngineFactory<List<ActorConfiguration>>();
-        services.AddEngineFactory<ICostCalculator>();
         services.AddEngineFactory<ITransientErrorDetector>();  // Add error detector factory
-        services.AddEngineFactory<TokenCostSettings>();  // Add token cost settings factory
         services.AddEngineFactory<IPlanner>();
         services.AddEngineFactory<ISummarizer>();
         services.AddEngineFactory<IDirector>();
@@ -99,29 +97,6 @@ public static class ServiceCollectionExtensions
 
         // Register main actors with factory pattern (Singleton)
         services.AddFactory(builder.MainActors, name, ServiceLifetime.Singleton);
-
-        // Register cost calculator with factory pattern (Singleton)
-        var costCalculator = builder.Settings.CostTracking.Enabled
-            ? new CostCalculator(builder.Settings.CostTracking)
-            : new CostCalculator(new TokenCostSettings { Enabled = false });
-        services.AddFactory<ICostCalculator>(costCalculator, name, ServiceLifetime.Singleton);
-
-        // Register default cost settings for direct IChatClient fallback
-        services.AddFactory(builder.Settings.CostTracking, name, ServiceLifetime.Singleton);
-
-        // Register per-client cost settings so GetOrCreateCostSettings(clientName) resolves correctly
-        foreach (var (clientName, clientCostEntry) in builder.Settings.CostTracking.ClientCosts)
-        {
-            var clientTokenSettings = new TokenCostSettings
-            {
-                Enabled = true,
-                Currency = builder.Settings.CostTracking.Currency,
-                InputTokenCostPer1K = clientCostEntry.InputTokenCostPer1K,
-                OutputTokenCostPer1K = clientCostEntry.OutputTokenCostPer1K,
-                CachedInputTokenCostPer1K = clientCostEntry.CachedInputTokenCostPer1K,
-            };
-            services.AddFactory(clientTokenSettings, clientName, ServiceLifetime.Singleton);
-        }
 
         // Register default transient error detector if not customized
         if (!builder.HasCustomTransientErrorDetector)
