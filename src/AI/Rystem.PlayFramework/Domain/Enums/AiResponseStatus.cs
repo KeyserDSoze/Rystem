@@ -74,6 +74,11 @@ public enum AiResponseStatus
     GeneratingFinalResponse,
 
     /// <summary>
+    /// Final response.
+    /// </summary>
+    FinalResponse,
+
+    /// <summary>
     /// Saving to cache.
     /// </summary>
     SavingCache,

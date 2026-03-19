@@ -231,7 +231,7 @@ export class BrowserVoiceClient {
                         'executingMainActors', 'executingScene', 'planning',
                         'functionRequest', 'functionCompleted', 'toolSkipped',
                         'awaitingClient', 'commandClient',
-                        'directorDecision', 'summarizing', 'generatingFinalResponse',
+                        'directorDecision', 'summarizing', 'generatingFinalResponse', 'finalResponse',
                         'error', 'budgetExceeded', 'unauthorized',
                     ];
                     if (!nonSpeakableStatuses.includes(response.status)) {

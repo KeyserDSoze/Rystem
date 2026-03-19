@@ -18,6 +18,7 @@ export type AiResponseStatus =
     | "summarizing"
     | "directorDecision"
     | "generatingFinalResponse"
+    | "finalResponse"
     | "savingCache"
     | "savingMemory"
     | "awaitingClient"

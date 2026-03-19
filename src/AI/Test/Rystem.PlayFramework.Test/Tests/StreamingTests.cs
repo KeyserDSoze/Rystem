@@ -21,7 +21,6 @@ public class StreamingTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .WithCostTracking("USD", 0.03m, 0.06m)
                 .AddScene("Calculator", "Math operations", sceneBuilder =>
                 {
                     sceneBuilder
@@ -75,7 +74,7 @@ public class StreamingTests : PlayFrameworkTestBase
         // Final response should have IsStreamingComplete = true
         var finalStreamResponse = responses.LastOrDefault(r => r.IsStreamingComplete);
         Assert.NotNull(finalStreamResponse);
-        Assert.Equal(AiResponseStatus.Running, finalStreamResponse!.Status);
+        Assert.Equal(AiResponseStatus.FinalResponse, finalStreamResponse!.Status);
     }
 
     /// <summary>
@@ -201,7 +200,6 @@ public class StreamingTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .WithCostTracking("USD", 0.1m, 0.2m) // High cost
                 .AddScene("Calculator", "Math", sceneBuilder =>
                 {
                     sceneBuilder
@@ -214,7 +212,7 @@ public class StreamingTests : PlayFrameworkTestBase
         });
 
         services.AddSingleton<ICalculatorService, CalculatorService>();
-        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(500, 500)); // Costs $0.15 per call
+        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(500, 500, "USD", 0.1m, 0.2m)); // Costs $0.15 per call
 
         var serviceProvider = services.BuildServiceProvider();
         var sceneManager = serviceProvider.GetRequiredService<ISceneManager>();

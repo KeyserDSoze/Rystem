@@ -22,7 +22,6 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         {
             builder
                 // Enable cost tracking with GPT-4 pricing
-                .WithCostTracking("USD", 0.03m, 0.06m) // Input: $0.03/1K, Output: $0.06/1K
                 .AddScene("Calculator", "Performs mathematical calculations", sceneBuilder =>
                 {
                     sceneBuilder
@@ -40,9 +39,7 @@ public class BudgetLimitTests : PlayFrameworkTestBase
 
         // Mock chat client (simulate 2000 tokens per call: 1000 input + 1000 output)
         // Cost per call: (1000/1000 * $0.03) + (1000/1000 * $0.06) = $0.03 + $0.06 = $0.09
-        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(
-            inputTokens: 1000,
-            outputTokens: 1000));
+        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(inputTokens: 1000, outputTokens: 1000, currency: "USD", inputCostPer1K: 0.03m, outputCostPer1K: 0.06m));
 
         var serviceProvider = services.BuildServiceProvider();
         var sceneManager = serviceProvider.GetRequiredService<ISceneManager>();
@@ -81,7 +78,6 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .WithCostTracking("USD", 0.001m, 0.002m) // Cheap pricing
                 .AddScene("Calculator", "Performs calculations", sceneBuilder =>
                 {
                     sceneBuilder
@@ -94,7 +90,7 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         });
 
         services.AddSingleton<ICalculatorService, CalculatorService>();
-        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(100, 100));
+        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(100, 100, "USD", 0.001m, 0.002m));
 
         var serviceProvider = services.BuildServiceProvider();
         var sceneManager = serviceProvider.GetRequiredService<ISceneManager>();
@@ -131,7 +127,6 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .WithCostTracking("USD", 0.01m, 0.02m) // Input: $0.01/1K, Output: $0.02/1K
                 .AddScene("Calculator", "Math operations", sceneBuilder =>
                 {
                     sceneBuilder
@@ -148,7 +143,7 @@ public class BudgetLimitTests : PlayFrameworkTestBase
 
         // Each call uses 2000 tokens (1000 input + 1000 output)  
         // Cost per call: (1000/1000 * $0.01) + (1000/1000 * $0.02) = $0.01 + $0.02 = $0.03
-        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(1000, 1000));
+        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(1000, 1000, "USD", 0.01m, 0.02m));
 
         var serviceProvider = services.BuildServiceProvider();
         var sceneManager = serviceProvider.GetRequiredService<ISceneManager>();
@@ -198,7 +193,6 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .WithCostTracking("USD", 1.0m, 2.0m) // High cost per token
                 .AddScene("Calculator", "Calculations", sceneBuilder =>
                 {
                     sceneBuilder
@@ -211,7 +205,7 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         });
 
         services.AddSingleton<ICalculatorService, CalculatorService>();
-        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(1000, 1000));
+        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(1000, 1000, "USD", 1.0m, 2.0m));
 
         var serviceProvider = services.BuildServiceProvider();
         var sceneManager = serviceProvider.GetRequiredService<ISceneManager>();
@@ -249,7 +243,6 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .WithCostTracking("EUR", 0.025m, 0.05m) // EUR pricing
                 .AddScene("Calculator", "Math", sceneBuilder =>
                 {
                     sceneBuilder
@@ -262,7 +255,7 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         });
 
         services.AddSingleton<ICalculatorService, CalculatorService>();
-        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(400, 600));
+        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(400, 600, "EUR", 0.025m, 0.05m));
 
         var serviceProvider = services.BuildServiceProvider();
         var sceneManager = serviceProvider.GetRequiredService<ISceneManager>();
@@ -301,7 +294,6 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         services.AddPlayFramework(builder =>
         {
             builder
-                .WithCostTracking("USD", 0.1m, 0.2m) // $0.1 input, $0.2 output per 1K
                 .AddScene("Calculator", "Calculations", sceneBuilder =>
                 {
                     sceneBuilder
@@ -319,7 +311,7 @@ public class BudgetLimitTests : PlayFrameworkTestBase
         // Each call: 200 tokens (100 input + 100 output)
         // Cost per call: (100/1000 * $0.1) + (100/1000 * $0.2) = $0.01 + $0.02 = $0.03
         // Budget is $0.05, so second call would exceed (Call 1: $0.03, Call 2: $0.06 > $0.05)
-        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(100, 100));
+        services.AddSingleton<IChatClient>(sp => new MockCostTrackingChatClient(100, 100, "USD", 0.1m, 0.2m));
 
         var serviceProvider = services.BuildServiceProvider();
         var sceneManager = serviceProvider.GetRequiredService<ISceneManager>();
@@ -353,12 +345,19 @@ internal class MockCostTrackingChatClient : IChatClient
 {
     private readonly int _inputTokens;
     private readonly int _outputTokens;
+    private readonly string _currency;
+    private readonly decimal _inputCostPer1K;
+    private readonly decimal _outputCostPer1K;
     private int _callCount = 0;
 
-    public MockCostTrackingChatClient(int inputTokens, int outputTokens)
+    public MockCostTrackingChatClient(int inputTokens, int outputTokens,
+        string currency = "USD", decimal inputCostPer1K = 0m, decimal outputCostPer1K = 0m)
     {
         _inputTokens = inputTokens;
         _outputTokens = outputTokens;
+        _currency = currency;
+        _inputCostPer1K = inputCostPer1K;
+        _outputCostPer1K = outputCostPer1K;
     }
 
     public ChatClientMetadata Metadata => new("mock-cost-tracking-client", null, "mock-1.0");
@@ -408,7 +407,7 @@ internal class MockCostTrackingChatClient : IChatClient
             }
         }
 
-        return new ChatResponse([responseMessage])
+        var response = new ChatResponse([responseMessage])
         {
             ModelId = "mock-model",
             Usage = new UsageDetails
@@ -418,6 +417,23 @@ internal class MockCostTrackingChatClient : IChatClient
                 TotalTokenCount = _inputTokens + _outputTokens
             }
         };
+
+        // Embed cost directly — simulates what a real adapter with CostTrackingChatClient does
+        if (_inputCostPer1K > 0 || _outputCostPer1K > 0)
+        {
+            var costCalc = new CostCalculation
+            {
+                InputCost = Math.Round((_inputTokens / 1000m) * _inputCostPer1K, 6),
+                OutputCost = Math.Round((_outputTokens / 1000m) * _outputCostPer1K, 6),
+                Currency = _currency,
+                ModelId = "mock-model",
+                Usage = new TokenUsage { InputTokens = _inputTokens, OutputTokens = _outputTokens }
+            };
+            response.AdditionalProperties ??= [];
+            response.AdditionalProperties[PlayFrameworkCostConstants.CostCalculationKey] = costCalc;
+        }
+
+        return response;
     }
 
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(

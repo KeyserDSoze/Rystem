@@ -31,6 +31,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
     // Load balancing state
     private int _roundRobinIndex = 0;
     private readonly Random _random = new();
+    private string _currency = "USD";
 
     public ChatClientManager(
         IFactory<IChatClient> chatClientFactory,
@@ -61,9 +62,9 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
 
     public string? ModelId => null;
 
-    /// <summary>Currency is read from the framework-level <see cref="TokenCostSettings"/> (set via WithCostTracking).
-    /// Adapters embed per-call costs via <see cref="CostTrackingChatClient"/>; this surfaces the configured currency for budget messages.</summary>
-    public string Currency => _settings?.CostTracking?.Currency ?? "USD";
+    /// <summary>Currency is propagated from the first adapter response that includes a <see cref="CostCalculation"/>.
+    /// Adapters embed per-call costs via <see cref="CostTrackingChatClient"/>; this surfaces the currency for budget messages.</summary>
+    public string Currency => _currency;
 
     #region Main API Methods
 
@@ -90,6 +91,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
                 var costCalc = response.AdditionalProperties?.TryGetValue(PlayFrameworkCostConstants.CostCalculationKey, out var costObj) == true
                     ? costObj as CostCalculation
                     : null;
+                if (costCalc?.Currency != null) _currency = costCalc.Currency;
                 var cost = costCalc?.TotalCost ?? 0m;
                 var inputTokens = (int)(response.Usage?.InputTokenCount ?? 0);
                 var outputTokens = (int)(response.Usage?.OutputTokenCount ?? 0);
@@ -272,23 +274,10 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
         var directClient = _serviceProvider.GetService<IChatClient>();
         if (directClient != null)
         {
-            // Wrap with CostTrackingChatClient only when cost tracking is both enabled AND
-            // has meaningful prices configured. This prevents accidentally double-wrapping an
-            // adapter-registered client (which is already wrapped) with zero-cost settings that
-            // would overwrite the correctly-calculated cost with 0.
-            var ct = _settings.CostTracking;
-            var hasMeaningfulCostConfig = ct.Enabled &&
-                (ct.InputTokenCostPer1K > 0 || ct.OutputTokenCostPer1K > 0 ||
-                 ct.CachedInputTokenCostPer1K > 0 || ct.ModelCosts.Count > 0 ||
-                 ct.ClientCosts.Count > 0);
-            IChatClient clientToUse = hasMeaningfulCostConfig
-                ? new CostTrackingChatClient(directClient, ct)
-                : directClient;
-
             _logger.LogWarning("No named clients configured, using direct IChatClient");
             yield return new ClientAttemptInfo
             {
-                Client = clientToUse,
+                Client = directClient,
                 ClientName = "direct",
                 Phase = "Direct",
                 Attempt = 1,
@@ -333,6 +322,7 @@ internal sealed class ChatClientManager : IChatClientManager, IFactoryName
             var costCalc = update.AdditionalProperties?.TryGetValue(PlayFrameworkCostConstants.CostCalculationKey, out var costObj) == true
                 ? costObj as CostCalculation
                 : null;
+            if (costCalc?.Currency != null) _currency = costCalc.Currency;
             var estimatedCost = costCalc?.TotalCost ?? 0m;
 
             yield return new ChatUpdateWithCost

@@ -840,7 +840,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
 
             yield break;
         }
-
+        AiSceneResponse? lastResponse = null;
         // Execute using the handler, passing the factory name
         await foreach (var response in handler.ExecuteAsync(_originalFactoryName, context, settings, cancellationToken))
         {
@@ -855,15 +855,22 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
                     await SaveConversationAsync(context, cancellationToken);
                 }
             }
-
+            lastResponse = response;
             yield return response;
         }
 
-        // Only send Completed if NOT waiting for client interaction
-        // For Commands (CommandClient status), client closes stream on its side after execution
-        // If feedbackMode requires response, client includes CommandResult in next user message
         if (context.ExecutionPhase != ExecutionPhase.AwaitingClient)
         {
+            if (lastResponse != null &&
+                lastResponse.Status != AiResponseStatus.BudgetExceeded &&
+                lastResponse.Status != AiResponseStatus.Error)
+            {
+                lastResponse.Status = AiResponseStatus.FinalResponse;
+                yield return lastResponse;
+            }
+            // Only send Completed if NOT waiting for client interaction
+            // For Commands (CommandClient status), client closes stream on its side after execution
+            // If feedbackMode requires response, client includes CommandResult in next user message
             yield return YieldStatus(AiResponseStatus.Completed, "Execution completed", context.TotalCost);
         }
     }

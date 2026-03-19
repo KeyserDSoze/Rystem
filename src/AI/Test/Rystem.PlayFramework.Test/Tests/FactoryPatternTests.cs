@@ -36,7 +36,6 @@ public class FactoryPatternTests : PlayFrameworkTestBase
         {
             builder
                 .WithExecutionMode(SceneExecutionMode.DynamicChaining)
-                .WithCostTracking("USD", 0.03m, 0.06m)
                 .AddScene("AdvancedCalculator", "Advanced calculator with history", s => s
                     .WithService<CalculatorService>(b => b
                         .WithMethod(x => x.Add(default, default), "add", "Add")

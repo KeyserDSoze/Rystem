@@ -11,6 +11,7 @@ export type ExecutionPhase =
     | "sceneCompleted"
     | "chaining"
     | "generatingFinalResponse"
+    | "finalResponse"
     | "completed"
     | "completedNoResponse"
     | "budgetExceeded"

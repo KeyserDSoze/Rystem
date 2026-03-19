@@ -163,7 +163,7 @@ const statusColors: Partial<Record<AiResponseStatus, string>> = {
     // Streaming & Response Generation
     streaming: '#61dafb',
     generatingFinalResponse: '#20c997',
-
+    finalResponse: '#095e25',
     // Director & Summarization
     directorDecision: '#e83e8c',
     summarizing: '#fd7e14',
