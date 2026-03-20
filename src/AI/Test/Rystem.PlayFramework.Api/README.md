@@ -107,7 +107,16 @@ Example step-by-step request:
   "message": "Calculate 5 * 7",
   "settings": {
     "executionMode": "Scene",
-    "sceneName": "Calculator"
+    "sceneName": "Calculator",
+    "forcedTools": [
+      {
+        "sceneName": "Calculator",
+        "toolName": "Add",
+        "sourceType": "Service",
+        "sourceName": "ICalculatorService",
+        "memberName": "Add"
+      }
+    ]
   }
 }
 ```
@@ -117,6 +126,14 @@ Token-streaming uses the same body shape against:
 ```text
 POST /api/ai/default/streaming
 ```
+
+The sample also exposes discovery metadata for the frontend:
+
+```text
+GET /api/ai/default/discovery
+```
+
+Use that endpoint to inspect normalized scene names plus DI/client/MCP tool metadata and then send the selected values back through `settings.forcedTools`.
 
 ## Sample scenes
 

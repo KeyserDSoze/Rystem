@@ -37,6 +37,7 @@ So for the `default` factory it calls:
 
 - `POST http://localhost:5158/api/ai/default`
 - `POST http://localhost:5158/api/ai/default/streaming`
+- `GET http://localhost:5158/api/ai/default/discovery`
 - `GET http://localhost:5158/api/ai/default/conversations`
 - `POST http://localhost:5158/api/ai/default/voice`
 
@@ -116,6 +117,34 @@ const localClient = PlayFrameworkServices.resolve("foundry");
 ```
 
 This is useful when the backend exposes multiple PlayFramework factories with different scenes or model providers.
+
+## Example: load scenes and tool metadata from the server
+
+Use `getDiscovery()` when the frontend needs to know which scenes, DI tools, client tools, or MCP tools are currently available for a factory.
+
+```typescript
+const metadata = await client.getDiscovery();
+
+for (const scene of metadata.scenes ?? []) {
+  console.log(scene.name, scene.description);
+
+  for (const tool of scene.tools ?? []) {
+    console.log(tool.toolName, tool.sourceType, tool.sourceName, tool.memberName);
+  }
+}
+```
+
+This calls:
+
+```text
+GET {baseUrl}/{factoryName}/discovery
+```
+
+Typical uses:
+
+- populate a scene dropdown with the normalized names expected by `settings.sceneName`
+- show which tools come from DI services, client interactions, or MCP servers
+- build `forcedTools` values without hardcoding service or MCP metadata in the frontend
 
 ## Example: step-by-step streaming
 
@@ -216,6 +245,7 @@ The `settings` object mirrors the server-side `SceneRequestSettings`, including:
 
 - `executionMode`
 - `sceneName`
+- `forcedTools`
 - `conversationKey`
 - `clientInteractionResults`
 - `enableStreaming`
@@ -224,6 +254,43 @@ The `settings` object mirrors the server-side `SceneRequestSettings`, including:
 - `maxRecursionDepth`
 
 The request can also include `contents` for multi-modal inputs.
+
+## Example: force specific tools for a selected scene
+
+The discovery payload returns the exact values you can send back inside `settings.forcedTools`.
+
+```typescript
+const discovery = await client.getDiscovery();
+const calculatorScene = discovery.scenes?.find(scene => scene.name === "Calculator");
+const addTool = calculatorScene?.tools?.find(tool => tool.toolName === "Add");
+const subtractTool = calculatorScene?.tools?.find(tool => tool.toolName === "Subtract");
+
+for await (const step of client.executeStepByStep({
+  message: "Use only add and subtract",
+  settings: {
+    executionMode: "Scene",
+    sceneName: "Calculator",
+    forcedTools: [addTool, subtractTool]
+      .filter((tool): tool is NonNullable<typeof tool> => Boolean(tool))
+      .map(tool => ({
+        sceneName: tool.sceneName,
+        toolName: tool.toolName,
+        sourceType: tool.sourceType,
+        sourceName: tool.sourceName,
+        memberName: tool.memberName
+      }))
+  }
+})) {
+  console.log(step.status, step.message);
+}
+```
+
+Notes:
+
+- `sceneName` must use the normalized server name from discovery
+- `toolName` must use the normalized tool name from discovery
+- `sourceName` is usually the DI service type name for service tools or the MCP server/factory name for MCP tools
+- `memberName` is usually the service method name or the original MCP tool name
 
 ## Example: send files and multi-modal contents
 

@@ -304,6 +304,56 @@ public interface IWeatherService
 
 Important naming detail: scene names are normalized when they are registered. For example, `AddScene("General Requests", ...)` becomes `General_Requests` internally. If you later set `SceneRequestSettings.SceneName`, use the normalized name.
 
+## Example: force specific tools inside a scene
+
+When you already know which scene should run and want to expose only a subset of tools for that scene, use `SceneRequestSettings.ForcedTools`.
+
+Each forced tool can identify:
+
+- the normalized `SceneName`
+- the normalized `ToolName`
+- the source type (`Service`, `Client`, `Mcp`, or `Other`)
+- the source name (for example the DI service type name or the MCP server/factory name)
+- the member name (for example the service method name or original MCP tool name)
+
+```csharp
+var settings = new SceneRequestSettings
+{
+    ExecutionMode = SceneExecutionMode.Scene,
+    SceneName = "Calculator",
+    ForcedTools =
+    [
+        new ForcedToolRequest
+        {
+            SceneName = "Calculator",
+            ToolName = "Add",
+            SourceType = PlayFrameworkToolSourceType.Service,
+            SourceName = "ICalculatorService",
+            MemberName = "Add"
+        },
+        new ForcedToolRequest
+        {
+            SceneName = "Calculator",
+            ToolName = "Subtract",
+            SourceType = PlayFrameworkToolSourceType.Service,
+            SourceName = "ICalculatorService",
+            MemberName = "Subtract"
+        }
+    ]
+};
+
+await foreach (var step in sceneManager.ExecuteAsync("Calculate 20 - 5 and then 20 + 5", settings: settings))
+{
+}
+```
+
+Behavior:
+
+- only the matching tools are exposed to the LLM for that scene
+- if one forced tool remains pending, PlayFramework forces that exact tool call through `ChatToolMode`
+- if a requested forced tool does not exist for the scene, execution stops with an error response
+- MCP tools can be forced too by using `SourceType = Mcp`, the MCP source name, and the original MCP tool name in `MemberName`
+
 ## Example: client tools and continuation
 
 `OnClient(...)` is how a scene asks the browser or mobile client to execute something locally, then resume the conversation.
@@ -501,6 +551,7 @@ Routes:
 
 - `POST /api/ai/default`
 - `POST /api/ai/default/streaming`
+- `GET /api/ai/default/discovery`
 - `GET /api/ai/default/conversations`
 - `GET /api/ai/default/conversations/{conversationKey}`
 - `DELETE /api/ai/default/conversations/{conversationKey}`
@@ -520,7 +571,16 @@ The HTTP request model is `PlayFrameworkRequest`:
   },
   "settings": {
     "executionMode": "Planning",
-    "maxRecursionDepth": 5
+    "maxRecursionDepth": 5,
+    "forcedTools": [
+      {
+        "sceneName": "Calculator",
+        "toolName": "Add",
+        "sourceType": "Service",
+        "sourceName": "ICalculatorService",
+        "memberName": "Add"
+      }
+    ]
   },
   "conversationKey": null,
   "clientInteractionResults": null
@@ -540,6 +600,66 @@ Token-level streaming uses the same body shape against:
 
 ```text
 POST /api/ai/default/streaming
+```
+
+### Discovery endpoint
+
+The discovery endpoint exposes the normalized scenes and tools currently available for a factory:
+
+```text
+GET /api/ai/default/discovery
+```
+
+It returns:
+
+- `scenes` with normalized scene names and their tools
+- `services` grouped by DI source
+- `clients` grouped by client-side source
+- `mcpServers` grouped by MCP source
+- `others` for tools that do not belong to the standard buckets
+
+Use this endpoint from your frontend when you want to build a scene/tool picker and then feed the selected values back into `SceneRequestSettings.ForcedTools`.
+
+Typical response shape:
+
+```json
+{
+  "factoryName": "default",
+  "scenes": [
+    {
+      "name": "Calculator",
+      "description": "Arithmetic operations",
+      "tools": [
+        {
+          "sceneName": "Calculator",
+          "toolName": "Add",
+          "description": "Add two numbers",
+          "sourceType": "Service",
+          "sourceName": "ICalculatorService",
+          "memberName": "Add"
+        }
+      ]
+    }
+  ],
+  "services": [
+    {
+      "name": "ICalculatorService",
+      "sourceType": "Service",
+      "tools": [
+        {
+          "sceneName": "Calculator",
+          "toolName": "Add",
+          "sourceType": "Service",
+          "sourceName": "ICalculatorService",
+          "memberName": "Add"
+        }
+      ]
+    }
+  ],
+  "clients": [],
+  "mcpServers": [],
+  "others": []
+}
 ```
 
 ### Unnamed mapping

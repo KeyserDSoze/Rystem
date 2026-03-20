@@ -70,6 +70,12 @@ If you want conversation management in the UI, the backend also needs:
 - a matching `IRepository<StoredConversation, string>` registration for the same factory name
 - `EnableConversationEndpoints = true` on `MapPlayFramework(...)`
 
+If you want the scene/tool forcing UI now present in the sample app, the backend also needs the standard PlayFramework HTTP mapping so the app can call:
+
+- `GET /api/ai/{factoryName}/discovery`
+
+That endpoint is exposed by `MapPlayFramework(...)` automatically.
+
 Important correction: the real builder method is parameterless `UseRepository()`. The sample backend is responsible for registering the repository separately.
 
 ## Backend URL configuration
@@ -83,6 +89,12 @@ http://localhost:5158/api/ai
 ```
 
 There is also a Vite proxy entry in `vite.config.ts`, but the current app does not use that proxy path because it calls the backend through the hardcoded absolute URL.
+
+The sample app now also uses the discovery endpoint to:
+
+- list scenes for the selected factory
+- list the tools attached to the selected scene
+- build `settings.forcedTools` for scene-mode requests
 
 ## Relationship to the published TS client
 
