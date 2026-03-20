@@ -76,9 +76,9 @@ internal sealed class DynamicChainingExecutionHandler : IExecutionModeHandler
 
             yield return YieldAndTrack(context, new AiSceneResponse
             {
-                Status = AiResponseStatus.ExecutingScene,
+                Status = AiResponseStatus.DirectorDecision,
                 SceneName = selectedScene.Name,
-                Message = $"Executing scene: {selectedScene.Name}"
+                Message = $"Selected scene for execution: {selectedScene.Name}"
             });
 
             // Execute the selected scene

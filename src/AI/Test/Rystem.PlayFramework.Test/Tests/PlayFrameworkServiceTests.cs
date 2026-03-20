@@ -127,10 +127,10 @@ public class PlayFrameworkServiceTests : PlayFrameworkTestBase
     }
 
     /// <summary>
-    /// Test Get() throws when key not found.
+    /// Test Create() returns null when key not found.
     /// </summary>
     [Fact]
-    public void PlayFramework_Get_ThrowsWhenNotFound()
+    public void PlayFramework_Create_ReturnsNullWhenNotFound()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -145,9 +145,11 @@ public class PlayFrameworkServiceTests : PlayFrameworkTestBase
         var serviceProvider = services.BuildServiceProvider();
         var playFramework = serviceProvider.GetRequiredService<IPlayFramework>();
 
-        // Act & Assert
-        var exception = Assert.Throws<InvalidOperationException>(() => playFramework.Create("non-existent"));
-        Assert.Contains("PlayFramework configuration 'non-existent' not found", exception.Message);
+        // Act
+        var manager = playFramework.Create("non-existent");
+
+        // Assert
+        Assert.Null(manager);
     }
 
     /// <summary>

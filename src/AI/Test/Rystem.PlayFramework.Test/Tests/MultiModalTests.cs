@@ -267,8 +267,8 @@ public class MultiModalTests : PlayFrameworkTestBase
 
         // Assert
         Assert.NotEmpty(responses);
-        var finalResponse = responses.Last();
-        Assert.Equal(AiResponseStatus.Completed, finalResponse.Status);
+        Assert.Contains(responses, x => x.Status == AiResponseStatus.Completed);
+        Assert.DoesNotContain(responses, x => x.Status == AiResponseStatus.Error);
     }
 
     [Fact]

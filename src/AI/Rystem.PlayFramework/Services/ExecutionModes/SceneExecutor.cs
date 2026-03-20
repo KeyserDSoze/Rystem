@@ -65,7 +65,11 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
         var sceneStartTime = DateTime.UtcNow;
         _dependencies.Logger.LogInformation("Entering scene '{SceneName}' (Factory: {FactoryName})", scene.Name, _factoryName);
 
-        yield return YieldStatus(AiResponseStatus.ExecutingScene, $"Entering scene: {scene.Name}");
+        yield return _dependencies.ResponseHelper.CreateAndTrackResponse(
+            context: context,
+            status: AiResponseStatus.ExecutingScene,
+            sceneName: scene.Name,
+            message: $"Entering scene: {scene.Name}");
 
         // Track this scene as being executed
         if (!context.ExecutedScenes.ContainsKey(scene.Name))
@@ -365,7 +369,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
             {
                 yield return _dependencies.ResponseHelper.CreateAndTrackResponse(
                     context: context,
-                    status: AiResponseStatus.ExecutingScene,
+                    status: AiResponseStatus.FunctionRequest,
                     sceneName: scene.Name,
                     message: $"LLM returned {accumulatedFunctionCalls.Count} function call(s)",
                     inputTokens: totalInputTokens,
