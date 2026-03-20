@@ -18,7 +18,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework</RepositoryUrl>
     <PackageId>Rystem.PlayFramework</PackageId>
-    <Version>10.0.11-beta.8</Version>
+    <Version>10.0.11-beta.9</Version>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>
