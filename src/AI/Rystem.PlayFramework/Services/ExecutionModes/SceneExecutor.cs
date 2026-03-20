@@ -16,6 +16,8 @@ namespace Rystem.PlayFramework.Services.ExecutionModes;
 /// </summary>
 internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
 {
+    private sealed record LoadedMcpTool(McpTool Tool, AIFunction Function);
+
     private readonly IServiceProvider _serviceProvider;
     private readonly IFactory<IMcpServerManager> _mcpServerManagerFactory;
     private readonly IFactory<IJsonService> _jsonServiceFactory;
@@ -87,7 +89,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
         }
 
         // Load MCP tools, resources, and prompts
-        var mcpTools = new List<AIFunction>();
+        var loadedMcpTools = new List<LoadedMcpTool>();
         var mcpSystemMessages = new List<string>();
 
         if (scene.McpServerReferences.Count > 0)
@@ -110,7 +112,7 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                     foreach (var tool in tools)
                     {
                         var aiFunction = CreateMcpToolFunction(tool, mcpManager);
-                        mcpTools.Add(aiFunction);
+                        loadedMcpTools.Add(new LoadedMcpTool(tool, aiFunction));
                     }
 
                     // Build system message from resources and prompts
@@ -129,10 +131,10 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                 }
             }
 
-            if (mcpTools.Count > 0)
+            if (loadedMcpTools.Count > 0)
             {
                 _dependencies.Logger.LogInformation("Loaded {McpToolCount} MCP tools for scene: {SceneName} (Factory: {FactoryName})",
-                    mcpTools.Count, scene.Name, _factoryName);
+                    loadedMcpTools.Count, scene.Name, _factoryName);
             }
         }
 
@@ -146,18 +148,45 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
                 combinedMcpMessage.Length, _factoryName);
         }
 
-        // Combine scene tools and MCP tools
-        var allTools = new List<AITool>();
-        allTools.AddRange(scene.AiTools);
-        allTools.AddRange(mcpTools);
+        var availableSceneTools = scene.Tools;
+        var availableSceneAiTools = scene.AiTools;
+        var availableMcpTools = loadedMcpTools;
 
-        var chatOptions = new ChatOptions
+        var forcedToolsForScene = GetForcedToolsForScene(settings, scene.Name);
+        if (forcedToolsForScene.Count > 0)
         {
-            Tools = allTools
-        };
+            availableSceneTools = [.. scene.Tools.Where(x => IsForcedToolMatch(x, forcedToolsForScene))];
+            availableSceneAiTools = [.. availableSceneTools.Select(x => x.ToolDescription)];
+            availableMcpTools = [.. loadedMcpTools.Where(x => IsForcedMcpToolMatch(x.Tool, forcedToolsForScene))];
+
+            var missingForcedTools = forcedToolsForScene
+                .Where(x => !availableSceneTools.Any(tool => IsForcedToolMatch(tool, x))
+                    && !availableMcpTools.Any(tool => IsForcedMcpToolMatch(tool.Tool, x)))
+                .ToList();
+
+            if (missingForcedTools.Count > 0)
+            {
+                var missingToolNames = string.Join(", ", missingForcedTools.Select(x => x.ToolName));
+                yield return _dependencies.ResponseHelper.CreateErrorResponse(
+                    sceneName: scene.Name,
+                    message: $"Forced tools not available for scene '{scene.Name}'",
+                    errorMessage: $"The following forced tools were not found: {missingToolNames}",
+                    context: context);
+
+                context.ExecutionPhase = ExecutionPhase.Break;
+                yield break;
+            }
+
+            _dependencies.Logger.LogInformation(
+                "Scene {SceneName} constrained to {SceneToolCount} scene tool(s) and {McpToolCount} MCP tool(s) by request settings (Factory: {FactoryName})",
+                scene.Name,
+                availableSceneTools.Count,
+                availableMcpTools.Count,
+                _factoryName);
+        }
 
         _dependencies.Logger.LogDebug("Scene {SceneName} executing with {SceneToolCount} scene tools + {McpToolCount} MCP tools (Factory: {FactoryName})",
-            scene.Name, scene.AiTools.Count, mcpTools.Count, _factoryName);
+            scene.Name, availableSceneAiTools.Count, availableMcpTools.Count, _factoryName);
 
         // Client interactions are now resolved by SceneManager.InitializePlayFrameworkAsync
         // via ToolExecutionManager.ResolveClientInteractionsAsync before entering this method.
@@ -170,6 +199,8 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
         while (iteration < MaxToolCallIterations)
         {
             iteration++;
+
+            var chatOptions = CreateChatOptions(scene.Name, settings, context, availableSceneAiTools, availableMcpTools);
 
             ChatMessage? finalMessage = null;
             var accumulatedText = string.Empty;
@@ -361,8 +392,8 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
             await foreach (var result in _toolExecutionManager.ExecuteToolCallsAsync(
                 context,
                 accumulatedFunctionCalls,
-                scene.Tools,
-                mcpTools,
+                availableSceneTools,
+                [.. availableMcpTools.Select(x => x.Function)],
                 scene.ClientInteractionDefinitions,
                 scene.Name,
                 _jsonService,
@@ -461,6 +492,125 @@ internal sealed class SceneExecutor : ISceneExecutor, IFactoryName
             },
             normalizedName,
             mcpTool.Description);
+    }
+
+    private static ChatOptions CreateChatOptions(
+        string sceneName,
+        SceneRequestSettings settings,
+        SceneContext context,
+        IReadOnlyCollection<AITool> sceneTools,
+        IReadOnlyCollection<LoadedMcpTool> mcpTools)
+    {
+        var chatOptions = new ChatOptions
+        {
+            Tools = [.. sceneTools, .. mcpTools.Select(x => x.Function)]
+        };
+
+        var pendingForcedTools = GetPendingForcedTools(settings, sceneName, context);
+        if (pendingForcedTools.Count == 1)
+        {
+            chatOptions.ToolMode = ChatToolMode.RequireSpecific(pendingForcedTools[0].ToolName);
+        }
+        else if (pendingForcedTools.Count > 1)
+        {
+            chatOptions.ToolMode = ChatToolMode.RequireAny;
+            chatOptions.AllowMultipleToolCalls = true;
+        }
+
+        return chatOptions;
+    }
+
+    private static List<ForcedToolRequest> GetForcedToolsForScene(SceneRequestSettings settings, string sceneName)
+        => settings.ForcedTools?
+            .Where(x => ToolNameNormalizer.Matches(sceneName, x.SceneName))
+            .Select(x => new ForcedToolRequest
+            {
+                SceneName = sceneName,
+                ToolName = ToolNameNormalizer.Normalize(x.ToolName),
+                SourceType = x.SourceType,
+                SourceName = x.SourceName,
+                MemberName = x.MemberName
+            })
+            .ToList()
+            ?? [];
+
+    private static List<ForcedToolRequest> GetPendingForcedTools(
+        SceneRequestSettings settings,
+        string sceneName,
+        SceneContext context)
+        => GetForcedToolsForScene(settings, sceneName)
+            .Where(x => !context.ExecutedTools.Contains(BuildExecutedToolKey(sceneName, x.ToolName)))
+            .ToList();
+
+    private static string BuildExecutedToolKey(string sceneName, string toolName)
+        => $"{sceneName}.{ToolNameNormalizer.Normalize(toolName)}";
+
+    private static bool IsForcedToolMatch(ISceneTool tool, IReadOnlyCollection<ForcedToolRequest> forcedTools)
+        => forcedTools.Any(x => IsForcedToolMatch(tool, x));
+
+    private static bool IsForcedToolMatch(ISceneTool tool, ForcedToolRequest forcedTool)
+    {
+        var normalizedToolName = ToolNameNormalizer.Normalize(tool.Name);
+        if (!string.Equals(normalizedToolName, ToolNameNormalizer.Normalize(forcedTool.ToolName), StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (tool is not ISceneToolMetadata metadata)
+        {
+            return forcedTool.SourceType is null or PlayFrameworkToolSourceType.Other;
+        }
+
+        return MatchesMetadata(
+            forcedTool,
+            metadata.SourceType,
+            metadata.SourceName,
+            metadata.MemberName);
+    }
+
+    private static bool IsForcedMcpToolMatch(McpTool tool, IReadOnlyCollection<ForcedToolRequest> forcedTools)
+        => forcedTools.Any(x => IsForcedMcpToolMatch(tool, x));
+
+    private static bool IsForcedMcpToolMatch(McpTool tool, ForcedToolRequest forcedTool)
+    {
+        var normalizedToolName = ToolNameNormalizer.Normalize(tool.Name);
+        if (!string.Equals(normalizedToolName, ToolNameNormalizer.Normalize(forcedTool.ToolName), StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return MatchesMetadata(
+            forcedTool,
+            PlayFrameworkToolSourceType.Mcp,
+            tool.FactoryName,
+            tool.Name);
+    }
+
+    private static bool MatchesMetadata(
+        ForcedToolRequest forcedTool,
+        PlayFrameworkToolSourceType sourceType,
+        string? sourceName,
+        string? memberName)
+    {
+        if (forcedTool.SourceType.HasValue && forcedTool.SourceType.Value != sourceType)
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(forcedTool.SourceName)
+            && !string.Equals(forcedTool.SourceName, sourceName, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(forcedTool.MemberName)
+            && !string.Equals(forcedTool.MemberName, memberName, StringComparison.OrdinalIgnoreCase)
+            && !ToolNameNormalizer.Matches(memberName, forcedTool.MemberName))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private static AiSceneResponse YieldStatus(AiResponseStatus status, string message)

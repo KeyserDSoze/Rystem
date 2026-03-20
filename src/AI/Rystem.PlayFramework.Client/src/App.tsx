@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     PlayFrameworkServices,
+    PlayFrameworkSettings,
     PlayFrameworkClient,
     AIContentConverter,
     ContentUrlConverter,
@@ -18,6 +19,9 @@ import {
     type AIContent,
     type ContentItem,
     type VoiceEvent,
+    type ForcedToolRequest,
+    type PlayFrameworkDiscoveryResponse,
+    type PlayFrameworkToolInfo,
     ConversationSortOrder
 } from './rystem/src/index';
 import './App.css';
@@ -52,12 +56,12 @@ type FactoryName = 'default' | 'foundry';
 
 // Configure both PlayFramework clients (runs once at module load)
 const clientsReady = Promise.all([
-    PlayFrameworkServices.configure('default', API_BASE, settings => {
+    PlayFrameworkServices.configure('default', API_BASE, (settings: PlayFrameworkSettings) => {
         settings.timeout = 120_000;
         settings.maxReconnectAttempts = 3;
         settings.reconnectBaseDelay = 1000;
     }),
-    PlayFrameworkServices.configure('foundry', API_BASE, settings => {
+    PlayFrameworkServices.configure('foundry', API_BASE, (settings: PlayFrameworkSettings) => {
         settings.timeout = 120_000;
         settings.maxReconnectAttempts = 3;
         settings.reconnectBaseDelay = 1000;
@@ -82,7 +86,7 @@ function registerClientTools(client: PlayFrameworkClient) {
     // getUserConfirmation — shows a browser confirm dialog
     registry.register<{ question?: string; confirmLabel?: string; cancelLabel?: string }>(
         'getUserConfirmation',
-        async (args) => {
+        async (args: { question?: string; confirmLabel?: string; cancelLabel?: string } | undefined) => {
             const question = args?.question ?? 'Do you confirm?';
             const confirmed = window.confirm(question);
             return [AIContentConverter.fromText(confirmed ? 'confirmed' : 'denied')];
@@ -456,6 +460,16 @@ function ContentViewer({ content }: ContentViewerProps) {
     return null;
 }
 
+function getToolKey(tool: PlayFrameworkToolInfo): string {
+    return [
+        tool.sceneName,
+        tool.sourceType,
+        tool.sourceName || '',
+        tool.memberName || '',
+        tool.toolName,
+    ].join('::');
+}
+
 // ─── App Component ───────────────────────────────────────────────────────
 
 function App() {
@@ -474,6 +488,10 @@ function App() {
     const [activeFactory, setActiveFactory] = useState<FactoryName>('default');
     /** Holds all initialised clients keyed by factory name. */
     const clientsMapRef = useRef<Map<FactoryName, PlayFrameworkClient>>(new Map());
+    const [discovery, setDiscovery] = useState<PlayFrameworkDiscoveryResponse | null>(null);
+    const [loadingDiscovery, setLoadingDiscovery] = useState(false);
+    const [selectedSceneName, setSelectedSceneName] = useState('');
+    const [selectedForcedToolKeys, setSelectedForcedToolKeys] = useState<string[]>([]);
 
     // ─── Conversation Management State ───────────────────────────────────
     const [conversations, setConversations] = useState<StoredConversation[]>([]);
@@ -529,6 +547,7 @@ function App() {
                 );
             }
             setConnection('connected');
+            void loadDiscovery(clientRef.current);
         }).catch(err => {
             console.error('Failed to configure PlayFramework:', err);
             setConnection('error');
@@ -554,8 +573,15 @@ function App() {
                     { lang },
                 );
             }
+            void loadDiscovery(client);
         }
-    }, [activeFactory]);
+    }, [activeFactory, browserVoiceLang]);
+
+    useEffect(() => {
+        const sceneTools = discovery?.scenes?.find(scene => scene.name === selectedSceneName)?.tools || [];
+        const allowedKeys = new Set(sceneTools.map(getToolKey));
+        setSelectedForcedToolKeys(prev => prev.filter(key => allowedKeys.has(key)));
+    }, [discovery, selectedSceneName]);
 
     const addMessage = useCallback((msg: ChatMessage) => {
         setMessages(prev => [...prev, msg]);
@@ -570,6 +596,31 @@ function App() {
             return updated;
         });
     }, []);
+
+    async function loadDiscovery(client: PlayFrameworkClient | null) {
+        if (!client) {
+            setDiscovery(null);
+            setSelectedSceneName('');
+            setSelectedForcedToolKeys([]);
+            return;
+        }
+
+        setLoadingDiscovery(true);
+        try {
+            const metadata = await client.getDiscovery();
+            setDiscovery(metadata);
+
+            const scenes = metadata.scenes || [];
+            setSelectedSceneName(prev => scenes.some(scene => scene.name === prev) ? prev : (scenes[0]?.name || ''));
+        } catch (error) {
+            console.error('Failed to load discovery metadata:', error);
+            setDiscovery(null);
+            setSelectedSceneName('');
+            setSelectedForcedToolKeys([]);
+        } finally {
+            setLoadingDiscovery(false);
+        }
+    }
 
     // ── File / Audio / Camera helpers ─────────────────────────────────
 
@@ -708,6 +759,44 @@ function App() {
         playNextAudio();
     }, [playNextAudio]);
 
+    const buildForcedTools = useCallback((): ForcedToolRequest[] | undefined => {
+        if (executionMode !== 'Scene' || !selectedSceneName || selectedForcedToolKeys.length === 0) {
+            return undefined;
+        }
+
+        const sceneTools = discovery?.scenes?.find(scene => scene.name === selectedSceneName)?.tools || [];
+        const selectedTools = sceneTools.filter(tool => selectedForcedToolKeys.includes(getToolKey(tool)));
+        if (selectedTools.length === 0) {
+            return undefined;
+        }
+
+        return selectedTools.map(tool => ({
+            sceneName: tool.sceneName,
+            toolName: tool.toolName,
+            sourceType: tool.sourceType,
+            sourceName: tool.sourceName,
+            memberName: tool.memberName,
+        }));
+    }, [discovery, executionMode, selectedForcedToolKeys, selectedSceneName]);
+
+    const buildRequestSettings = useCallback((enableStreaming: boolean): NonNullable<PlayFrameworkRequest['settings']> => {
+        const settings: NonNullable<PlayFrameworkRequest['settings']> = {
+            executionMode,
+            enableStreaming,
+        };
+
+        if (executionMode === 'Scene' && selectedSceneName) {
+            settings.sceneName = selectedSceneName;
+        }
+
+        const forcedTools = buildForcedTools();
+        if (forcedTools && forcedTools.length > 0) {
+            settings.forcedTools = forcedTools;
+        }
+
+        return settings;
+    }, [buildForcedTools, executionMode, selectedSceneName]);
+
     // ── Voice mode send ───────────────────────────────────────────────
 
     /** Cancel the current server-voice request (if any). */
@@ -837,7 +926,7 @@ function App() {
                 streamingMode: browserVoiceStreamingMode,
                 request: {
                     conversationKey: key,
-                    settings: { executionMode, enableStreaming: browserVoiceStreamingMode === 'tokenStreaming' },
+                    settings: buildRequestSettings(browserVoiceStreamingMode === 'tokenStreaming'),
                 },
             })) {
                 // Voice status events
@@ -889,7 +978,7 @@ function App() {
         } finally {
             setIsVoiceProcessing(false);
         }
-    }, [conversationKey, browserVoiceStreamingMode, executionMode, addMessage, updateLastAssistant]);
+    }, [conversationKey, browserVoiceStreamingMode, buildRequestSettings, addMessage, updateLastAssistant]);
 
     // ── Voice-mode audio recording (record & auto-send) ───────────────
 
@@ -927,13 +1016,13 @@ function App() {
                 setIsRecording(true);
                 setRecordingSeconds(0);
             },
-            onTick: (seconds) => {
+            onTick: (seconds: number) => {
                 setRecordingSeconds(seconds);
             },
-            onRecorded: (blob) => {
+            onRecorded: (blob: Blob) => {
                 handleVoiceSend(blob);
             },
-            onError: (err) => {
+            onError: (err: Error) => {
                 console.error('Voice recording error:', err);
                 addMessage({
                     role: 'system',
@@ -1033,7 +1122,7 @@ function App() {
             }
 
             // Convert stored messages to ChatMessages
-            const chatMsgs: ChatMessage[] = conv.messages.map(m => ({
+            const chatMsgs: ChatMessage[] = conv.messages.map((m: StoredMessage) => ({
                 role: m.role as 'user' | 'assistant' | 'system' | 'tool',
                 text: m.text || '',
                 timestamp: new Date(conv.timestamp),
@@ -1055,6 +1144,10 @@ function App() {
         const text = input.trim();
         const hasAttachments = pendingAttachments.length > 0;
         if ((!text && !hasAttachments) || loading || !clientRef.current) return;
+        if (executionMode === 'Scene' && !selectedSceneName) {
+            alert('Select a scene before sending the request.');
+            return;
+        }
 
         // Snapshot attachments before clearing
         const attachments = [...pendingAttachments];
@@ -1078,10 +1171,7 @@ function App() {
             message: text || undefined,
             contents: attachments.length > 0 ? attachments : undefined,
             conversationKey: key,
-            settings: {
-                executionMode,
-                enableStreaming: mode === 'token',
-            }
+            settings: buildRequestSettings(mode === 'token')
         };
 
         const client = clientRef.current;
@@ -1266,6 +1356,8 @@ function App() {
         setLoading(false);
         setConnection(clientRef.current ? 'connected' : 'disconnected');
     };
+
+    const selectedSceneTools = discovery?.scenes?.find(scene => scene.name === selectedSceneName)?.tools || [];
 
     // ── Render ────────────────────────────────────────────────────────
 
@@ -1613,6 +1705,84 @@ function App() {
                     </div>
                     </div>
                 </header>
+
+                {executionMode === 'Scene' && (
+                    <div style={{
+                        padding: '12px 20px',
+                        borderBottom: '1px solid #2f3440',
+                        backgroundColor: '#20242b',
+                        display: 'flex',
+                        gap: '16px',
+                        flexWrap: 'wrap',
+                        alignItems: 'flex-start',
+                    }}>
+                        <div style={{ minWidth: '220px', flex: '0 0 220px' }}>
+                            <div style={{ fontSize: '11px', color: '#7f8a9a', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                Scene
+                            </div>
+                            <select
+                                value={selectedSceneName}
+                                onChange={e => setSelectedSceneName(e.target.value)}
+                                disabled={loadingDiscovery || (discovery?.scenes?.length || 0) === 0}
+                                style={{
+                                    width: '100%',
+                                    padding: '8px 10px',
+                                    fontSize: '12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #3a4250',
+                                    backgroundColor: '#161a20',
+                                    color: '#d7dce3',
+                                }}
+                            >
+                                {(discovery?.scenes || []).map(scene => (
+                                    <option key={scene.name} value={scene.name}>{scene.name}</option>
+                                ))}
+                            </select>
+                            <div style={{ fontSize: '11px', color: '#6f7a88', marginTop: '6px' }}>
+                                {loadingDiscovery
+                                    ? 'Loading discovery metadata...'
+                                    : `${discovery?.scenes?.length || 0} scene(s) available for ${activeFactory}`}
+                            </div>
+                        </div>
+
+                        <div style={{ minWidth: '320px', flex: '1 1 420px' }}>
+                            <div style={{ fontSize: '11px', color: '#7f8a9a', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                Forced Tools
+                            </div>
+                            <select
+                                multiple
+                                value={selectedForcedToolKeys}
+                                onChange={e => setSelectedForcedToolKeys(Array.from(e.target.selectedOptions, option => option.value))}
+                                disabled={selectedSceneTools.length === 0}
+                                size={Math.min(Math.max(selectedSceneTools.length, 3), 8)}
+                                style={{
+                                    width: '100%',
+                                    padding: '8px 10px',
+                                    fontSize: '12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #3a4250',
+                                    backgroundColor: '#161a20',
+                                    color: '#d7dce3',
+                                }}
+                            >
+                                {selectedSceneTools.length === 0 ? (
+                                    <option value="" disabled>No tools available for this scene</option>
+                                ) : (
+                                    selectedSceneTools.map(tool => (
+                                        <option key={getToolKey(tool)} value={getToolKey(tool)}>
+                                            {tool.toolName} [{tool.sourceType}] {tool.sourceName ? `- ${tool.sourceName}` : ''}{tool.memberName ? ` / ${tool.memberName}` : ''}
+                                        </option>
+                                    ))
+                                )}
+                            </select>
+                            <div style={{ fontSize: '11px', color: '#6f7a88', marginTop: '6px' }}>
+                                {selectedForcedToolKeys.length > 0
+                                    ? `${selectedForcedToolKeys.length} tool(s) selected. Only these tools will be exposed for the chosen scene.`
+                                    : 'Optional: pick one or more tools to restrict and force for this scene request.'}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
             {/* Messages */}
             <div style={{

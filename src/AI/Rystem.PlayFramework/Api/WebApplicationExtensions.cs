@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using RepositoryFramework;
 using Rystem.PlayFramework.Api.Models;
 using Rystem.PlayFramework.Helpers;
+using Rystem.PlayFramework.Mcp;
 using Rystem.PlayFramework.Services;
 using Rystem.PlayFramework.Services.Voice;
 
@@ -106,6 +107,30 @@ public static class WebApplicationExtensions
         .WithName(streamingEndpointName)
         .WithSummary(streamingSummary)
         .Produces(200, contentType: "text/event-stream");
+
+        var discoveryRoute = factoryName is null ? "/discovery" : $"/{factoryName}/discovery";
+        group.MapGet(discoveryRoute, async (
+            [FromServices] IFactory<ISceneFactory> sceneFactoryFactory,
+            [FromServices] IFactory<IMcpServerManager> mcpServerManagerFactory,
+            HttpContext httpContext,
+            CancellationToken cancellationToken) =>
+        {
+            var routeFactory = httpContext.GetRouteValue("factoryName")?.ToString();
+            var targetFactory = factoryName ?? routeFactory ?? "default";
+            var sceneFactory = sceneFactoryFactory.Create(targetFactory)
+                ?? throw new InvalidOperationException($"SceneFactory not found for factory '{targetFactory}'");
+
+            var discovery = await BuildDiscoveryResponseAsync(
+                targetFactory,
+                sceneFactory,
+                mcpServerManagerFactory,
+                cancellationToken);
+
+            return Results.Ok(discovery);
+        })
+        .WithName(factoryName is null ? "GetPlayFrameworkDiscovery" : $"Get{factoryName}PlayFrameworkDiscovery")
+        .WithSummary(factoryName is null ? "Get PlayFramework discovery metadata" : $"Get {factoryName} PlayFramework discovery metadata")
+        .Produces<PlayFrameworkDiscoveryResponse>(200);
 
         // Conversation management endpoints (optional, requires repository)
         if (settings.EnableConversationEndpoints)
@@ -335,6 +360,162 @@ public static class WebApplicationExtensions
         }
 
         return metadata;
+    }
+
+    /// <summary>
+    /// Builds discovery metadata for scenes and tools.
+    /// </summary>
+    private static async Task<PlayFrameworkDiscoveryResponse> BuildDiscoveryResponseAsync(
+        string factoryName,
+        ISceneFactory sceneFactory,
+        IFactory<IMcpServerManager> mcpServerManagerFactory,
+        CancellationToken cancellationToken)
+    {
+        var response = new PlayFrameworkDiscoveryResponse
+        {
+            FactoryName = factoryName
+        };
+
+        var services = new Dictionary<string, PlayFrameworkToolSourceInfo>(StringComparer.OrdinalIgnoreCase);
+        var clients = new Dictionary<string, PlayFrameworkToolSourceInfo>(StringComparer.OrdinalIgnoreCase);
+        var mcpServers = new Dictionary<string, PlayFrameworkToolSourceInfo>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var scene in sceneFactory.Scenes)
+        {
+            var sceneInfo = new PlayFrameworkSceneInfo
+            {
+                Name = scene.Name,
+                Description = scene.Description
+            };
+
+            foreach (var tool in scene.Tools)
+            {
+                var toolInfo = BuildSceneToolInfo(scene.Name, tool);
+                sceneInfo.Tools.Add(toolInfo);
+                AddToolToResponse(response, services, clients, toolInfo);
+            }
+
+            foreach (var mcpReference in scene.McpServerReferences)
+            {
+                var sourceName = mcpReference.FactoryName.ToString() ?? "default";
+                var source = GetOrCreateSource(mcpServers, sourceName, PlayFrameworkToolSourceType.Mcp);
+
+                try
+                {
+                    var manager = mcpServerManagerFactory.Create(mcpReference.FactoryName)
+                        ?? throw new InvalidOperationException($"MCP server '{sourceName}' not found");
+                    var tools = await manager.GetToolsAsync(mcpReference.FilterSettings, cancellationToken);
+
+                    foreach (var tool in tools)
+                    {
+                        var toolInfo = new PlayFrameworkToolInfo
+                        {
+                            SceneName = scene.Name,
+                            ToolName = ToolNameNormalizer.Normalize(tool.Name),
+                            Description = tool.Description,
+                            SourceType = PlayFrameworkToolSourceType.Mcp,
+                            SourceName = tool.FactoryName,
+                            MemberName = tool.Name
+                        };
+
+                        AddToolIfMissing(sceneInfo.Tools, toolInfo);
+                        AddToolIfMissing(source.Tools, toolInfo);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    source.IsAvailable = false;
+                    source.ErrorMessage ??= ex.Message;
+                }
+            }
+
+            response.Scenes.Add(sceneInfo);
+        }
+
+        response.Services = [.. services.Values.OrderBy(x => x.Name)];
+        response.Clients = [.. clients.Values.OrderBy(x => x.Name)];
+        response.McpServers = [.. mcpServers.Values.OrderBy(x => x.Name)];
+        response.Scenes = [.. response.Scenes.OrderBy(x => x.Name)];
+        response.Others = [.. response.Others.OrderBy(x => x.SceneName).ThenBy(x => x.ToolName)];
+
+        return response;
+    }
+
+    private static PlayFrameworkToolInfo BuildSceneToolInfo(string sceneName, ISceneTool tool)
+    {
+        if (tool is ISceneToolMetadata metadata)
+        {
+            return new PlayFrameworkToolInfo
+            {
+                SceneName = sceneName,
+                ToolName = tool.Name,
+                Description = tool.Description,
+                SourceType = metadata.SourceType,
+                SourceName = metadata.SourceName,
+                MemberName = metadata.MemberName,
+                IsCommand = metadata.IsCommand,
+                JsonSchema = metadata.JsonSchema
+            };
+        }
+
+        return new PlayFrameworkToolInfo
+        {
+            SceneName = sceneName,
+            ToolName = tool.Name,
+            Description = tool.Description,
+            SourceType = PlayFrameworkToolSourceType.Other
+        };
+    }
+
+    private static void AddToolToResponse(
+        PlayFrameworkDiscoveryResponse response,
+        Dictionary<string, PlayFrameworkToolSourceInfo> services,
+        Dictionary<string, PlayFrameworkToolSourceInfo> clients,
+        PlayFrameworkToolInfo tool)
+    {
+        switch (tool.SourceType)
+        {
+            case PlayFrameworkToolSourceType.Service:
+                AddToolIfMissing(GetOrCreateSource(services, tool.SourceName ?? "unknown", PlayFrameworkToolSourceType.Service).Tools, tool);
+                break;
+            case PlayFrameworkToolSourceType.Client:
+                AddToolIfMissing(GetOrCreateSource(clients, tool.SourceName ?? "client", PlayFrameworkToolSourceType.Client).Tools, tool);
+                break;
+            default:
+                AddToolIfMissing(response.Others, tool);
+                break;
+        }
+    }
+
+    private static PlayFrameworkToolSourceInfo GetOrCreateSource(
+        Dictionary<string, PlayFrameworkToolSourceInfo> sources,
+        string name,
+        PlayFrameworkToolSourceType sourceType)
+    {
+        if (!sources.TryGetValue(name, out var source))
+        {
+            source = new PlayFrameworkToolSourceInfo
+            {
+                Name = name,
+                SourceType = sourceType
+            };
+            sources[name] = source;
+        }
+
+        return source;
+    }
+
+    private static void AddToolIfMissing(List<PlayFrameworkToolInfo> tools, PlayFrameworkToolInfo tool)
+    {
+        if (!tools.Any(x =>
+            string.Equals(x.SceneName, tool.SceneName, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(x.ToolName, tool.ToolName, StringComparison.OrdinalIgnoreCase)
+            && x.SourceType == tool.SourceType
+            && string.Equals(x.SourceName, tool.SourceName, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(x.MemberName, tool.MemberName, StringComparison.OrdinalIgnoreCase)))
+        {
+            tools.Add(tool);
+        }
     }
 
     /// <summary>

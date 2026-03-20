@@ -89,6 +89,9 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
 
             if (clientRequest != null)
             {
+                var clientToolKey = $"{sceneName}.{functionCall.Name}";
+                context.ExecutedTools.Add(clientToolKey);
+
                 // CLIENT TOOL - Check if Command with feedbackMode='never'
                 if (clientRequest.IsCommand && clientRequest.FeedbackMode == CommandFeedbackMode.Never)
                 {
@@ -137,8 +140,19 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
 
             if (sceneTool == null)
             {
-                // Tool not found - could be MCP tool or error
-                _logger.LogWarning("Tool '{ToolName}' not found in scene tools.", functionCall.Name);
+                var mcpTool = mcpTools.FirstOrDefault(x =>
+                    string.Equals(x.Name, normalizedFunctionName, StringComparison.OrdinalIgnoreCase)
+                    || ToolNameNormalizer.Matches(x.Name, normalizedFunctionName));
+
+                if (mcpTool != null)
+                {
+                    var mcpExecutionResult = await ExecuteMcpToolAsync(mcpTool, functionCall, context, jsonService, cancellationToken);
+                    yield return mcpExecutionResult;
+                    continue;
+                }
+
+                // Tool not found - unknown tool or invalid request
+                _logger.LogWarning("Tool '{ToolName}' not found in scene tools or MCP tools.", functionCall.Name);
 
                 var errorResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
                 {
@@ -287,6 +301,95 @@ internal sealed class ToolExecutionManager : IToolExecutionManager
                 success: success,
                 durationMs: duration);
             _logger.LogDebug("Tool '{ToolName}' executed in {Duration:F1}ms (success: {Success})",
+                functionCall.Name, duration, success);
+        }
+    }
+
+    /// <summary>
+    /// Execute an MCP tool and capture the result.
+    /// </summary>
+    private async Task<ToolExecutionResult> ExecuteMcpToolAsync(
+        AIFunction mcpTool,
+        FunctionCallContent functionCall,
+        SceneContext context,
+        IJsonService jsonService,
+        CancellationToken cancellationToken)
+    {
+        using var activity = PlayFrameworkActivitySource.Instance.StartActivity(
+            PlayFrameworkActivitySource.Activities.ToolExecute, ActivityKind.Internal);
+        activity?.SetTag(PlayFrameworkActivitySource.Tags.ToolName, functionCall.Name);
+        activity?.SetTag(PlayFrameworkActivitySource.Tags.ToolType, "McpTool");
+        activity?.AddEvent(new ActivityEvent(PlayFrameworkActivitySource.Events.ToolCalled));
+
+        PlayFrameworkMetrics.IncrementActiveToolCalls();
+        var startTime = DateTime.UtcNow;
+        var success = false;
+
+        try
+        {
+            ToolExecutionResult result;
+            try
+            {
+                var arguments = new AIFunctionArguments();
+                if (functionCall.Arguments != null)
+                {
+                    foreach (var argument in functionCall.Arguments)
+                    {
+                        arguments[argument.Key] = argument.Value!;
+                    }
+                }
+
+                arguments.Services = context.ServiceProvider;
+                var toolResult = await mcpTool.InvokeAsync(arguments, cancellationToken);
+
+                var functionResult = CreateFunctionResult(functionCall, toolResult, jsonService);
+                context.AddToolMessage(new ChatMessage(ChatRole.Tool, [functionResult]));
+
+                result = new ToolExecutionResult
+                {
+                    Status = ToolExecutionStatus.Completed,
+                    ToolName = functionCall.Name,
+                    ToolResult = toolResult,
+                    Message = $"Tool {functionCall.Name} completed"
+                };
+                success = true;
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                activity?.AddEvent(new ActivityEvent(PlayFrameworkActivitySource.Events.ToolCompleted));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error executing MCP tool {ToolName}", functionCall.Name);
+
+                var errorResult = new FunctionResultContent(functionCall.CallId, functionCall.Name)
+                {
+                    Result = $"Error executing tool: {ex.Message}"
+                };
+                context.AddToolMessage(new ChatMessage(ChatRole.Tool, [errorResult]));
+
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                activity?.SetTag("exception.message", ex.Message);
+                activity?.AddEvent(new ActivityEvent(PlayFrameworkActivitySource.Events.ToolFailed));
+
+                result = new ToolExecutionResult
+                {
+                    Status = ToolExecutionStatus.Error,
+                    ToolName = functionCall.Name,
+                    Error = ex.Message
+                };
+            }
+
+            return result;
+        }
+        finally
+        {
+            var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            PlayFrameworkMetrics.DecrementActiveToolCalls();
+            PlayFrameworkMetrics.RecordToolCall(
+                toolName: functionCall.Name,
+                toolType: "McpTool",
+                success: success,
+                durationMs: duration);
+            _logger.LogDebug("MCP tool '{ToolName}' executed in {Duration:F1}ms (success: {Success})",
                 functionCall.Name, duration, success);
         }
     }

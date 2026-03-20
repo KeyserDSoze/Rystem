@@ -5,6 +5,7 @@ import { ClientInteractionRegistry } from "./ClientInteractionRegistry";
 import { ClientInteractionResult } from "../models/ClientInteractionResult";
 import type { StoredConversation, ConversationQueryParameters, UpdateConversationVisibilityRequest } from "../models/StoredConversation";
 import type { VoiceEvent, VoiceRequestOptions } from "../models/VoiceResponse";
+import type { PlayFrameworkDiscoveryResponse } from "../models/PlayFrameworkDiscovery";
 
 /**
  * PlayFramework HTTP client with step-by-step and token-level streaming support.
@@ -288,6 +289,27 @@ export class PlayFrameworkClient {
     }
 
     // ─── Conversation Management Methods ────────────────────────────────────────
+
+    /**
+     * Returns scenes, tools, services, and MCP sources exposed by the selected factory.
+     */
+    public async getDiscovery(signal?: AbortSignal): Promise<PlayFrameworkDiscoveryResponse> {
+        const url = `${this.settings.baseUrl}/${this.settings.factoryName}/discovery`;
+        const headers = await this.settings.enrichHeaders(url, "GET", undefined, undefined);
+        const effectiveSignal = this.createTimeoutSignal(signal);
+
+        const response = await fetch(url, {
+            method: "GET",
+            headers,
+            signal: effectiveSignal
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to get discovery metadata: ${response.statusText}`);
+        }
+
+        return await response.json();
+    }
 
     /**
      * Lists conversations with filtering, sorting, and pagination.

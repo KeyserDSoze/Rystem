@@ -1,5 +1,6 @@
 import { ContentItem } from "./ContentItem";
 import { ClientInteractionResult } from "./ClientInteractionResult";
+import { ForcedToolRequest } from "./PlayFrameworkDiscovery";
 
 /**
  * Execution mode for the scene.
@@ -43,6 +44,8 @@ export interface SceneRequestSettings {
     sceneName?: string;
     /** Results from client-side tool executions. */
     clientInteractionResults?: ClientInteractionResult[];
+    /** Optional scene-scoped tools to expose/force for this request. */
+    forcedTools?: ForcedToolRequest[];
     /**
      * Additional system-level instructions appended to the system prompt.
      * Used by voice pipeline to inject conversational style and language instructions.

@@ -1,6 +1,7 @@
 // Models
 export type { ContentItem } from "./models/ContentItem";
 export type { PlayFrameworkRequest, SceneRequestSettings, SceneExecutionMode, CacheBehavior } from "./models/PlayFrameworkRequest";
+export type { ForcedToolRequest, PlayFrameworkToolSourceType, PlayFrameworkToolInfo, PlayFrameworkToolSourceInfo, PlayFrameworkSceneInfo, PlayFrameworkDiscoveryResponse } from "./models/PlayFrameworkDiscovery";
 export type { AiSceneResponse, AiResponseStatus, SSEEvent, CompletionMarker, ErrorMarker } from "./models/AiSceneResponse";
 export type { ClientInteractionRequest } from "./models/ClientInteractionRequest";
 export type { ClientInteractionResult, AIContent } from "./models/ClientInteractionResult";

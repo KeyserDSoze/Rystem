@@ -93,6 +93,13 @@ public sealed class SceneRequestSettings
     public List<ClientInteractionResult>? ClientInteractionResults { get; set; }
 
     /// <summary>
+    /// Optional per-scene tool constraints for the current request.
+    /// When provided, only the matching tools are exposed for the specified scene.
+    /// If exactly one matching tool is still pending, it is forced as the next tool call.
+    /// </summary>
+    public List<ForcedToolRequest>? ForcedTools { get; set; }
+
+    /// <summary>
     /// Additional system-level instructions to append to the initial context.
     /// These are injected into the system prompt alongside main actor outputs,
     /// giving them high priority. Useful for voice pipeline language instructions

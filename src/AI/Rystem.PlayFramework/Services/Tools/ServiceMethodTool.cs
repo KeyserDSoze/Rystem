@@ -9,7 +9,7 @@ namespace Rystem.PlayFramework;
 /// <summary>
 /// Tool that wraps a service method.
 /// </summary>
-internal sealed class ServiceMethodTool : ISceneTool
+internal sealed class ServiceMethodTool : ISceneTool, ISceneToolMetadata
 {
     private readonly ServiceToolConfiguration _config;
     private readonly bool _isGenericAsync;
@@ -41,6 +41,11 @@ internal sealed class ServiceMethodTool : ISceneTool
     public string Name { get; }
     public string Description { get; }
     public AITool ToolDescription { get; }
+    public PlayFrameworkToolSourceType SourceType => PlayFrameworkToolSourceType.Service;
+    public string? SourceName => _config.ServiceType.Name;
+    public string? MemberName => _config.Method.Name;
+    public bool IsCommand => false;
+    public string? JsonSchema => null;
 
     
 

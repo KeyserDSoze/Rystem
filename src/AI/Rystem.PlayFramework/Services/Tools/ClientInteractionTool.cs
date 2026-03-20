@@ -13,7 +13,7 @@ namespace Rystem.PlayFramework;
 /// This tool is used to inform the LLM about available client capabilities.
 /// Actual execution is handled by ClientInteractionHandler.
 /// </summary>
-internal sealed class ClientInteractionTool : ISceneTool
+internal sealed class ClientInteractionTool : ISceneTool, ISceneToolMetadata
 {
     private readonly ClientInteractionDefinition _definition;
 
@@ -55,6 +55,11 @@ internal sealed class ClientInteractionTool : ISceneTool
     public string Description { get; }
 
     public AITool ToolDescription { get; }
+    public PlayFrameworkToolSourceType SourceType => PlayFrameworkToolSourceType.Client;
+    public string? SourceName => "client";
+    public string? MemberName => _definition.ToolName;
+    public bool IsCommand => _definition.IsCommand;
+    public string? JsonSchema => _definition.JsonSchema;
 
     /// <summary>
     /// This method should never be called - client tools are intercepted by SceneExecutor.
