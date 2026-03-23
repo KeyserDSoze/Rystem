@@ -273,6 +273,8 @@ public static class WebApplicationExtensions
         PlayFrameworkApiSettings settings,
         CancellationToken cancellationToken)
     {
+        var lastKnownTotalCost = 0m;
+        string? lastKnownConversationKey = null;
         try
         {
             // Get SceneManager for factory
@@ -285,6 +287,8 @@ public static class WebApplicationExtensions
             var input = request.ToMultiModalInput();
             var mergedSettings = request.GetMergedSettings();
 
+            lastKnownConversationKey = mergedSettings?.ConversationKey;
+
             // Set response headers for SSE
             httpContext.Response.Headers.Append("Content-Type", "text/event-stream");
             httpContext.Response.Headers.Append("Cache-Control", "no-cache");
@@ -293,6 +297,11 @@ public static class WebApplicationExtensions
             // Execute PlayFramework with streaming
             await foreach (var response in sceneManager.ExecuteAsync(input, metadata, mergedSettings, cancellationToken))
             {
+                if (response.TotalCost > 0)
+                    lastKnownTotalCost = response.TotalCost;
+                if (response.ConversationKey != null)
+                    lastKnownConversationKey = response.ConversationKey;
+
                 // Serialize response as SSE event with camelCase for properties and enums
                 var json = JsonSerializer.Serialize(response, JsonHelper.JsonSerializerOptions);
 
@@ -310,7 +319,9 @@ public static class WebApplicationExtensions
             var errorJson = JsonSerializer.Serialize(new
             {
                 status = "error",
-                errorMessage = ex.Message
+                errorMessage = ex.Message,
+                totalCost = lastKnownTotalCost,
+                conversationKey = lastKnownConversationKey
             }, JsonHelper.JsonSerializerOptions);
 
             await httpContext.Response.WriteAsync($"data: {errorJson}\n\n", cancellationToken);

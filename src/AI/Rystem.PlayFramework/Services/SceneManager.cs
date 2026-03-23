@@ -680,14 +680,14 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         // Save to cache with Completed phase
         if (settings.CacheBehavior != CacheBehavior.Avoidable && _settings.Cache.Enabled && context.ConversationKey != null)
         {
-            yield return YieldStatus(AiResponseStatus.SavingCache, "Saving conversation", context.TotalCost);
+            yield return YieldStatus(AiResponseStatus.SavingCache, "Saving conversation", context.TotalCost, context.ConversationKey);
             await SaveConversationAsync(context, cancellationToken);
         }
 
         // Save updated memory if enabled
         if (_memory != null && _memoryStorage != null && _settings.Memory?.Enabled == true && context.ConversationKey != null)
         {
-            yield return YieldStatus(AiResponseStatus.SavingMemory, "Saving conversation memory", context.TotalCost);
+            yield return YieldStatus(AiResponseStatus.SavingMemory, "Saving conversation memory", context.TotalCost, context.ConversationKey);
 
             // Get messages for memory
             var memoryMessages = context.GetMessagesForMemory()
@@ -871,22 +871,24 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             // Only send Completed if NOT waiting for client interaction
             // For Commands (CommandClient status), client closes stream on its side after execution
             // If feedbackMode requires response, client includes CommandResult in next user message
-            yield return YieldStatus(AiResponseStatus.Completed, "Execution completed", context.TotalCost);
+            yield return YieldStatus(AiResponseStatus.Completed, "Execution completed", context.TotalCost, context.ConversationKey);
         }
     }
-    private AiSceneResponse YieldStatus(AiResponseStatus status, string? message = null, decimal? cost = null)
+    private AiSceneResponse YieldStatus(AiResponseStatus status, string? message = null, decimal? cost = null, string? conversationKey = null)
     {
         return new AiSceneResponse
         {
             Status = status,
             Message = message,
             Cost = cost,
-            TotalCost = cost ?? 0
+            TotalCost = cost ?? 0,
+            ConversationKey = conversationKey
         };
     }
     private AiSceneResponse YieldAndTrack(SceneContext context, AiSceneResponse response)
     {
         response.TotalCost = context.TotalCost;
+        response.ConversationKey = context.ConversationKey;
         context.Responses.Add(response);
         return response;
     }
