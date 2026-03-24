@@ -35,6 +35,14 @@ builder.Services.AddRepository<StoredConversation, string>(repositoryBuilder =>
     {
     }, "default");
 });
+
+// Repository for memory summaries (StoredMemory) — same in-memory store, factory name "default"
+builder.Services.AddRepository<StoredMemory, string>(repositoryBuilder =>
+{
+    repositoryBuilder.WithInMemory(inMemoryOptions =>
+    {
+    }, "default");
+});
 builder.Services.AddOpenApi();
 
 // Register Calculator Service (used by Calculator scene)
@@ -45,6 +53,11 @@ builder.Services.AddSingleton<IShapeService, ShapeService>();
 
 // Register User Lookup Service (used to reproduce nullable-Guid deserialization)
 builder.Services.AddSingleton<IUserLookupService, UserLookupService>();
+
+// ── Middleware DI test ────────────────────────────────────────────────────
+// Scoped service populated by FakeTenantMiddleware, then read by FakeTenantContext.
+// Use this to verify that IContext always sees data set by upstream middleware.
+builder.Services.AddScoped<IFakeTenantData, FakeTenantData>();
 
 // Configure Azure OpenAI (from user secrets or appsettings)
 var azureOpenAIEndpoint = builder.Configuration["AzureOpenAI:Endpoint"];
@@ -116,6 +129,7 @@ builder.Services.AddPlayFramework("default", frameworkBuilder =>
         .WithChatClient("default") // Connect to the Azure OpenAI adapter registered above
         .WithVoice("default") // Enable voice pipeline (STT → PlayFramework → TTS)
         .UseDefaultGuardrails()
+        .AddContext<FakeTenantContext>() // ← reads IFakeTenantData populated by FakeTenantMiddleware
         .AddCache(cacheBuilder =>
         {
             cacheBuilder
@@ -123,6 +137,10 @@ builder.Services.AddPlayFramework("default", frameworkBuilder =>
                 .WithExpiration(TimeSpan.FromMinutes(30));
         })
         .UseRepository()
+        .WithMemory(memory => memory
+            .WithDefaultMemoryStorage("userId")  // keyed by userId injected by FakeTenantMiddleware
+            .WithRepositoryStorage((name, repo) => repo.WithInMemory(name: name))
+            .WithMaxSummaryLength(500))
         .WithPlanning(planningSettings =>
         {
             planningSettings.MaxRecursionDepth = 5;
@@ -374,6 +392,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+
+// ── Middleware DI test ────────────────────────────────────────────────────
+// Runs BEFORE endpoint dispatch; populates the scoped IFakeTenantData service.
+// FakeTenantContext.RetrieveAsync will then see WasPopulatedByMiddleware == true.
+app.UseMiddleware<FakeTenantMiddleware>();
+
 app.UseHttpsRedirection();
 
 // Map PlayFramework HTTP endpoints
