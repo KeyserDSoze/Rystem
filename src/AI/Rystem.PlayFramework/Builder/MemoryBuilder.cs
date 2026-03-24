@@ -1,5 +1,8 @@
 ﻿namespace Rystem.PlayFramework;
 
+using Microsoft.Extensions.DependencyInjection;
+using RepositoryFramework;
+
 /// <summary>
 /// Fluent API builder for configuring conversation memory.
 /// </summary>
@@ -14,6 +17,7 @@ public sealed class MemoryBuilder
     internal Type? CustomMemoryType => _customMemoryType;
     internal bool HasCustomStorage => _customStorageType != null;
     internal bool HasCustomMemory => _customMemoryType != null;
+    internal Action<string?, IRepositoryBuilder<StoredMemory, string>>? RepositoryStorageConfigure { get; private set; }
 
     /// <summary>
     /// Use default in-memory storage with metadata-based keys (similar to rate limiting GroupBy).
@@ -83,6 +87,23 @@ public sealed class MemoryBuilder
     public MemoryBuilder WithIncludePreviousMemory(bool include)
     {
         _settings.IncludePreviousMemory = include;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures the <see cref="IRepository{StoredMemory, string}"/> backend used to persist memory.
+    /// The PlayFramework factory name is automatically injected as the first argument so backends
+    /// resolve correctly, e.g.:
+    /// <code>
+    /// .WithMemory(m => m.WithRepositoryStorage((name, repo) => repo.WithInMemory(name: name)))
+    /// </code>
+    /// When this method is called the default <see cref="RepositoryMemoryStorage"/> implementation
+    /// is used (which requires the repository to be configured here or registered separately).
+    /// </summary>
+    public MemoryBuilder WithRepositoryStorage(
+        Action<string?, IRepositoryBuilder<StoredMemory, string>> configure)
+    {
+        RepositoryStorageConfigure = configure;
         return this;
     }
 }

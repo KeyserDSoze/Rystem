@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using RepositoryFramework;
 
 namespace Rystem.PlayFramework;
 
@@ -8,12 +9,33 @@ namespace Rystem.PlayFramework;
 public static class PlayFrameworkBuilder_Memory
 {
     /// <summary>
-    /// Enables conversation memory with persistence across requests.
-    /// Memory automatically loads previous context at the start and saves updated context at the end.
+    /// Enables conversation memory backed by a repository.
+    /// Registers <see cref="IRepository{StoredMemory, string}"/> using the supplied action
+    /// (the PlayFramework factory name is injected automatically) and wires up
+    /// <see cref="RepositoryMemoryStorage"/> as the default storage implementation.
+    /// Example:
+    /// <code>
+    /// builder.WithMemory((name, repo) => repo.WithInMemory(name: name))
+    /// </code>
     /// </summary>
-    /// <param name="builder">PlayFramework builder.</param>
-    /// <param name="configure">Memory configuration action.</param>
-    /// <returns>Builder for chaining.</returns>
+    public static PlayFrameworkBuilder WithMemory(
+        this PlayFrameworkBuilder builder,
+        Action<string?, IRepositoryBuilder<StoredMemory, string>> configureRepository)
+    {
+        var name = builder.Name?.ToString();
+        builder.Services.AddRepository<StoredMemory, string>(
+            repoBuilder => configureRepository(name, repoBuilder));
+
+        builder.Settings.Memory = new MemorySettings { Enabled = true };
+        // HasCustomMemoryStorage stays false → ServiceCollectionExtensions registers RepositoryMemoryStorage
+        return builder;
+    }
+
+    /// <summary>
+    /// Enables conversation memory with advanced settings (max summary length, system prompt, etc.).
+    /// Call <c>.WithRepositoryStorage</c> inside the <paramref name="configure"/> action to
+    /// configure the backing repository inline.
+    /// </summary>
     public static PlayFrameworkBuilder WithMemory(
         this PlayFrameworkBuilder builder,
         Action<MemoryBuilder> configure)
@@ -21,10 +43,15 @@ public static class PlayFrameworkBuilder_Memory
         var memoryBuilder = new MemoryBuilder();
         configure(memoryBuilder);
 
-        // Enable memory
         memoryBuilder.Settings.Enabled = true;
 
-        // Store in builder for DI registration
+        if (memoryBuilder.RepositoryStorageConfigure != null)
+        {
+            var name = builder.Name?.ToString();
+            builder.Services.AddRepository<StoredMemory, string>(
+                repoBuilder => memoryBuilder.RepositoryStorageConfigure(name, repoBuilder));
+        }
+
         builder.Settings.Memory = memoryBuilder.Settings;
         builder.HasCustomMemoryStorage = memoryBuilder.HasCustomStorage;
         builder.CustomMemoryStorageType = memoryBuilder.CustomStorageType;

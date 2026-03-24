@@ -1,4 +1,7 @@
-﻿namespace Rystem.PlayFramework;
+﻿using Microsoft.Extensions.DependencyInjection;
+using RepositoryFramework;
+
+namespace Rystem.PlayFramework;
 
 /// <summary>
 /// Extension methods for PlayFrameworkBuilder to enable repository-based conversation persistence.
@@ -7,23 +10,38 @@ public static class PlayFrameworkBuilder_Repository
 {
     /// <summary>
     /// Enables repository-based persistence for conversations.
-    /// Requires IRepository&lt;StoredConversation, string&gt; to be registered with the same factory name.
+    /// Requires <see cref="IRepository{StoredConversation, string}"/> to be registered separately
+    /// with the same factory name as the PlayFramework instance.
     /// </summary>
-    /// <param name="builder">PlayFramework builder.</param>
-    /// <returns>Builder for chaining.</returns>
-    /// <remarks>
-    /// Repository must be registered separately using:
-    /// <code>
-    /// services.AddRepository&lt;StoredConversation, string, MyRepository&gt;(
-    ///     repositoryBuilder => { /* configure */ },
-    ///     name: "myFactoryName"
-    /// );
-    /// </code>
-    /// The factory name must match the PlayFramework instance name.
-    /// </remarks>
     public static PlayFrameworkBuilder UseRepository(this PlayFrameworkBuilder builder)
     {
         builder.HasRepository = true;
         return builder;
     }
+
+    /// <summary>
+    /// Enables repository-based persistence for conversations and configures the underlying
+    /// <see cref="IRepository{StoredConversation, string}"/> inline.
+    /// The PlayFramework factory name is automatically injected as the first argument of the
+    /// configure action so backends (e.g. <c>WithInMemory(name: name)</c>) resolve correctly.
+    /// </summary>
+    /// <param name="builder">PlayFramework builder.</param>
+    /// <param name="configure">
+    /// Action that receives <c>(string? factoryName, IRepositoryBuilder&lt;StoredConversation, string&gt;)</c>.
+    /// Pass <paramref name="factoryName"/> to the backend registration, e.g.:
+    /// <code>
+    /// .UseRepository((name, repo) => repo.WithInMemory(name: name))
+    /// </code>
+    /// </param>
+    public static PlayFrameworkBuilder UseRepository(
+        this PlayFrameworkBuilder builder,
+        Action<string?, IRepositoryBuilder<StoredConversation, string>> configure)
+    {
+        builder.HasRepository = true;
+        var name = builder.Name?.ToString();
+        builder.Services.AddRepository<StoredConversation, string>(
+            repoBuilder => configure(name, repoBuilder));
+        return builder;
+    }
 }
+

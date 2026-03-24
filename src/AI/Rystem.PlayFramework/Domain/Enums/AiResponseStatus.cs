@@ -84,6 +84,11 @@ public enum AiResponseStatus
     SavingCache,
 
     /// <summary>
+    /// Saving to the conversation repository.
+    /// </summary>
+    SavingRepository,
+
+    /// <summary>
     /// Saving to memory.
     /// </summary>
     SavingMemory,

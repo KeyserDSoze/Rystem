@@ -135,8 +135,8 @@ public static class WebApplicationExtensions
         // Conversation management endpoints (optional, requires repository)
         if (settings.EnableConversationEndpoints)
         {
-            var repositoryFactory = app.Services.GetService<IFactory<IRepository<StoredConversation, string>>>();
-            if (repositoryFactory != null)
+            var hasRepository = app.Services.GetService<IFactory<IRepository<StoredConversation, string>>>() != null;
+            if (hasRepository)
             {
                 var conversationsRoute = factoryName is null ? "/conversations" : $"/{factoryName}/conversations";
                 var conversationRoute = factoryName is null ? "/conversations/{conversationKey}" : $"/{factoryName}/conversations/{{conversationKey}}";
@@ -145,13 +145,14 @@ public static class WebApplicationExtensions
                 // Endpoint: List conversations
                 group.MapGet(conversationsRoute, async (
                     [AsParameters] ConversationQueryParameters parameters,
+                    [FromServices] IFactory<IRepository<StoredConversation, string>> repositoryFactory,
                     [FromServices] ILogger<ISceneManager> logger,
                     HttpContext httpContext,
                     CancellationToken cancellationToken) =>
                 {
                     var routeFactory = httpContext.GetRouteValue("factoryName")?.ToString();
                     var targetFactory = factoryName ?? routeFactory ?? "default";
-                    var repository = repositoryFactory.Create(targetFactory);
+                    var repository = repositoryFactory.Create(targetFactory)!;
                     var currentUserId = GetCurrentUserId(httpContext);
 
                     return await ListConversationsAsync(parameters, repository, currentUserId, settings, logger, cancellationToken);
@@ -164,13 +165,14 @@ public static class WebApplicationExtensions
                 group.MapGet(conversationRoute, async (
                     string conversationKey,
                     [FromQuery] bool includeContents,
+                    [FromServices] IFactory<IRepository<StoredConversation, string>> repositoryFactory,
                     [FromServices] ILogger<ISceneManager> logger,
                     HttpContext httpContext,
                     CancellationToken cancellationToken) =>
                 {
                     var routeFactory = httpContext.GetRouteValue("factoryName")?.ToString();
                     var targetFactory = factoryName ?? routeFactory ?? "default";
-                    var repository = repositoryFactory.Create(targetFactory);
+                    var repository = repositoryFactory.Create(targetFactory)!;
                     var currentUserId = GetCurrentUserId(httpContext);
 
                     return await GetConversationAsync(conversationKey, includeContents, repository, currentUserId, logger, cancellationToken);
@@ -184,13 +186,14 @@ public static class WebApplicationExtensions
                 // Endpoint: Delete conversation
                 group.MapDelete(conversationRoute, async (
                     string conversationKey,
+                    [FromServices] IFactory<IRepository<StoredConversation, string>> repositoryFactory,
                     [FromServices] ILogger<ISceneManager> logger,
                     HttpContext httpContext,
                     CancellationToken cancellationToken) =>
                 {
                     var routeFactory = httpContext.GetRouteValue("factoryName")?.ToString();
                     var targetFactory = factoryName ?? routeFactory ?? "default";
-                    var repository = repositoryFactory.Create(targetFactory);
+                    var repository = repositoryFactory.Create(targetFactory)!;
                     var currentUserId = GetCurrentUserId(httpContext);
 
                     return await DeleteConversationAsync(conversationKey, repository, currentUserId, logger, cancellationToken);
@@ -205,13 +208,14 @@ public static class WebApplicationExtensions
                 group.MapPatch(visibilityRoute, async (
                     string conversationKey,
                     [FromBody] UpdateConversationVisibilityRequest request,
+                    [FromServices] IFactory<IRepository<StoredConversation, string>> repositoryFactory,
                     [FromServices] ILogger<ISceneManager> logger,
                     HttpContext httpContext,
                     CancellationToken cancellationToken) =>
                 {
                     var routeFactory = httpContext.GetRouteValue("factoryName")?.ToString();
                     var targetFactory = factoryName ?? routeFactory ?? "default";
-                    var repository = repositoryFactory.Create(targetFactory);
+                    var repository = repositoryFactory.Create(targetFactory)!;
                     var currentUserId = GetCurrentUserId(httpContext);
 
                     return await UpdateConversationVisibilityAsync(conversationKey, request.IsPublic, repository, currentUserId, logger, cancellationToken);
@@ -559,30 +563,32 @@ public static class WebApplicationExtensions
             logger.LogDebug("Listing conversations - IncludePublic: {IncludePublic}, IncludePrivate: {IncludePrivate}, User: {UserId}",
                 parameters.IncludePublic, parameters.IncludePrivate, currentUserId ?? "anonymous");
 
-            // Build filter expression based on visibility parameters
+            // Build filter expression based on visibility parameters.
+            // Note: UserId comparison uses a captured local to avoid closure-over-nullable issues
+            // with LINQ translators (TableStorage, Cosmos, etc.).
+            // Nested collection predicates (Messages.Any) are intentionally omitted because
+            // cloud LINQ translators cannot translate sub-collection expressions.
+            var userId = currentUserId;
             QueryBuilder<StoredConversation, string> queryBuilder;
 
             if (parameters.IncludePublic && parameters.IncludePrivate)
             {
-                // Show public conversations OR user's private conversations
-                queryBuilder = repository
-                    .Where(x => x.IsPublic || x.UserId == currentUserId);
+                if (userId != null)
+                    queryBuilder = repository.Where(x => x.IsPublic || x.UserId == userId);
+                else
+                    queryBuilder = repository.Where(x => x.IsPublic);
             }
             else if (parameters.IncludePublic && !parameters.IncludePrivate)
             {
                 // Only public conversations
-                queryBuilder = repository
-                    .Where(x => x.IsPublic);
+                queryBuilder = repository.Where(x => x.IsPublic);
             }
             else
             {
-                queryBuilder = repository
-                    .Where(x => !x.IsPublic && x.UserId == currentUserId);
-            }
-            if (!string.IsNullOrWhiteSpace(parameters.SearchText))
-            {
-                var searchLower = parameters.SearchText.ToLowerInvariant();
-                queryBuilder.Where(x => x.Messages.Any(m => m.Text != null && m.Text.ToLowerInvariant().Contains(searchLower) == true));
+                // Only private conversations of the current user - requires authentication
+                if (userId == null)
+                    return Results.Ok(new List<StoredConversation>());
+                queryBuilder = repository.Where(x => !x.IsPublic && x.UserId == userId);
             }
 
             if (parameters.OrderBy == ConversationSortOrder.TimestampDescending)

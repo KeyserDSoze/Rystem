@@ -163,10 +163,11 @@ public static class ServiceCollectionExtensions
             // Register memory settings
             services.AddFactory(builder.Settings.Memory, name, ServiceLifetime.Singleton);
 
-            // Register memory storage (InMemory by default, unless Custom is specified)
+            // Register memory storage (Repository-backed by default, unless Custom is specified)
             if (!builder.HasCustomMemoryStorage)
             {
-                services.AddFactory<IMemoryStorage, InMemoryMemoryStorage>(name, ServiceLifetime.Singleton);
+                services.AddEngineFactory<IRepository<StoredMemory, string>>();
+                services.AddFactory<IMemoryStorage, RepositoryMemoryStorage>(name, ServiceLifetime.Singleton);
             }
             else if (builder.CustomMemoryStorageType != null)
             {
