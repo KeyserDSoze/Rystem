@@ -98,6 +98,157 @@ If you only configure one factory, `resolve()` with no name returns the first co
 const defaultClient = PlayFrameworkServices.resolve();
 ```
 
+## Example: custom fetch adapter (Angular, Node.js, test spy)
+
+By default the client uses `globalThis.fetch`. Call `settings.setFetch(fn)` to replace it with any
+function that matches the native Fetch API signature `(input, init?) => Promise<Response>`.
+Callers that never invoke `setFetch()` are **not affected** — zero breaking change.
+
+### Generic / framework-agnostic
+
+```typescript
+await PlayFrameworkServices.configure("default", "https://api.example.com/api/ai", settings => {
+  settings.setFetch(async (url, init) => {
+    const token = localStorage.getItem("token");
+    const headers = new Headers(init?.headers);
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    return fetch(url, { ...init, headers });
+  });
+});
+```
+
+### Angular — reuse the same refresh-token logic as your HttpInterceptor
+
+Angular's `HttpInterceptor` only intercepts requests made via `HttpClient` (XHR / managed fetch).
+Because PlayFramework uses native `fetch` for SSE streaming it bypasses Angular's pipeline entirely.
+The solution is to register a **fetch bridge** on `PlayFrameworkSettings` that contains the same
+token-attach + refresh logic you already have in your interceptor, without importing any Angular
+module into the library.
+
+```typescript
+// play-framework-setup.service.ts
+import { Injectable } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import { PlayFrameworkServices } from 'rystem.playframework.client';
+import { AuthService } from './auth.service';
+import { GlobalService } from '../shared/service/global.service';
+
+@Injectable({ providedIn: 'root' })
+export class PlayFrameworkSetupService {
+  private isRefreshing = false;
+  private refreshPromise: Promise<string | null> | null = null;
+
+  constructor(
+    private authService: AuthService,
+    private globalService: GlobalService,
+  ) {}
+
+  /** Call once during application startup (e.g. APP_INITIALIZER). */
+  async configure(factoryName: string, baseUrl: string): Promise<void> {
+    await PlayFrameworkServices.configure(factoryName, baseUrl, (settings) => {
+      settings.setFetch(this.createFetchBridge());
+    });
+  }
+
+  private createFetchBridge(): typeof fetch {
+    return async (url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      // 1. Attach current Bearer token (mirrors addAuthorizationHeader)
+      const headers = new Headers(init?.headers);
+      const token = this.authService.token;
+      if (token) headers.set('Authorization', `Bearer ${token}`);
+
+      const response = await fetch(url, { ...init, headers });
+
+      // 2. If not 401, return immediately
+      if (response.status !== 401) return response;
+
+      // 3. Token expired → refresh once (mirrors handle401Error, deduplicates concurrent calls)
+      if (!this.isRefreshing) {
+        this.isRefreshing = true;
+        this.refreshPromise = firstValueFrom(this.globalService.getRefreshToken())
+          .then((r: any) => {
+            const newToken = r?.accessToken;
+            if (!newToken) { window.location.reload(); return null; }
+            this.authService.token = newToken;
+            localStorage.setItem('token', newToken);
+            if (r?.refreshToken) localStorage.setItem('refreshToken', r.refreshToken);
+            return newToken;
+          })
+          .catch(() => { window.location.reload(); return null; })
+          .finally(() => { this.isRefreshing = false; this.refreshPromise = null; });
+      }
+
+      const newToken = await this.refreshPromise;
+      if (!newToken) return response; // reload already triggered
+
+      // 4. Retry original request with fresh token
+      const retryHeaders = new Headers(init?.headers);
+      retryHeaders.set('Authorization', `Bearer ${newToken}`);
+      return fetch(url, { ...init, headers: retryHeaders });
+    };
+  }
+}
+```
+
+Wire it via `APP_INITIALIZER` so the factory is ready before any component calls `resolve()`:
+
+```typescript
+// app.config.ts
+import { ApplicationConfig, APP_INITIALIZER } from '@angular/core';
+import { PlayFrameworkSetupService } from './services/play-framework-setup.service';
+
+function initPlayFramework(svc: PlayFrameworkSetupService) {
+  return () => svc.configure('default', 'https://api.example.com/api/ai');
+}
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initPlayFramework,
+      deps: [PlayFrameworkSetupService],
+      multi: true,
+    },
+  ],
+};
+```
+
+Then use the client anywhere as normal — the Angular interceptor is **not needed** for PlayFramework
+requests since the fetch bridge handles auth directly:
+
+```typescript
+// your-chat.component.ts
+import { usePlayFramework } from 'rystem.playframework.client';
+
+const client = usePlayFramework('default');
+for await (const step of client.executeStepByStep({ message: userInput })) {
+  if (step.message) appendText(step.message);
+}
+```
+
+### Node.js (SSR / server-side)
+
+```typescript
+import nodeFetch from 'node-fetch';
+
+await PlayFrameworkServices.configure("default", "https://api.example.com/api/ai", settings => {
+  settings.setFetch(nodeFetch as unknown as typeof fetch);
+});
+```
+
+### Testing — intercept and assert outgoing requests
+
+```typescript
+const calls: { url: RequestInfo | URL; init?: RequestInit }[] = [];
+
+settings.setFetch(async (url, init) => {
+  calls.push({ url, init });
+  return new Response(JSON.stringify({ status: 'completed' }), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+});
+```
+
 ## Example: configure multiple factories
 
 The sample workspace in `src/AI/Rystem.PlayFramework.Client/src/App.tsx` configures both `default` and `foundry` against the same base path.

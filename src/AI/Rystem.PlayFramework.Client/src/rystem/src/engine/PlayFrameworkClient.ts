@@ -109,7 +109,7 @@ export class PlayFrameworkClient {
             let shouldRetry = true;
             while (shouldRetry) {
                 try {
-                    const response = await fetch(url, {
+                    const response = await this.settings.getFetch()(url, {
                         method: "POST",
                         headers,
                         body: JSON.stringify(currentRequest),
@@ -298,7 +298,7 @@ export class PlayFrameworkClient {
         const headers = await this.settings.enrichHeaders(url, "GET", undefined, undefined);
         const effectiveSignal = this.createTimeoutSignal(signal);
 
-        const response = await fetch(url, {
+        const response = await this.settings.getFetch()(url, {
             method: "GET",
             headers,
             signal: effectiveSignal
@@ -327,7 +327,7 @@ export class PlayFrameworkClient {
         const headers = await this.settings.enrichHeaders(url, "GET", undefined, undefined);
         const effectiveSignal = this.createTimeoutSignal(signal);
 
-        const response = await fetch(url, {
+        const response = await this.settings.getFetch()(url, {
             method: "GET",
             headers,
             signal: effectiveSignal
@@ -358,7 +358,7 @@ export class PlayFrameworkClient {
         const headers = await this.settings.enrichHeaders(url, "GET", undefined, undefined);
         const effectiveSignal = this.createTimeoutSignal(signal);
 
-        const response = await fetch(url, {
+        const response = await this.settings.getFetch()(url, {
             method: "GET",
             headers,
             signal: effectiveSignal
@@ -390,7 +390,7 @@ export class PlayFrameworkClient {
         const headers = await this.settings.enrichHeaders(url, "DELETE", undefined, undefined);
         const effectiveSignal = this.createTimeoutSignal(signal);
 
-        const response = await fetch(url, {
+        const response = await this.settings.getFetch()(url, {
             method: "DELETE",
             headers,
             signal: effectiveSignal
@@ -419,7 +419,7 @@ export class PlayFrameworkClient {
         const headers = await this.settings.enrichHeaders(url, "PATCH", undefined, body);
         const effectiveSignal = this.createTimeoutSignal(signal);
 
-        const response = await fetch(url, {
+        const response = await this.settings.getFetch()(url, {
             method: "PATCH",
             headers,
             body: JSON.stringify(body),
@@ -515,7 +515,7 @@ export class PlayFrameworkClient {
         const headers = new Headers(baseHeaders);
         headers.delete('Content-Type'); // Let browser set multipart boundary
 
-        const response = await fetch(url, {
+        const response = await this.settings.getFetch()(url, {
             method: 'POST',
             headers,
             body: formData,

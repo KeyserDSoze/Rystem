@@ -15,7 +15,8 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
         }
         public string? Convert(Expression expression)
         {
-            var binaryExpression = (BinaryExpression)expression;
+            if (expression is not BinaryExpression binaryExpression)
+                return null;
             if (binaryExpression.NodeType.IsRightASingleValue())
             {
                 dynamic leftPart = binaryExpression.Left;

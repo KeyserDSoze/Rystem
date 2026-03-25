@@ -99,29 +99,20 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
             if (where != null)
                 filterAsString = QueryStrategy.Create(where.Body, Settings!.PartitionKey, Settings!.RowKey, Settings!.Timestamp);
 
-            var top = (filter.Operations.FirstOrDefault(x => x.Operation == FilterOperations.Top) as ValueFilterOperation)?.Value;
-            var skip = (filter.Operations.FirstOrDefault(x => x.Operation == FilterOperations.Skip) as ValueFilterOperation)?.Value;
-            var counter = 0;
             var items = new List<T>();
 
             await foreach (var page in Client.QueryAsync<TableEntity>(filter: filterAsString,
                 maxPerPage: 50,
                 cancellationToken: cancellationToken).AsPages())
             {
-                var haveToBreak = false;
                 foreach (var entity in page.Values)
                 {
-                    counter++;
-                    if (skip != null && counter <= skip)
+                    if (entity.Value == null)
                         continue;
-                    haveToBreak = top != null && counter > top + (skip ?? 0);
-                    if (haveToBreak)
-                        break;
-                    var item = JsonSerializer.Deserialize<T>(entity.Value)!;
-                    items.Add(item);
+                    var item = JsonSerializer.Deserialize<T>(entity.Value);
+                    if (item != null)
+                        items.Add(item);
                 }
-                if (haveToBreak)
-                    break;
             }
             if (!cancellationToken.IsCancellationRequested)
                 foreach (var item in Filter(items.AsQueryable(), filter))
@@ -140,6 +131,15 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
                         FilterOperations.OrderByDescending => queryable.OrderByDescending(lambda.Expression!),
                         FilterOperations.ThenBy => (queryable as IOrderedQueryable<T>)!.ThenBy(lambda.Expression!),
                         FilterOperations.ThenByDescending => (queryable as IOrderedQueryable<T>)!.ThenByDescending(lambda.Expression!),
+                        _ => queryable,
+                    };
+                }
+                else if (operation is ValueFilterOperation value)
+                {
+                    queryable = value.Operation switch
+                    {
+                        FilterOperations.Top => queryable.Take(value.Value != null ? (int)value.Value : 0).AsQueryable(),
+                        FilterOperations.Skip => queryable.Skip(value.Value != null ? (int)value.Value : 0).AsQueryable(),
                         _ => queryable,
                     };
                 }

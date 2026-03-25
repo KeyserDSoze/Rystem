@@ -44,6 +44,13 @@ export class PlayFrameworkSettings {
      */
     private errorHandlers: Array<(url: string, method: string, headers: HeadersInit, body: any, error: any) => Promise<boolean>>;
 
+    /**
+     * Underlying fetch implementation.
+     * Defaults to globalThis.fetch. Override via setFetch() to plug in a custom adapter
+     * (e.g., an Angular HTTP interceptor bridge, a Node.js fetch polyfill, or a test spy).
+     */
+    private fetchFn: typeof fetch;
+
     constructor(factoryName: string, baseUrl: string) {
         this.factoryName = factoryName;
         this.baseUrl = baseUrl;
@@ -55,6 +62,7 @@ export class PlayFrameworkSettings {
         this.reconnectBaseDelay = 1000;
         this.headersEnrichers = [];
         this.errorHandlers = [];
+        this.fetchFn = globalThis.fetch.bind(globalThis);
     }
 
     /**
@@ -71,6 +79,49 @@ export class PlayFrameworkSettings {
     public addErrorHandler(handler: (url: string, method: string, headers: HeadersInit, body: any, error: any) => Promise<boolean>): this {
         this.errorHandlers.push(handler);
         return this;
+    }
+
+    /**
+     * Replace the underlying fetch function used by PlayFrameworkClient for every HTTP request,
+     * including SSE streaming, conversation management and voice endpoints.
+     *
+     * Use this to plug in a custom adapter that wraps each request — for example:
+     * - An Angular fetch bridge that attaches Bearer tokens and handles 401 token refresh
+     * - A Node.js fetch polyfill (e.g., `node-fetch` for SSR)
+     * - A test spy that records and intercepts outgoing requests
+     *
+     * The adapter receives the same `(input, init?)` arguments as the native Fetch API
+     * and MUST return a `Promise<Response>`. Callers that never invoke `setFetch()` use
+     * `globalThis.fetch` transparently — no behaviour change.
+     *
+     * @example Generic token injection (framework-agnostic):
+     * ```typescript
+     * settings.setFetch(async (url, init) => {
+     *   const token = localStorage.getItem("token");
+     *   const headers = new Headers(init?.headers);
+     *   if (token) headers.set("Authorization", `Bearer ${token}`);
+     *   return fetch(url, { ...init, headers });
+     * });
+     * ```
+     *
+     * @example Angular — bridge the existing HttpInterceptor logic:
+     * ```typescript
+     * // In an Angular @Injectable service:
+     * settings.setFetch(this.createFetchBridge());
+     * // See README "Custom fetch adapter" section for the full Angular example.
+     * ```
+     */
+    public setFetch(fn: typeof fetch): this {
+        this.fetchFn = fn;
+        return this;
+    }
+
+    /**
+     * Returns the active fetch implementation (custom or globalThis.fetch).
+     * Used internally by PlayFrameworkClient — not intended for direct use.
+     */
+    public getFetch(): typeof fetch {
+        return this.fetchFn;
     }
 
     /**
