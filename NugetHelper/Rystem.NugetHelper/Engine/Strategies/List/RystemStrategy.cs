@@ -7,11 +7,10 @@
         public Package GetStrategy()
         {
             var updateTree = new Package()
-                .AddProject("Rystem.DependencyInjection");
-            //.AddProject("Rystem");
+            .AddProject("Rystem");
             updateTree
-            //    .CreateSon()
-            //.AddProject("Rystem.DependencyInjection")
+                .CreateSon()
+            .AddProject("Rystem.DependencyInjection")
             .CreateSon()
             .AddProject("Rystem.DependencyInjection.Web", "Rystem.Concurrency", "Rystem.RepositoryFramework.Abstractions", "Rystem.Content.Abstractions", "RepositoryFramework.Tools.TypescriptGenerator", "Rystem.Api", "Rystem.Authentication.Social.Abstractions")
             .CreateSon()
