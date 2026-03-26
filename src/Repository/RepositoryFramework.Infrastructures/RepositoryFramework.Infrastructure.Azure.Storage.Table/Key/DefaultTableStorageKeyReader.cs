@@ -20,10 +20,9 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
             => (settings.PartitionKeyFromKeyFunction(key), settings.RowKeyFromKeyFunction?.Invoke(key) ?? string.Empty);
         public TKey Read(T entity, TableStorageSettings<T, TKey> settings)
         {
-            if (settings.RowKeyFromKeyFunction != null)
-                return Constructor.InvokeWithBestDynamicFit<TKey>(settings.PartitionKeyFunction(entity), settings.RowKeyFunction(entity))!;
-            else
+            if (settings.RowKeyFromKeyFunction is null)
                 return CastExtensions.Cast<TKey>(settings.PartitionKeyFunction.Invoke(entity))!;
+            return Constructor.InvokeWithBestDynamicFit<TKey>(settings.PartitionKeyFunction(entity), settings.RowKeyFunction(entity))!;
         }
         public bool FactoryNameAlreadySetup { get; set; }
         public void SetFactoryName(string name)

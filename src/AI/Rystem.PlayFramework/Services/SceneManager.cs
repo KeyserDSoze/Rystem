@@ -35,7 +35,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private readonly IFactory<IExecutionModeHandler> _executionModeHandlerFactory;
     private readonly IPlayFrameworkCache _playFrameworkCache;
     private readonly IToolExecutionManager _toolExecutionManager;
-    private readonly IFactory<IRepository<StoredConversation, string>>? _repositoryFactory;
+    private readonly IFactory<IRepository<StoredConversation, StoredConversationKey>>? _repositoryFactory;
 
     // Resolved dependencies (set via SetFactoryName)
     private AnyOf<string?, Enum>? _originalFactoryName;
@@ -53,7 +53,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private IContext? _context;
     private IAuthorizationLayer? _authorizationLayer;
     private IJsonService? _jsonService;
-    private IRepository<StoredConversation, string>? _repository;
+    private IRepository<StoredConversation, StoredConversationKey>? _repository;
 
     public SceneManager(
         IServiceProvider serviceProvider,
@@ -73,7 +73,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         IFactory<IMemoryStorage>? memoryStorageFactory = null,
         IFactory<IContext>? contextFactory = null,
         IFactory<IAuthorizationLayer>? authorizationLayerFactory = null,
-        IFactory<IRepository<StoredConversation, string>>? repositoryFactory = null,
+        IFactory<IRepository<StoredConversation, StoredConversationKey>>? repositoryFactory = null,
         IFactory<IJsonService>? jsonServiceFactory = null)
     {
         _serviceProvider = serviceProvider;
@@ -453,7 +453,8 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             {
                 _logger.LogDebug("Not found in cache, trying repository for conversation '{ConversationKey}'", context.ConversationKey);
 
-                var storedConversation = await _repository.GetAsync(context.ConversationKey, cancellationToken);
+                var storedConversation = await _repository.GetAsync(
+                    new StoredConversationKey(context.UserId, context.ConversationKey!), cancellationToken);
                 if (storedConversation != null)
                 {
                     // Load from repository
@@ -747,11 +748,12 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
             context.ConversationKey, context.UserId ?? "anonymous", context.IsPublic);
 
         var storedConversation = context.ToStoredConversation();
-        var existingConversation = await _repository.GetAsync(context.ConversationKey, cancellationToken);
+        var repoKey = new StoredConversationKey(context.UserId, context.ConversationKey!);
+        var existingConversation = await _repository.GetAsync(repoKey, cancellationToken);
 
         if (existingConversation != null)
         {
-            var updated = await _repository.UpdateAsync(context.ConversationKey, storedConversation, cancellationToken);
+            var updated = await _repository.UpdateAsync(repoKey, storedConversation, cancellationToken);
             if (updated.IsOk)
                 _logger.LogInformation(
                     "Updated conversation '{ConversationKey}' in repository - Messages: {MessageCount}, Phase: {Phase}",
@@ -762,7 +764,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         }
         else
         {
-            var inserted = await _repository.InsertAsync(context.ConversationKey, storedConversation, cancellationToken);
+            var inserted = await _repository.InsertAsync(repoKey, storedConversation, cancellationToken);
             if (inserted.IsOk)
                 _logger.LogInformation(
                     "Inserted conversation '{ConversationKey}' in repository - Messages: {MessageCount}, Phase: {Phase}, UserId: {UserId}",

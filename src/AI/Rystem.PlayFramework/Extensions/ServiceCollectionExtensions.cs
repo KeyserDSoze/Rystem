@@ -73,7 +73,7 @@ public static class ServiceCollectionExtensions
         // Add repository factory (optional, registered only if user calls UseRepository())
         if (builder.HasRepository)
         {
-            services.AddEngineFactory<IRepository<StoredConversation, string>>();
+            services.AddEngineFactory<IRepository<StoredConversation, StoredConversationKey>>();
         }
 
         // Register PlayFrameworkCache as transient with factory pattern (supports named instances)

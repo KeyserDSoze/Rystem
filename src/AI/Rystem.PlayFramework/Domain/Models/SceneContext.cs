@@ -122,7 +122,7 @@ public sealed class SceneContext
         if (contextResult != null)
         {
             builder.AppendLine("[Request Context]");
-            string contextJson = contextResult is string asString
+            var contextJson = contextResult is string asString
                 ? asString
                 : (jsonService != null
                     ? jsonService.Serialize(contextResult, contextResult.GetType())

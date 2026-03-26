@@ -1,5 +1,4 @@
 ﻿namespace Rystem.PlayFramework;
-
 /// <summary>
 /// Serializable representation of a conversation for storage (cache, repository, file, etc.).
 /// Contains messages, execution state, and authorization metadata.

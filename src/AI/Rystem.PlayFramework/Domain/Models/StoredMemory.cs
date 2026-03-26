@@ -1,4 +1,4 @@
-namespace Rystem.PlayFramework;
+﻿namespace Rystem.PlayFramework;
 
 /// <summary>
 /// Persistent storage model for conversation memory, keyed by conversation or metadata-driven key.
@@ -10,7 +10,6 @@ public sealed class StoredMemory
     /// Storage key (either conversationKey or a metadata-driven composite key such as "userId:john|sessionId:abc").
     /// </summary>
     public required string Key { get; init; }
-
     /// <summary>
     /// Summary of the conversation including key points and context.
     /// </summary>

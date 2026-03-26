@@ -320,6 +320,17 @@ public sealed class PlayFrameworkBuilder
     }
 
     /// <summary>
+    /// Registers an <see cref="IAuthenticationLayer"/> implementation that resolves the userId
+    /// directly from the HTTP request. When registered, this is consulted first in the
+    /// conversation endpoints, before claims and <see cref="IAuthorizationLayer"/>.
+    /// </summary>
+    public PlayFrameworkBuilder AddAuthenticationLayer<TAuthenticationLayer>() where TAuthenticationLayer : class, IAuthenticationLayer
+    {
+        Services.AddFactory<IAuthenticationLayer, TAuthenticationLayer>(Name, ServiceLifetime.Transient);
+        return this;
+    }
+
+    /// <summary>
     /// Uses a custom director.
     /// </summary>
     public PlayFrameworkBuilder AddCustomDirector<TDirector>() where TDirector : class, IDirector

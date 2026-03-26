@@ -14,6 +14,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Repository\RepositoryFramework.Infrastructure.InMemory\RepositoryFramework.Infrastructure.InMemory.csproj" />
+    <ProjectReference Include="..\..\..\Repository\RepositoryFramework.Infrastructures\RepositoryFramework.Infrastructure.Azure.Storage.Blob\RepositoryFramework.Infrastructure.Azure.Storage.Blob.csproj" />
+    <ProjectReference Include="..\..\..\Repository\RepositoryFramework.Infrastructures\RepositoryFramework.Infrastructure.Azure.Storage.Table\RepositoryFramework.Infrastructure.Azure.Storage.Table.csproj" />
     <ProjectReference Include="..\..\Rystem.PlayFramework\Rystem.PlayFramework.csproj" />
     <ProjectReference Include="..\..\Rystem.PlayFramework.Adapters\Rystem.PlayFramework.Adapters.csproj" />
     <ProjectReference Include="..\..\Rystem.PlayFramework.Adapters.FoundryLocal\Rystem.PlayFramework.Adapters.FoundryLocal.csproj" />

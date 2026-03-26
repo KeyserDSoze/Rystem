@@ -2,5 +2,5 @@
 
 public interface IContext
 {
-    Task<dynamic?> RetrieveAsync(SceneContext context, SceneRequestSettings settings, CancellationToken cancellationToken);
+    Task<object?> RetrieveAsync(SceneContext context, SceneRequestSettings settings, CancellationToken cancellationToken);
 }

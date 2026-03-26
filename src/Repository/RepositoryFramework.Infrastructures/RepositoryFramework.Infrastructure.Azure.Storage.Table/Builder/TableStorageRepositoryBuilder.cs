@@ -64,7 +64,7 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
             }
             else
             {
-                var name = property.Body.ToString().Split('.').Last();
+                var name = property.Body.ToString().Split("??").First().Split('.').Last().Trim();
                 var compiledProperty = property.Compile();
                 var compiledKeyProperty = keyProperty?.Compile();
                 if (propertyName == nameof(WithPartitionKey))
@@ -109,6 +109,12 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
         }
         private async Task<Func<IServiceProvider, TableClientWrapper<T, TKey>>> AddAsync(string name, TableServiceClient serviceClient, TableClient tableClient)
         {
+            if (_settings.PartitionKeyFunction == null)
+                throw new InvalidOperationException(
+                    $"Table Storage repository for '{typeof(T).Name}' is missing a partition key mapping. " +
+                    $"Call WithPartitionKey(...) in your repository configuration before using Table Storage. " +
+                    $"Example: options.WithPartitionKey(x => x.UserId, x => x)");
+
             _ = await serviceClient
                 .CreateTableIfNotExistsAsync(name)
                 .NoContext();

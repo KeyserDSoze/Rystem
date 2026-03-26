@@ -1,4 +1,4 @@
-namespace Rystem.PlayFramework.Api.Services;
+﻿namespace Rystem.PlayFramework.Api.Services;
 
 /// <summary>
 /// IContext implementation that reads from the scoped FakeTenantData service.
@@ -17,7 +17,7 @@ public sealed class FakeTenantContext : IContext
         _tenantData = tenantData;
     }
 
-    public Task<dynamic?> RetrieveAsync(
+    public Task<object?> RetrieveAsync(
         SceneContext context,
         SceneRequestSettings settings,
         CancellationToken cancellationToken)
@@ -35,7 +35,6 @@ public sealed class FakeTenantContext : IContext
         };
 
         // Inject the tenant info as a system context so the LLM is aware of it
-        dynamic? result = snapshot;
-        return Task.FromResult(result);
+        return Task.FromResult((object?)snapshot);
     }
 }

@@ -39,6 +39,20 @@ namespace RepositoryFramework.Infrastructure.Azure.Storage.Table
                 else
                     return null;
             }
+
+            // For AndAlso/And: try to extract a server-side PartitionKey/RowKey filter from either
+            // branch. The other branch will be evaluated in-memory. This ensures that expressions
+            // like "x => !x.IsPublic && x.UserId == userId" still push a PartitionKey filter to
+            // Azure Table Storage instead of doing a full-table scan.
+            // OrElse is intentionally NOT handled here because filtering by one side of an OR would
+            // exclude valid rows from the other side.
+            if (binaryExpression.NodeType is ExpressionType.AndAlso or ExpressionType.And)
+            {
+                var leftFilter = Convert(binaryExpression.Left);
+                if (leftFilter != null) return leftFilter;
+                return Convert(binaryExpression.Right);
+            }
+
             return null;
         }
     }

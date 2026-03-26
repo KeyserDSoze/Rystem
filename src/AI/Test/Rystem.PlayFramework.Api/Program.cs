@@ -29,18 +29,36 @@ builder.Services.AddCors(options =>
 
 // In-memory distributed cache (required for OnClient continuation tokens)
 builder.Services.AddMemoryCache();
-builder.Services.AddRepository<StoredConversation, string>(repositoryBuilder =>
+builder.Services.AddRepository<StoredConversation, StoredConversationKey>(repositoryBuilder =>
 {
-    repositoryBuilder.WithInMemory(inMemoryOptions =>
+    //repositoryBuilder.WithInMemory(inMemoryOptions =>
+    //{
+    //}, "default");
+    repositoryBuilder.WithTableStorage(options =>
     {
+        options.Settings.ConnectionString = builder.Configuration["ConnectionString:Storage"] ?? throw new InvalidOperationException("Azure Table Storage connection string not configured.");
+        options.Settings.TableName = "PlayFrameworkConversations";
+        options
+            .WithPartitionKey(x => x.UserId ?? string.Empty, key => key.UserId ?? string.Empty)
+            .WithRowKey(x => x.ConversationKey, key => key.ConversationKey)
+            .WithTimestamp(x => x.Timestamp);
     }, "default");
 });
 
 // Repository for memory summaries (StoredMemory) — same in-memory store, factory name "default"
 builder.Services.AddRepository<StoredMemory, string>(repositoryBuilder =>
 {
-    repositoryBuilder.WithInMemory(inMemoryOptions =>
+    //repositoryBuilder.WithInMemory(inMemoryOptions =>
+    //{
+    //}, "default");
+    repositoryBuilder.WithTableStorage(options =>
     {
+        options.Settings.ConnectionString = builder.Configuration["ConnectionString:Storage"] ?? throw new InvalidOperationException("Azure Table Storage connection string not configured.");
+        options.Settings.TableName = "PlayFrameworkMemories";
+        options
+            .WithPartitionKey(x => x.Key, x => x)
+            .WithTimestamp(x => x.LastUpdated);
+        //options.Settings.WithPartitionKey(nameof(StoredMemory.ConversationKey), ); // Partition by ConversationKey for efficient retrieval of memory for a conversation
     }, "default");
 });
 builder.Services.AddOpenApi();
@@ -129,6 +147,8 @@ builder.Services.AddPlayFramework("default", frameworkBuilder =>
         .WithChatClient("default") // Connect to the Azure OpenAI adapter registered above
         .WithVoice("default") // Enable voice pipeline (STT → PlayFramework → TTS)
         .UseDefaultGuardrails()
+        .AddAuthenticationLayer<FakeAuthenticationLayer>() // Priority userId resolver for test/dev
+        .AddAuthorizationLayer<FakeAuthorizationLayer>() // Injects fake userId for test/dev (legacy fallback)
         .AddContext<FakeTenantContext>() // ← reads IFakeTenantData populated by FakeTenantMiddleware
         .AddCache(cacheBuilder =>
         {
@@ -139,7 +159,7 @@ builder.Services.AddPlayFramework("default", frameworkBuilder =>
         .UseRepository()
         .WithMemory(memory => memory
             .WithDefaultMemoryStorage("userId")  // keyed by userId injected by FakeTenantMiddleware
-            .WithRepositoryStorage((name, repo) => repo.WithInMemory(name: name))
+            .UseRepository()
             .WithMaxSummaryLength(500))
         .WithPlanning(planningSettings =>
         {
@@ -343,6 +363,8 @@ builder.Services.AddPlayFramework("foundry", frameworkBuilder =>
 {
     frameworkBuilder
         .UseDefaultGuardrails()
+        .AddAuthenticationLayer<FakeAuthenticationLayer>() // Priority userId resolver for test/dev
+        .AddAuthorizationLayer<FakeAuthorizationLayer>() // Injects fake userId for test/dev (legacy fallback)
         .AddCache(cacheBuilder =>
         {
             cacheBuilder

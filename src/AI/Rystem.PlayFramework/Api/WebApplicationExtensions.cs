@@ -135,7 +135,7 @@ public static class WebApplicationExtensions
         // Conversation management endpoints (optional, requires repository)
         if (settings.EnableConversationEndpoints)
         {
-            var hasRepository = app.Services.GetService<IFactory<IRepository<StoredConversation, string>>>() != null;
+            var hasRepository = app.Services.GetService<IFactory<IRepository<StoredConversation, StoredConversationKey>>>() != null;
             if (hasRepository)
             {
                 var conversationsRoute = factoryName is null ? "/conversations" : $"/{factoryName}/conversations";
@@ -145,7 +145,9 @@ public static class WebApplicationExtensions
                 // Endpoint: List conversations
                 group.MapGet(conversationsRoute, async (
                     [AsParameters] ConversationQueryParameters parameters,
-                    [FromServices] IFactory<IRepository<StoredConversation, string>> repositoryFactory,
+                    [FromServices] IFactory<IRepository<StoredConversation, StoredConversationKey>> repositoryFactory,
+                    [FromServices] IFactory<IAuthenticationLayer>? authenticationLayerFactory,
+                    [FromServices] IFactory<IAuthorizationLayer>? authLayerFactory,
                     [FromServices] ILogger<ISceneManager> logger,
                     HttpContext httpContext,
                     CancellationToken cancellationToken) =>
@@ -153,7 +155,7 @@ public static class WebApplicationExtensions
                     var routeFactory = httpContext.GetRouteValue("factoryName")?.ToString();
                     var targetFactory = factoryName ?? routeFactory ?? "default";
                     var repository = repositoryFactory.Create(targetFactory)!;
-                    var currentUserId = GetCurrentUserId(httpContext);
+                    var currentUserId = await GetCurrentUserIdAsync(httpContext, authenticationLayerFactory, authLayerFactory, targetFactory, cancellationToken);
 
                     return await ListConversationsAsync(parameters, repository, currentUserId, settings, logger, cancellationToken);
                 })
@@ -165,7 +167,9 @@ public static class WebApplicationExtensions
                 group.MapGet(conversationRoute, async (
                     string conversationKey,
                     [FromQuery] bool includeContents,
-                    [FromServices] IFactory<IRepository<StoredConversation, string>> repositoryFactory,
+                    [FromServices] IFactory<IRepository<StoredConversation, StoredConversationKey>> repositoryFactory,
+                    [FromServices] IFactory<IAuthenticationLayer>? authenticationLayerFactory,
+                    [FromServices] IFactory<IAuthorizationLayer>? authLayerFactory,
                     [FromServices] ILogger<ISceneManager> logger,
                     HttpContext httpContext,
                     CancellationToken cancellationToken) =>
@@ -173,7 +177,7 @@ public static class WebApplicationExtensions
                     var routeFactory = httpContext.GetRouteValue("factoryName")?.ToString();
                     var targetFactory = factoryName ?? routeFactory ?? "default";
                     var repository = repositoryFactory.Create(targetFactory)!;
-                    var currentUserId = GetCurrentUserId(httpContext);
+                    var currentUserId = await GetCurrentUserIdAsync(httpContext, authenticationLayerFactory, authLayerFactory, targetFactory, cancellationToken);
 
                     return await GetConversationAsync(conversationKey, includeContents, repository, currentUserId, logger, cancellationToken);
                 })
@@ -186,7 +190,9 @@ public static class WebApplicationExtensions
                 // Endpoint: Delete conversation
                 group.MapDelete(conversationRoute, async (
                     string conversationKey,
-                    [FromServices] IFactory<IRepository<StoredConversation, string>> repositoryFactory,
+                    [FromServices] IFactory<IRepository<StoredConversation, StoredConversationKey>> repositoryFactory,
+                    [FromServices] IFactory<IAuthenticationLayer>? authenticationLayerFactory,
+                    [FromServices] IFactory<IAuthorizationLayer>? authLayerFactory,
                     [FromServices] ILogger<ISceneManager> logger,
                     HttpContext httpContext,
                     CancellationToken cancellationToken) =>
@@ -194,7 +200,7 @@ public static class WebApplicationExtensions
                     var routeFactory = httpContext.GetRouteValue("factoryName")?.ToString();
                     var targetFactory = factoryName ?? routeFactory ?? "default";
                     var repository = repositoryFactory.Create(targetFactory)!;
-                    var currentUserId = GetCurrentUserId(httpContext);
+                    var currentUserId = await GetCurrentUserIdAsync(httpContext, authenticationLayerFactory, authLayerFactory, targetFactory, cancellationToken);
 
                     return await DeleteConversationAsync(conversationKey, repository, currentUserId, logger, cancellationToken);
                 })
@@ -208,7 +214,9 @@ public static class WebApplicationExtensions
                 group.MapPatch(visibilityRoute, async (
                     string conversationKey,
                     [FromBody] UpdateConversationVisibilityRequest request,
-                    [FromServices] IFactory<IRepository<StoredConversation, string>> repositoryFactory,
+                    [FromServices] IFactory<IRepository<StoredConversation, StoredConversationKey>> repositoryFactory,
+                    [FromServices] IFactory<IAuthenticationLayer>? authenticationLayerFactory,
+                    [FromServices] IFactory<IAuthorizationLayer>? authLayerFactory,
                     [FromServices] ILogger<ISceneManager> logger,
                     HttpContext httpContext,
                     CancellationToken cancellationToken) =>
@@ -216,7 +224,7 @@ public static class WebApplicationExtensions
                     var routeFactory = httpContext.GetRouteValue("factoryName")?.ToString();
                     var targetFactory = factoryName ?? routeFactory ?? "default";
                     var repository = repositoryFactory.Create(targetFactory)!;
-                    var currentUserId = GetCurrentUserId(httpContext);
+                    var currentUserId = await GetCurrentUserIdAsync(httpContext, authenticationLayerFactory, authLayerFactory, targetFactory, cancellationToken);
 
                     return await UpdateConversationVisibilityAsync(conversationKey, request.IsPublic, repository, currentUserId, logger, cancellationToken);
                 })
@@ -534,14 +542,69 @@ public static class WebApplicationExtensions
     }
 
     /// <summary>
-    /// Extracts current user ID from HTTP context.
+    /// Extracts the current user ID with a four-step priority chain:
+    /// 1. <see cref="IAuthenticationLayer"/> — dedicated resolver, highest priority (registered via AddAuthenticationLayer)
+    /// 2. ASP.NET Core claims (JWT / cookie / any real auth middleware sets ClaimsPrincipal)
+    /// 3. httpContext.Items["userId"] — set by custom upstream middleware that doesn't use ClaimsPrincipal
+    /// 4. IAuthorizationLayer, if registered — calls AuthorizeAsync on a minimal context (legacy fallback)
     /// </summary>
-    private static string? GetCurrentUserId(HttpContext httpContext)
+    private static async Task<string?> GetCurrentUserIdAsync(
+        HttpContext httpContext,
+        IFactory<IAuthenticationLayer>? authenticationLayerFactory,
+        IFactory<IAuthorizationLayer>? authLayerFactory,
+        string factoryName,
+        CancellationToken cancellationToken)
     {
-        if (httpContext.User.Identity?.IsAuthenticated != true)
-            return null;
+        // 1. IAuthenticationLayer — dedicated, purpose-built userId resolver (highest priority)
+        var authenticationLayer = authenticationLayerFactory?.Create(factoryName);
+        if (authenticationLayer is not null)
+        {
+            var authResult = await authenticationLayer.ResolveUserIdAsync(httpContext, cancellationToken);
+            if (!string.IsNullOrEmpty(authResult?.UserId))
+                return authResult.UserId;
+        }
 
-        return httpContext.User.Identity.Name;
+        // 2. ASP.NET Core authenticated identity (JWT bearer, cookie, etc.)
+        if (httpContext.User.Identity?.IsAuthenticated == true)
+        {
+            var claimsUserId = httpContext.User.FindFirst("sub")?.Value
+                ?? httpContext.User.FindFirst("userId")?.Value
+                ?? httpContext.User.Identity.Name;
+            if (!string.IsNullOrEmpty(claimsUserId))
+                return claimsUserId;
+        }
+
+        // 3. Well-known httpContext.Items key — custom middleware can set this without
+        //    touching ClaimsPrincipal (e.g. API-key auth, multi-tenant headers)
+        if (httpContext.Items.TryGetValue("userId", out var itemsUserId)
+            && itemsUserId is string uid
+            && !string.IsNullOrEmpty(uid))
+            return uid;
+
+        // 4. IAuthorizationLayer — legacy fallback for custom auth schemes that implement
+        //    IAuthorizationLayer but don't populate ClaimsPrincipal, Items, or IAuthenticationLayer.
+        //    We build a minimal SceneContext from the request's service provider.
+        var authLayer = authLayerFactory?.Create(factoryName);
+        if (authLayer is not null)
+        {
+            var chatClientManagerFactory = httpContext.RequestServices
+                .GetService<IFactory<IChatClientManager>>();
+            var chatClientManager = chatClientManagerFactory?.Create(factoryName);
+            if (chatClientManager is not null)
+            {
+                var minimalContext = new SceneContext
+                {
+                    ServiceProvider = httpContext.RequestServices,
+                    Input = new MultiModalInput { Text = string.Empty },
+                    ChatClientManager = chatClientManager
+                };
+                var result = await authLayer.AuthorizeAsync(
+                    minimalContext, new SceneRequestSettings(), cancellationToken);
+                return result.UserId;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -549,7 +612,7 @@ public static class WebApplicationExtensions
     /// </summary>
     private static async Task<IResult> ListConversationsAsync(
         ConversationQueryParameters parameters,
-        IRepository<StoredConversation, string> repository,
+        IRepository<StoredConversation, StoredConversationKey> repository,
         string? currentUserId,
         PlayFrameworkApiSettings settings,
         ILogger logger,
@@ -569,25 +632,29 @@ public static class WebApplicationExtensions
             // Nested collection predicates (Messages.Any) are intentionally omitted because
             // cloud LINQ translators cannot translate sub-collection expressions.
             var userId = currentUserId;
-            QueryBuilder<StoredConversation, string> queryBuilder;
+            QueryBuilder<StoredConversation, StoredConversationKey> queryBuilder;
+
+            // Public = a conversation the owner explicitly shared via link.
+            // The list endpoint always operates on the authenticated user's own partition
+            // (PartitionKey = UserId), so every branch carries x.UserId == userId as an AND
+            // condition. This lets Table Storage push a PartitionKey filter server-side and
+            // avoids full-table scans. IsPublic is then evaluated in-memory within that partition.
+            if (userId == null)
+                return Results.Ok(new List<StoredConversation>());
 
             if (parameters.IncludePublic && parameters.IncludePrivate)
             {
-                if (userId != null)
-                    queryBuilder = repository.Where(x => x.IsPublic || x.UserId == userId);
-                else
-                    queryBuilder = repository.Where(x => x.IsPublic);
+                // All conversations owned by this user (both public and private)
+                queryBuilder = repository.Where(x => x.UserId == userId);
             }
             else if (parameters.IncludePublic && !parameters.IncludePrivate)
             {
-                // Only public conversations
-                queryBuilder = repository.Where(x => x.IsPublic);
+                // Only the user's conversations that they marked as public (shared links)
+                queryBuilder = repository.Where(x => x.IsPublic && x.UserId == userId);
             }
             else
             {
-                // Only private conversations of the current user - requires authentication
-                if (userId == null)
-                    return Results.Ok(new List<StoredConversation>());
+                // Only the user's private conversations
                 queryBuilder = repository.Where(x => !x.IsPublic && x.UserId == userId);
             }
 
@@ -628,14 +695,15 @@ public static class WebApplicationExtensions
     private static async Task<IResult> GetConversationAsync(
         string conversationKey,
         bool includeContents,
-        IRepository<StoredConversation, string> repository,
+        IRepository<StoredConversation, StoredConversationKey> repository,
         string? currentUserId,
         ILogger logger,
         CancellationToken cancellationToken)
     {
         try
         {
-            var conversation = await repository.GetAsync(conversationKey, cancellationToken);
+            var conversation = await repository.GetAsync(
+                new StoredConversationKey(currentUserId, conversationKey), cancellationToken);
 
             if (conversation == null)
             {
@@ -678,14 +746,15 @@ public static class WebApplicationExtensions
     /// </summary>
     private static async Task<IResult> DeleteConversationAsync(
         string conversationKey,
-        IRepository<StoredConversation, string> repository,
+        IRepository<StoredConversation, StoredConversationKey> repository,
         string? currentUserId,
         ILogger logger,
         CancellationToken cancellationToken)
     {
         try
         {
-            var conversation = await repository.GetAsync(conversationKey, cancellationToken);
+            var conversation = await repository.GetAsync(
+                new StoredConversationKey(currentUserId, conversationKey), cancellationToken);
 
             if (conversation == null)
             {
@@ -702,7 +771,8 @@ public static class WebApplicationExtensions
                 return Results.Forbid();
             }
 
-            var deleteResult = await repository.DeleteAsync(conversationKey, cancellationToken);
+            var deleteResult = await repository.DeleteAsync(
+                new StoredConversationKey(currentUserId, conversationKey), cancellationToken);
 
             if (!deleteResult.IsOk)
             {
@@ -736,14 +806,15 @@ public static class WebApplicationExtensions
     private static async Task<IResult> UpdateConversationVisibilityAsync(
         string conversationKey,
         bool isPublic,
-        IRepository<StoredConversation, string> repository,
+        IRepository<StoredConversation, StoredConversationKey> repository,
         string? currentUserId,
         ILogger logger,
         CancellationToken cancellationToken)
     {
         try
         {
-            var conversation = await repository.GetAsync(conversationKey, cancellationToken);
+            var conversation = await repository.GetAsync(
+                new StoredConversationKey(currentUserId, conversationKey), cancellationToken);
 
             if (conversation == null)
             {
@@ -763,7 +834,8 @@ public static class WebApplicationExtensions
             // Update visibility
             conversation.IsPublic = isPublic;
 
-            var updateResult = await repository.UpdateAsync(conversationKey, conversation, cancellationToken);
+            var updateResult = await repository.UpdateAsync(
+                new StoredConversationKey(currentUserId, conversationKey), conversation, cancellationToken);
 
             if (!updateResult.IsOk)
             {

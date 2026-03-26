@@ -91,19 +91,34 @@ public sealed class MemoryBuilder
     }
 
     /// <summary>
-    /// Configures the <see cref="IRepository{StoredMemory, string}"/> backend used to persist memory.
-    /// The PlayFramework factory name is automatically injected as the first argument so backends
-    /// resolve correctly, e.g.:
+    /// Configures the <see cref="IRepository{StoredMemory, string}"/> backend used to persist memory
+    /// inline using the supplied action. The PlayFramework factory name is automatically injected so
+    /// backends resolve correctly, e.g.:
     /// <code>
-    /// .WithMemory(m => m.WithRepositoryStorage((name, repo) => repo.WithInMemory(name: name)))
+    /// .WithMemory(m => m.UseRepository((name, repo) => repo.WithInMemory(name: name)))
     /// </code>
     /// When this method is called the default <see cref="RepositoryMemoryStorage"/> implementation
     /// is used (which requires the repository to be configured here or registered separately).
     /// </summary>
-    public MemoryBuilder WithRepositoryStorage(
+    public MemoryBuilder UseRepository(
         Action<string?, IRepositoryBuilder<StoredMemory, string>> configure)
     {
         RepositoryStorageConfigure = configure;
+        return this;
+    }
+
+    /// <summary>
+    /// Uses the <see cref="IRepository{StoredMemory, string}"/> that is already registered
+    /// externally (e.g. via <c>services.AddRepository&lt;StoredMemory, string&gt;(...)</c>
+    /// in Program.cs) with the same factory name as the PlayFramework instance.
+    /// Mirrors the behaviour of the parameterless <c>PlayFrameworkBuilder.UseRepository()</c>
+    /// for conversations: no inline configuration — the repository is expected to exist.
+    /// </summary>
+    public MemoryBuilder UseRepository()
+    {
+        // RepositoryStorageConfigure stays null → PlayFrameworkBuilder_Memory skips inline
+        // registration → ServiceCollectionExtensions wires RepositoryMemoryStorage against
+        // the externally-registered IRepository<StoredMemory, string>.
         return this;
     }
 }
