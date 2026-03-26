@@ -18,7 +18,7 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Core/Rystem.DependencyInjection</RepositoryUrl>
         <PackageId>Rystem.DependencyInjection</PackageId>
-        <Version>10.0.6</Version>
+        <Version>10.0.7</Version>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     </PropertyGroup>
