@@ -215,11 +215,6 @@ public enum ExecutionPhase
     Chaining,
 
     /// <summary>
-    /// Generating final response.
-    /// </summary>
-    GeneratingFinalResponse,
-
-    /// <summary>
     /// Execution completed successfully.
     /// </summary>
     Completed,
