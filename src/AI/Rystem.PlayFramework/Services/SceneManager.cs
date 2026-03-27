@@ -9,6 +9,7 @@ using Rystem.PlayFramework.Services.ExecutionModes;
 using Rystem.PlayFramework.Services.Helpers;
 using Rystem.PlayFramework.Telemetry;
 using RepositoryFramework;
+using Microsoft.AspNetCore.Http;
 
 namespace Rystem.PlayFramework;
 
@@ -30,11 +31,13 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private readonly IFactory<IMemory>? _memoryFactory;
     private readonly IFactory<IContext>? _contextFactory;
     private readonly IFactory<IAuthorizationLayer>? _authorizationLayerFactory;
+    private readonly IFactory<IAuthenticationLayer>? _authenticationLayerFactory;
     private readonly IFactory<IJsonService>? _jsonServiceFactory;
     private readonly IFactory<IMemoryStorage>? _memoryStorageFactory;
     private readonly IFactory<IExecutionModeHandler> _executionModeHandlerFactory;
     private readonly IPlayFrameworkCache _playFrameworkCache;
     private readonly IToolExecutionManager _toolExecutionManager;
+    private readonly IHttpContextAccessor? _httpContextAccessor;
     private readonly IFactory<IRepository<StoredConversation, StoredConversationKey>>? _repositoryFactory;
 
     // Resolved dependencies (set via SetFactoryName)
@@ -51,6 +54,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     private IMemory? _memory;
     private IMemoryStorage? _memoryStorage;
     private IContext? _context;
+    private IAuthenticationLayer? _authenticationLayer;
     private IAuthorizationLayer? _authorizationLayer;
     private IJsonService? _jsonService;
     private IRepository<StoredConversation, StoredConversationKey>? _repository;
@@ -68,11 +72,13 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         IFactory<IExecutionModeHandler> executionModeHandlerFactory,
         IPlayFrameworkCache playFrameworkCache,
         IToolExecutionManager toolExecutionManager,
+        IHttpContextAccessor? httpContextAccessor = null,
         IFactory<IRateLimiter>? rateLimiterFactory = null,
         IFactory<IMemory>? memoryFactory = null,
         IFactory<IMemoryStorage>? memoryStorageFactory = null,
         IFactory<IContext>? contextFactory = null,
         IFactory<IAuthorizationLayer>? authorizationLayerFactory = null,
+        IFactory<IAuthenticationLayer>? authenticationLayerFactory = null,
         IFactory<IRepository<StoredConversation, StoredConversationKey>>? repositoryFactory = null,
         IFactory<IJsonService>? jsonServiceFactory = null)
     {
@@ -85,12 +91,14 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _plannerFactory = plannerFactory;
         _contextFactory = contextFactory;
         _authorizationLayerFactory = authorizationLayerFactory;
+        _authenticationLayerFactory = authenticationLayerFactory;
         _jsonServiceFactory = jsonServiceFactory;
         _summarizerFactory = summarizerFactory;
         _directorFactory = directorFactory;
         _executionModeHandlerFactory = executionModeHandlerFactory;
         _playFrameworkCache = playFrameworkCache;
         _toolExecutionManager = toolExecutionManager;
+        _httpContextAccessor = httpContextAccessor;
         _rateLimiterFactory = rateLimiterFactory;
         _memoryFactory = memoryFactory;
         _memoryStorageFactory = memoryStorageFactory;
@@ -148,6 +156,7 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
         _context = _contextFactory?.Create(name);
         _jsonService = _jsonServiceFactory?.Create(name) ?? new DefaultJsonService();
         _authorizationLayer = _authorizationLayerFactory?.Create(name);
+        _authenticationLayer = _authenticationLayerFactory?.Create(name);
         _repository = _repositoryFactory?.Create(name);
 
         if (_repository != null)
@@ -399,10 +408,16 @@ internal sealed class SceneManager : ISceneManager, IFactoryName
     {
         //Authorization check before doing any work (including cache load)
         string? userId = null;
+        if (_authenticationLayer != null && _httpContextAccessor?.HttpContext != null)
+        {
+            var authResult = await _authenticationLayer.ExecuteAsync(_httpContextAccessor.HttpContext, cancellationToken);
+            userId = authResult?.UserId; // Store userId for later use
+        }
         if (_authorizationLayer != null)
         {
             var authorizationResult = await _authorizationLayer.AuthorizeAsync(context, settings, cancellationToken);
-            userId = authorizationResult.UserId; // Store userId for later use
+            if (string.IsNullOrWhiteSpace(userId))
+                userId = authorizationResult.UserId; // Store userId for later use
 
             if (!authorizationResult.IsAuthorized)
             {

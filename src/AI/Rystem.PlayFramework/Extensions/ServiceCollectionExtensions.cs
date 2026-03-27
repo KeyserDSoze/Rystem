@@ -45,7 +45,7 @@ public static class ServiceCollectionExtensions
     {
         var builder = new PlayFrameworkBuilder(services, name);
         configure(builder);
-
+        services.AddHttpContextAccessor();  // Needed for accessing HttpContext in various components
         // Register helper services (singleton, shared across all instances)
         services.TryAddSingleton<IResponseHelper, ResponseHelper>();
         services.TryAddSingleton<IStreamingHelper, StreamingHelper>();

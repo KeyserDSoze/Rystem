@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 
 namespace Rystem.PlayFramework.Api.Infrastructure;
 
@@ -12,6 +12,6 @@ public sealed class FakeAuthenticationLayer : IAuthenticationLayer
 {
     private const string FakeUserId = "alessandro.rapiti44@gmail.com";
 
-    public Task<AuthenticationResult?> ResolveUserIdAsync(HttpContext httpContext, CancellationToken cancellationToken)
+    public Task<AuthenticationResult?> ExecuteAsync(HttpContext httpContext, CancellationToken cancellationToken)
         => Task.FromResult<AuthenticationResult?>(new AuthenticationResult { UserId = FakeUserId });
 }

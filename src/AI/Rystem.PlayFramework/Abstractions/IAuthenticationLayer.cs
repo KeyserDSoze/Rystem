@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 
 namespace Rystem.PlayFramework;
 
@@ -15,5 +15,5 @@ public interface IAuthenticationLayer
     /// Return a result with a null <see cref="AuthenticationResult.UserId"/> if this layer
     /// cannot resolve one (the next fallback will be tried).
     /// </summary>
-    Task<AuthenticationResult?> ResolveUserIdAsync(HttpContext httpContext, CancellationToken cancellationToken);
+    Task<AuthenticationResult?> ExecuteAsync(HttpContext httpContext, CancellationToken cancellationToken);
 }

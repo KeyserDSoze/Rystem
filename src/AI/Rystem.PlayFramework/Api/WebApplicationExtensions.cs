@@ -559,7 +559,7 @@ public static class WebApplicationExtensions
         var authenticationLayer = authenticationLayerFactory?.Create(factoryName);
         if (authenticationLayer is not null)
         {
-            var authResult = await authenticationLayer.ResolveUserIdAsync(httpContext, cancellationToken);
+            var authResult = await authenticationLayer.ExecuteAsync(httpContext, cancellationToken);
             if (!string.IsNullOrEmpty(authResult?.UserId))
                 return authResult.UserId;
         }
