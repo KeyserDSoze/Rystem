@@ -32,7 +32,7 @@
     <PackageReference Include="System.Text.Json" Version="10.0.5" />
     <!-- OpenTelemetry packages -->
     <PackageReference Include="OpenTelemetry" Version="1.15.0" />
-    <PackageReference Include="OpenTelemetry.Api" Version="1.15.0" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.15.3" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.0" />
   </ItemGroup>
 
