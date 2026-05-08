@@ -19,6 +19,19 @@ public sealed class SceneBuilder
     }
 
     /// <summary>
+    /// Adds HTTP endpoint tools backed by a typed <see cref="System.Net.Http.HttpClient"/>.
+    /// The client must have been registered with <c>PlayFrameworkBuilder.WithHttpClient&lt;TClient&gt;()</c>.
+    /// </summary>
+    /// <typeparam name="TClient">Marker type for the named HttpClient.</typeparam>
+    /// <param name="configure">Action to configure the endpoint actions.</param>
+    public SceneBuilder WithEndpoint<TClient>(Action<EndpointToolBuilder<TClient>> configure) where TClient : class
+    {
+        var builder = new EndpointToolBuilder<TClient>(_config);
+        configure(builder);
+        return this;
+    }
+
+    /// <summary>
     /// Adds service methods as tools.
     /// </summary>
     public SceneBuilder WithService<TService>(Action<ServiceToolBuilder<TService>> configure) where TService : class
@@ -109,6 +122,7 @@ internal sealed class SceneConfiguration
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public List<ServiceToolConfiguration> ServiceTools { get; set; } = [];
+    public List<EndpointToolConfiguration> EndpointTools { get; set; } = [];
     public List<ActorConfiguration> Actors { get; set; } = [];
     public List<McpServerReference> McpServerReferences { get; set; } = [];
 

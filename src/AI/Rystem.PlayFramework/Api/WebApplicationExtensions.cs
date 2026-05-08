@@ -402,6 +402,7 @@ public static class WebApplicationExtensions
         var services = new Dictionary<string, PlayFrameworkToolSourceInfo>(StringComparer.OrdinalIgnoreCase);
         var clients = new Dictionary<string, PlayFrameworkToolSourceInfo>(StringComparer.OrdinalIgnoreCase);
         var mcpServers = new Dictionary<string, PlayFrameworkToolSourceInfo>(StringComparer.OrdinalIgnoreCase);
+        var endpoints = new Dictionary<string, PlayFrameworkToolSourceInfo>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var scene in sceneFactory.Scenes)
         {
@@ -415,7 +416,7 @@ public static class WebApplicationExtensions
             {
                 var toolInfo = BuildSceneToolInfo(scene.Name, tool);
                 sceneInfo.Tools.Add(toolInfo);
-                AddToolToResponse(response, services, clients, toolInfo);
+                AddToolToResponse(response, services, clients, endpoints, toolInfo);
             }
 
             foreach (var mcpReference in scene.McpServerReferences)
@@ -458,6 +459,7 @@ public static class WebApplicationExtensions
         response.Services = [.. services.Values.OrderBy(x => x.Name)];
         response.Clients = [.. clients.Values.OrderBy(x => x.Name)];
         response.McpServers = [.. mcpServers.Values.OrderBy(x => x.Name)];
+        response.Endpoints = [.. endpoints.Values.OrderBy(x => x.Name)];
         response.Scenes = [.. response.Scenes.OrderBy(x => x.Name)];
         response.Others = [.. response.Others.OrderBy(x => x.SceneName).ThenBy(x => x.ToolName)];
 
@@ -494,6 +496,7 @@ public static class WebApplicationExtensions
         PlayFrameworkDiscoveryResponse response,
         Dictionary<string, PlayFrameworkToolSourceInfo> services,
         Dictionary<string, PlayFrameworkToolSourceInfo> clients,
+        Dictionary<string, PlayFrameworkToolSourceInfo> endpoints,
         PlayFrameworkToolInfo tool)
     {
         switch (tool.SourceType)
@@ -503,6 +506,9 @@ public static class WebApplicationExtensions
                 break;
             case PlayFrameworkToolSourceType.Client:
                 AddToolIfMissing(GetOrCreateSource(clients, tool.SourceName ?? "client", PlayFrameworkToolSourceType.Client).Tools, tool);
+                break;
+            case PlayFrameworkToolSourceType.Endpoint:
+                AddToolIfMissing(GetOrCreateSource(endpoints, tool.SourceName ?? "unknown", PlayFrameworkToolSourceType.Endpoint).Tools, tool);
                 break;
             default:
                 AddToolIfMissing(response.Others, tool);

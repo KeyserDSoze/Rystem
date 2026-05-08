@@ -54,6 +54,11 @@ public enum PlayFrameworkToolSourceType
     Mcp,
 
     /// <summary>
+    /// Tool backed by an HTTP endpoint via typed HttpClient.
+    /// </summary>
+    Endpoint,
+
+    /// <summary>
     /// Any other tool category.
     /// </summary>
     Other
