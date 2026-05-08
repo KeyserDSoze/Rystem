@@ -153,11 +153,9 @@ public sealed class EndpointHttpToolTests
 
         services.AddPlayFramework(builder =>
         {
-            builder.WithHttpClient<IOrderServiceClient>(http =>
-            {
-                http.ConfigurePrimaryHttpMessageHandler(() => handler);
-                http.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://order-api/"));
-            });
+            builder.WithHttpClient<IOrderServiceClient>(
+                c => c.BaseAddress = new Uri("http://order-api/"),
+                b => b.ConfigurePrimaryHttpMessageHandler(() => handler));
 
             builder.AddScene(sceneName, $"{sceneName} scene", scene =>
             {
@@ -202,8 +200,7 @@ public sealed class EndpointHttpToolTests
 
         services.AddPlayFramework(builder =>
         {
-            builder.WithHttpClient<IOrderServiceClient>(http =>
-                http.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://api/")));
+            builder.WithHttpClient<IOrderServiceClient>(c => c.BaseAddress = new Uri("http://api/"));
 
             builder.AddScene("Orders", "Orders scene", scene =>
             {
@@ -226,6 +223,61 @@ public sealed class EndpointHttpToolTests
     }
 
     [Fact]
+    public async Task Registration_WithClientAndBuilderConfig_HandlerIsInvoked()
+    {
+        // Verifies the two-parameter overload: Action<HttpClient> + Action<IHttpClientBuilder>
+        var handler = new CapturingHttpHandler(
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    """{"orderId":"x","status":"Ok"}""",
+                    System.Text.Encoding.UTF8,
+                    "application/json")
+            });
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        services.AddSingleton<IChatClient>(new EndpointToolCallingChatClient(
+            "GetOrder",
+            new Dictionary<string, object?> { ["orderId"] = "x" }));
+
+        services.AddPlayFramework(builder =>
+        {
+            builder.WithHttpClient<IOrderServiceClient>(
+                c =>
+                {
+                    c.BaseAddress = new Uri("http://order-api/");
+                    c.Timeout = TimeSpan.FromSeconds(10);
+                },
+                b => b.ConfigurePrimaryHttpMessageHandler(() => handler));
+
+            builder.AddScene("Orders", "Orders scene", scene =>
+            {
+                scene.WithEndpoint<IOrderServiceClient>(ep =>
+                {
+                    ep.WithAction<OrderResponse>("GetOrder", HttpMethod.Get, "/orders/{orderId}", "Get order");
+                });
+            });
+        });
+
+        var sp = services.BuildServiceProvider();
+        var sceneManager = sp.GetRequiredService<IFactory<ISceneManager>>().Create(null)!;
+
+        var settings = new SceneRequestSettings
+        {
+            ExecutionMode = SceneExecutionMode.Scene,
+            SceneName = "Orders"
+        };
+
+        await foreach (var _ in sceneManager.ExecuteAsync("Get order x", settings: settings)) { }
+
+        // The custom handler (via IHttpClientBuilder) was invoked
+        Assert.NotNull(handler.CapturedRequest);
+        Assert.Contains("x", handler.CapturedRequest!.RequestUri!.ToString());
+    }
+
+    [Fact]
     public void Registration_MultipleActions_AllToolsRegistered()
     {
         var services = new ServiceCollection();
@@ -234,8 +286,7 @@ public sealed class EndpointHttpToolTests
 
         services.AddPlayFramework(builder =>
         {
-            builder.WithHttpClient<IOrderServiceClient>(http =>
-                http.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://api/")));
+            builder.WithHttpClient<IOrderServiceClient>(c => c.BaseAddress = new Uri("http://api/"));
 
             builder.AddScene("Orders", "Orders scene", scene =>
             {
@@ -264,8 +315,7 @@ public sealed class EndpointHttpToolTests
 
         services.AddPlayFramework(builder =>
         {
-            builder.WithHttpClient<IOrderServiceClient>(http =>
-                http.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://api/")));
+            builder.WithHttpClient<IOrderServiceClient>(c => c.BaseAddress = new Uri("http://api/"));
 
             builder.AddScene("Orders", "Orders scene", scene =>
             {
@@ -294,8 +344,7 @@ public sealed class EndpointHttpToolTests
 
         services.AddPlayFramework(builder =>
         {
-            builder.WithHttpClient<IOrderServiceClient>(http =>
-                http.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://api/")));
+            builder.WithHttpClient<IOrderServiceClient>(c => c.BaseAddress = new Uri("http://api/"));
 
             builder.AddScene("Orders", "Orders scene", scene =>
             {
@@ -332,8 +381,7 @@ public sealed class EndpointHttpToolTests
 
         services.AddPlayFramework(builder =>
         {
-            builder.WithHttpClient<IOrderServiceClient>(http =>
-                http.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://api/")));
+            builder.WithHttpClient<IOrderServiceClient>(c => c.BaseAddress = new Uri("http://api/"));
 
             builder.AddScene("Orders", "Orders scene", scene =>
             {
@@ -378,8 +426,7 @@ public sealed class EndpointHttpToolTests
 
         services.AddPlayFramework(builder =>
         {
-            builder.WithHttpClient<IOrderServiceClient>(http =>
-                http.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://api/")));
+            builder.WithHttpClient<IOrderServiceClient>(c => c.BaseAddress = new Uri("http://api/"));
 
             builder.AddScene("Orders", "Orders scene", scene =>
             {
@@ -428,8 +475,7 @@ public sealed class EndpointHttpToolTests
 
         services.AddPlayFramework(builder =>
         {
-            builder.WithHttpClient<IOrderServiceClient>(http =>
-                http.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://api/")));
+            builder.WithHttpClient<IOrderServiceClient>(c => c.BaseAddress = new Uri("http://api/"));
 
             builder.AddScene("Orders", "Orders scene", scene =>
             {
@@ -476,11 +522,9 @@ public sealed class EndpointHttpToolTests
 
         services.AddPlayFramework(builder =>
         {
-            builder.WithHttpClient<IOrderServiceClient>(http =>
-            {
-                http.ConfigurePrimaryHttpMessageHandler(() => handler);
-                http.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://order-api/"));
-            });
+            builder.WithHttpClient<IOrderServiceClient>(
+                c => c.BaseAddress = new Uri("http://order-api/"),
+                b => b.ConfigurePrimaryHttpMessageHandler(() => handler));
 
             builder.AddScene("Orders", "Orders scene", scene =>
             {
@@ -534,11 +578,9 @@ public sealed class EndpointHttpToolTests
 
         services.AddPlayFramework(builder =>
         {
-            builder.WithHttpClient<IOrderServiceClient>(http =>
-            {
-                http.ConfigurePrimaryHttpMessageHandler(() => handler);
-                http.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://order-api/"));
-            });
+            builder.WithHttpClient<IOrderServiceClient>(
+                c => c.BaseAddress = new Uri("http://order-api/"),
+                b => b.ConfigurePrimaryHttpMessageHandler(() => handler));
 
             builder.AddScene("Orders", "Orders scene", scene =>
             {
@@ -591,11 +633,9 @@ public sealed class EndpointHttpToolTests
 
         services.AddPlayFramework(builder =>
         {
-            builder.WithHttpClient<IOrderServiceClient>(http =>
-            {
-                http.ConfigurePrimaryHttpMessageHandler(() => handler);
-                http.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://order-api/"));
-            });
+            builder.WithHttpClient<IOrderServiceClient>(
+                c => c.BaseAddress = new Uri("http://order-api/"),
+                b => b.ConfigurePrimaryHttpMessageHandler(() => handler));
 
             builder.AddScene("Orders", "Orders scene", scene =>
             {
@@ -650,11 +690,9 @@ public sealed class EndpointHttpToolTests
 
         services.AddPlayFramework(builder =>
         {
-            builder.WithHttpClient<IOrderServiceClient>(http =>
-            {
-                http.ConfigurePrimaryHttpMessageHandler(() => handler);
-                http.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://order-api/"));
-            });
+            builder.WithHttpClient<IOrderServiceClient>(
+                c => c.BaseAddress = new Uri("http://order-api/"),
+                b => b.ConfigurePrimaryHttpMessageHandler(() => handler));
 
             builder.AddScene("Orders", "Orders scene", scene =>
             {
@@ -696,8 +734,7 @@ public sealed class EndpointHttpToolTests
 
         services.AddPlayFramework(builder =>
         {
-            builder.WithHttpClient<IOrderServiceClient>(http =>
-                http.ConfigureHttpClient(c => c.BaseAddress = new Uri("http://api/")));
+            builder.WithHttpClient<IOrderServiceClient>(c => c.BaseAddress = new Uri("http://api/"));
 
             builder.AddScene("Orders", "Orders scene", scene =>
             {

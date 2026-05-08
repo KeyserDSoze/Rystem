@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using RepositoryFramework.InMemory;
 using Rystem.PlayFramework.Test.Infrastructure;
 
 namespace Rystem.PlayFramework.Test.Tests;
@@ -27,6 +28,7 @@ public sealed class MemoryTests
             builder.AddScene("TestScene", "Test scene", _ => { });
 
             builder.WithMemory(memory => memory
+                .UseRepository((name, repo) => repo.WithInMemory(name: name))
                 .WithMaxSummaryLength(1000));
         });
 
@@ -80,6 +82,7 @@ public sealed class MemoryTests
             builder.AddScene("TestScene", "Test scene", _ => { });
 
             builder.WithMemory(memory => memory
+                .UseRepository((name, repo) => repo.WithInMemory(name: name))
                 .WithDefaultMemoryStorage("userId")
                 .WithMaxSummaryLength(1000));
         });
@@ -131,6 +134,7 @@ public sealed class MemoryTests
             builder.AddScene("TestScene", "Test scene", _ => { });
 
             builder.WithMemory(memory => memory
+                .UseRepository((name, repo) => repo.WithInMemory(name: name))
                 .WithDefaultMemoryStorage("userId", "tenantId")
                 .WithMaxSummaryLength(1000));
         });

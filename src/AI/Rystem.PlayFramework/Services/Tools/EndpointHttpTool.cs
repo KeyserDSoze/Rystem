@@ -94,22 +94,32 @@ internal sealed class EndpointHttpTool : ISceneTool, ISceneToolMetadata
         // 7. Read the response body
         var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
-        // 8. Try to deserialise into TResponse; fall back to raw string on failure
-        object? deserialisedBody;
-        try
+        // 8. Parse the response body as a JsonElement so that it can always be
+        //    re-serialised safely by ToolExecutionManager, regardless of the
+        //    configured ResponseType (e.g. OneOf<T0,T1>, AnyOf, custom union
+        //    types). Deserialising into the C# type and then storing it in an
+        //    object? field would force the downstream serialiser to handle the
+        //    custom type — which fails without the right converters in scope.
+        //    JsonElement is natively serialisable and preserves the JSON shape
+        //    exactly as the AI needs to see it.
+        object? parsedBody = null;
+        if (!string.IsNullOrWhiteSpace(responseBody))
         {
-            deserialisedBody = _jsonService.Deserialize(responseBody, _config.ResponseType);
-        }
-        catch
-        {
-            deserialisedBody = responseBody;
+            try
+            {
+                parsedBody = JsonDocument.Parse(responseBody).RootElement.Clone();
+            }
+            catch
+            {
+                parsedBody = responseBody;
+            }
         }
 
         // 9. Return status + body so the AI can react to 4xx/5xx errors
         return new EndpointHttpResponse
         {
             StatusCode = (int)response.StatusCode,
-            Body = deserialisedBody
+            Body = parsedBody
         };
     }
 
