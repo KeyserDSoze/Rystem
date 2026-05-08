@@ -22,7 +22,7 @@ internal sealed class EndpointHttpTool : ISceneTool, ISceneToolMetadata
     private readonly List<string> _routeParameters;
 
     // Regex to extract {param} placeholders from route templates
-    private static readonly Regex RouteParamRegex = new(@"\{(\w+)\}", RegexOptions.Compiled);
+    private static readonly Regex RouteParamRegex = new(@"\{(\w+)\}", RegexOptions.Compiled, matchTimeout: TimeSpan.FromSeconds(1));
 
     public EndpointHttpTool(EndpointToolConfiguration config, IJsonService? jsonService = null)
     {
