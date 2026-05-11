@@ -70,6 +70,18 @@ public static class ServiceCollectionExtensions
         services.AddEngineFactory<IRateLimiter>();  // Add rate limiter factory (optional, but DI needs it registered)
         services.AddEngineFactory<IVoiceAdapter>();  // Add voice adapter factory (optional, registered by adapter packages)
 
+        // Business hook engine factories (always registered; no-op when no hooks are configured)
+        services.AddEngineFactory<IPlayFrameworkBeforeExecution>();
+        services.AddEngineFactory<IPlayFrameworkAfterEachScene>();
+        services.AddEngineFactory<IPlayFrameworkOnTerminalScene>();
+        services.AddEngineFactory<IPlayFrameworkBusinessManager>();
+        services.AddEngineFactory<PlayFrameworkHookRegistry>();
+
+        // Build business hook registry + register IPlayFrameworkBusinessManager factory.
+        // This is a no-op if the user never called config.Business.Add*() — the registry
+        // will simply be empty and the manager will pass through to ISceneManager directly.
+        builder.BuildBusinessRegistry();
+
         // Add repository factory (optional, registered only if user calls UseRepository())
         if (builder.HasRepository)
         {

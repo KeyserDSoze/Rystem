@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Rystem.PlayFramework.Builder;
 using Rystem.PlayFramework.Helpers;
 using Rystem.PlayFramework.Telemetry;
 
@@ -25,6 +26,19 @@ public sealed class PlayFrameworkBuilder
     internal Type? CustomMemoryType { get; set; }
     internal Type? CustomMemoryStorageType { get; set; }
     internal bool HasRepository { get; set; }
+
+    /// <summary>
+    /// Fluent builder for registering business hooks (before-execution, after-each-scene, on-terminal-scene).
+    /// Lazily initialized on first access.
+    /// </summary>
+    public PlayFrameworkBusinessBuilder Business => _business ??= new PlayFrameworkBusinessBuilder(Services, Name);
+    private PlayFrameworkBusinessBuilder? _business;
+
+    /// <summary>
+    /// Called by <see cref="ServiceCollectionExtensions"/> after the user's configure lambda.
+    /// Always builds the hook registry (even when no hooks were registered).
+    /// </summary>
+    internal void BuildBusinessRegistry() => Business.BuildRegistry();
 
     /// <summary>
     /// Factory name of the <see cref="IVoiceAdapter"/> to use for the voice pipeline.

@@ -19,6 +19,7 @@ namespace Rystem.PlayFramework.Api;
 /// </summary>
 public static class WebApplicationExtensions
 {
+    private const string UnknownValue = "unknown";
     /// <summary>
     /// Maps PlayFramework endpoints.
     /// - If factoryName is null: Creates generic endpoints accepting factoryName in route (/{factoryName}, /{factoryName}/streaming)
@@ -73,6 +74,7 @@ public static class WebApplicationExtensions
         group.MapPost(stepRoute, async (
             [FromBody] PlayFrameworkRequest request,
             [FromServices] IFactory<ISceneManager> sceneManagerFactory,
+            [FromServices] IFactory<IPlayFrameworkBusinessManager> businessManagerFactory,
             [FromServices] ILogger<ISceneManager> logger,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
@@ -80,7 +82,7 @@ public static class WebApplicationExtensions
             // Get factory from closure or route parameter
             var routeFactory = httpContext.GetRouteValue("factoryName")?.ToString();
             var targetFactory = factoryName ?? routeFactory ?? "default";
-            await ExecutePlayFrameworkAsync(targetFactory, request, sceneManagerFactory, logger, httpContext, settings, cancellationToken);
+            await ExecutePlayFrameworkAsync(targetFactory, request, sceneManagerFactory, businessManagerFactory, logger, httpContext, settings, cancellationToken);
         })
         .WithName(stepEndpointName)
         .WithSummary(stepSummary)
@@ -90,6 +92,7 @@ public static class WebApplicationExtensions
         group.MapPost(streamingRoute, async (
             [FromBody] PlayFrameworkRequest request,
             [FromServices] IFactory<ISceneManager> sceneManagerFactory,
+            [FromServices] IFactory<IPlayFrameworkBusinessManager> businessManagerFactory,
             [FromServices] ILogger<ISceneManager> logger,
             HttpContext httpContext,
             CancellationToken cancellationToken) =>
@@ -102,7 +105,7 @@ public static class WebApplicationExtensions
             request.Settings ??= new SceneRequestSettings();
             request.Settings.EnableStreaming = true;
 
-            await ExecutePlayFrameworkAsync(targetFactory, request, sceneManagerFactory, logger, httpContext, settings, cancellationToken);
+            await ExecutePlayFrameworkAsync(targetFactory, request, sceneManagerFactory, businessManagerFactory, logger, httpContext, settings, cancellationToken);
         })
         .WithName(streamingEndpointName)
         .WithSummary(streamingSummary)
@@ -274,12 +277,17 @@ public static class WebApplicationExtensions
 
     /// <summary>
     /// Core execution logic shared by all endpoints.
-    /// Handles SSE streaming, error handling, and response serialization.
+    /// Delegates to <see cref="IPlayFrameworkBusinessManager"/> which orchestrates
+    /// before-execution hooks, scene streaming, after-each-scene hooks, and on-terminal hooks.
+    /// SSE response headers are written lazily (only once the first real scene event arrives),
+    /// allowing a <see cref="PlayFrameworkDenyResult"/> to be returned as a plain HTTP error
+    /// before the stream is opened.
     /// </summary>
     private static async Task ExecutePlayFrameworkAsync(
         string factoryName,
         PlayFrameworkRequest request,
         IFactory<ISceneManager> sceneManagerFactory,
+        IFactory<IPlayFrameworkBusinessManager> businessManagerFactory,
         ILogger<ISceneManager> logger,
         HttpContext httpContext,
         PlayFrameworkApiSettings settings,
@@ -287,57 +295,134 @@ public static class WebApplicationExtensions
     {
         var lastKnownTotalCost = 0m;
         string? lastKnownConversationKey = null;
+
+        // Build optional server-side timeout
+        CancellationTokenSource? timeoutCts = null;
+        CancellationTokenSource? linkedCts = null;
+        CancellationToken pipelineCt = cancellationToken;
+
         try
         {
-            // Get SceneManager for factory
-            var sceneManager = sceneManagerFactory.Create(factoryName);
+            if (settings.TimeoutInSeconds > 0)
+            {
+                timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(settings.TimeoutInSeconds));
+                linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+                pipelineCt = linkedCts.Token;
+            }
 
             // Extract metadata from HTTP context
             var metadata = BuildMetadata(request.Metadata, httpContext, settings);
 
-            // Convert request to MultiModalInput and merge settings
-            var input = request.ToMultiModalInput();
-            var mergedSettings = request.GetMergedSettings();
+            // Build execution context
+            var mergedSettings = request.GetMergedSettings() ?? new SceneRequestSettings();
+            lastKnownConversationKey = mergedSettings.ConversationKey;
 
-            lastKnownConversationKey = mergedSettings?.ConversationKey;
-
-            // Set response headers for SSE
-            httpContext.Response.Headers.Append("Content-Type", "text/event-stream");
-            httpContext.Response.Headers.Append("Cache-Control", "no-cache");
-            httpContext.Response.Headers.Append("Connection", "keep-alive");
-
-            // Execute PlayFramework with streaming
-            await foreach (var response in sceneManager.ExecuteAsync(input, metadata, mergedSettings, cancellationToken))
+            var context = new PlayFrameworkExecutionContext
             {
-                if (response.TotalCost > 0)
-                    lastKnownTotalCost = response.TotalCost;
-                if (response.ConversationKey != null)
-                    lastKnownConversationKey = response.ConversationKey;
+                Message = request.Message ?? string.Empty,
+                Input = request.ToMultiModalInput(),
+                ConversationKey = mergedSettings.ConversationKey,
+                Settings = mergedSettings,
+                Metadata = metadata,
+                User = httpContext.User
+            };
 
-                // Serialize response as SSE event with camelCase for properties and enums
-                var json = JsonSerializer.Serialize(response, JsonHelper.JsonSerializerOptions);
+            // Resolve the business manager for this factory
+            var manager = businessManagerFactory.Create(factoryName)
+                ?? throw new InvalidOperationException($"IPlayFrameworkBusinessManager not found for factory '{factoryName}'");
 
+            var sseHeadersWritten = false;
+
+            await foreach (var (scene, deny) in manager.ExecuteAsync(factoryName, context, pipelineCt))
+            {
+                // Deny: respond before opening SSE (headers not yet sent)
+                if (deny is not null)
+                {
+                    httpContext.Response.StatusCode = deny.StatusCode;
+                    var denyBody = JsonSerializer.Serialize(new
+                    {
+                        error = deny.ErrorDetail ?? "Request denied"
+                    }, JsonHelper.JsonSerializerOptions);
+                    httpContext.Response.ContentType = "application/json";
+                    await httpContext.Response.WriteAsync(denyBody, cancellationToken);
+                    return;
+                }
+
+                if (scene is null)
+                    continue;
+
+                // Lazy SSE headers — written once, on first scene item
+                if (!sseHeadersWritten)
+                {
+                    httpContext.Response.Headers.Append("Content-Type", "text/event-stream");
+                    httpContext.Response.Headers.Append("Cache-Control", "no-cache");
+                    httpContext.Response.Headers.Append("Connection", "keep-alive");
+                    sseHeadersWritten = true;
+                }
+
+                if (scene.TotalCost > 0)
+                    lastKnownTotalCost = scene.TotalCost;
+                if (scene.ConversationKey != null)
+                    lastKnownConversationKey = scene.ConversationKey;
+
+                var json = JsonSerializer.Serialize(scene, JsonHelper.JsonSerializerOptions);
                 await httpContext.Response.WriteAsync($"data: {json}\n\n", cancellationToken);
                 await httpContext.Response.Body.FlushAsync(cancellationToken);
             }
+        }
+        catch (OperationCanceledException) when (timeoutCts?.IsCancellationRequested == true)
+        {
+            logger.LogWarning("PlayFramework execution timed out for factory '{FactoryName}'", factoryName);
 
-            // No need to send explicit completion marker - SceneManager always sends Completed as final event
+            if (!httpContext.Response.HasStarted)
+            {
+                httpContext.Response.StatusCode = 408;
+                await httpContext.Response.WriteAsJsonAsync(new
+                {
+                    error = "Request timeout",
+                    totalCost = lastKnownTotalCost,
+                    conversationKey = lastKnownConversationKey
+                }, cancellationToken: default);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Client disconnected — no response needed
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "PlayFramework execution failed for factory '{FactoryName}'", factoryName);
 
-            // Send error event with camelCase
-            var errorJson = JsonSerializer.Serialize(new
+            if (!httpContext.Response.HasStarted)
             {
-                status = "error",
-                errorMessage = ex.Message,
-                totalCost = lastKnownTotalCost,
-                conversationKey = lastKnownConversationKey
-            }, JsonHelper.JsonSerializerOptions);
+                // SSE not yet opened — respond with a structured JSON error
+                httpContext.Response.StatusCode = 500;
+                await httpContext.Response.WriteAsJsonAsync(new
+                {
+                    error = ex.Message,
+                    totalCost = lastKnownTotalCost,
+                    conversationKey = lastKnownConversationKey
+                }, cancellationToken: default);
+            }
+            else
+            {
+                // SSE already open — send error as SSE event
+                var errorJson = JsonSerializer.Serialize(new
+                {
+                    status = "error",
+                    errorMessage = ex.Message,
+                    totalCost = lastKnownTotalCost,
+                    conversationKey = lastKnownConversationKey
+                }, JsonHelper.JsonSerializerOptions);
 
-            await httpContext.Response.WriteAsync($"data: {errorJson}\n\n", cancellationToken);
-            await httpContext.Response.Body.FlushAsync(cancellationToken);
+                await httpContext.Response.WriteAsync($"data: {errorJson}\n\n", cancellationToken: default);
+                await httpContext.Response.Body.FlushAsync(cancellationToken: default);
+            }
+        }
+        finally
+        {
+            linkedCts?.Dispose();
+            timeoutCts?.Dispose();
         }
     }
 
@@ -366,7 +451,7 @@ public static class WebApplicationExtensions
             // Add IP address
             if (!metadata.ContainsKey("ipAddress"))
             {
-                metadata["ipAddress"] = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                metadata["ipAddress"] = httpContext.Connection.RemoteIpAddress?.ToString() ?? UnknownValue;
             }
 
             // Add request ID (for tracing)
@@ -502,13 +587,13 @@ public static class WebApplicationExtensions
         switch (tool.SourceType)
         {
             case PlayFrameworkToolSourceType.Service:
-                AddToolIfMissing(GetOrCreateSource(services, tool.SourceName ?? "unknown", PlayFrameworkToolSourceType.Service).Tools, tool);
+                AddToolIfMissing(GetOrCreateSource(services, tool.SourceName ?? UnknownValue, PlayFrameworkToolSourceType.Service).Tools, tool);
                 break;
             case PlayFrameworkToolSourceType.Client:
                 AddToolIfMissing(GetOrCreateSource(clients, tool.SourceName ?? "client", PlayFrameworkToolSourceType.Client).Tools, tool);
                 break;
             case PlayFrameworkToolSourceType.Endpoint:
-                AddToolIfMissing(GetOrCreateSource(endpoints, tool.SourceName ?? "unknown", PlayFrameworkToolSourceType.Endpoint).Tools, tool);
+                AddToolIfMissing(GetOrCreateSource(endpoints, tool.SourceName ?? UnknownValue, PlayFrameworkToolSourceType.Endpoint).Tools, tool);
                 break;
             default:
                 AddToolIfMissing(response.Others, tool);
@@ -1028,7 +1113,7 @@ public static class WebApplicationExtensions
                         totalVoiceCost = voiceResponse.TotalVoiceCost
                     } as object,
 
-                    _ => new { type = "unknown" } as object
+                    _ => new { type = UnknownValue } as object
                 };
 
                 var json = JsonSerializer.Serialize(eventData, JsonHelper.JsonSerializerOptions);
