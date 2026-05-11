@@ -51,11 +51,11 @@ public sealed class PlayFrameworkGuardResult
         => new(PlayFrameworkGuardResultType.Allow);
 
     /// <summary>
-    /// Blocks execution; the endpoint returns the given HTTP status code with an optional error message.
+    /// Blocks execution; the endpoint returns the given HTTP status code with an optional error detail.
     /// </summary>
     /// <param name="statusCode">HTTP status code (e.g. 403, 429).</param>
-    /// <param name="errorDetail">Human-readable error detail.</param>
-    public static PlayFrameworkGuardResult Deny(int statusCode, string? errorDetail = null)
+    /// <param name="errorDetail">Error detail included in the response body. Can be a string or any serializable object.</param>
+    public static PlayFrameworkGuardResult Deny(int statusCode, object? errorDetail = null)
         => new(PlayFrameworkGuardResultType.Deny,
                deny: new PlayFrameworkDenyResult { StatusCode = statusCode, ErrorDetail = errorDetail });
 
