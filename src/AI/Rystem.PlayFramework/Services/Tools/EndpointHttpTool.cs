@@ -76,7 +76,7 @@ internal sealed class EndpointHttpTool : ISceneTool, ISceneToolMetadata
         var url = BuildUrl(argsDict);
 
         // 4. Create the HttpRequestMessage
-        var request = new HttpRequestMessage(_config.HttpMethod, url);
+        using var request = new HttpRequestMessage(_config.HttpMethod, url);
 
         // 5. Serialise and attach the request body when a body type is configured
         if (_config.RequestBodyType != null && argsDict != null)
@@ -89,7 +89,7 @@ internal sealed class EndpointHttpTool : ISceneTool, ISceneToolMetadata
         }
 
         // 6. Send the request
-        var response = await client.SendAsync(request, cancellationToken);
+        using var response = await client.SendAsync(request, cancellationToken);
 
         // 7. Read the response body
         var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
