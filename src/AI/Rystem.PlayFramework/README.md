@@ -261,6 +261,7 @@ Scenes are the main unit of orchestration.
 `SceneBuilder` exposes the main extension points:
 
 - `WithService<TService>(...)`
+- `WithEndpoint<TClient>(...)`
 - `WithActors(...)`
 - `WithMcpServer(...)`
 - `OnClient(...)`
@@ -616,6 +617,7 @@ It returns:
 - `services` grouped by DI source
 - `clients` grouped by client-side source
 - `mcpServers` grouped by MCP source
+- `endpoints` grouped by HTTP client marker type
 - `others` for tools that do not belong to the standard buckets
 
 Use this endpoint from your frontend when you want to build a scene/tool picker and then feed the selected values back into `SceneRequestSettings.ForcedTools`.
@@ -1031,6 +1033,136 @@ builder.Services.AddPlayFramework("default", framework =>
         });
 });
 ```
+
+## Example: HTTP endpoint tools (WithEndpoint)
+
+`WithEndpoint<TClient>` turns any HTTP endpoint into an AI tool. Register the named HTTP client on the PlayFramework builder with `WithHttpClient<TClient>`, then register individual endpoints on the scene builder with `WithEndpoint<TClient>`. `TClient` is a marker type — the named `IHttpClientFactory` key is `typeof(TClient).Name`.
+
+### Register the HTTP client
+
+**Simple form** (configure the `HttpClient` only):
+
+```csharp
+builder.Services.AddPlayFramework("default", framework =>
+{
+    framework
+        .WithChatClient("default")
+        .WithHttpClient<IOrderServiceClient>(c =>
+        {
+            c.BaseAddress = new Uri("http://order-service:5001/api");
+            c.Timeout = TimeSpan.FromSeconds(30);
+        })
+        .AddScene("Orders", "Order management", scene =>
+        {
+            scene.WithEndpoint<IOrderServiceClient>(ep => ep
+                .WithAction<Order>(
+                    "GetOrder",
+                    HttpMethod.Get,
+                    "/orders/{orderId}",
+                    "Retrieve an order by its ID")
+                .WithAction<CreateOrderRequest, Order>(
+                    "CreateOrder",
+                    HttpMethod.Post,
+                    "/orders",
+                    "Create a new order"));
+        });
+});
+```
+
+**Full form** (also configure the `IHttpClientBuilder` for message handlers, Polly resilience, etc.):
+
+```csharp
+.WithHttpClient<IOrderServiceClient>(
+    c =>
+    {
+        c.BaseAddress = new Uri("http://order-service:5001/api");
+        c.Timeout = TimeSpan.FromSeconds(30);
+    },
+    b => b
+        .AddHttpMessageHandler<BearerTokenHandler>()
+        .AddStandardResilienceHandler())
+```
+
+### WithAction overloads
+
+| Overload | When to use |
+|---|---|
+| `WithAction<TResponse>(name, method, route, description)` | GET, DELETE, HEAD — no request body |
+| `WithAction<TRequest, TResponse>(name, method, route, description)` | POST, PUT, PATCH — typed request body |
+
+Route template placeholders (`{orderId}`) are extracted automatically as required AI parameters. Optional query-string parameters are added fluently with `.WithParameter(...)`:
+
+```csharp
+.WithAction<PagedResult<Order>>(
+    "ListOrders",
+    HttpMethod.Get,
+    "/orders",
+    "List all orders")
+.WithParameter("status", "Filter by status: pending, shipped, delivered")
+.WithParameter("pageSize", "Results per page", type: typeof(int))
+```
+
+### Force endpoint tools
+
+Endpoint tools appear in `ForcedTools` with `SourceType = Endpoint`:
+
+```csharp
+var settings = new SceneRequestSettings
+{
+    ExecutionMode = SceneExecutionMode.Scene,
+    SceneName = "Orders",
+    ForcedTools =
+    [
+        new ForcedToolRequest
+        {
+            SceneName = "Orders",
+            ToolName = "GetOrder",
+            SourceType = PlayFrameworkToolSourceType.Endpoint,
+            SourceName = "IOrderServiceClient",
+            MemberName = "GetOrder"
+        }
+    ]
+};
+```
+
+### Discovery response
+
+Endpoint tools appear in the `endpoints` array:
+
+```json
+{
+  "factoryName": "default",
+  "scenes": [...],
+  "services": [],
+  "clients": [],
+  "mcpServers": [],
+  "endpoints": [
+    {
+      "name": "IOrderServiceClient",
+      "sourceType": "Endpoint",
+      "isAvailable": true,
+      "tools": [
+        {
+          "sceneName": "Orders",
+          "toolName": "GetOrder",
+          "description": "Retrieve an order by its ID",
+          "sourceType": "Endpoint",
+          "sourceName": "IOrderServiceClient",
+          "memberName": "GetOrder"
+        }
+      ]
+    }
+  ],
+  "others": []
+}
+```
+
+Important behavior:
+
+- `TClient` is a **marker type**, not an actual client implementation. Any interface or class works.
+- Route template placeholders are parsed at registration time; the LLM must supply a value for each at call time.
+- The HTTP response is forwarded to the LLM as a raw `JsonElement`, which keeps it compatible with union types in downstream serializers.
+- Request body properties (from `TRequest`) and route/query parameters are kept separate; only body-eligible properties are serialized as the JSON body.
 
 ## Example: MCP server integration
 
