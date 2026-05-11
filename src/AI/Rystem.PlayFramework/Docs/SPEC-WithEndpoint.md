@@ -41,44 +41,66 @@ Questa separazione garantisce che:
 #### 1. Registrazione HttpClient — `PlayFrameworkBuilder`
 
 ```csharp
-// File: Builder/PlayFrameworkBuilder_HttpClient.cs (partial class)
+// File: Builder/PlayFrameworkBuilder_HttpClient.cs (static extension class)
 
-public sealed partial class PlayFrameworkBuilder
+public static class PlayFrameworkBuilder_HttpClient
 {
     /// <summary>
-    /// Registra un HttpClient tipizzato tramite IHttpClientFactory.
+    /// Overload semplice: registra un HttpClient tipizzato configurando
+    /// direttamente l'istanza HttpClient (base address, timeout, header, ecc.).
     /// TClient è un tipo marker (interface vuota) usato come chiave per il named client.
-    /// Il configure espone IHttpClientBuilder standard .NET per configurare
-    /// base address, DelegatingHandler, Polly, timeout, ecc.
     /// </summary>
-    public PlayFrameworkBuilder WithHttpClient<TClient>(Action<IHttpClientBuilder> configure)
+    public static PlayFrameworkBuilder WithHttpClient<TClient>(
+        this PlayFrameworkBuilder builder,
+        Action<HttpClient> configureClient)
+        where TClient : class;
+
+    /// <summary>
+    /// Overload completo: configura sia l'istanza HttpClient sia l'IHttpClientBuilder
+    /// (DelegatingHandler, policy di resiliency, ecc.).
+    /// </summary>
+    public static PlayFrameworkBuilder WithHttpClient<TClient>(
+        this PlayFrameworkBuilder builder,
+        Action<HttpClient> configureClient,
+        Action<IHttpClientBuilder> configureBuilder)
         where TClient : class;
 }
 ```
 
-**Esempio d'uso:**
+**Esempio d'uso — overload semplice:**
 
 ```csharp
-builder.WithHttpClient<IOrderServiceClient>(httpBuilder =>
+builder.WithHttpClient<IOrderServiceClient>(client =>
 {
-    httpBuilder.ConfigureHttpClient(client =>
-    {
-        client.BaseAddress = new Uri("http://localhost:5001/api");
-        client.Timeout = TimeSpan.FromSeconds(30);
-    });
-
-    // DelegatingHandler per autenticazione Bearer
-    httpBuilder.AddHttpMessageHandler<BearerTokenHandler>();
-
-    // Resiliency con Polly (Microsoft.Extensions.Http.Resilience)
-    httpBuilder.AddStandardResilienceHandler();
+    client.BaseAddress = new Uri("http://localhost:5001/api");
+    client.Timeout = TimeSpan.FromSeconds(30);
 });
 ```
 
+**Esempio d'uso — overload completo (con handler e resiliency):**
+
+```csharp
+builder.WithHttpClient<IOrderServiceClient>(
+    client =>
+    {
+        client.BaseAddress = new Uri("http://localhost:5001/api");
+        client.Timeout = TimeSpan.FromSeconds(30);
+    },
+    httpBuilder =>
+    {
+        // DelegatingHandler per autenticazione Bearer
+        httpBuilder.AddHttpMessageHandler<BearerTokenHandler>();
+
+        // Resiliency con Polly (Microsoft.Extensions.Http.Resilience)
+        httpBuilder.AddStandardResilienceHandler();
+    });
+```
+
 **Dettagli implementativi:**
-- Internamente chiama `_services.AddHttpClient(typeof(TClient).Name)` e passa l'`IHttpClientBuilder` al delegate
+- Internamente chiama `services.AddHttpClient(typeof(TClient).Name, configureClient)` e, nell'overload completo, invoca `configureBuilder` sull'`IHttpClientBuilder` restituito
 - `TClient` è un **tipo marker** (tipicamente un'interface vuota): serve solo come chiave per risolvere il client corretto a runtime via `IHttpClientFactory.CreateClient(typeof(TClient).Name)`
-- L'utente ha accesso a **tutte** le estensioni standard di `IHttpClientBuilder`: `AddHttpMessageHandler`, `ConfigurePrimaryHttpMessageHandler`, `SetHandlerLifetime`, `AddStandardResilienceHandler`, ecc.
+- L'overload semplice è sufficiente per i casi base (base address, timeout, header)
+- L'overload completo dà accesso a **tutte** le estensioni standard di `IHttpClientBuilder`: `AddHttpMessageHandler`, `ConfigurePrimaryHttpMessageHandler`, `SetHandlerLifetime`, `AddStandardResilienceHandler`, ecc.
 
 ---
 
@@ -299,7 +321,10 @@ Lo schema JSON esposto al modello AI viene costruito nel costruttore di `Endpoin
 
 1. **Parametri route**: estratti dalla route template via regex `\{(\w+)\}` → diventano proprietà `string` nello schema
 2. **Query parameters**: dichiarati via `.WithParameter()` → proprietà nello schema con tipo specificato
-3. **Body (TRequest)**: se presente, le proprietà di `TRequest` vengono aggiunte allo schema tramite `AIJsonUtilities.CreateParametersJsonSchema(typeof(TRequest))`
+3. **Body (TRequest)**: se presente, le proprietà pubbliche di `TRequest` vengono aggiunte allo schema tramite **reflection CLR diretta** (`GetProperties(BindingFlags.Public | BindingFlags.Instance)`). Per ciascuna proprietà:
+   - Il nome JSON rispetta `[JsonPropertyName]` e cade in `camelCase` via `JsonNamingPolicy.CamelCase` se l'attributo è assente
+   - Il tipo JSON viene mappato con `MapTypeToJsonSchemaType()` (bool → `boolean`, int/long/… → `integer`, float/double/decimal → `number`, array/IEnumerable → `array`, classe non-string → `object`, tutto il resto → `string`)
+   - I value type non-nullable diventano `required`; reference type e nullable restano opzionali
 
 Lo schema risultante viene passato a `AIFunctionFactory.CreateDeclaration(name, description, schema)` per generare l'`AITool`.
 
@@ -371,23 +396,31 @@ public async Task<object?> ExecuteAsync(
     // 7. Leggere il body della response
     var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
-    // 8. Tentare la deserializzazione di TResponse
-    object? deserializedBody;
-    try
+    // 8. Parsing del body della response come JsonElement.
+    //    Il body NON viene deserializzato nel tipo TResponse: viene invece parsato come
+    //    JsonElement, che è nativamente serializzabile e preserva la struttura JSON
+    //    esattamente come il modello AI ha bisogno di vederla.
+    //    Questo evita problemi con tipi union (OneOf, AnyOf, ecc.) che richiederebbero
+    //    converter custom nel downstream serializer.
+    object? parsedBody = null;
+    if (!string.IsNullOrWhiteSpace(responseBody))
     {
-        deserializedBody = _jsonService.Deserialize(responseBody, _config.ResponseType);
-    }
-    catch
-    {
-        // Fallback: restituire il body come stringa
-        deserializedBody = responseBody;
+        try
+        {
+            parsedBody = JsonDocument.Parse(responseBody).RootElement.Clone();
+        }
+        catch
+        {
+            // Fallback: restituire il body come stringa
+            parsedBody = responseBody;
+        }
     }
 
     // 9. Restituire risultato con status code + body
     return new EndpointHttpResponse
     {
         StatusCode = (int)response.StatusCode,
-        Body = deserializedBody
+        Body = parsedBody
     };
 }
 ```
@@ -412,17 +445,51 @@ private string BuildUrl(Dictionary<string, JsonElement>? argsDict)
     }
 
     // Aggiunta query parameters
-    var queryParams = _config.QueryParameters
+    var queryParts = _config.QueryParameters
         .Where(qp => argsDict.ContainsKey(qp.Name))
-        .Select(qp => $"{qp.Name}={Uri.EscapeDataString(argsDict[qp.Name].GetString() ?? argsDict[qp.Name].GetRawText())}");
+        .Select(qp =>
+        {
+            var raw = argsDict[qp.Name].GetString() ?? argsDict[qp.Name].GetRawText();
+            return $"{qp.Name}={Uri.EscapeDataString(raw)}";
+        });
 
-    var queryString = string.Join("&", queryParams);
+    var queryString = string.Join("&", queryParts);
     if (!string.IsNullOrEmpty(queryString))
         url += $"?{queryString}";
 
     return url;
 }
 ```
+
+#### Estrazione body dagli argomenti AI
+
+Il metodo `ExtractBodyFromArguments` ricostruisce l'oggetto body filtrando dagli argomenti AI solo le proprietà che appartengono al body, escludendo route params e query params:
+
+```csharp
+private object? ExtractBodyFromArguments(Dictionary<string, JsonElement> argsDict)
+{
+    if (_config.RequestBodyType == null)
+        return null;
+
+    // Nomi da escludere: parametri route + parametri query
+    var skipNames = new HashSet<string>(_routeParameters, StringComparer.OrdinalIgnoreCase);
+    foreach (var qp in _config.QueryParameters)
+        skipNames.Add(qp.Name);
+
+    // Costruisce un JsonObject con sole le proprietà del body
+    var bodyNode = new JsonObject();
+    foreach (var kv in argsDict)
+    {
+        if (!skipNames.Contains(kv.Key))
+            bodyNode[kv.Key] = JsonNode.Parse(kv.Value.GetRawText());
+    }
+
+    var bodyJson = bodyNode.ToJsonString();
+    return _jsonService.Deserialize(bodyJson, _config.RequestBodyType);
+}
+```
+
+Questo garantisce che per un endpoint `PUT /orders/{orderId}` con body `UpdateOrderRequest`, il valore `orderId` rimanga solo nell'URL e non venga serializzato nel body JSON.
 
 #### Tipo di risposta restituito all'AI
 
@@ -475,9 +542,8 @@ public enum PlayFrameworkToolSourceType
     Service,
     Client,
     Mcp,
-    Rag,
-    WebSearch,
-    Endpoint  // ← NUOVO VALORE
+    Endpoint,  // ← NUOVO VALORE
+    Other
 }
 ```
 
@@ -487,12 +553,74 @@ public enum PlayFrameworkToolSourceType
 
 | File | Azione | Contenuto |
 |------|--------|-----------|
-| `Builder/PlayFrameworkBuilder_HttpClient.cs` | **Nuovo** | Partial class con `WithHttpClient<TClient>()` |
+| `Builder/PlayFrameworkBuilder_HttpClient.cs` | **Nuovo** | Static class con due overload `WithHttpClient<TClient>()` |
 | `Builder/EndpointToolBuilder.cs` | **Nuovo** | `EndpointToolBuilder<TClient>`, `EndpointActionBuilder`, `EndpointToolConfiguration`, `EndpointParameterDefinition` |
 | `Services/Tools/EndpointHttpTool.cs` | **Nuovo** | Implementazione `ISceneTool` + `ISceneToolMetadata` per chiamate HTTP |
 | `Builder/SceneBuilder.cs` | **Modifica** | Aggiunta metodo `WithEndpoint<TClient>()` + campo `EndpointTools` in `SceneConfiguration` |
 | `Services/Scenes/Scene.cs` | **Modifica** | Istanziazione `EndpointHttpTool` dalla configurazione |
-| Enum `PlayFrameworkToolSourceType` | **Modifica** | Aggiunta valore `Endpoint` |
+| `Domain/Models/ForcedToolRequest.cs` | **Modifica** | Enum `PlayFrameworkToolSourceType` aggiornato + nuove proprietà opzionali su `ForcedToolRequest` |
+| `Api/Models/PlayFrameworkDiscoveryResponse.cs` | **Modifica** | Aggiunta proprietà `Endpoints` alla response di discovery |
+
+---
+
+### Modifiche a `ForcedToolRequest` e `PlayFrameworkToolSourceType`
+
+#### `ForcedToolRequest` — nuove proprietà opzionali
+
+La classe `ForcedToolRequest` (usata per forzare/vincolare tool specifici in una scena) riceve tre nuove proprietà opzionali che permettono di disambiguare tool omonimi:
+
+```csharp
+public sealed class ForcedToolRequest
+{
+    public required string SceneName { get; set; }
+    public required string ToolName { get; set; }
+
+    // ← NUOVO: disambiguazione per sorgente
+    public PlayFrameworkToolSourceType? SourceType { get; set; }
+    public string? SourceName { get; set; }
+    public string? MemberName { get; set; }
+}
+```
+
+- `SourceType`: tipo di sorgente (es. `Endpoint`) per distinguere tool con lo stesso nome provenenti da sorgenti diverse
+- `SourceName`: nome della sorgente (es. `IOrderServiceClient`) 
+- `MemberName`: nome del membro o route template (es. `/orders/{orderId}`)
+
+#### `PlayFrameworkToolSourceType` — valore `Endpoint`
+
+Il valore `Endpoint` è stato aggiunto all'enum esistente per identificare i tool basati su endpoint HTTP:
+
+```csharp
+public enum PlayFrameworkToolSourceType
+{
+    Service,   // Tool backed by a DI service method
+    Client,    // Tool executed on the client
+    Mcp,       // Tool exposed by an MCP server
+    Endpoint,  // ← NUOVO: Tool backed by an HTTP endpoint via typed HttpClient
+    Other      // Any other tool category
+}
+```
+
+---
+
+### Modifiche a `PlayFrameworkDiscoveryResponse`
+
+La response di discovery esposta dall'API HTTP riceve una nuova proprietà per raggruppare i tool di tipo endpoint:
+
+```csharp
+public sealed class PlayFrameworkDiscoveryResponse
+{
+    // ... proprietà esistenti ...
+
+    /// <summary>
+    /// HTTP endpoint tools backed by typed HttpClients.
+    /// Popolata con i tool di tipo PlayFrameworkToolSourceType.Endpoint.
+    /// </summary>
+    public List<PlayFrameworkToolSourceInfo> Endpoints { get; set; } = [];  // ← NUOVO
+}
+```
+
+Questa proprietà viene popolata da `WebApplicationExtensions` insieme alle proprietà `Services`, `Clients` e `McpServers` già esistenti.
 
 ---
 
@@ -519,16 +647,17 @@ public class BearerTokenHandler : DelegatingHandler
 services.AddPlayFramework(builder =>
 {
     // Registrazione client HTTP con auth + resiliency
-    builder.WithHttpClient<IOrderServiceClient>(http =>
-    {
-        http.ConfigureHttpClient(c =>
+    builder.WithHttpClient<IOrderServiceClient>(
+        client =>
         {
-            c.BaseAddress = new Uri("http://order-service:5001/api");
-            c.DefaultRequestHeaders.Add("X-Api-Version", "2");
+            client.BaseAddress = new Uri("http://order-service:5001/api");
+            client.DefaultRequestHeaders.Add("X-Api-Version", "2");
+        },
+        httpBuilder =>
+        {
+            httpBuilder.AddHttpMessageHandler<BearerTokenHandler>();
+            httpBuilder.AddStandardResilienceHandler();
         });
-        http.AddHttpMessageHandler<BearerTokenHandler>();
-        http.AddStandardResilienceHandler();
-    });
 
     // Configurazione scena
     builder.AddScene("OrderManagement", "Gestione ordini", scene =>
