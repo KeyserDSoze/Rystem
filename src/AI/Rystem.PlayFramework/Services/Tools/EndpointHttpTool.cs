@@ -176,10 +176,9 @@ internal sealed class EndpointHttpTool : ISceneTool, ISceneToolMetadata
         foreach (var qp in _config.QueryParameters)
             skipNames.Add(qp.Name);
 
-        foreach (var kv in argsDict)
+        foreach (var kv in argsDict.Where(kv => !skipNames.Contains(kv.Key)))
         {
-            if (!skipNames.Contains(kv.Key))
-                bodyNode[kv.Key] = JsonNode.Parse(kv.Value.GetRawText());
+            bodyNode[kv.Key] = JsonNode.Parse(kv.Value.GetRawText());
         }
 
         var bodyJson = bodyNode.ToJsonString();
@@ -255,8 +254,7 @@ internal sealed class EndpointHttpTool : ISceneTool, ISceneToolMetadata
             ["properties"] = properties
         };
 
-        if (required.Count > 0)
-            schema["required"] = required;
+        schema["required"] = required;
 
         return JsonSerializer.Deserialize<JsonElement>(schema.ToJsonString());
     }
