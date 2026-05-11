@@ -24,6 +24,11 @@ internal sealed class Scene : IScene
             .Select(st => new ServiceMethodTool(st, jsonService))
             .ToList();
 
+        // Create tools from HTTP endpoint configurations
+        var endpointTools = _config.EndpointTools
+            .Select(et => new EndpointHttpTool(et, jsonService))
+            .ToList();
+
         // Create tools from client interactions (OnClient)
         var clientTools = _config.ClientInteractionDefinitions
             ?.Select(def => new ClientInteractionTool(def))
@@ -31,6 +36,7 @@ internal sealed class Scene : IScene
 
         // Combine all tools
         Tools = [.. serviceTools];
+        Tools.AddRange(endpointTools);
         Tools.AddRange(clientTools);
         AiTools = [.. Tools.Select(x => x.ToolDescription)];
         // Create actors

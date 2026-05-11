@@ -29,6 +29,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Rystem.PlayFramework\Rystem.PlayFramework.csproj" />
+    <ProjectReference Include="..\..\..\Repository\RepositoryFramework.Infrastructure.InMemory\RepositoryFramework.Infrastructure.InMemory.csproj" />
   </ItemGroup>
 
   <ItemGroup>

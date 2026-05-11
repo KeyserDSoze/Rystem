@@ -31,6 +31,11 @@ public sealed class PlayFrameworkDiscoveryResponse
     public List<PlayFrameworkToolSourceInfo> McpServers { get; set; } = [];
 
     /// <summary>
+    /// HTTP endpoint tools backed by typed HttpClients.
+    /// </summary>
+    public List<PlayFrameworkToolSourceInfo> Endpoints { get; set; } = [];
+
+    /// <summary>
     /// Tools that do not belong to the standard source buckets.
     /// </summary>
     public List<PlayFrameworkToolInfo> Others { get; set; } = [];
