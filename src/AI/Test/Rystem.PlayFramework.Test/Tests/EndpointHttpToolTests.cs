@@ -10,7 +10,6 @@ namespace Rystem.PlayFramework.Test.Tests;
 // ── Marker types used as IHttpClientFactory keys ─────────────────────────────
 
 internal interface IOrderServiceClient { }
-internal interface IProductServiceClient { }
 
 // ── Shared HTTP helper types ──────────────────────────────────────────────────
 
@@ -120,74 +119,12 @@ public sealed class EndpointHttpToolTests
         var prop = tool.GetType().GetProperty("JsonSchema",
             BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
         Assert.NotNull(prop);
-        var value = prop!.GetValue(tool);
+        var value = prop.GetValue(tool);
         Assert.NotNull(value);
-        return (JsonElement)value!;
+        return (JsonElement)value;
     }
 
     // ── Helper: build a minimal ServiceProvider with one HTTP-endpoint scene ──
-
-    private static (ServiceProvider Provider, CapturingHttpHandler Handler)
-        BuildProvider(
-            string sceneName,
-            string toolName,
-            HttpMethod method,
-            string routeTemplate,
-            Type? requestBodyType,
-            Type responseType,
-            Action<EndpointActionBuilder>? configureQuery = null,
-            HttpStatusCode httpStatus = HttpStatusCode.OK,
-            string httpResponseBody = "\"ok\"")
-    {
-        var handler = new CapturingHttpHandler(
-            new HttpResponseMessage(httpStatus)
-            {
-                Content = new StringContent(httpResponseBody, Encoding.UTF8, "application/json")
-            });
-
-        var services = new ServiceCollection();
-        services.AddLogging();
-
-        // Register a no-op IChatClient (replaced per-test when needed)
-        services.AddSingleton<IChatClient>(new EndpointToolCallingChatClient(toolName, []));
-
-        services.AddPlayFramework(builder =>
-        {
-            builder.WithHttpClient<IOrderServiceClient>(
-                c => c.BaseAddress = new Uri("http://order-api/"),
-                b => b.ConfigurePrimaryHttpMessageHandler(() => handler));
-
-            builder.AddScene(sceneName, $"{sceneName} scene", scene =>
-            {
-                scene.WithEndpoint<IOrderServiceClient>(ep =>
-                {
-                    EndpointActionBuilder actionBuilder;
-                    if (requestBodyType == null)
-                    {
-                        actionBuilder = ep.GetType()
-                            .GetMethod(nameof(EndpointToolBuilder<IOrderServiceClient>.WithAction),
-                                1, [typeof(string), typeof(HttpMethod), typeof(string), typeof(string)])!
-                            .MakeGenericMethod(responseType)
-                            .Invoke(ep, [toolName, method, routeTemplate, "Test tool"])
-                            as EndpointActionBuilder ?? throw new InvalidOperationException();
-                    }
-                    else
-                    {
-                        actionBuilder = ep.GetType()
-                            .GetMethod(nameof(EndpointToolBuilder<IOrderServiceClient>.WithAction),
-                                2, [typeof(string), typeof(HttpMethod), typeof(string), typeof(string)])!
-                            .MakeGenericMethod(requestBodyType, responseType)
-                            .Invoke(ep, [toolName, method, routeTemplate, "Test tool"])
-                            as EndpointActionBuilder ?? throw new InvalidOperationException();
-                    }
-
-                    configureQuery?.Invoke(actionBuilder);
-                });
-            });
-        });
-
-        return (services.BuildServiceProvider(), handler);
-    }
 
     // ── Group 1: Registration ─────────────────────────────────────────────────
 
@@ -217,7 +154,7 @@ public sealed class EndpointHttpToolTests
         var ordersScene = factory.TryGetScene("Orders");
 
         Assert.NotNull(ordersScene);
-        Assert.Single(ordersScene!.Tools);
+        Assert.Single(ordersScene.Tools);
         Assert.IsType<EndpointHttpTool>(ordersScene.Tools[0]);
         Assert.Equal("GetOrder", ordersScene.Tools[0].Name);
     }
@@ -231,7 +168,7 @@ public sealed class EndpointHttpToolTests
             {
                 Content = new StringContent(
                     """{"orderId":"x","status":"Ok"}""",
-                    System.Text.Encoding.UTF8,
+                    Encoding.UTF8,
                     "application/json")
             });
 
@@ -491,7 +428,7 @@ public sealed class EndpointHttpToolTests
         var meta = tool as ISceneToolMetadata;
 
         Assert.NotNull(meta);
-        Assert.Equal(PlayFrameworkToolSourceType.Endpoint, meta!.SourceType);
+        Assert.Equal(PlayFrameworkToolSourceType.Endpoint, meta.SourceType);
         Assert.Equal(nameof(IOrderServiceClient), meta.SourceName);
         Assert.Equal("/orders/{orderId}", meta.MemberName);
         Assert.False(meta.IsCommand);
