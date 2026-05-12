@@ -7,19 +7,45 @@ namespace Rystem.PlayFramework;
 /// </summary>
 public sealed class PlayFrameworkHookRegistry
 {
-    private readonly Dictionary<Type, int> _priorities = new();
+    // Pre-computed at startup: type → positional sort index (ascending priority,
+    // tiebroken by registration order so equal-priority hooks are stable).
+    private Dictionary<Type, int> _sortedPositions = [];
+
+    // Pre-computed at startup: type → raw registered priority value.
+    private Dictionary<Type, int> _rawPriorities = [];
 
     /// <summary>
-    /// Records the priority for a hook implementation type.
-    /// Called by <see cref="Builder.PlayFrameworkBusinessBuilder"/> during registration.
+    /// Builds the sorted position map from the full registration list.
+    /// Called once by <see cref="Builder.PlayFrameworkBusinessBuilder.BuildRegistry"/> after
+    /// all hooks have been registered, before the DI container is built.
+    /// Equal-priority hooks preserve registration order (stable sort).
     /// </summary>
-    internal void Register(Type hookImplementationType, int priority)
-        => _priorities[hookImplementationType] = priority;
+    internal void Build(IReadOnlyList<(Type HookInterface, Type HookImpl, int Priority)> registrations)
+    {
+        _rawPriorities = registrations
+            .ToDictionary(r => r.HookImpl, r => r.Priority);
+
+        _sortedPositions = registrations
+            .Select((r, registrationOrder) => (r.HookImpl, r.Priority, registrationOrder))
+            .OrderBy(x => x.Priority)
+            .ThenBy(x => x.registrationOrder)
+            .Select((x, position) => (x.HookImpl, position))
+            .ToDictionary(x => x.HookImpl, x => x.position);
+    }
+
+    /// <summary>
+    /// Returns the raw registered priority for the given hook implementation type,
+    /// or -1 if the type was not registered (e.g. a DI proxy/decorator).
+    /// </summary>
+    public int GetPriority(Type hookImplType)
+        => _rawPriorities.TryGetValue(hookImplType, out var p) ? p : -1;
 
     /// <summary>
     /// Returns the given hooks sorted ascending by their registered priority.
-    /// Hooks with no registered priority are treated as priority 0.
+    /// Equal-priority hooks run in their original registration order.
+    /// Hooks whose type is not in the registry (e.g. proxy-wrapped implementations)
+    /// are placed at the end of the sequence instead of silently receiving priority 0.
     /// </summary>
     public IEnumerable<T> SortByPriority<T>(IEnumerable<T> hooks) where T : notnull
-        => hooks.OrderBy(h => _priorities.TryGetValue(h.GetType(), out var p) ? p : 0);
+        => hooks.OrderBy(h => _sortedPositions.TryGetValue(h.GetType(), out var pos) ? pos : int.MaxValue);
 }

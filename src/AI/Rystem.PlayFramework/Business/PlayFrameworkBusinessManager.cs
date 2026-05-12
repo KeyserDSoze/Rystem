@@ -61,12 +61,23 @@ internal sealed class PlayFrameworkBusinessManager : IPlayFrameworkBusinessManag
 
         foreach (var hook in beforeHooks)
         {
-            var hookTypeName = hook.GetType().Name;
+            var hookType = hook.GetType();
+            var hookTypeName = hookType.Name;
             using var hookActivity = PlayFrameworkActivitySource.Instance
                 .StartActivity(PlayFrameworkActivitySource.Activities.BusinessBeforeExecutionHook, ActivityKind.Internal);
             hookActivity?.SetTag(PlayFrameworkActivitySource.Tags.HookType, hookTypeName);
 
-            var guard = await hook.BeforeExecutionAsync(context, cancellationToken);
+            PlayFrameworkGuardResult guard;
+            try
+            {
+                guard = await hook.BeforeExecutionAsync(context, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                hookActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                throw new PlayFrameworkHookException(
+                    hookTypeName, "BeforeExecution", registry.GetPriority(hookType), ex);
+            }
 
             if (guard.Type == PlayFrameworkGuardResultType.Deny)
             {
@@ -125,12 +136,23 @@ internal sealed class PlayFrameworkBusinessManager : IPlayFrameworkBusinessManag
 
                 foreach (var hook in afterHooks)
                 {
-                    var hookTypeName = hook.GetType().Name;
+                    var hookType = hook.GetType();
+                    var hookTypeName = hookType.Name;
                     using var hookActivity = PlayFrameworkActivitySource.Instance
                         .StartActivity(PlayFrameworkActivitySource.Activities.BusinessAfterEachSceneHook, ActivityKind.Internal);
                     hookActivity?.SetTag(PlayFrameworkActivitySource.Tags.HookType, hookTypeName);
 
-                    var result = await hook.AfterSceneAsync(current, context, cancellationToken);
+                    PlayFrameworkSceneResult result;
+                    try
+                    {
+                        result = await hook.AfterSceneAsync(current, context, cancellationToken);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        hookActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                        throw new PlayFrameworkHookException(
+                            hookTypeName, "AfterEachScene", registry.GetPriority(hookType), ex);
+                    }
 
                     switch (result.Type)
                     {
@@ -176,12 +198,23 @@ internal sealed class PlayFrameworkBusinessManager : IPlayFrameworkBusinessManag
             {
                 foreach (var hook in terminalHooks)
                 {
-                    var hookTypeName = hook.GetType().Name;
+                    var hookType = hook.GetType();
+                    var hookTypeName = hookType.Name;
                     using var hookActivity = PlayFrameworkActivitySource.Instance
                         .StartActivity(PlayFrameworkActivitySource.Activities.BusinessOnTerminalSceneHook, ActivityKind.Internal);
                     hookActivity?.SetTag(PlayFrameworkActivitySource.Tags.HookType, hookTypeName);
 
-                    var injected = await hook.OnTerminalAsync(response, context, cancellationToken);
+                    IEnumerable<AiSceneResponse>? injected;
+                    try
+                    {
+                        injected = await hook.OnTerminalAsync(response, context, cancellationToken);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        hookActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                        throw new PlayFrameworkHookException(
+                            hookTypeName, "OnTerminalScene", registry.GetPriority(hookType), ex);
+                    }
                     if (injected is not null)
                     {
                         foreach (var item in injected)
