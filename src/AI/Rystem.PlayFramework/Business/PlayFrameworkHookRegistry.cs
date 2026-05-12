@@ -15,15 +15,35 @@ public sealed class PlayFrameworkHookRegistry
     private Dictionary<Type, int> _rawPriorities = [];
 
     /// <summary>
+    /// Duplicate registrations detected at startup.
+    /// Each entry describes an implementation type that was registered more than once,
+    /// listing the priorities it was registered with.
+    /// Populated by <see cref="Build"/> and consumed by the business manager to emit warnings.
+    /// </summary>
+    internal IReadOnlyList<(Type HookImpl, IReadOnlyList<int> Priorities)> DuplicateRegistrations { get; private set; }
+        = [];
+
+    /// <summary>
     /// Builds the sorted position map from the full registration list.
     /// Called once by <see cref="Builder.PlayFrameworkBusinessBuilder.BuildRegistry"/> after
     /// all hooks have been registered, before the DI container is built.
     /// Equal-priority hooks preserve registration order (stable sort).
+    /// Detects duplicate implementation types (across all phases) and stores them in
+    /// <see cref="DuplicateRegistrations"/> for later logging.
     /// </summary>
     internal void Build(IReadOnlyList<(Type HookInterface, Type HookImpl, int Priority)> registrations)
     {
+        // Raw priorities (last registration wins for the map; all used in duplicate detection)
         _rawPriorities = registrations
             .ToDictionary(r => r.HookImpl, r => r.Priority);
+
+        // Detect duplicates: same HookImpl registered more than once (any phase)
+        var duplicates = registrations
+            .GroupBy(r => r.HookImpl)
+            .Where(g => g.Count() > 1)
+            .Select(g => (HookImpl: g.Key, Priorities: (IReadOnlyList<int>)g.Select(r => r.Priority).ToList()))
+            .ToList();
+        DuplicateRegistrations = duplicates;
 
         _sortedPositions = registrations
             .Select((r, registrationOrder) => (r.HookImpl, r.Priority, registrationOrder))

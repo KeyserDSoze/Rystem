@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Rystem.PlayFramework.Telemetry;
 
 namespace Rystem.PlayFramework;
@@ -17,6 +18,10 @@ internal sealed class PlayFrameworkBusinessManager : IPlayFrameworkBusinessManag
     private readonly IFactory<IPlayFrameworkOnTerminalScene> _terminalFactory;
     private readonly IFactory<ISceneManager> _sceneManagerFactory;
     private readonly IFactory<PlayFrameworkHookRegistry> _registryFactory;
+    private readonly ILogger<PlayFrameworkBusinessManager> _logger;
+
+    // Ensures duplicate-registration warnings are logged at most once per instance.
+    private int _duplicateWarningsLogged = 0;
 
     private static readonly HashSet<AiResponseStatus> TerminalStatuses =
     [
@@ -33,13 +38,15 @@ internal sealed class PlayFrameworkBusinessManager : IPlayFrameworkBusinessManag
         IFactory<IPlayFrameworkAfterEachScene> afterFactory,
         IFactory<IPlayFrameworkOnTerminalScene> terminalFactory,
         IFactory<ISceneManager> sceneManagerFactory,
-        IFactory<PlayFrameworkHookRegistry> registryFactory)
+        IFactory<PlayFrameworkHookRegistry> registryFactory,
+        ILogger<PlayFrameworkBusinessManager> logger)
     {
         _beforeFactory = beforeFactory;
         _afterFactory = afterFactory;
         _terminalFactory = terminalFactory;
         _sceneManagerFactory = sceneManagerFactory;
         _registryFactory = registryFactory;
+        _logger = logger;
     }
 
     /// <inheritdoc/>
@@ -53,6 +60,21 @@ internal sealed class PlayFrameworkBusinessManager : IPlayFrameworkBusinessManag
         businessActivity?.SetTag(PlayFrameworkActivitySource.Tags.FactoryName, factoryName);
 
         var registry = _registryFactory.Create(factoryName)!;
+
+        // Log duplicate-registration warnings once per manager instance.
+        if (System.Threading.Interlocked.Exchange(ref _duplicateWarningsLogged, 1) == 0)
+        {
+            foreach (var (hookImpl, priorities) in registry.DuplicateRegistrations)
+            {
+                _logger.LogWarning(
+                    "Hook type '{HookType}' is registered {Count} times for factory '{FactoryName}' " +
+                    "with priorities [{Priorities}]. All registrations are kept; verify this is intentional.",
+                    hookImpl.Name,
+                    priorities.Count,
+                    factoryName,
+                    string.Join(", ", priorities));
+            }
+        }
 
         // ── 1. BeforeExecution hooks ──────────────────────────────────────────
         var beforeHooks = registry
