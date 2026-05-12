@@ -35,7 +35,9 @@ public class CostTrackingAfterSceneTests
         AiResponseStatus.Completed,
         AiResponseStatus.Error,
         AiResponseStatus.BudgetExceeded,
-        AiResponseStatus.Unauthorized
+        AiResponseStatus.Unauthorized,
+        AiResponseStatus.Timeout,
+        AiResponseStatus.RateLimited
     ];
 
     /// <summary>
@@ -73,6 +75,47 @@ public class CostTrackingAfterSceneTests
                     Message = $"Cost summary: {scene.TotalCost:F4}"
                 };
                 return Task.FromResult(PlayFrameworkSceneResult.ForwardAndInject(scene, summary));
+            }
+
+            return Task.FromResult(PlayFrameworkSceneResult.Forward(scene));
+        }
+    }
+
+    /// <summary>
+    /// Calls <see cref="PlayFrameworkSceneResult.ForwardAndInject"/> with zero extra items
+    /// and tracks invocations in <c>context.Items["hookInvocations"]</c>.
+    /// </summary>
+    private sealed class InjectZeroExtrasHook : IPlayFrameworkAfterEachScene
+    {
+        public Task<PlayFrameworkSceneResult> AfterSceneAsync(
+            AiSceneResponse scene, PlayFrameworkExecutionContext context, CancellationToken ct = default)
+        {
+            var count = (int)context.Items.GetOrAdd("hookInvocations", _ => 0);
+            context.Items["hookInvocations"] = count + 1;
+            // ForwardAndInject with no extras: forwards the item, injects nothing.
+            return Task.FromResult(PlayFrameworkSceneResult.ForwardAndInject(scene));
+        }
+    }
+
+    /// <summary>
+    /// For <see cref="AiResponseStatus.Completed"/> items: calls
+    /// <see cref="PlayFrameworkSceneResult.ForwardAndInject"/> with exactly three extra items.
+    /// Tracks invocations in <c>context.Items["hookInvocations"]</c>.
+    /// </summary>
+    private sealed class InjectThreeExtrasHook : IPlayFrameworkAfterEachScene
+    {
+        public Task<PlayFrameworkSceneResult> AfterSceneAsync(
+            AiSceneResponse scene, PlayFrameworkExecutionContext context, CancellationToken ct = default)
+        {
+            var count = (int)context.Items.GetOrAdd("hookInvocations", _ => 0);
+            context.Items["hookInvocations"] = count + 1;
+
+            if (scene.Status == AiResponseStatus.Completed)
+            {
+                var e1 = new AiSceneResponse { Status = AiResponseStatus.FinalResponse, Message = "extra-1" };
+                var e2 = new AiSceneResponse { Status = AiResponseStatus.FinalResponse, Message = "extra-2" };
+                var e3 = new AiSceneResponse { Status = AiResponseStatus.FinalResponse, Message = "extra-3" };
+                return Task.FromResult(PlayFrameworkSceneResult.ForwardAndInject(scene, e1, e2, e3));
             }
 
             return Task.FromResult(PlayFrameworkSceneResult.Forward(scene));
@@ -176,5 +219,59 @@ public class CostTrackingAfterSceneTests
         Assert.True(invocations < results.Count,
             $"AfterEachScene hook ({invocations} calls) should be invoked fewer times than " +
             $"total results ({results.Count}) because injected items bypass the hook.");
+    }
+
+    /// <summary>
+    /// When <see cref="PlayFrameworkSceneResult.ForwardAndInject"/> is called with zero extra
+    /// items, the original item must still be forwarded and no extra items appear in the stream.
+    /// Hook invocation count must equal total result count (no items bypass the hook).
+    /// </summary>
+    [Fact]
+    public async Task ForwardAndInject_ZeroExtras_NoExtraItemsInResults()
+    {
+        var sp = BuildServices("ct-zero-extras", b =>
+            b.Business.AddAfterEachScene<InjectZeroExtrasHook>());
+        var context = new PlayFrameworkExecutionContext { Message = "hello" };
+
+        var results = await RunAsync(sp, "ct-zero-extras", context);
+
+        Assert.NotEmpty(results);
+
+        // Every result item was seen by the hook: invocations == total count
+        // (ForwardAndInject with zero extras adds nothing extra, so count stays equal)
+        var invocations = context.Items.TryGetValue("hookInvocations", out var rawInv)
+            ? (int)rawInv!
+            : 0;
+        Assert.Equal(results.Count, invocations);
+    }
+
+    /// <summary>
+    /// When <see cref="PlayFrameworkSceneResult.ForwardAndInject"/> is called with three extra
+    /// items for each <see cref="AiResponseStatus.Completed"/> scene, the three extras must
+    /// appear in the stream and must bypass the hook (invocations &lt; total result count).
+    /// </summary>
+    [Fact]
+    public async Task ForwardAndInject_ThreeExtras_AllExtrasInResultsAndBypassHook()
+    {
+        var sp = BuildServices("ct-three-extras", b =>
+            b.Business.AddAfterEachScene<InjectThreeExtrasHook>());
+        var context = new PlayFrameworkExecutionContext { Message = "hello" };
+
+        var results = await RunAsync(sp, "ct-three-extras", context);
+
+        // At least 3 FinalResponse items injected (one set of extras per Completed scene)
+        var extraItems = results
+            .Where(r => r.Scene?.Status == AiResponseStatus.FinalResponse)
+            .ToList();
+        Assert.True(extraItems.Count >= 3,
+            $"Expected at least 3 injected FinalResponse items, found {extraItems.Count}.");
+
+        // Extra items bypass the hook, so invocations < total result count
+        var invocations = context.Items.TryGetValue("hookInvocations", out var rawInv)
+            ? (int)rawInv!
+            : 0;
+        Assert.True(invocations < results.Count,
+            $"InjectThreeExtrasHook ({invocations} invocations) should be invoked fewer times " +
+            $"than total results ({results.Count}) because the 3 injected extras bypass it.");
     }
 }

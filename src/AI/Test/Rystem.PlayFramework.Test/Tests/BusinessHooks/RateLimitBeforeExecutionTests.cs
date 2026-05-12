@@ -69,6 +69,53 @@ public class RateLimitBeforeExecutionTests
         }
     }
 
+    /// <summary>Returns Allow and increments <c>context.Items["allowCount"]</c>.</summary>
+    private sealed class CountingAllowHook : IPlayFrameworkBeforeExecution
+    {
+        public Task<PlayFrameworkGuardResult> BeforeExecutionAsync(
+            PlayFrameworkExecutionContext context, CancellationToken ct = default)
+        {
+            var count = (int)context.Items.GetOrAdd("allowCount", _ => 0);
+            context.Items["allowCount"] = count + 1;
+            return Task.FromResult(PlayFrameworkGuardResult.Allow());
+        }
+    }
+
+    /// <summary>Denies with a non-string <see cref="object?"/> payload.</summary>
+    private sealed class DenyObjectHook : IPlayFrameworkBeforeExecution
+    {
+        public Task<PlayFrameworkGuardResult> BeforeExecutionAsync(
+            PlayFrameworkExecutionContext context, CancellationToken ct = default)
+        {
+            var payload = new { Reason = "TooMany", RetryAfterSeconds = 60 };
+            return Task.FromResult(PlayFrameworkGuardResult.Deny(429, payload));
+        }
+    }
+
+    /// <summary>Appends "first" to <c>context.Items["order"]</c> and returns Allow.</summary>
+    private sealed class OrderHookFirst : IPlayFrameworkBeforeExecution
+    {
+        public Task<PlayFrameworkGuardResult> BeforeExecutionAsync(
+            PlayFrameworkExecutionContext context, CancellationToken ct = default)
+        {
+            if (context.Items.TryGetValue("order", out var raw) && raw is List<string> list)
+                list.Add("first");
+            return Task.FromResult(PlayFrameworkGuardResult.Allow());
+        }
+    }
+
+    /// <summary>Appends "second" to <c>context.Items["order"]</c> and returns Allow.</summary>
+    private sealed class OrderHookSecond : IPlayFrameworkBeforeExecution
+    {
+        public Task<PlayFrameworkGuardResult> BeforeExecutionAsync(
+            PlayFrameworkExecutionContext context, CancellationToken ct = default)
+        {
+            if (context.Items.TryGetValue("order", out var raw) && raw is List<string> list)
+                list.Add("second");
+            return Task.FromResult(PlayFrameworkGuardResult.Allow());
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static IServiceProvider BuildServices(string name, Action<PlayFrameworkBuilder> configure)
@@ -182,5 +229,121 @@ public class RateLimitBeforeExecutionTests
         Assert.Equal(2, order.Count);
         Assert.Equal("low", order[0]);   // priority=1 ran first
         Assert.Equal("high", order[1]);  // priority=10 ran second
+    }
+
+    /// <summary>
+    /// When the first hook in priority order returns Deny, subsequent hooks must not execute.
+    /// </summary>
+    [Fact]
+    public async Task MultiHook_FirstDeny_SubsequentHookDoesNotRun()
+    {
+        // DenyHook at priority=1 runs first and denies; CountingAllowHook at priority=2 must not run.
+        var sp = BuildServices("rl-multi-deny", b =>
+            b.Business
+                .AddBeforeExecution<DenyHook>(priority: 1)
+                .AddBeforeExecution<CountingAllowHook>(priority: 2));
+        var context = new PlayFrameworkExecutionContext { Message = "hello" };
+
+        var results = await RunAsync(sp, "rl-multi-deny", context);
+
+        Assert.Single(results);
+        Assert.NotNull(results[0].Deny);
+        var allowCount = context.Items.TryGetValue("allowCount", out var raw) ? (int)raw! : 0;
+        Assert.Equal(0, allowCount);
+    }
+
+    /// <summary>
+    /// When the first hook allows and the second denies, execution stops at the deny
+    /// and the first hook's side-effect is visible.
+    /// </summary>
+    [Fact]
+    public async Task MultiHook_FirstAllow_SecondDeny_StopsAtSecond()
+    {
+        // CountingAllowHook at priority=1 allows; DenyHook at priority=2 denies.
+        var sp = BuildServices("rl-allow-deny", b =>
+            b.Business
+                .AddBeforeExecution<CountingAllowHook>(priority: 1)
+                .AddBeforeExecution<DenyHook>(priority: 2));
+        var context = new PlayFrameworkExecutionContext { Message = "hello" };
+
+        var results = await RunAsync(sp, "rl-allow-deny", context);
+
+        Assert.Single(results);
+        Assert.NotNull(results[0].Deny);
+        // CountingAllowHook must have run before the Deny
+        var allowCount = context.Items.TryGetValue("allowCount", out var raw) ? (int)raw! : 0;
+        Assert.Equal(1, allowCount);
+    }
+
+    /// <summary>
+    /// A Deny hook can pass any object as the error detail, not just a string.
+    /// The DenyResult.ErrorDetail must be non-null and preserve the object reference.
+    /// </summary>
+    [Fact]
+    public async Task Deny_WithObjectPayload_ErrorDetailIsObjectNotNull()
+    {
+        var sp = BuildServices("rl-obj-deny", b => b.Business.AddBeforeExecution<DenyObjectHook>());
+        var context = new PlayFrameworkExecutionContext { Message = "hello" };
+
+        var results = await RunAsync(sp, "rl-obj-deny", context);
+
+        Assert.Single(results);
+        Assert.NotNull(results[0].Deny);
+        Assert.Equal(429, results[0].Deny!.StatusCode);
+        // ErrorDetail must be the anonymous object, not null and not a plain string
+        Assert.NotNull(results[0].Deny!.ErrorDetail);
+        Assert.IsNotType<string>(results[0].Deny!.ErrorDetail);
+    }
+
+    /// <summary>
+    /// Two hooks with equal priority must run in registration order (stable sort).
+    /// </summary>
+    [Fact]
+    public async Task EqualPriority_RegistrationOrderPreserved()
+    {
+        // Both registered at default priority=0; OrderHookFirst registered before OrderHookSecond.
+        var sp = BuildServices("rl-equal-pri", b =>
+            b.Business
+                .AddBeforeExecution<OrderHookFirst>(priority: 0)
+                .AddBeforeExecution<OrderHookSecond>(priority: 0));
+
+        var order = new List<string>();
+        var context = new PlayFrameworkExecutionContext
+        {
+            Message = "hello",
+            Items = new System.Collections.Concurrent.ConcurrentDictionary<string, object> { ["order"] = order }
+        };
+
+        await RunAsync(sp, "rl-equal-pri", context);
+
+        Assert.Equal(2, order.Count);
+        Assert.Equal("first", order[0]);
+        Assert.Equal("second", order[1]);
+    }
+
+    /// <summary>
+    /// Registering the same hook type twice must not throw during setup or execution.
+    /// All registrations are kept; execution should succeed and reach the scene manager.
+    /// </summary>
+    [Fact]
+    public async Task DuplicateTypeRegistration_NoException_ExecutionSucceeds()
+    {
+        // Register AllowHook twice — must not throw ArgumentException.
+        IServiceProvider sp = null!;
+        var ex = Record.Exception(() =>
+        {
+            sp = BuildServices("rl-dup", b =>
+                b.Business
+                    .AddBeforeExecution<AllowHook>()
+                    .AddBeforeExecution<AllowHook>());
+        });
+        Assert.Null(ex);
+
+        var context = new PlayFrameworkExecutionContext { Message = "hello" };
+        var results = await RunAsync(sp, "rl-dup", context);
+
+        // Execution must reach the scene manager and return at least one scene result.
+        Assert.NotEmpty(results);
+        Assert.All(results, r => Assert.Null(r.Deny));
     }
 }

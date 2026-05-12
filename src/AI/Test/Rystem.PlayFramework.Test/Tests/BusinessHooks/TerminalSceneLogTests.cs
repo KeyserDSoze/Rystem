@@ -6,7 +6,7 @@ namespace Rystem.PlayFramework.Test.Tests.BusinessHooks;
 /// <summary>
 /// Tests for <see cref="IPlayFrameworkOnTerminalScene"/> hooks.
 /// Covers: hook fires on terminal status, fires even when the terminal item was suppressed,
-/// and injected items bypass after-each-scene hooks.
+/// injected items bypass after-each-scene hooks, and priority ordering.
 /// </summary>
 public class TerminalSceneLogTests
 {
@@ -15,7 +15,9 @@ public class TerminalSceneLogTests
         AiResponseStatus.Completed,
         AiResponseStatus.Error,
         AiResponseStatus.BudgetExceeded,
-        AiResponseStatus.Unauthorized
+        AiResponseStatus.Unauthorized,
+        AiResponseStatus.Timeout,
+        AiResponseStatus.RateLimited
     ];
 
     // ── Hooks ─────────────────────────────────────────────────────────────────
@@ -62,6 +64,67 @@ public class TerminalSceneLogTests
         }
     }
 
+    /// <summary>Runs at priority=1; appends "low" to <c>context.Items["terminalOrder"]</c>.</summary>
+    private sealed class LogTerminalHookLow : IPlayFrameworkOnTerminalScene
+    {
+        public Task<IEnumerable<AiSceneResponse>?> OnTerminalAsync(
+            AiSceneResponse terminalScene, PlayFrameworkExecutionContext context, CancellationToken ct = default)
+        {
+            if (context.Items.TryGetValue("terminalOrder", out var raw) && raw is List<string> list)
+                list.Add("low");
+            return Task.FromResult<IEnumerable<AiSceneResponse>?>(null);
+        }
+    }
+
+    /// <summary>Runs at priority=10; appends "high" to <c>context.Items["terminalOrder"]</c>.</summary>
+    private sealed class LogTerminalHookHigh : IPlayFrameworkOnTerminalScene
+    {
+        public Task<IEnumerable<AiSceneResponse>?> OnTerminalAsync(
+            AiSceneResponse terminalScene, PlayFrameworkExecutionContext context, CancellationToken ct = default)
+        {
+            if (context.Items.TryGetValue("terminalOrder", out var raw) && raw is List<string> list)
+                list.Add("high");
+            return Task.FromResult<IEnumerable<AiSceneResponse>?>(null);
+        }
+    }
+
+    /// <summary>
+    /// Stub <see cref="ISceneManager"/> that yields a fixed sequence of responses without
+    /// calling an LLM. Used to inject specific terminal statuses in tests.
+    /// </summary>
+    private sealed class StubSceneManager : ISceneManager
+    {
+        private readonly AiSceneResponse[] _responses;
+
+        public StubSceneManager(params AiSceneResponse[] responses) => _responses = responses;
+
+        public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(
+            MultiModalInput input,
+            Dictionary<string, object>? metadata = null,
+            SceneRequestSettings? settings = null,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            foreach (var r in _responses)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return r;
+            }
+        }
+
+        public async IAsyncEnumerable<AiSceneResponse> ExecuteAsync(
+            string message,
+            Dictionary<string, object>? metadata = null,
+            SceneRequestSettings? settings = null,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            foreach (var r in _responses)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return r;
+            }
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static IServiceProvider BuildServices(string name, Action<PlayFrameworkBuilder> configure)
@@ -76,6 +139,30 @@ public class TerminalSceneLogTests
                 .AddScene("Stub", "Stub scene for hook tests", _ => { });
             configure(builder);
         });
+        return services.BuildServiceProvider();
+    }
+
+    /// <summary>
+    /// Builds a service provider where the scene manager is replaced by a
+    /// <see cref="StubSceneManager"/> that emits a single response with
+    /// <paramref name="terminalStatus"/> as its status.
+    /// </summary>
+    private static IServiceProvider BuildServicesWithStub(
+        string name, AiResponseStatus terminalStatus, Action<PlayFrameworkBuilder> configure)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IChatClient>(new MockChatClient());
+        services.AddPlayFramework(name, builder =>
+        {
+            builder
+                .WithExecutionMode(SceneExecutionMode.Direct)
+                .AddScene("Stub", "Stub scene for hook tests", _ => { });
+            configure(builder);
+        });
+        // Replace the real SceneManager with a stub that emits exactly one terminal response.
+        var stub = new StubSceneManager(new AiSceneResponse { Status = terminalStatus });
+        services.AddOrOverrideFactory<ISceneManager, StubSceneManager>(stub, name, ServiceLifetime.Singleton);
         return services.BuildServiceProvider();
     }
 
@@ -174,5 +261,101 @@ public class TerminalSceneLogTests
         Assert.True(afterCount < results.Count,
             $"AfterEachScene hook ({afterCount} invocations) should not be called for " +
             $"terminal-injected items (total results={results.Count}).");
+    }
+
+    /// <summary>
+    /// The OnTerminalScene hook must fire when the stream reaches an
+    /// <see cref="AiResponseStatus.Error"/> terminal status.
+    /// </summary>
+    [Fact]
+    public async Task OnTerminal_ErrorStatus_HookFires()
+    {
+        var sp = BuildServicesWithStub("ts-error", AiResponseStatus.Error,
+            b => b.Business.AddOnTerminalScene<LogTerminalHook>());
+        var context = new PlayFrameworkExecutionContext { Message = "hello" };
+
+        await RunAsync(sp, "ts-error", context);
+
+        Assert.True(context.Items.TryGetValue("terminalStatus", out var rawStatus));
+        Assert.Equal(AiResponseStatus.Error, (AiResponseStatus)rawStatus!);
+    }
+
+    /// <summary>
+    /// The OnTerminalScene hook must fire when the stream reaches a
+    /// <see cref="AiResponseStatus.BudgetExceeded"/> terminal status.
+    /// </summary>
+    [Fact]
+    public async Task OnTerminal_BudgetExceededStatus_HookFires()
+    {
+        var sp = BuildServicesWithStub("ts-budget", AiResponseStatus.BudgetExceeded,
+            b => b.Business.AddOnTerminalScene<LogTerminalHook>());
+        var context = new PlayFrameworkExecutionContext { Message = "hello" };
+
+        await RunAsync(sp, "ts-budget", context);
+
+        Assert.True(context.Items.TryGetValue("terminalStatus", out var rawStatus));
+        Assert.Equal(AiResponseStatus.BudgetExceeded, (AiResponseStatus)rawStatus!);
+    }
+
+    /// <summary>
+    /// The OnTerminalScene hook must fire when the stream reaches an
+    /// <see cref="AiResponseStatus.Unauthorized"/> terminal status.
+    /// </summary>
+    [Fact]
+    public async Task OnTerminal_UnauthorizedStatus_HookFires()
+    {
+        var sp = BuildServicesWithStub("ts-unauth", AiResponseStatus.Unauthorized,
+            b => b.Business.AddOnTerminalScene<LogTerminalHook>());
+        var context = new PlayFrameworkExecutionContext { Message = "hello" };
+
+        await RunAsync(sp, "ts-unauth", context);
+
+        Assert.True(context.Items.TryGetValue("terminalStatus", out var rawStatus));
+        Assert.Equal(AiResponseStatus.Unauthorized, (AiResponseStatus)rawStatus!);
+    }
+
+    /// <summary>
+    /// When multiple OnTerminalScene hooks are registered, they must run in ascending priority
+    /// order regardless of their registration order.
+    /// </summary>
+    [Fact]
+    public async Task OnTerminal_MultipleHooks_PriorityOrderRespected()
+    {
+        // LogTerminalHookHigh registered first at priority=10, LogTerminalHookLow registered second at priority=1.
+        // Expected execution order: "low" (priority=1) then "high" (priority=10).
+        var sp = BuildServicesWithStub("ts-pri", AiResponseStatus.Completed, b =>
+            b.Business
+                .AddOnTerminalScene<LogTerminalHookHigh>(priority: 10)
+                .AddOnTerminalScene<LogTerminalHookLow>(priority: 1));
+
+        var order = new List<string>();
+        var context = new PlayFrameworkExecutionContext
+        {
+            Message = "hello",
+            Items = new System.Collections.Concurrent.ConcurrentDictionary<string, object> { ["terminalOrder"] = order }
+        };
+
+        await RunAsync(sp, "ts-pri", context);
+
+        Assert.Equal(2, order.Count);
+        Assert.Equal("low", order[0]);
+        Assert.Equal("high", order[1]);
+    }
+
+    /// <summary>
+    /// The OnTerminalScene hook must fire when the stream reaches a
+    /// <see cref="AiResponseStatus.Timeout"/> terminal status.
+    /// </summary>
+    [Fact]
+    public async Task OnTerminal_TimeoutStatus_HookFires()
+    {
+        var sp = BuildServicesWithStub("ts-timeout", AiResponseStatus.Timeout,
+            b => b.Business.AddOnTerminalScene<LogTerminalHook>());
+        var context = new PlayFrameworkExecutionContext { Message = "hello" };
+
+        await RunAsync(sp, "ts-timeout", context);
+
+        Assert.True(context.Items.TryGetValue("terminalStatus", out var rawStatus));
+        Assert.Equal(AiResponseStatus.Timeout, (AiResponseStatus)rawStatus!);
     }
 }
