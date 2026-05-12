@@ -65,10 +65,10 @@ public sealed class PlayFrameworkBusinessBuilder
     internal void BuildRegistry()
     {
         var registry = new PlayFrameworkHookRegistry();
-        foreach (var (_, impl, priority) in _registrations)
-        {
-            registry.Register(impl, priority);
-        }
+
+        // Pre-compute sorted positions once at startup.
+        // Equal-priority hooks preserve registration order (stable sort).
+        registry.Build(_registrations);
 
         // Register registry as singleton factory-keyed (CreateAll not needed — single instance per name)
         _services.AddFactory(registry, _name, ServiceLifetime.Singleton);

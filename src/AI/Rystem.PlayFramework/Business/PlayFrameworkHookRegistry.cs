@@ -33,9 +33,11 @@ public sealed class PlayFrameworkHookRegistry
     /// </summary>
     internal void Build(IReadOnlyList<(Type HookInterface, Type HookImpl, int Priority)> registrations)
     {
-        // Raw priorities (last registration wins for the map; all used in duplicate detection)
+        // Raw priorities: first registration wins when the same type appears more than once.
+        // All occurrences are examined for duplicate detection regardless.
         _rawPriorities = registrations
-            .ToDictionary(r => r.HookImpl, r => r.Priority);
+            .GroupBy(r => r.HookImpl)
+            .ToDictionary(g => g.Key, g => g.First().Priority);
 
         // Detect duplicates: same HookImpl registered more than once (any phase)
         var duplicates = registrations
@@ -45,12 +47,22 @@ public sealed class PlayFrameworkHookRegistry
             .ToList();
         DuplicateRegistrations = duplicates;
 
-        _sortedPositions = registrations
+        // Sorted positions: compute once, use first (lowest) position when the same type
+        // appears multiple times so all instances of that type sort before any later type.
+        var sortedEntries = registrations
             .Select((r, registrationOrder) => (r.HookImpl, r.Priority, registrationOrder))
             .OrderBy(x => x.Priority)
             .ThenBy(x => x.registrationOrder)
             .Select((x, position) => (x.HookImpl, position))
-            .ToDictionary(x => x.HookImpl, x => x.position);
+            .ToList();
+
+        var positions = new Dictionary<Type, int>();
+        foreach (var (hookImpl, position) in sortedEntries)
+        {
+            // TryAdd: first (lowest sort index = highest priority) wins for duplicate types.
+            positions.TryAdd(hookImpl, position);
+        }
+        _sortedPositions = positions;
     }
 
     /// <summary>
