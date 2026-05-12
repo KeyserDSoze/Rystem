@@ -1210,6 +1210,182 @@ Response cost fields:
 | `AiSceneResponse.OutputTokens` | output tokens generated in this call |
 | `AiSceneResponse.CachedInputTokens` | cached input tokens used in this call |
 
+## Example: business hooks (BeforeExecution, AfterEachScene, OnTerminalScene)
+
+Business hooks let you plug cross-cutting logic into the PlayFramework execution pipeline without modifying your scenes. There are three hook types, each addressing a different phase:
+
+| Hook interface | Phase | Typical use cases |
+| --- | --- | --- |
+| `IPlayFrameworkBeforeExecution` | Before the stream starts | Rate limiting, auth checks, prompt injection |
+| `IPlayFrameworkAfterEachScene` | After each `AiSceneResponse` is produced | Cost tracking, response filtering, audit logging |
+| `IPlayFrameworkOnTerminalScene` | When a terminal status is detected | Session finalization, usage recording, async notifications |
+
+### Registration
+
+Hooks are registered on `builder.Business` inside the `AddPlayFramework` configure lambda:
+
+```csharp
+builder.Services.AddPlayFramework("default", framework =>
+{
+    framework
+        .WithChatClient("default")
+        .AddScene("Assistant", "General conversation", _ => { });
+
+    framework.Business
+        .AddBeforeExecution<RateLimitHook>(priority: 0)
+        .AddBeforeExecution<AuditLogHook>(priority: 10)
+        .AddAfterEachScene<CostAccumulatorHook>(priority: 0)
+        .AddOnTerminalScene<SessionFinalizerHook>(priority: 0);
+});
+
+// Hook implementations are resolved from DI (Scoped per request)
+builder.Services.AddScoped<IRateLimitService, RateLimitService>();
+```
+
+The `priority` parameter controls execution order within each hook type — **lower numbers run first**. All three types accept any number of registered implementations.
+
+### IPlayFrameworkBeforeExecution
+
+Called once before the SSE stream opens. Return one of three outcomes:
+
+```csharp
+public sealed class RateLimitHook : IPlayFrameworkBeforeExecution
+{
+    private readonly IRateLimitService _rateLimiter;
+
+    public RateLimitHook(IRateLimitService rateLimiter) => _rateLimiter = rateLimiter;
+
+    public async Task<PlayFrameworkGuardResult> BeforeExecutionAsync(
+        PlayFrameworkExecutionContext context,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = context.User?.FindFirst("sub")?.Value ?? "anonymous";
+        var allowed = await _rateLimiter.TryAcquireAsync(userId, cancellationToken);
+
+        if (!allowed)
+            return PlayFrameworkGuardResult.Deny(429, "Rate limit exceeded. Try again later.");
+
+        // Store data for downstream hooks via the shared Items bag
+        context.Items["userId"] = userId;
+        return PlayFrameworkGuardResult.Allow();
+    }
+}
+```
+
+| Return value | Effect |
+| --- | --- |
+| `PlayFrameworkGuardResult.Allow()` | Proceeds to the next hook (or starts the stream) |
+| `PlayFrameworkGuardResult.Deny(statusCode, detail)` | Endpoint returns the given HTTP error; stream never opens |
+| `PlayFrameworkGuardResult.ShortCircuit(response)` | Stream opens with one synthetic SSE item then closes; `ISceneManager` is never called |
+
+### IPlayFrameworkAfterEachScene
+
+Called for every `AiSceneResponse` emitted by the scene manager, before it is written to the SSE channel:
+
+```csharp
+public sealed class CostAccumulatorHook : IPlayFrameworkAfterEachScene
+{
+    private readonly ICostRepository _repo;
+
+    public CostAccumulatorHook(ICostRepository repo) => _repo = repo;
+
+    public async Task<PlayFrameworkSceneResult> AfterSceneAsync(
+        AiSceneResponse scene,
+        PlayFrameworkExecutionContext context,
+        CancellationToken cancellationToken = default)
+    {
+        if (scene.Cost is not null)
+        {
+            var userId = context.Items.TryGetValue("userId", out var u) ? (string)u : "anonymous";
+            await _repo.AccumulateAsync(userId, scene.Cost.Value, cancellationToken);
+        }
+
+        return PlayFrameworkSceneResult.Forward(scene);
+    }
+}
+```
+
+| Return value | Effect |
+| --- | --- |
+| `PlayFrameworkSceneResult.Forward(scene)` | Sends the (optionally modified) item to the client |
+| `PlayFrameworkSceneResult.Suppress()` | Discards the item; client never receives it |
+| `PlayFrameworkSceneResult.ForwardAndInject(scene, extras)` | Sends the item, then appends extra synthetic items (extras bypass AfterEachScene hooks) |
+
+### IPlayFrameworkOnTerminalScene
+
+Called once when a terminal status is detected (`Completed`, `Error`, `BudgetExceeded`, `Unauthorized`, `Timeout`, `RateLimited`). The terminal response is always sent to the client first; items returned by this hook are appended to the stream afterwards and bypass `IPlayFrameworkAfterEachScene` hooks:
+
+```csharp
+public sealed class SessionFinalizerHook : IPlayFrameworkOnTerminalScene
+{
+    private readonly ISessionRepository _sessions;
+
+    public SessionFinalizerHook(ISessionRepository sessions) => _sessions = sessions;
+
+    public async Task<IEnumerable<AiSceneResponse>?> OnTerminalAsync(
+        AiSceneResponse terminalScene,
+        PlayFrameworkExecutionContext context,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = context.Items.TryGetValue("userId", out var u) ? (string)u : "anonymous";
+        var summary = await _sessions.FinalizeAsync(userId, terminalScene.Status, cancellationToken);
+
+        // Optionally inject a summary item into the SSE stream after the terminal response
+        return
+        [
+            new AiSceneResponse
+            {
+                Status = AiResponseStatus.FinalResponse,
+                Message = $"Session finalized. Total cost: {summary.TotalCost:F4} USD."
+            }
+        ];
+    }
+}
+```
+
+Return `null` or an empty enumerable when no additional items are needed.
+
+### PlayFrameworkExecutionContext
+
+Every hook in the same request receives the same `PlayFrameworkExecutionContext` instance:
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `Message` | `string` | The user's text message |
+| `Input` | `MultiModalInput?` | Multi-modal input (text + images/audio/files), if used |
+| `ConversationKey` | `string?` | Conversation key from the request (null for new conversations) |
+| `Settings` | `SceneRequestSettings` | Per-request settings — mutable, can be modified by BeforeExecution hooks |
+| `Metadata` | `Dictionary<string, object>?` | HTTP metadata (userId, ipAddress, requestId, timestamp, custom keys) |
+| `User` | `ClaimsPrincipal?` | The authenticated user (null for unauthenticated requests) |
+| `Items` | `ConcurrentDictionary<string, object>` | Thread-safe bag for passing data between hooks in the same request |
+
+### Timeout
+
+A per-request timeout can be configured in `PlayFrameworkApiSettings`:
+
+```csharp
+builder.Services.Configure<PlayFrameworkApiSettings>(options =>
+{
+    options.TimeoutInSeconds = 30; // abort streaming after 30 s
+});
+```
+
+When the timeout fires:
+
+- If the SSE stream has **not yet started**: the endpoint returns HTTP 504 and the connection is closed.
+- If the SSE stream **is already open**: a synthetic `AiResponseStatus.Timeout` item is emitted into the stream before the connection closes, so clients can detect and handle the timeout gracefully.
+
+Important behavior:
+
+- All three hook types are resolved from the DI container as **Scoped** services — one instance per HTTP request.
+- Hooks of the same type run in ascending `priority` order. Hooks with equal priority run in registration order.
+- `IPlayFrameworkBusinessManager` is always registered, even when no hooks are configured (it handles the timeout and delegates to `ISceneManager` transparently).
+- `ForwardAndInject` extra items and `OnTerminalScene` injected items **bypass** `IPlayFrameworkAfterEachScene` hooks to prevent infinite loops.
+- `OnTerminalScene` fires based on the **original** response status, even if the triggering item was suppressed by an `AfterEachScene` hook.
+- A `BeforeExecution` hook can mutate `context.Settings` (e.g. inject `ForcedTools` or change `MaxBudget`) before execution begins.
+- If a hook throws a non-cancellation exception it is wrapped in `PlayFrameworkHookException` (which carries `HookTypeName`, `Phase`, and `Priority`) and propagated — the pipeline does not silently swallow hook errors.
+- If the same hook implementation type is registered more than once, a `LogWarning` is emitted **once per `IPlayFrameworkBusinessManager` instance** at the first `ExecuteAsync` call, reporting the type name, registration count, factory name, and all registered priorities. All duplicate registrations are kept; no registration is silently dropped.
+
 ## Example: custom extensibility
 
 Core pipeline components can be swapped out without forking the framework.
@@ -1282,22 +1458,32 @@ All possible values of `AiResponseStatus`:
 
 | Status | Description |
 |---|---|
-| `Completed` | Execution finished successfully |
-| `Streaming` | Token-level streaming chunk in progress |
+| `Initializing` | Initializing execution context |
+| `LoadingCache` | Loading data from conversation cache |
+| `ExecutingMainActors` | Executing main actors |
+| `Planning` | Creating an execution plan |
 | `ExecutingScene` | Engine is inside a scene |
+| `ExecutingPlan` | Executing a plan step |
 | `FunctionRequest` | Server-side tool call started |
 | `FunctionCompleted` | Server-side tool call finished |
+| `ToolSkipped` | Tool execution skipped (already executed) |
 | `AwaitingClient` | Waiting for a client-side tool response |
 | `CommandClient` | Fire-and-forget command sent to client |
-| `Planning` | Creating an execution plan |
-| `ExecutingPlan` | Executing a plan step |
+| `Streaming` | Token-level streaming chunk in progress |
+| `Running` | General processing in progress |
 | `Summarizing` | Compressing conversation history |
-| `Directing` | Director evaluating scene output |
+| `DirectorDecision` | Director evaluating scene output |
+| `GeneratingFinalResponse` | Generating aggregated final response |
+| `FinalResponse` | Final aggregated response item |
+| `SavingCache` | Persisting response to conversation cache |
+| `SavingRepository` | Saving to conversation repository |
+| `SavingMemory` | Saving to memory layer |
+| `Completed` | Execution finished successfully |
 | `BudgetExceeded` | Request exceeded `MaxBudget` |
 | `Error` | Unhandled error during execution |
 | `Unauthorized` | `IAuthorizationLayer` rejected the request |
-| `RateLimited` | Rate limit exceeded with `RejectOnExceeded` |
-| `Cached` | Response served from conversation cache |
+| `Timeout` | Server-side timeout expired; synthetic SSE item emitted if stream was already open |
+| `RateLimited` | Rate limit exceeded (e.g. `RejectOnExceeded` or a `BeforeExecution` hook) |
 
 ## Important caveats
 

@@ -123,5 +123,17 @@ public enum AiResponseStatus
     /// <summary>
     /// Indicates that the request was not authorized.
     /// </summary>
-    Unauthorized
+    Unauthorized,
+
+    /// <summary>
+    /// The server-side timeout expired before the pipeline completed.
+    /// A synthetic SSE item with this status is emitted at the end of the stream
+    /// so clients can detect and handle the timeout gracefully.
+    /// </summary>
+    Timeout,
+
+    /// <summary>
+    /// The request was rate-limited (e.g., by a BeforeExecution hook or an upstream LLM provider).
+    /// </summary>
+    RateLimited
 }

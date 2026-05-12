@@ -81,4 +81,12 @@ public sealed class PlayFrameworkApiSettings
     /// Default: 25MB (OpenAI Whisper limit).
     /// </summary>
     public long MaxAudioUploadSize { get; set; } = 26_214_400; // 25MB
+
+    /// <summary>
+    /// Server-side timeout in seconds for the entire business pipeline
+    /// (BeforeExecution hooks → scene streaming → AfterEachScene → OnTerminalScene hooks).
+    /// 0 or negative = no timeout (default).
+    /// When the timeout expires the endpoint returns <c>408 Request Timeout</c>.
+    /// </summary>
+    public int TimeoutInSeconds { get; set; } = 0;
 }

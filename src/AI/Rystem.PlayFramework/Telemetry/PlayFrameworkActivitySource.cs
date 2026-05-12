@@ -87,6 +87,11 @@ public static class PlayFrameworkActivitySource
         public const string McpToolCount = "playframework.mcp.tool_count";
         public const string McpResourceCount = "playframework.mcp.resource_count";
         public const string McpPromptCount = "playframework.mcp.prompt_count";
+
+        // Business hook tags
+        public const string HookType = "playframework.hook.type";
+        public const string HookOutcome = "playframework.hook.outcome";
+        public const string HookPriority = "playframework.hook.priority";
     }
     
     /// <summary>
@@ -132,6 +137,11 @@ public static class PlayFrameworkActivitySource
         public const string McpToolCalled = "mcp.tool_called";
         public const string McpToolCompleted = "mcp.tool_completed";
         public const string McpToolFailed = "mcp.tool_failed";
+
+        // Business hook events
+        public const string HookDenied = "hook.denied";
+        public const string HookShortCircuited = "hook.short_circuited";
+        public const string HookSuppressed = "hook.suppressed";
     }
     
     /// <summary>
@@ -173,5 +183,11 @@ public static class PlayFrameworkActivitySource
         public const string McpLoadResources = "MCP.LoadResources";
         public const string McpExecuteTool = "MCP.ExecuteTool";
         public const string McpToolExecute = "MCP.Tool.Execute";
+
+        // Business hook activities
+        public const string BusinessExecute = "Business.Execute";
+        public const string BusinessBeforeExecutionHook = "Business.BeforeExecutionHook";
+        public const string BusinessAfterEachSceneHook = "Business.AfterEachSceneHook";
+        public const string BusinessOnTerminalSceneHook = "Business.OnTerminalSceneHook";
     }
 }
