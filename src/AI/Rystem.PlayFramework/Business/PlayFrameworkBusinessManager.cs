@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
+using Rystem.PlayFramework.Telemetry;
 
 namespace Rystem.PlayFramework;
 
@@ -46,6 +48,10 @@ internal sealed class PlayFrameworkBusinessManager : IPlayFrameworkBusinessManag
         PlayFrameworkExecutionContext context,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        using var businessActivity = PlayFrameworkActivitySource.Instance
+            .StartActivity(PlayFrameworkActivitySource.Activities.BusinessExecute, ActivityKind.Internal);
+        businessActivity?.SetTag(PlayFrameworkActivitySource.Tags.FactoryName, factoryName);
+
         var registry = _registryFactory.Create(factoryName)!;
 
         // ── 1. BeforeExecution hooks ──────────────────────────────────────────
@@ -55,20 +61,36 @@ internal sealed class PlayFrameworkBusinessManager : IPlayFrameworkBusinessManag
 
         foreach (var hook in beforeHooks)
         {
+            var hookTypeName = hook.GetType().Name;
+            using var hookActivity = PlayFrameworkActivitySource.Instance
+                .StartActivity(PlayFrameworkActivitySource.Activities.BusinessBeforeExecutionHook, ActivityKind.Internal);
+            hookActivity?.SetTag(PlayFrameworkActivitySource.Tags.HookType, hookTypeName);
+
             var guard = await hook.BeforeExecutionAsync(context, cancellationToken);
 
             if (guard.Type == PlayFrameworkGuardResultType.Deny)
             {
+                hookActivity?.SetTag(PlayFrameworkActivitySource.Tags.HookOutcome, "Deny");
+                hookActivity?.AddEvent(new ActivityEvent(PlayFrameworkActivitySource.Events.HookDenied));
+                hookActivity?.SetStatus(ActivityStatusCode.Ok);
+                businessActivity?.SetStatus(ActivityStatusCode.Ok);
                 yield return (null, guard.DenyResult);
                 yield break;
             }
 
             if (guard.Type == PlayFrameworkGuardResultType.ShortCircuit)
             {
+                hookActivity?.SetTag(PlayFrameworkActivitySource.Tags.HookOutcome, "ShortCircuit");
+                hookActivity?.AddEvent(new ActivityEvent(PlayFrameworkActivitySource.Events.HookShortCircuited));
+                hookActivity?.SetStatus(ActivityStatusCode.Ok);
+                businessActivity?.SetStatus(ActivityStatusCode.Ok);
                 yield return (guard.ShortCircuitResponse, null);
                 yield break;
             }
+
             // Allow → continue to next hook
+            hookActivity?.SetTag(PlayFrameworkActivitySource.Tags.HookOutcome, "Allow");
+            hookActivity?.SetStatus(ActivityStatusCode.Ok);
         }
 
         // ── 2. Execute scene manager ──────────────────────────────────────────
@@ -103,21 +125,33 @@ internal sealed class PlayFrameworkBusinessManager : IPlayFrameworkBusinessManag
 
                 foreach (var hook in afterHooks)
                 {
+                    var hookTypeName = hook.GetType().Name;
+                    using var hookActivity = PlayFrameworkActivitySource.Instance
+                        .StartActivity(PlayFrameworkActivitySource.Activities.BusinessAfterEachSceneHook, ActivityKind.Internal);
+                    hookActivity?.SetTag(PlayFrameworkActivitySource.Tags.HookType, hookTypeName);
+
                     var result = await hook.AfterSceneAsync(current, context, cancellationToken);
 
                     switch (result.Type)
                     {
                         case PlayFrameworkSceneResultType.Suppress:
                             suppressed = true;
+                            hookActivity?.SetTag(PlayFrameworkActivitySource.Tags.HookOutcome, "Suppress");
+                            hookActivity?.AddEvent(new ActivityEvent(PlayFrameworkActivitySource.Events.HookSuppressed));
+                            hookActivity?.SetStatus(ActivityStatusCode.Ok);
                             goto afterHooksDone; // break inner loop
 
                         case PlayFrameworkSceneResultType.ForwardAndInject:
                             current = result.Scene!;
                             extras = result.ExtraItems;
+                            hookActivity?.SetTag(PlayFrameworkActivitySource.Tags.HookOutcome, "ForwardAndInject");
+                            hookActivity?.SetStatus(ActivityStatusCode.Ok);
                             goto afterHooksDone; // extras bypass further after-hooks
 
                         default: // Forward
                             current = result.Scene!;
+                            hookActivity?.SetTag(PlayFrameworkActivitySource.Tags.HookOutcome, "Forward");
+                            hookActivity?.SetStatus(ActivityStatusCode.Ok);
                             break;
                     }
                 }
@@ -142,14 +176,24 @@ internal sealed class PlayFrameworkBusinessManager : IPlayFrameworkBusinessManag
             {
                 foreach (var hook in terminalHooks)
                 {
+                    var hookTypeName = hook.GetType().Name;
+                    using var hookActivity = PlayFrameworkActivitySource.Instance
+                        .StartActivity(PlayFrameworkActivitySource.Activities.BusinessOnTerminalSceneHook, ActivityKind.Internal);
+                    hookActivity?.SetTag(PlayFrameworkActivitySource.Tags.HookType, hookTypeName);
+
                     var injected = await hook.OnTerminalAsync(response, context, cancellationToken);
                     if (injected is not null)
                     {
                         foreach (var item in injected)
                             yield return (item, null);
                     }
+
+                    hookActivity?.SetTag(PlayFrameworkActivitySource.Tags.HookOutcome, "Completed");
+                    hookActivity?.SetStatus(ActivityStatusCode.Ok);
                 }
             }
         }
+
+        businessActivity?.SetStatus(ActivityStatusCode.Ok);
     }
 }
