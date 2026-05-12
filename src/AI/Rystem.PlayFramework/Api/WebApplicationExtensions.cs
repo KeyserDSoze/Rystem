@@ -376,6 +376,7 @@ public static class WebApplicationExtensions
 
             if (!httpContext.Response.HasStarted)
             {
+                // SSE stream not yet opened — return plain HTTP 408
                 httpContext.Response.StatusCode = 408;
                 await httpContext.Response.WriteAsJsonAsync(new
                 {
@@ -383,6 +384,21 @@ public static class WebApplicationExtensions
                     totalCost = lastKnownTotalCost,
                     conversationKey = lastKnownConversationKey
                 }, cancellationToken: default);
+            }
+            else
+            {
+                // SSE stream already open — emit synthetic Timeout item so clients
+                // receive a well-typed terminal event instead of a silent stream close.
+                var timeoutResponse = new AiSceneResponse
+                {
+                    Status = AiResponseStatus.Timeout,
+                    ErrorMessage = "Request timed out",
+                    TotalCost = lastKnownTotalCost,
+                    ConversationKey = lastKnownConversationKey
+                };
+                var timeoutJson = JsonSerializer.Serialize(timeoutResponse, JsonHelper.JsonSerializerOptions);
+                await httpContext.Response.WriteAsync($"data: {timeoutJson}\n\n", cancellationToken: default);
+                await httpContext.Response.Body.FlushAsync(cancellationToken: default);
             }
         }
         catch (OperationCanceledException)

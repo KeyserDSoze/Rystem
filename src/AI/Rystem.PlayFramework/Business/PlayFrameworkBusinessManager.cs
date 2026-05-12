@@ -21,7 +21,9 @@ internal sealed class PlayFrameworkBusinessManager : IPlayFrameworkBusinessManag
         AiResponseStatus.Completed,
         AiResponseStatus.Error,
         AiResponseStatus.BudgetExceeded,
-        AiResponseStatus.Unauthorized
+        AiResponseStatus.Unauthorized,
+        AiResponseStatus.Timeout,
+        AiResponseStatus.RateLimited
     ];
 
     public PlayFrameworkBusinessManager(
