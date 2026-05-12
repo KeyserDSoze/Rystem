@@ -1313,7 +1313,7 @@ public sealed class CostAccumulatorHook : IPlayFrameworkAfterEachScene
 
 ### IPlayFrameworkOnTerminalScene
 
-Called once when a terminal status is detected (`Completed`, `Error`, `BudgetExceeded`, `Unauthorized`). The terminal response is always sent to the client first; items returned by this hook are appended to the stream afterwards and bypass `IPlayFrameworkAfterEachScene` hooks:
+Called once when a terminal status is detected (`Completed`, `Error`, `BudgetExceeded`, `Unauthorized`, `Timeout`, `RateLimited`). The terminal response is always sent to the client first; items returned by this hook are appended to the stream afterwards and bypass `IPlayFrameworkAfterEachScene` hooks:
 
 ```csharp
 public sealed class SessionFinalizerHook : IPlayFrameworkOnTerminalScene
@@ -1370,7 +1370,10 @@ builder.Services.Configure<PlayFrameworkApiSettings>(options =>
 });
 ```
 
-When the timeout fires, the endpoint returns HTTP 504 and the SSE connection is closed.
+When the timeout fires:
+
+- If the SSE stream has **not yet started**: the endpoint returns HTTP 504 and the connection is closed.
+- If the SSE stream **is already open**: a synthetic `AiResponseStatus.Timeout` item is emitted into the stream before the connection closes, so clients can detect and handle the timeout gracefully.
 
 Important behavior:
 
@@ -1380,6 +1383,8 @@ Important behavior:
 - `ForwardAndInject` extra items and `OnTerminalScene` injected items **bypass** `IPlayFrameworkAfterEachScene` hooks to prevent infinite loops.
 - `OnTerminalScene` fires based on the **original** response status, even if the triggering item was suppressed by an `AfterEachScene` hook.
 - A `BeforeExecution` hook can mutate `context.Settings` (e.g. inject `ForcedTools` or change `MaxBudget`) before execution begins.
+- If a hook throws a non-cancellation exception it is wrapped in `PlayFrameworkHookException` (which carries `HookTypeName`, `Phase`, and `Priority`) and propagated — the pipeline does not silently swallow hook errors.
+- If the same hook implementation type is registered more than once, a `LogWarning` is emitted **once per `IPlayFrameworkBusinessManager` instance** at the first `ExecuteAsync` call, reporting the type name, registration count, factory name, and all registered priorities. All duplicate registrations are kept; no registration is silently dropped.
 
 ## Example: custom extensibility
 
@@ -1453,22 +1458,32 @@ All possible values of `AiResponseStatus`:
 
 | Status | Description |
 |---|---|
-| `Completed` | Execution finished successfully |
-| `Streaming` | Token-level streaming chunk in progress |
+| `Initializing` | Initializing execution context |
+| `LoadingCache` | Loading data from conversation cache |
+| `ExecutingMainActors` | Executing main actors |
+| `Planning` | Creating an execution plan |
 | `ExecutingScene` | Engine is inside a scene |
+| `ExecutingPlan` | Executing a plan step |
 | `FunctionRequest` | Server-side tool call started |
 | `FunctionCompleted` | Server-side tool call finished |
+| `ToolSkipped` | Tool execution skipped (already executed) |
 | `AwaitingClient` | Waiting for a client-side tool response |
 | `CommandClient` | Fire-and-forget command sent to client |
-| `Planning` | Creating an execution plan |
-| `ExecutingPlan` | Executing a plan step |
+| `Streaming` | Token-level streaming chunk in progress |
+| `Running` | General processing in progress |
 | `Summarizing` | Compressing conversation history |
-| `Directing` | Director evaluating scene output |
+| `DirectorDecision` | Director evaluating scene output |
+| `GeneratingFinalResponse` | Generating aggregated final response |
+| `FinalResponse` | Final aggregated response item |
+| `SavingCache` | Persisting response to conversation cache |
+| `SavingRepository` | Saving to conversation repository |
+| `SavingMemory` | Saving to memory layer |
+| `Completed` | Execution finished successfully |
 | `BudgetExceeded` | Request exceeded `MaxBudget` |
 | `Error` | Unhandled error during execution |
 | `Unauthorized` | `IAuthorizationLayer` rejected the request |
-| `RateLimited` | Rate limit exceeded with `RejectOnExceeded` |
-| `Cached` | Response served from conversation cache |
+| `Timeout` | Server-side timeout expired; synthetic SSE item emitted if stream was already open |
+| `RateLimited` | Rate limit exceeded (e.g. `RejectOnExceeded` or a `BeforeExecution` hook) |
 
 ## Important caveats
 
