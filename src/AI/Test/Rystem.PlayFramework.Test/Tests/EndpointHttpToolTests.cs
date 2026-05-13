@@ -105,6 +105,75 @@ internal sealed class OrderResponse
     public string Status { get; set; } = "";
 }
 
+/// <summary>
+/// Request DTO with nullable <see cref="List{T}"/> of <see cref="Guid"/> — the scenario
+/// that was producing "array schema missing items" when sent to AI model APIs.
+/// </summary>
+internal sealed class FindByGuidsRequest
+{
+    [System.Text.Json.Serialization.JsonPropertyName("projectIds")]
+    public List<Guid>? ProjectIds { get; set; } = [];
+
+    [System.Text.Json.Serialization.JsonPropertyName("entityIds")]
+    public List<Guid>? EntityIds { get; set; } = [];
+}
+
+/// <summary>
+/// Request DTO that covers all collection variants to be supported.
+/// </summary>
+internal sealed class CollectionTypesRequest
+{
+    [System.Text.Json.Serialization.JsonPropertyName("guidList")]
+    public List<Guid>? GuidList { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("intList")]
+    public List<int> IntList { get; set; } = [];
+
+    [System.Text.Json.Serialization.JsonPropertyName("stringArray")]
+    public string[] StringArray { get; set; } = [];
+
+    [System.Text.Json.Serialization.JsonPropertyName("enumerable")]
+    public IEnumerable<string>? Enumerable { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("readOnlyList")]
+    public IReadOnlyList<decimal>? ReadOnlyList { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("collection")]
+    public ICollection<bool>? Collection { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("scalar")]
+    public string? Scalar { get; set; }
+}
+
+internal enum SortOrder { Ascending, Descending, Relevance }
+
+/// <summary>
+/// Request DTO with an enum property, to verify "enum":[names] in schema.
+/// </summary>
+internal sealed class SortedSearchRequest
+{
+    [System.Text.Json.Serialization.JsonPropertyName("query")]
+    public string? Query { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("sortOrder")]
+    public SortOrder SortOrder { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("nullableSortOrder")]
+    public SortOrder? NullableSortOrder { get; set; }
+}
+
+/// <summary>
+/// Request DTO with a Dictionary property, to verify it maps to "object" not "array".
+/// </summary>
+internal sealed class MetadataRequest
+{
+    [System.Text.Json.Serialization.JsonPropertyName("metadata")]
+    public Dictionary<string, string>? Metadata { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("counts")]
+    public IDictionary<string, int>? Counts { get; set; }
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 public sealed class EndpointHttpToolTests
@@ -399,6 +468,288 @@ public sealed class EndpointHttpToolTests
         Assert.Contains("quantity", required);
         Assert.DoesNotContain("totalPrice", required);
         Assert.DoesNotContain("customerName", required);
+    }
+
+    // ── Group 2b: Schema – array / collection "items" ─────────────────────────
+
+    /// <summary>
+    /// Regression test for "array schema missing items".
+    /// List&lt;Guid&gt;? must produce { "type": "array", "items": { "type": "string" } }.
+    /// </summary>
+    [Fact]
+    public void Schema_Post_NullableListGuid_ArrayHasItemsTypeString()
+    {
+        var (props, _) = BuildSchemaProps<FindByGuidsRequest>();
+
+        Assert.True(props.TryGetProperty("projectIds", out var prop));
+        Assert.Equal("array", prop.GetProperty("type").GetString());
+        var items = prop.GetProperty("items");
+        Assert.Equal("string", items.GetProperty("type").GetString());
+    }
+
+    /// <summary>
+    /// A second nullable List&lt;Guid&gt; in the same DTO must also have "items".
+    /// </summary>
+    [Fact]
+    public void Schema_Post_SecondNullableListGuid_ArrayHasItemsTypeString()
+    {
+        var (props, _) = BuildSchemaProps<FindByGuidsRequest>();
+
+        Assert.True(props.TryGetProperty("entityIds", out var prop));
+        Assert.Equal("array", prop.GetProperty("type").GetString());
+        Assert.Equal("string", prop.GetProperty("items").GetProperty("type").GetString());
+    }
+
+    [Fact]
+    public void Schema_Post_ListInt_ArrayHasItemsTypeInteger()
+    {
+        var (props, _) = BuildSchemaProps<CollectionTypesRequest>();
+
+        Assert.True(props.TryGetProperty("intList", out var prop));
+        Assert.Equal("array", prop.GetProperty("type").GetString());
+        Assert.Equal("integer", prop.GetProperty("items").GetProperty("type").GetString());
+    }
+
+    [Fact]
+    public void Schema_Post_StringArray_ArrayHasItemsTypeString()
+    {
+        var (props, _) = BuildSchemaProps<CollectionTypesRequest>();
+
+        Assert.True(props.TryGetProperty("stringArray", out var prop));
+        Assert.Equal("array", prop.GetProperty("type").GetString());
+        Assert.Equal("string", prop.GetProperty("items").GetProperty("type").GetString());
+    }
+
+    [Fact]
+    public void Schema_Post_NullableIEnumerableString_ArrayHasItemsTypeString()
+    {
+        var (props, _) = BuildSchemaProps<CollectionTypesRequest>();
+
+        Assert.True(props.TryGetProperty("enumerable", out var prop));
+        Assert.Equal("array", prop.GetProperty("type").GetString());
+        Assert.Equal("string", prop.GetProperty("items").GetProperty("type").GetString());
+    }
+
+    [Fact]
+    public void Schema_Post_NullableIReadOnlyListDecimal_ArrayHasItemsTypeNumber()
+    {
+        var (props, _) = BuildSchemaProps<CollectionTypesRequest>();
+
+        Assert.True(props.TryGetProperty("readOnlyList", out var prop));
+        Assert.Equal("array", prop.GetProperty("type").GetString());
+        Assert.Equal("number", prop.GetProperty("items").GetProperty("type").GetString());
+    }
+
+    [Fact]
+    public void Schema_Post_NullableICollectionBool_ArrayHasItemsTypeBoolean()
+    {
+        var (props, _) = BuildSchemaProps<CollectionTypesRequest>();
+
+        Assert.True(props.TryGetProperty("collection", out var prop));
+        Assert.Equal("array", prop.GetProperty("type").GetString());
+        Assert.Equal("boolean", prop.GetProperty("items").GetProperty("type").GetString());
+    }
+
+    [Fact]
+    public void Schema_Post_NullableListGuid_ScalarSiblingIsUnaffected()
+    {
+        var (props, _) = BuildSchemaProps<CollectionTypesRequest>();
+
+        // A plain scalar property alongside lists must still be a simple "string"
+        Assert.True(props.TryGetProperty("scalar", out var prop));
+        Assert.Equal("string", prop.GetProperty("type").GetString());
+        Assert.False(prop.TryGetProperty("items", out _));
+    }
+
+    /// <summary>
+    /// A query-string parameter declared with a List type must also produce
+    /// { "type": "array", "items": { "type": "string" } }.
+    /// </summary>
+    [Fact]
+    public void Schema_QueryParam_ListType_ArrayHasItems()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IChatClient>(new EndpointToolCallingChatClient("SearchOrders", []));
+
+        services.AddPlayFramework(builder =>
+        {
+            builder.WithHttpClient<IOrderServiceClient>(c => c.BaseAddress = new Uri("http://api/"));
+
+            builder.AddScene("Orders", "Orders scene", scene =>
+            {
+                scene.WithEndpoint<IOrderServiceClient>(ep =>
+                {
+                    ep.WithAction<OrderResponse>("SearchOrders", HttpMethod.Get, "/orders", "Search orders")
+                      .WithParameter("ids", "Filter by ids", typeof(List<Guid>));
+                });
+            });
+        });
+
+        var sp = services.BuildServiceProvider();
+        var tool = sp.GetRequiredService<ISceneFactory>().TryGetScene("Orders")!.Tools[0];
+        var schema = GetAiToolJsonSchema(tool.ToolDescription);
+        using var doc = JsonDocument.Parse(schema.GetRawText());
+        var props = doc.RootElement.GetProperty("properties");
+
+        Assert.True(props.TryGetProperty("ids", out var idsProp));
+        Assert.Equal("array", idsProp.GetProperty("type").GetString());
+        Assert.Equal("string", idsProp.GetProperty("items").GetProperty("type").GetString());
+    }
+
+    // ── Helper: build schema properties for a typed request body ─────────────
+
+    private (JsonElement properties, List<string> required) BuildSchemaProps<TRequest>()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IChatClient>(new EndpointToolCallingChatClient("Action", []));
+
+        services.AddPlayFramework(builder =>
+        {
+            builder.WithHttpClient<IOrderServiceClient>(c => c.BaseAddress = new Uri("http://api/"));
+
+            builder.AddScene("Test", "Test scene", scene =>
+            {
+                scene.WithEndpoint<IOrderServiceClient>(ep =>
+                {
+                    ep.WithAction<TRequest, OrderResponse>("Action", HttpMethod.Post, "/action", "Test action");
+                });
+            });
+        });
+
+        var sp = services.BuildServiceProvider();
+        var tool = sp.GetRequiredService<ISceneFactory>().TryGetScene("Test")!.Tools[0];
+        var schema = GetAiToolJsonSchema(tool.ToolDescription);
+        using var doc = JsonDocument.Parse(schema.GetRawText());
+
+        var props = doc.RootElement.GetProperty("properties").Clone();
+        var required = doc.RootElement.TryGetProperty("required", out var req)
+            ? req.EnumerateArray().Select(e => e.GetString()!).ToList()
+            : new List<string>();
+        return (props, required);
+    }
+
+    // ── Group 2c: Schema – enum "enum" values ─────────────────────────────────
+
+    [Fact]
+    public void Schema_Post_EnumProperty_HasTypeStringAndEnumValues()
+    {
+        var (props, _) = BuildSchemaProps<SortedSearchRequest>();
+
+        Assert.True(props.TryGetProperty("sortOrder", out var prop));
+        Assert.Equal("string", prop.GetProperty("type").GetString());
+
+        var values = prop.GetProperty("enum").EnumerateArray()
+            .Select(e => e.GetString()).ToList();
+        Assert.Contains("Ascending", values);
+        Assert.Contains("Descending", values);
+        Assert.Contains("Relevance", values);
+    }
+
+    [Fact]
+    public void Schema_Post_NullableEnumProperty_HasEnumValues()
+    {
+        var (props, _) = BuildSchemaProps<SortedSearchRequest>();
+
+        Assert.True(props.TryGetProperty("nullableSortOrder", out var prop));
+        Assert.Equal("string", prop.GetProperty("type").GetString());
+        var values = prop.GetProperty("enum").EnumerateArray()
+            .Select(e => e.GetString()).ToList();
+        Assert.Equal(3, values.Count);
+    }
+
+    [Fact]
+    public void Schema_Post_EnumProperty_IsRequiredWhenNonNullable()
+    {
+        var (_, required) = BuildSchemaProps<SortedSearchRequest>();
+        Assert.Contains("sortOrder", required);
+        Assert.DoesNotContain("nullableSortOrder", required);
+    }
+
+    // ── Group 2d: Schema – Dictionary → "object" ──────────────────────────────
+
+    [Fact]
+    public void Schema_Post_DictionaryStringString_HasTypeObject()
+    {
+        var (props, _) = BuildSchemaProps<MetadataRequest>();
+
+        Assert.True(props.TryGetProperty("metadata", out var prop));
+        Assert.Equal("object", prop.GetProperty("type").GetString());
+        Assert.False(prop.TryGetProperty("items", out _));
+    }
+
+    [Fact]
+    public void Schema_Post_IDictionaryStringInt_HasTypeObject()
+    {
+        var (props, _) = BuildSchemaProps<MetadataRequest>();
+
+        Assert.True(props.TryGetProperty("counts", out var prop));
+        Assert.Equal("object", prop.GetProperty("type").GetString());
+        Assert.False(prop.TryGetProperty("items", out _));
+    }
+
+    // ── Group 3b: Execution – array query param expands to repeated key=val ───
+
+    [Fact]
+    public async Task Execution_ArrayQueryParam_ExpandsToRepeatedQueryStringPairs()
+    {
+        var responsePayload = """{"orderId":"x","status":"Ok"}""";
+        var handler = new CapturingHttpHandler(
+            new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent(responsePayload, Encoding.UTF8, "application/json")
+            });
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IChatClient>(new EndpointToolCallingChatClient(
+            "SearchOrders",
+            new Dictionary<string, object?>
+            {
+                // The AI sends the array as a JSON array value
+                ["ids"] = JsonSerializer.Deserialize<JsonElement>("""["id-1","id-2","id-3"]""")
+            }));
+
+        services.AddPlayFramework(builder =>
+        {
+            builder.WithHttpClient<IOrderServiceClient>(
+                c => c.BaseAddress = new Uri("http://api/"),
+                b => b.ConfigurePrimaryHttpMessageHandler(() => handler));
+
+            builder.AddScene("Orders", "Orders scene", scene =>
+            {
+                scene.WithEndpoint<IOrderServiceClient>(ep =>
+                {
+                    ep.WithAction<OrderResponse>(
+                            "SearchOrders", HttpMethod.Get, "/orders", "Search orders")
+                        .WithParameter("ids", "Filter by order ids", typeof(List<string>));
+                });
+            });
+        });
+
+        var sp = services.BuildServiceProvider();
+        var sceneManager = sp.GetRequiredService<IFactory<ISceneManager>>().Create(null)!;
+
+        var settings = new SceneRequestSettings
+        {
+            ExecutionMode = SceneExecutionMode.Scene,
+            SceneName = "Orders"
+        };
+
+        await foreach (var _ in sceneManager.ExecuteAsync("find orders with ids id-1 id-2 id-3", settings: settings)) { }
+
+        var capturedUrl = handler.CapturedRequest?.RequestUri?.ToString();
+        Assert.NotNull(capturedUrl);
+
+        // Must NOT contain raw JSON brackets
+        Assert.DoesNotContain("%5B", capturedUrl);   // [
+        Assert.DoesNotContain("%5D", capturedUrl);   // ]
+
+        // Each id must appear as a separate repeated param
+        Assert.Contains("ids=id-1", capturedUrl);
+        Assert.Contains("ids=id-2", capturedUrl);
+        Assert.Contains("ids=id-3", capturedUrl);
     }
 
     // ── Group 3: Metadata ─────────────────────────────────────────────────────

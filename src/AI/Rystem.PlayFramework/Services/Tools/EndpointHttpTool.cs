@@ -145,10 +145,20 @@ internal sealed class EndpointHttpTool : ISceneTool, ISceneToolMetadata
         // Append query-string parameters
         var queryParts = _config.QueryParameters
             .Where(qp => argsDict.ContainsKey(qp.Name))
-            .Select(qp =>
+            .SelectMany(qp =>
             {
-                var raw = argsDict[qp.Name].GetString() ?? argsDict[qp.Name].GetRawText();
-                return $"{qp.Name}={Uri.EscapeDataString(raw)}";
+                var element = argsDict[qp.Name];
+
+                // Array values (e.g. List<Guid>) are expanded to repeated params:
+                // ["a","b"] → key=a&key=b  (ASP.NET Core model-binding convention)
+                if (element.ValueKind == JsonValueKind.Array)
+                {
+                    return element.EnumerateArray()
+                        .Select(v => $"{qp.Name}={Uri.EscapeDataString(v.GetString() ?? v.GetRawText())}");
+                }
+
+                var raw = element.GetString() ?? element.GetRawText();
+                return [$"{qp.Name}={Uri.EscapeDataString(raw)}"];
             });
 
         var queryString = string.Join("&", queryParts);
@@ -215,11 +225,9 @@ internal sealed class EndpointHttpTool : ISceneTool, ISceneToolMetadata
         // ── Query-string parameters ───────────────────────────────────────────
         foreach (var qp in _config.QueryParameters)
         {
-            properties[qp.Name] = new JsonObject
-            {
-                ["type"] = MapTypeToJsonSchemaType(qp.Type),
-                ["description"] = qp.Description
-            };
+            var qpNode = BuildJsonSchemaNode(qp.Type);
+            qpNode["description"] = qp.Description;
+            properties[qp.Name] = qpNode;
             // Query params are optional by default (not added to required)
         }
 
@@ -233,10 +241,7 @@ internal sealed class EndpointHttpTool : ISceneTool, ISceneToolMetadata
                     continue;
 
                 var jsonName = GetJsonPropertyName(prop);
-                properties[jsonName] = new JsonObject
-                {
-                    ["type"] = MapTypeToJsonSchemaType(prop.PropertyType)
-                };
+                properties[jsonName] = BuildJsonSchemaNode(prop.PropertyType);
 
                 // Non-nullable value types are required
                 if (prop.PropertyType.IsValueType
@@ -258,38 +263,106 @@ internal sealed class EndpointHttpTool : ISceneTool, ISceneToolMetadata
         return JsonSerializer.Deserialize<JsonElement>(schema.ToJsonString());
     }
 
-    /// <summary>Maps a CLR type to its JSON Schema "type" string.</summary>
-    private static string MapTypeToJsonSchemaType(Type type)
+    /// <summary>
+    /// Builds a JSON Schema <see cref="JsonObject"/> node for the given CLR type.
+    /// For array / collection types the required <c>"items"</c> sub-schema is included
+    /// recursively so that the generated schema is valid for AI model APIs.
+    /// For enum types the valid names are listed in an <c>"enum"</c> array.
+    /// <see cref="Dictionary{TKey,TValue}"/> and other <c>IDictionary</c> types are
+    /// mapped to <c>"object"</c> rather than <c>"array"</c>.
+    /// </summary>
+    private static JsonObject BuildJsonSchemaNode(Type type)
     {
-        // Unwrap nullable
+        // Unwrap Nullable<T>: List<Guid>? → List<Guid>, int? → int
         var underlying = Nullable.GetUnderlyingType(type) ?? type;
 
-        if (underlying == typeof(bool)) return "boolean";
+        // ── Enum ─────────────────────────────────────────────────────────────
+        // Must be checked before IsArray / IEnumerable because Enum extends ValueType,
+        // not IEnumerable, but being explicit prevents any future ambiguity.
+        if (underlying.IsEnum)
+        {
+            var enumArray = new JsonArray();
+            foreach (var name in Enum.GetNames(underlying))
+                enumArray.Add(JsonValue.Create(name));
+            return new JsonObject
+            {
+                ["type"] = "string",
+                ["enum"] = enumArray
+            };
+        }
 
-        if (underlying == typeof(byte)
-            || underlying == typeof(sbyte)
-            || underlying == typeof(short)
-            || underlying == typeof(ushort)
-            || underlying == typeof(int)
-            || underlying == typeof(uint)
-            || underlying == typeof(long)
-            || underlying == typeof(ulong))
+        // ── T[] ──────────────────────────────────────────────────────────────
+        if (underlying.IsArray)
+        {
+            var elementType = underlying.GetElementType()!;
+            return new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = BuildJsonSchemaNode(elementType)
+            };
+        }
+
+        // ── IDictionary / Dictionary<K,V> → object ───────────────────────────
+        // Must be checked BEFORE the generic IEnumerable branch, because
+        // Dictionary<K,V> also implements IEnumerable<KeyValuePair<K,V>> and
+        // would otherwise be misidentified as an array.
+        // Covers: System.Collections.IDictionary (non-generic), IDictionary<K,V>
+        // (generic interface itself), and any concrete type that implements it
+        // (Dictionary<K,V>, SortedDictionary<K,V>, ConcurrentDictionary<K,V>, …).
+        if (typeof(System.Collections.IDictionary).IsAssignableFrom(underlying)
+            || (underlying.IsGenericType
+                && underlying.GetGenericTypeDefinition() == typeof(System.Collections.Generic.IDictionary<,>))
+            || underlying.GetInterfaces().Any(i =>
+                i.IsGenericType
+                && i.GetGenericTypeDefinition() == typeof(System.Collections.Generic.IDictionary<,>)))
+        {
+            return new JsonObject { ["type"] = "object" };
+        }
+
+        // ── IEnumerable<T>: List<T>, ICollection<T>, IReadOnlyList<T>, etc. ──
+        if (underlying.IsGenericType
+            && typeof(System.Collections.IEnumerable).IsAssignableFrom(underlying))
+        {
+            var elementType = underlying.GetGenericArguments()[0];
+            return new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = BuildJsonSchemaNode(elementType)
+            };
+        }
+
+        // ── Scalar types ─────────────────────────────────────────────────────
+        return new JsonObject { ["type"] = MapScalarTypeToJsonSchemaType(underlying) };
+    }
+
+    /// <summary>
+    /// Maps a non-collection, already-unwrapped CLR type to its JSON Schema scalar
+    /// type string: <c>"boolean"</c>, <c>"integer"</c>, <c>"number"</c>,
+    /// <c>"object"</c>, or <c>"string"</c>.
+    /// </summary>
+    private static string MapScalarTypeToJsonSchemaType(Type type)
+    {
+        if (type == typeof(bool)) return "boolean";
+
+        if (type == typeof(byte)
+            || type == typeof(sbyte)
+            || type == typeof(short)
+            || type == typeof(ushort)
+            || type == typeof(int)
+            || type == typeof(uint)
+            || type == typeof(long)
+            || type == typeof(ulong))
             return "integer";
 
-        if (underlying == typeof(float)
-            || underlying == typeof(double)
-            || underlying == typeof(decimal))
+        if (type == typeof(float)
+            || type == typeof(double)
+            || type == typeof(decimal))
             return "number";
 
-        if (underlying.IsArray
-            || (underlying.IsGenericType
-                && typeof(System.Collections.IEnumerable).IsAssignableFrom(underlying)))
-            return "array";
-
-        if (underlying.IsClass && underlying != typeof(string))
+        if (type.IsClass && type != typeof(string))
             return "object";
 
-        // string, Guid, DateTime, DateTimeOffset, Uri, enums → "string"
+        // string, Guid, DateTime, DateTimeOffset, DateOnly, Uri, enums → "string"
         return "string";
     }
 
