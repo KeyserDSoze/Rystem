@@ -25,7 +25,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Fare" Version="2.2.1" />
+		<PackageReference Include="Fare" Version="2.2.2" />
 	</ItemGroup>
 
 	<Choose>

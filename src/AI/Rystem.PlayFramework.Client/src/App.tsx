@@ -22,6 +22,7 @@ import {
     type ForcedToolRequest,
     type PlayFrameworkDiscoveryResponse,
     type PlayFrameworkToolInfo,
+    type PlayFrameworkSceneInfo,
     ConversationSortOrder
 } from './rystem/src/index';
 import './App.css';
@@ -167,7 +168,6 @@ const statusColors: Partial<Record<AiResponseStatus, string>> = {
     // Streaming & Response Generation
     streaming: '#61dafb',
     generatingFinalResponse: '#20c997',
-    finalResponse: '#095e25',
     // Director & Summarization
     directorDecision: '#e83e8c',
     summarizing: '#fd7e14',
@@ -611,7 +611,7 @@ function App() {
             setDiscovery(metadata);
 
             const scenes = metadata.scenes || [];
-            setSelectedSceneName(prev => scenes.some(scene => scene.name === prev) ? prev : (scenes[0]?.name || ''));
+            setSelectedSceneName(prev => scenes.some((scene: PlayFrameworkSceneInfo) => scene.name === prev) ? prev : (scenes[0]?.name || ''));
         } catch (error) {
             console.error('Failed to load discovery metadata:', error);
             setDiscovery(null);
@@ -764,13 +764,13 @@ function App() {
             return undefined;
         }
 
-        const sceneTools = discovery?.scenes?.find(scene => scene.name === selectedSceneName)?.tools || [];
-        const selectedTools = sceneTools.filter(tool => selectedForcedToolKeys.includes(getToolKey(tool)));
+        const sceneTools = discovery?.scenes?.find((scene: PlayFrameworkSceneInfo) => scene.name === selectedSceneName)?.tools || [];
+        const selectedTools = sceneTools.filter((tool: PlayFrameworkToolInfo) => selectedForcedToolKeys.includes(getToolKey(tool)));
         if (selectedTools.length === 0) {
             return undefined;
         }
 
-        return selectedTools.map(tool => ({
+        return selectedTools.map((tool: PlayFrameworkToolInfo) => ({
             sceneName: tool.sceneName,
             toolName: tool.toolName,
             sourceType: tool.sourceType,

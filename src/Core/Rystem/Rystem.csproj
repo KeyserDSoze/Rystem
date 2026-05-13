@@ -24,8 +24,8 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Fare" Version="2.2.1" />
-		<PackageReference Include="System.Linq.Dynamic.Core" Version="1.7.1" />
+		<PackageReference Include="Fare" Version="2.2.2" />
+		<PackageReference Include="System.Linq.Dynamic.Core" Version="1.7.2" />
 	</ItemGroup>
 
 	<ItemGroup>
