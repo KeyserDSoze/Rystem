@@ -7,7 +7,10 @@ namespace Rystem.PlayFramework.Adapters;
 /// </summary>
 public sealed class AdapterSettings
 {
-    /// <summary>Azure OpenAI or OpenAI endpoint URI.</summary>
+    /// <summary>
+    /// Azure OpenAI resource endpoint URI. Both the resource root and an endpoint ending in
+    /// <c>/openai/v1</c> are accepted; resource roots are normalized automatically.
+    /// </summary>
     public Uri? Endpoint { get; set; }
 
     /// <summary>API key for authentication. Mutually exclusive with <see cref="UseAzureCredential"/>.</summary>
@@ -19,7 +22,7 @@ public sealed class AdapterSettings
     /// </summary>
     public bool UseAzureCredential { get; set; }
 
-    /// <summary>Model deployment name (e.g. "gpt-4o", "gpt-5.2").</summary>
+    /// <summary>Azure OpenAI deployment name, sent as the v1 API <c>model</c> value.</summary>
     public string Deployment { get; set; } = "gpt-4o";
 
     /// <summary>
@@ -55,11 +58,18 @@ public sealed class AdapterSettings
     public string? SpeechToTextDeployment { get; set; }
 
     /// <summary>
-    /// Optional per-adapter cost tracking settings.
-    /// When set, registers an <c>ICostCalculator</c> keyed by the adapter factory name,
-    /// enabling per-deployment or per-region pricing.
-    /// If null, cost tracking falls back to the PlayFramework factory-level settings or
-    /// the global <c>FallbackCostTrackingPlayFrameworkDefault</c> calculator.
+    /// Overrides the Azure OpenAI Audio Transcriptions <c>api-version</c> used for
+    /// <see cref="SpeechToTextDeployment"/>. When null (default), the adapter uses a version broad
+    /// enough to cover both classic Whisper deployments and newer <c>gpt-4o-transcribe</c> /
+    /// <c>gpt-4o-mini-transcribe</c> deployments. Set this only if a specific resource or deployment
+    /// requires a different <c>api-version</c>.
+    /// </summary>
+    public string? SpeechToTextApiVersion { get; set; }
+
+    /// <summary>
+    /// Optional per-adapter cost tracking settings. When set, the adapter is wrapped in a
+    /// <c>CostTrackingChatClient</c> that adds the calculated cost to each response.
+    /// When null, this adapter does not add cost information.
     /// </summary>
     public TokenCostSettings? CostTracking { get; set; }
 }

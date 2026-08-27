@@ -87,12 +87,14 @@ var costCurrency = builder.Configuration["AzureOpenAI:CostTracking:Currency"] ??
 var inputCostPer1K = decimal.TryParse(builder.Configuration["AzureOpenAI:CostTracking:InputTokenCostPer1K"], out var ic) ? ic : 0.002m;
 var outputCostPer1K = decimal.TryParse(builder.Configuration["AzureOpenAI:CostTracking:OutputTokenCostPer1K"], out var oc) ? oc : 0.008m;
 
-if (!string.IsNullOrEmpty(azureOpenAIEndpoint) && !string.IsNullOrEmpty(azureOpenAIKey))
+if (!string.IsNullOrEmpty(azureOpenAIEndpoint))
 {
+    var useAzureCredential = string.IsNullOrEmpty(azureOpenAIKey);
     builder.Services.AddAdapterForAzureOpenAI("default", settings =>
     {
         settings.Endpoint = new Uri(azureOpenAIEndpoint);
         settings.ApiKey = azureOpenAIKey;
+        settings.UseAzureCredential = useAzureCredential;
         settings.Deployment = azureOpenAIDeployment;
         // Cost tracking is adapter-owned: CostTrackingChatClient wraps the inner client
         // and embeds CostCalculation into each response's AdditionalProperties.
@@ -116,6 +118,7 @@ if (!string.IsNullOrEmpty(azureOpenAIEndpoint) && !string.IsNullOrEmpty(azureOpe
     {
         voiceSettings.Endpoint = new Uri(azureOpenAIEndpoint);
         voiceSettings.ApiKey = azureOpenAIKey;
+        voiceSettings.UseAzureCredential = useAzureCredential;
         voiceSettings.SttDeployment = voiceSttDeployment;
         voiceSettings.TtsDeployment = voiceTtsDeployment;
         voiceSettings.TtsVoice = voiceTtsVoice;
@@ -447,4 +450,3 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = Dat
     .WithName("HealthCheck");
 
 app.Run();
-

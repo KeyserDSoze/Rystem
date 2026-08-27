@@ -113,6 +113,7 @@ builder.Services.AddMemoryCache();
 
 builder.Services.AddAdapterForAzureOpenAI("default", settings =>
 {
+    // Resource roots and /openai/v1 endpoints are both accepted.
     settings.Endpoint = new Uri(builder.Configuration["AzureOpenAI:Endpoint"]!);
     settings.ApiKey = builder.Configuration["AzureOpenAI:Key"]!;
     settings.Deployment = builder.Configuration["AzureOpenAI:Deployment"] ?? "gpt-4o";
@@ -784,8 +785,8 @@ builder.Services.AddVoiceAdapterForAzureOpenAI("default", settings =>
 {
     settings.Endpoint = new Uri(builder.Configuration["AzureOpenAI:Endpoint"]!);
     settings.ApiKey = builder.Configuration["AzureOpenAI:Key"]!;
-    settings.SttDeployment = "whisper";
-    settings.TtsDeployment = "tts-1";
+    settings.SttDeployment = "<transcription-deployment>";
+    settings.TtsDeployment = "<speech-deployment>";
     settings.TtsVoice = "alloy";
 });
 

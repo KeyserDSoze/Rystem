@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Rystem.PlayFramework.Test;
@@ -34,21 +35,20 @@ public sealed class BasicPlayFrameworkTests : PlayFrameworkTestBase
     [Fact]
     public void OpenAiSettings_ShouldBind_WhenConfigured()
     {
-        // Assert
-        Assert.NotNull(OpenAiSettings);
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["OpenAi:ApiKey"] = "test-key",
+                ["OpenAi:Endpoint"] = "https://name.openai.azure.com/",
+                ["OpenAi:ModelName"] = "test-deployment"
+            })
+            .Build();
+        var settings = new OpenAiSettings();
 
-        var hasAnyConfiguredValue =
-            !string.IsNullOrWhiteSpace(OpenAiSettings.ApiKey)
-            || !string.IsNullOrWhiteSpace(OpenAiSettings.AzureResourceName);
+        configuration.GetSection("OpenAi").Bind(settings);
 
-        if (!hasAnyConfiguredValue)
-        {
-            return;
-        }
-
-        Assert.False(string.IsNullOrWhiteSpace(OpenAiSettings.ApiKey));
-        Assert.False(string.IsNullOrWhiteSpace(OpenAiSettings.AzureResourceName));
-        Assert.False(string.IsNullOrWhiteSpace(OpenAiSettings.ModelName));
+        Assert.Equal("test-key", settings.ApiKey);
+        Assert.Equal("https://name.openai.azure.com/", settings.Endpoint);
+        Assert.Equal("test-deployment", settings.ModelName);
     }
 }
-

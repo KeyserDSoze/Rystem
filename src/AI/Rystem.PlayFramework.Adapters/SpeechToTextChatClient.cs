@@ -91,7 +91,7 @@ public sealed class SpeechToTextChatClient : DelegatingChatClient
         }
 
         using var stream = new MemoryStream(bytes);
-        var result = await _audioClient.TranscribeAudioAsync(stream, fileName);
+        var result = await _audioClient.TranscribeAudioAsync(stream, fileName, cancellationToken: cancellationToken);
 
         _logger?.LogInformation(
             "Transcribed audio {FileName} ({Bytes} bytes) -> {Length} chars",

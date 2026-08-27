@@ -12,25 +12,31 @@
         <Authors>Alessandro Rapiti</Authors>
         <Company>Alessandro Rapiti</Company>
         <Product>Rystem.PlayFramework.Adapters</Product>
-        <Description>Azure OpenAI adapter for Rystem.PlayFramework. Supports Responses API, automatic file upload via Files API, and SHA256-based multi-level caching.</Description>
+        <Description>Azure OpenAI v1 adapter for Rystem.PlayFramework, powered by OpenAI 2.12.0. Supports Responses API, automatic file upload via Files API, and SHA256-based multi-level caching.</Description>
         <Copyright>2024</Copyright>
         <PackageIcon>rystem.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework.Adapters</RepositoryUrl>
         <PackageId>Rystem.PlayFramework.Adapters</PackageId>
-        <Version>10.1.0-beta.4</Version>
-        <PackageReleaseNotes>Aligns with Rystem.PlayFramework beta.24 and retains declaration-only runtime tool compatibility across Chat Completions and Responses API.</PackageReleaseNotes>
+        <Version>10.1.0-beta.5</Version>
+        <PackageReleaseNotes>Migrates Azure OpenAI from Azure.AI.OpenAI to OpenAI 2.12.0 and the /openai/v1 API while preserving existing resource-root endpoint configuration through normalization. Supports Responses and Chat Completions with API-key or Microsoft Entra authentication and the required operation-specific scopes. Rejects malformed endpoints, ambiguous API-key plus Entra configuration, and empty STT API-version overrides during registration. Audio uses deployment-specific Azure routes with api-version 2025-04-01-preview; STT supports per-adapter API-version overrides, propagates cancellation, preserves verbose language and duration metadata when available, and retries with JSON when verbose_json is unsupported. Chat and audio clients share one DefaultAzureCredential per adapter. Targets Rystem.PlayFramework 10.1.0-beta.5 and pins the supported graph to OpenAI 2.12.0 with Microsoft.Extensions.AI.OpenAI 10.9.0. Inline audio remains dependent on the selected model and deployment capabilities.</PackageReleaseNotes>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-        <NoWarn>$(NoWarn);OPENAI001;AOAI001</NoWarn>
+        <NoWarn>$(NoWarn);OPENAI001</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Azure.AI.OpenAI" Version="2.9.0-beta.1" />
+        <PackageReference Include="OpenAI" Version="[2.12.0]" />
         <PackageReference Include="Azure.Identity" Version="1.21.0" />
         <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.9.0" />
         <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.11" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+            <_Parameter1>Rystem.PlayFramework.Test</_Parameter1>
+        </AssemblyAttribute>
     </ItemGroup>
 
     <ItemGroup>
@@ -46,7 +52,7 @@
         </When>
         <When Condition=" '$(Configuration)'!='Debug' ">
             <ItemGroup>
-                <PackageReference Include="Rystem.PlayFramework" Version="10.1.0-beta.4" />
+                <PackageReference Include="Rystem.PlayFramework" Version="10.1.0-beta.5" />
             </ItemGroup>
         </When>
     </Choose>

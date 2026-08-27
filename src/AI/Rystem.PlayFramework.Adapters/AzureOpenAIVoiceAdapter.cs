@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using OpenAI.Audio;
+using System.ClientModel;
 
 namespace Rystem.PlayFramework.Adapters;
 
@@ -13,6 +14,7 @@ internal sealed class AzureOpenAIVoiceAdapter : IVoiceAdapter
     private readonly AudioClient _ttsClient;
     private readonly VoiceAdapterSettings _settings;
     private readonly ILogger<AzureOpenAIVoiceAdapter>? _logger;
+    private int _requiresSimpleTranscriptionFormat;
 
     public AzureOpenAIVoiceAdapter(
         AudioClient sttClient,
@@ -38,22 +40,55 @@ internal sealed class AzureOpenAIVoiceAdapter : IVoiceAdapter
 
         _logger?.LogDebug("Transcribing audio: {FileName} ({Bytes} bytes)", fileName, audioData.Length);
 
-        using var stream = new MemoryStream(audioData.ToArray());
-        var options = new AudioTranscriptionOptions
+        var bytes = audioData.ToArray();
+        var responseFormat = Volatile.Read(ref _requiresSimpleTranscriptionFormat) == 1
+            ? AudioTranscriptionFormat.Simple
+            : AudioTranscriptionFormat.Verbose;
+        AudioTranscription transcription;
+        try
         {
-            ResponseFormat = AudioTranscriptionFormat.Verbose
-        };
-        var result = await _sttClient.TranscribeAudioAsync(stream, fileName, options, cancellationToken);
+            transcription = await TranscribeAsync(bytes, fileName, responseFormat, cancellationToken);
+        }
+        catch (ClientResultException exception) when (
+            responseFormat == AudioTranscriptionFormat.Verbose
+            && IsUnsupportedVerboseResponse(exception))
+        {
+            Volatile.Write(ref _requiresSimpleTranscriptionFormat, 1);
+            _logger?.LogWarning(
+                exception,
+                "The STT deployment does not support verbose_json; falling back to json. " +
+                "Detected language and duration will not be available for this deployment.");
+            transcription = await TranscribeAsync(
+                bytes, fileName, AudioTranscriptionFormat.Simple, cancellationToken);
+        }
 
-        var text = result.Value.Text;
-        var language = result.Value.Language;
-        var durationSeconds = result.Value.Duration?.TotalSeconds;
+        var text = transcription.Text;
+        var language = transcription.Language;
+        var durationSeconds = transcription.Duration?.TotalSeconds;
 
         _logger?.LogInformation("Transcription result ({Chars} chars, lang={Language}, duration={Duration}s): \"{Preview}\"",
             text.Length, language, durationSeconds?.ToString("F1") ?? "?", text.Length > 100 ? text[..100] + "..." : text);
 
         return new TranscriptionResult(text, language, durationSeconds);
     }
+
+    private async Task<AudioTranscription> TranscribeAsync(
+        byte[] audioData,
+        string fileName,
+        AudioTranscriptionFormat responseFormat,
+        CancellationToken cancellationToken)
+    {
+        using var stream = new MemoryStream(audioData);
+        var options = new AudioTranscriptionOptions { ResponseFormat = responseFormat };
+        var result = await _sttClient.TranscribeAudioAsync(
+            stream, fileName, options, cancellationToken);
+        return result.Value;
+    }
+
+    private static bool IsUnsupportedVerboseResponse(ClientResultException exception) =>
+        exception.Status == 400
+        && exception.Message.Contains("response_format", StringComparison.OrdinalIgnoreCase)
+        && exception.Message.Contains("verbose_json", StringComparison.OrdinalIgnoreCase);
 
     /// <inheritdoc />
     public async Task<ReadOnlyMemory<byte>> SynthesizeAsync(

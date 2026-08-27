@@ -40,10 +40,14 @@ public static class ServiceCollectionExtensions_ChatClient
     ///     clientFactory: sp =>
     ///     {
     ///         var config = sp.GetRequiredService&lt;IConfiguration&gt;();
-    ///         var azureClient = new AzureOpenAIClient(
-    ///             new Uri(config["AzureOpenAI:Endpoint"]!),
-    ///             new AzureKeyCredential(config["AzureOpenAI:ApiKey"]!));
-    ///         return azureClient.AsChatClient("gpt-4o");
+    ///         var endpointText = config["AzureOpenAI:Endpoint"]!.TrimEnd('/');
+    ///         var endpoint = new Uri(endpointText.EndsWith("/v1", StringComparison.OrdinalIgnoreCase)
+    ///             ? endpointText
+    ///             : $"{endpointText}/openai/v1");
+    ///         var openAIClient = new OpenAIClient(
+    ///             new ApiKeyCredential(config["AzureOpenAI:ApiKey"]!),
+    ///             new OpenAIClientOptions { Endpoint = endpoint });
+    ///         return openAIClient.GetChatClient("gpt-4o").AsIChatClient();
     ///     },
     ///     costSettings: new TokenCostSettings
     ///     {
@@ -60,10 +64,14 @@ public static class ServiceCollectionExtensions_ChatClient
     ///     clientFactory: sp =>
     ///     {
     ///         var config = sp.GetRequiredService&lt;IConfiguration&gt;();
-    ///         var azureClient = new AzureOpenAIClient(
-    ///             new Uri(config["AzureOpenAI:Endpoint"]!),
-    ///             new AzureKeyCredential(config["AzureOpenAI:ApiKey"]!));
-    ///         return azureClient.AsChatClient("gpt-4o-mini");
+    ///         var endpointText = config["AzureOpenAI:Endpoint"]!.TrimEnd('/');
+    ///         var endpoint = new Uri(endpointText.EndsWith("/v1", StringComparison.OrdinalIgnoreCase)
+    ///             ? endpointText
+    ///             : $"{endpointText}/openai/v1");
+    ///         var openAIClient = new OpenAIClient(
+    ///             new ApiKeyCredential(config["AzureOpenAI:ApiKey"]!),
+    ///             new OpenAIClientOptions { Endpoint = endpoint });
+    ///         return openAIClient.GetChatClient("gpt-4o-mini").AsIChatClient();
     ///     },
     ///     costSettings: new TokenCostSettings
     ///     {

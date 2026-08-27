@@ -59,11 +59,16 @@ dotnet user-secrets set "AzureOpenAI:Key" "<your-api-key>"
 dotnet user-secrets set "AzureOpenAI:Deployment" "gpt-4o"
 ```
 
+The adapter accepts either the resource root shown above or the corresponding
+`/openai/v1/` endpoint. To use `DefaultAzureCredential` instead of an API key, configure
+only `Endpoint` and `Deployment`; do not set `AzureOpenAI:Key`. In Azure, assign the
+host's managed identity an Azure OpenAI data-plane role.
+
 Optional voice settings:
 
 ```bash
-dotnet user-secrets set "AzureOpenAI:Voice:SttDeployment" "whisper"
-dotnet user-secrets set "AzureOpenAI:Voice:TtsDeployment" "tts-1"
+dotnet user-secrets set "AzureOpenAI:Voice:SttDeployment" "<transcription-deployment>"
+dotnet user-secrets set "AzureOpenAI:Voice:TtsDeployment" "<speech-deployment>"
 dotnet user-secrets set "AzureOpenAI:Voice:TtsVoice" "alloy"
 dotnet user-secrets set "AzureOpenAI:Voice:TtsOutputFormat" "mp3"
 dotnet user-secrets set "AzureOpenAI:Voice:TtsSpeed" "1.0"
@@ -77,7 +82,9 @@ dotnet user-secrets set "AzureOpenAI:CostTracking:InputTokenCostPer1K" "0.005"
 dotnet user-secrets set "AzureOpenAI:CostTracking:OutputTokenCostPer1K" "0.015"
 ```
 
-If those settings are missing, the sample falls back to a direct `MockChatClient` registration so the API can still be exercised locally.
+If the endpoint is missing, the sample falls back to a direct `MockChatClient`
+registration so the API can still be exercised locally. If the endpoint is present but
+the key is missing, the sample uses `DefaultAzureCredential` for both chat and voice.
 
 ## Frontend pairing
 

@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Rystem.PlayFramework.Adapters;
 
 namespace Rystem.PlayFramework.Test;
 
@@ -14,17 +15,20 @@ public abstract class PlayFrameworkTestBase : IDisposable
     protected IConfiguration Configuration { get; }
     protected OpenAiSettings OpenAiSettings { get; }
     protected bool UseRealAzureOpenAI { get; init; }
+    protected Uri? AzureEndpoint { get; private set; }
+    protected string? AzureApiKey { get; private set; }
+    protected string? AzureDeployment { get; private set; }
 
-    protected PlayFrameworkTestBase(bool useRealAzureOpenAI = false)
+    protected PlayFrameworkTestBase(
+        bool useRealAzureOpenAI = false,
+        bool useAzureCredential = false,
+        string? deploymentEnvironmentVariable = null,
+        Action<AdapterSettings>? configureAdapter = null)
     {
         UseRealAzureOpenAI = useRealAzureOpenAI;
 
         // Build configuration with user secrets
-        Configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: true)
-            .AddUserSecrets<PlayFrameworkTestBase>()
-            .Build();
+        Configuration = AzureLiveTestConfiguration.BuildConfiguration();
 
         // Load OpenAI settings
         OpenAiSettings = new OpenAiSettings();
@@ -45,13 +49,41 @@ public abstract class PlayFrameworkTestBase : IDisposable
         services.AddSingleton(Configuration);
         services.AddSingleton(OpenAiSettings);
 
-        // Register IChatClient - real or mock based on parameter
-        if (UseRealAzureOpenAI && !string.IsNullOrEmpty(OpenAiSettings.ApiKey))
+        // Live tests always use the production adapter and fail fast on missing configuration.
+        if (UseRealAzureOpenAI)
         {
-            services.AddSingleton<IChatClient>(sp => new AzureOpenAIChatClientAdapter(
-                OpenAiSettings.Endpoint,
-                OpenAiSettings.ApiKey,
-                OpenAiSettings.ModelName));
+            var endpoint = AzureLiveTestConfiguration.Resolve("AZURE_OPENAI_ENDPOINT", Configuration);
+            var deployment = deploymentEnvironmentVariable is null
+                ? AzureLiveTestConfiguration.Resolve("AZURE_OPENAI_DEPLOYMENT", Configuration)
+                : AzureLiveTestConfiguration.Resolve(deploymentEnvironmentVariable, Configuration);
+            var apiKey = useAzureCredential
+                ? null
+                : AzureLiveTestConfiguration.Resolve("AZURE_OPENAI_API_KEY", Configuration);
+
+            if (string.IsNullOrWhiteSpace(endpoint))
+                throw new InvalidOperationException("AZURE_OPENAI_ENDPOINT is required for Azure OpenAI live tests.");
+            if (string.IsNullOrWhiteSpace(deployment))
+                throw new InvalidOperationException("AZURE_OPENAI_DEPLOYMENT is required for Azure OpenAI live tests.");
+            if (!useAzureCredential && string.IsNullOrWhiteSpace(apiKey))
+                throw new InvalidOperationException("AZURE_OPENAI_API_KEY is required for the API key live test suite.");
+
+            AzureEndpoint = new Uri(endpoint);
+            AzureApiKey = apiKey;
+            AzureDeployment = deployment;
+
+            services.AddAdapterForAzureOpenAI(settings =>
+            {
+                settings.Endpoint = AzureEndpoint;
+                settings.ApiKey = apiKey;
+                settings.UseAzureCredential = useAzureCredential;
+                settings.Deployment = deployment;
+                settings.CostTracking = new TokenCostSettings
+                {
+                    InputTokenCostPer1K = 0.001m,
+                    OutputTokenCostPer1K = 0.003m
+                };
+                configureAdapter?.Invoke(settings);
+            });
         }
         else
         {

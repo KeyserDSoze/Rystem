@@ -10,6 +10,23 @@ It registers named `IChatClient` and `IVoiceAdapter` instances, defaults to the 
 dotnet add package Rystem.PlayFramework.Adapters
 ```
 
+The package uses `OpenAI 2.12.0` directly with `Microsoft.Extensions.AI.OpenAI 10.9.0`.
+`Azure.AI.OpenAI` is not included. The dependency range is exactly `[2.12.0]`.
+A direct consumer reference can override this range under NuGet's direct-dependency-wins
+rule, but restore emits `NU1608`; that graph is unsupported and should be treated as an
+error by CI.
+
+## Azure OpenAI v1 endpoint
+
+Requests use the Azure OpenAI v1 surface. Both forms below are accepted:
+
+- `https://your-resource.openai.azure.com/`
+- `https://your-resource.openai.azure.com/openai/v1/`
+
+Resource-root endpoints are normalized to `/openai/v1` automatically. Legacy
+deployment-specific endpoints such as `/openai/deployments/<deployment>` are rejected.
+The configured deployment is sent as the v1 request's `model` value.
+
 ## What this package adds
 
 The public registration methods are:
@@ -59,6 +76,12 @@ builder.Services.AddAdapterForAzureOpenAI("default", settings =>
 });
 ```
 
+`UseAzureCredential` uses `DefaultAzureCredential` with the
+`https://ai.azure.com/.default` scope. In Azure, prefer Managed Identity and assign the
+identity an Azure OpenAI data-plane role such as `Cognitive Services OpenAI User`. Do not
+configure `ApiKey` when `UseAzureCredential` is enabled; the adapter rejects ambiguous
+authentication configuration during registration.
+
 ## Chat adapter settings
 
 `AdapterSettings` exposes:
@@ -73,6 +96,11 @@ builder.Services.AddAdapterForAzureOpenAI("default", settings =>
 | `EnableFileUpload` | wrap the chat client with file-upload behavior |
 | `AudioMode` | `None`, `MultiModal`, or `SpeechToText` |
 | `SpeechToTextDeployment` | required when `AudioMode` is `SpeechToText` |
+| `SpeechToTextApiVersion` | optional override for the Audio Transcriptions `api-version` used by `SpeechToTextDeployment` (default supports both `whisper-1` and `gpt-4o-transcribe`/`gpt-4o-mini-transcribe`) |
+
+If an existing application encounters a Responses-only service incompatibility, set
+`UseResponsesApi = false` to use Chat Completions temporarily. This disables automatic
+file upload because `EnableFileUpload` applies only to Responses.
 
 ## Runtime tool declarations
 
@@ -141,8 +169,8 @@ builder.Services.AddVoiceAdapterForAzureOpenAI("default", settings =>
 {
     settings.Endpoint = new Uri(builder.Configuration["AzureOpenAI:Endpoint"]!);
     settings.ApiKey = builder.Configuration["AzureOpenAI:Key"]!;
-    settings.SttDeployment = "whisper";
-    settings.TtsDeployment = "tts-1";
+    settings.SttDeployment = "<transcription-deployment>";
+    settings.TtsDeployment = "<speech-deployment>";
     settings.TtsVoice = "alloy";
 });
 
@@ -160,10 +188,18 @@ builder.Services.AddPlayFramework("default", framework =>
 | `ApiKey` | API key when not using managed identity |
 | `UseAzureCredential` | use `DefaultAzureCredential` |
 | `SttDeployment` | speech-to-text deployment, default `whisper` |
+| `SttApiVersion` | optional override for the Audio Transcriptions `api-version` used by `SttDeployment` (default supports both `whisper-1` and `gpt-4o-transcribe`/`gpt-4o-mini-transcribe`) |
 | `TtsDeployment` | text-to-speech deployment, default `tts-1` |
 | `TtsVoice` | voice name, default `alloy` |
 | `TtsOutputFormat` | output format such as `mp3`, `wav`, `pcm` |
 | `TtsSpeed` | speech speed multiplier |
+
+The voice adapter requests `verbose_json` transcription first so detected language and
+audio duration remain available for language instructions and STT cost tracking. Some
+transcription models, including current `gpt-4o-mini-transcribe` deployments, reject that
+format. For those deployments the adapter retries with `json`; transcription text remains
+available, but detected language and duration are `null`, so language substitution and
+duration-based STT cost cannot be calculated from the service response.
 
 ## Cost tracking
 

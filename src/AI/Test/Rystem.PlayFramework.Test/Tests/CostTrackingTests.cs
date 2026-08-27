@@ -81,6 +81,25 @@ public class CostTrackingTests
         Assert.Equal(0.09m, costCalc!.TotalCost);
     }
 
+    [Fact]
+    public async Task CostTrackingChatClient_UsesDistinctInputAndOutputRates()
+    {
+        var inner = new FixedUsageChatClient(inputTokens: 1000, outputTokens: 2000);
+        var client = new CostTrackingChatClient(inner, new TokenCostSettings
+        {
+            InputTokenCostPer1K = 0.01m,
+            OutputTokenCostPer1K = 0.03m
+        });
+
+        var response = await client.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")]);
+
+        var calculation = Assert.IsType<CostCalculation>(
+            response.AdditionalProperties![PlayFrameworkCostConstants.CostCalculationKey]);
+        Assert.Equal(0.01m, calculation.InputCost);
+        Assert.Equal(0.06m, calculation.OutputCost);
+        Assert.Equal(0.07m, calculation.TotalCost);
+    }
+
     /// <summary>
     /// Verifies the entire pipeline with SceneManager: scene selection works and cost accumulates.
     /// </summary>
@@ -123,5 +142,38 @@ public class CostTrackingTests
         Assert.True(
             responses.Any(r => r.Cost.HasValue && r.Cost.Value > 0),
             $"Expected at least one response with Cost > 0. All responses: [{statuses}]");
+    }
+}
+
+internal sealed class FixedUsageChatClient(int inputTokens, int outputTokens) : IChatClient
+{
+    public ChatClientMetadata Metadata { get; } = new("fixed-usage");
+
+    public Task<ChatResponse> GetResponseAsync(
+        IEnumerable<ChatMessage> messages,
+        ChatOptions? options = null,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new ChatResponse([new ChatMessage(ChatRole.Assistant, "ok")])
+        {
+            Usage = new UsageDetails
+            {
+                InputTokenCount = inputTokens,
+                OutputTokenCount = outputTokens
+            }
+        });
+
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+        IEnumerable<ChatMessage> messages,
+        ChatOptions? options = null,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await Task.CompletedTask;
+        yield break;
+    }
+
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+    public void Dispose()
+    {
     }
 }

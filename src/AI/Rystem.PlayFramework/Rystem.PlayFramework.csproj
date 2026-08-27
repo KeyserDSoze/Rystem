@@ -18,8 +18,8 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework</RepositoryUrl>
     <PackageId>Rystem.PlayFramework</PackageId>
-    <Version>10.1.0-beta.4</Version>
-    <PackageReleaseNotes>Resume-summarization now preserves the active scene (populates AiSceneResponse.SceneName, DefaultSummarizer includes it in the prompt) and honors ISummarizer.ShouldSummarize, CharacterThreshold, and SceneRequestSettings.EnableSummarization. Long-term memory re-synthesis now reuses the previously loaded ConversationMemory for incremental updates. EndpointHttpTool builds URLs safely from numeric/boolean arguments (no more crash on non-string JSON). Scene routing function names are normalized for LLM provider compliance and resolved by both raw and normalized name.</PackageReleaseNotes>
+    <Version>10.1.0-beta.5</Version>
+    <PackageReleaseNotes>Version aligned to 10.1.0-beta.5 for compatibility with Rystem.PlayFramework.Adapters 10.1.0-beta.5. This release does not change PlayFramework runtime behavior; use the matching adapter version for the Azure OpenAI v1 and OpenAI 2.12.0 migration.</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>
