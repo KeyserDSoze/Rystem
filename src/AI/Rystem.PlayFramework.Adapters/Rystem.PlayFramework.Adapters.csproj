@@ -18,7 +18,7 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/AI/Rystem.PlayFramework.Adapters</RepositoryUrl>
         <PackageId>Rystem.PlayFramework.Adapters</PackageId>
-        <Version>10.1.0-beta.5</Version>
+        <Version>10.1.0-beta.4</Version>
         <PackageReleaseNotes>Migrates Azure OpenAI from Azure.AI.OpenAI to OpenAI 2.12.0 and the /openai/v1 API while preserving existing resource-root endpoint configuration through normalization. Supports Responses and Chat Completions with API-key or Microsoft Entra authentication and the required operation-specific scopes. Rejects malformed endpoints, ambiguous API-key plus Entra configuration, and empty STT API-version overrides during registration. Audio uses deployment-specific Azure routes with api-version 2025-04-01-preview; STT supports per-adapter API-version overrides, propagates cancellation, preserves verbose language and duration metadata when available, and retries with JSON when verbose_json is unsupported. Chat and audio clients share one DefaultAzureCredential per adapter. Targets Rystem.PlayFramework 10.1.0-beta.5 and pins the supported graph to OpenAI 2.12.0 with Microsoft.Extensions.AI.OpenAI 10.9.0. Inline audio remains dependent on the selected model and deployment capabilities.</PackageReleaseNotes>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
@@ -52,7 +52,7 @@
         </When>
         <When Condition=" '$(Configuration)'!='Debug' ">
             <ItemGroup>
-                <PackageReference Include="Rystem.PlayFramework" Version="10.1.0-beta.5" />
+                <PackageReference Include="Rystem.PlayFramework" Version="10.1.0-beta.4" />
             </ItemGroup>
         </When>
     </Choose>
