@@ -20,8 +20,8 @@
     "prettier": "^3.4.2",
     "terser": "^5.46.0",
     "typescript": "^5.7.3",
-    "vite": "^6.1.6",
-    "vitest": "^4.0.18"
+    "vite": "^6.4.3",
+    "vitest": "^4.1.0"
   },
   "scripts": {
     "dev": "vite",
