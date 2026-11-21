@@ -14,7 +14,7 @@ Piano eseguibile per migrare `Rystem.PlayFramework.Adapters` da `Azure.AI.OpenAI
 
 | Fatto | Valore osservato | Riferimento |
 | --- | --- | --- |
-| TargetFramework di tutti i progetti AI | `net10.0` | `Rystem.PlayFramework.Adapters.csproj:4` |
+| TargetFramework di tutti i progetti AI | `net11.0` | `Rystem.PlayFramework.Adapters.csproj:4` |
 | Versione progetti AI | `10.1.0-beta.5` | `Rystem.PlayFramework.Adapters.csproj:21` |
 | `NoWarn` gia presente | `$(NoWarn);OPENAI001;AOAI001` | `Rystem.PlayFramework.Adapters.csproj:25` |
 | Riferimento al core | `ProjectReference` in Debug, `PackageReference 10.1.0-beta.5` altrimenti | `Rystem.PlayFramework.Adapters.csproj:41-52` |
@@ -91,7 +91,7 @@ Riferimenti:
 
 ### 3.1 Esito delle verifiche di design
 
-Spike eseguito su progetto isolato `net10.0` con `OpenAI 2.12.0`, `Microsoft.Extensions.AI.OpenAI 10.9.0`, `Azure.Identity 1.21.0`. Tutto cio che segue e misurato, non ipotizzato.
+Spike eseguito su progetto isolato `net11.0` con `OpenAI 2.12.0`, `Microsoft.Extensions.AI.OpenAI 10.9.0`, `Azure.Identity 1.21.0`. Tutto cio che segue e misurato, non ipotizzato.
 
 | # | Oggetto | Esito | Evidenza |
 | --- | --- | --- | --- |
@@ -644,7 +644,7 @@ cat > "$NUGET_CONFIG" <<EOF
 EOF
 dotnet pack "src/AI/Rystem.PlayFramework/Rystem.PlayFramework.csproj" -c Release --output "$PACKAGE_DIR" --configfile "$NUGET_CONFIG"
 dotnet pack "src/AI/Rystem.PlayFramework.Adapters/Rystem.PlayFramework.Adapters.csproj" -c Release --output "$PACKAGE_DIR" --configfile "$NUGET_CONFIG"
-dotnet new console -n RystemAdapterConsumer -o "$CONSUMER_DIR" -f net10.0
+dotnet new console -n RystemAdapterConsumer -o "$CONSUMER_DIR" -f net11.0
 NUGET_PACKAGES="$NUGET_PACKAGES" dotnet add "$CONSUMER_DIR/RystemAdapterConsumer.csproj" package Rystem.PlayFramework.Adapters --version "<versione-generata>" --no-restore
 NUGET_PACKAGES="$NUGET_PACKAGES" dotnet restore "$CONSUMER_DIR/RystemAdapterConsumer.csproj" --configfile "$NUGET_CONFIG" --force --no-cache
 NUGET_PACKAGES="$NUGET_PACKAGES" dotnet list "$CONSUMER_DIR/RystemAdapterConsumer.csproj" package --include-transitive
@@ -723,7 +723,7 @@ Il commit 1 include il `ProjectReference` all'adapter, prerequisito della riprod
 
 Questi punti riguardano l'infrastruttura condivisa del repository. Vanno risolti prima della pubblicazione, ma non appartengono a questo intervento e non ne bloccano l'implementazione.
 
-1. **Disallineamento versioni.** `.github/release-packages.json:2` e a `10.1.0-beta.3`, i `.csproj` interessati da questa migrazione a `10.1.0-beta.5`. Causa: `scripts/release/Prepare-Release.ps1:167-170` aggiorna il manifest solo con `Profile -eq 'all'`. Rilasciare con profilo `all` oppure aggiornare il manifest come step esplicito.
+1. **Disallineamento versioni.** `.github/release-packages.json:2` e a `11.1.0-beta.3`, i `.csproj` interessati da questa migrazione a `10.1.0-beta.5`. Causa: `scripts/release/Prepare-Release.ps1:167-170` aggiorna il manifest solo con `Profile -eq 'all'`. Rilasciare con profilo `all` oppure aggiornare il manifest come step esplicito.
 2. **Doppio publisher.** `PackageDeploy.Rystem.PlayFramework.Adapters.yml:6-8` si attiva su modifica del `.csproj`, che `Prepare-Release.ps1:106-120` modifica e `Release.AllPackages.yml:82-95` committa. Disabilitare il workflow dedicato e lasciare `Release.AllPackages.yml` come unico publisher.
 3. **Ricostruzione degli artefatti.** `scripts/release/Publish-Package.ps1:66-75` esegue `dotnet build --force` seguito da `dotnet pack --no-build`, quindi il `.nupkg` pubblicato non e quello validato in QA. Decidere se modificare lo script o accettare e documentare la ricostruzione.
 4. **Livello di release perso.** `Prepare-Release.ps1:179` emette `level_0..level_5`, `Release.AllPackages.yml:55-59` ne consuma cinque. Un grafo a sei livelli perderebbe l'ultimo. Il profilo `ai` ha tre package e non raggiunge la soglia.

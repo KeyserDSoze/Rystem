@@ -30,7 +30,7 @@ Most examples below are based on the current source code and repository tests. S
 dotnet add package Rystem.DependencyInjection
 ```
 
-The current `10.x` package targets `net10.0` and builds on top of:
+The current `10.x` package targets `net11.0` and builds on top of:
 
 - `Microsoft.Extensions.DependencyInjection`
 - `Microsoft.Extensions.DependencyInjection.Abstractions`

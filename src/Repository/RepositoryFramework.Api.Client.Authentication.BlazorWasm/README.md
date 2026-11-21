@@ -28,7 +28,7 @@ The current package metadata in `src/Repository/RepositoryFramework.Api.Client.A
 
 - package id: `Rystem.RepositoryFramework.Api.Client.Authentication.BlazorWasm`
 - version: `10.0.6`
-- target framework: `net10.0`
+- target framework: `net11.0`
 - main auth dependency: `Microsoft.AspNetCore.Components.WebAssembly.Authentication` `10.0.3`
 
 ---

@@ -1579,9 +1579,9 @@ The builder stores a `VoiceAdapterFactoryName`, but the HTTP endpoint effectivel
 
 For example `DefaultFactoryName`, `EnableCompression`, and `MaxRequestBodySize` exist on `PlayFrameworkApiSettings`, but the current HTTP mapping path does not meaningfully use them.
 
-### This package targets `net10.0`
+### This package targets `net11.0`
 
-The current project targets `net10.0` only.
+The current project targets `net11.0` only.
 
 ## Grounded by source and tests
 

@@ -28,7 +28,7 @@ Most examples below come from the current source and from the runtime integratio
 dotnet add package Rystem.DependencyInjection.Web
 ```
 
-The current `10.x` package targets `net10.0` and references:
+The current `10.x` package targets `net11.0` and references:
 
 - `Microsoft.AspNetCore.App`
 - `Rystem.DependencyInjection`

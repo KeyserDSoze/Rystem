@@ -28,7 +28,7 @@ The current package metadata in `src/Repository/RepositoryFramework.Infrastructu
 
 - package id: `Rystem.RepositoryFramework.Infrastructure.InMemory`
 - version: `10.0.6`
-- target framework: `net10.0`
+- target framework: `net11.0`
 
 ---
 

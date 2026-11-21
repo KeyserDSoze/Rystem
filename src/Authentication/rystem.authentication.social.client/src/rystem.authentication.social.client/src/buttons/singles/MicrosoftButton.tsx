@@ -4,7 +4,7 @@ import { generateCodeChallenge, generateCodeVerifier } from "../../utils/pkce";
 import { PkceStorageService } from "../../services/PkceStorageService";
 import { useEffect, useState } from "react";
 
-export const MicrosoftButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
+export const MicrosoftButton = ({ className = '', }: SocialButtonProps): React.JSX.Element => {
     const settings = getSocialLoginSettings();
     const [oauthUrl, setOauthUrl] = useState<string | null>(null);
     const pkceStorage = new PkceStorageService(settings.storageService);

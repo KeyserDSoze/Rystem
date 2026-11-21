@@ -1,7 +1,7 @@
 ﻿import { ProviderType, SocialButtonProps, getSocialLoginSettings, CreateSocialButton, buildRedirectUri } from "../..";
 import { LinkedInLoginButton } from "../graphics/LinkedInLoginButton";
 
-export const LinkedinButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
+export const LinkedinButton = ({ className = '', }: SocialButtonProps): React.JSX.Element => {
 const settings = getSocialLoginSettings();
     if (settings.linkedin.clientId) {
         const redirectUri = buildRedirectUri(settings);

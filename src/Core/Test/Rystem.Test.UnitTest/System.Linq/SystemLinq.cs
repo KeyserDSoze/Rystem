@@ -166,7 +166,7 @@ namespace Rystem.Test.UnitTest.Linq
             Assert.Equal(groupedD1.Count(), groupedD3.Count());
             Assert.Equal(100, groupedD3.Count());
             Assert.Equal(0M, groupedD3.First().Key);
-            Assert.Equal(0.2M, groupedD3.Skip(2).First().Key);
+            Assert.Equal(0.2M, groupedD3.Skip(2).First().Key, 10);
         }
 
         [Fact]

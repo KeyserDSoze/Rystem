@@ -1,7 +1,7 @@
 ﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings, buildRedirectUri } from "../..";
 import { GitHubLoginButton } from "../graphics/GithubLoginButton";
 
-export const GitHubButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
+export const GitHubButton = ({ className = '', }: SocialButtonProps): React.JSX.Element => {
 const settings = getSocialLoginSettings();
 const redirectUri = buildRedirectUri(settings);
 if (settings.github.clientId) {

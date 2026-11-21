@@ -4,7 +4,7 @@ import { GoogleLoginButton } from "../graphics/GoogleLoginButton";
 const SDK_URL: string = "https://accounts.google.com/gsi/client";
 const _window = window as any;
 
-export const GoogleButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
+export const GoogleButton = ({ className = '', }: SocialButtonProps): React.JSX.Element => {
 const settings = getSocialLoginSettings();
 if (settings.google.clientId) {
     const redirectUri = buildRedirectUri(settings);

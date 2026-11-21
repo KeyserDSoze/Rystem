@@ -28,7 +28,7 @@ The current package metadata in `src/Repository/RepositoryFramework.Api.Client/R
 
 - package id: `Rystem.RepositoryFramework.Api.Client`
 - version: `10.0.6`
-- target framework: `net10.0`
+- target framework: `net11.0`
 - HTTP packages: `Microsoft.Extensions.Http`, `Microsoft.Extensions.Http.Polly`, `Polly`
 
 ---

@@ -1,90 +1,138 @@
-﻿### [What is Rystem?](https://github.com/KeyserDSoze/Rystem)
+# Rystem.Content.Infrastructure.Storage.File
 
-## Integration with Azure File Storage and Content Repository
+This provider adds Azure File Share support to the Content framework.
 
-    await services
-        .AddContentRepository()
-        .WithFileStorageIntegrationAsync(x =>
+Repo note: the folder name is `Rystem.Content.Infrastructure.Azure.Storage.File`, but the current NuGet package id is `Rystem.Content.Infrastructure.Storage.File`.
+
+## Installation
+
+```bash
+dotnet add package Rystem.Content.Infrastructure.Storage.File
+```
+
+## Architecture
+
+The provider is a thin wrapper over `ShareClient` and `ShareFileClient`.
+
+- async registration creates the share immediately
+- if `Prefix` is configured, registration also creates the prefix directories
+- uploads create missing intermediate directories on demand
+- headers and metadata are mapped to Azure File Share APIs
+
+The public registration extensions live in `BuilderExtensions/ContentRepositoryBuilderExtensions.cs`, while the runtime behavior is in `FileStorage/FileStorageRepository.cs`.
+
+## Registration API
+
+| Method | Default lifetime | Notes |
+| --- | --- | --- |
+| `WithFileStorageIntegrationAsync(options, name, serviceLifetime)` | `Transient` | preferred path because setup is async |
+| `WithFileStorageIntegration(options, name, serviceLifetime)` | `Transient` | sync wrapper over the async implementation |
+
+## Example
+
+This matches the unit-test startup in `src/Content/Rystem.Content.Tests/Rystem.Content.UnitTest/Startup.cs`.
+
+```csharp
+var repositories = builder.Services.AddContentRepository();
+
+await repositories.WithFileStorageIntegrationAsync(options =>
+{
+    options.ShareName = "supertest";
+    options.Prefix = "site/";
+    options.ConnectionString = builder.Configuration["ConnectionString:Storage"];
+}, "filestorage");
+```
+
+Resolve and use it:
+
+```csharp
+public sealed class FileShareDocumentService
+{
+    private readonly IContentRepository _repository;
+
+    public FileShareDocumentService(IFactory<IContentRepository> factory)
+        => _repository = factory.Create("filestorage");
+
+    public ValueTask<bool> SaveAsync(string path, byte[] data)
+        => _repository.UploadAsync(path, data, new ContentRepositoryOptions
         {
-            x.ShareName = "supertest";
-            x.Prefix = "site/";
-            x.ConnectionString = configuration["ConnectionString:Storage"];
-        },
-        "filestorage")
-        .NoContext();
+            HttpHeaders = new ContentRepositoryHttpHeaders
+            {
+                ContentType = "application/pdf"
+            },
+            Metadata = new Dictionary<string, string>
+            {
+                ["department"] = "legal"
+            }
+        });
+}
+```
 
-### How to use in a business class
+## Settings
 
-    public class AllStorageTest
-    {
-        private readonly IContentRepositoryFactory _contentRepositoryFactory;
-        private readonly Utility _utility;
-        public AllStorageTest(IContentRepositoryFactory contentRepositoryFactory, Utility utility)
-        {
-            _contentRepositoryFactory = contentRepositoryFactory;
-            _utility = utility;
-        }
-        
-        public async Task ExecuteAsync()
-        {
-            var _contentRepository = _contentRepositoryFactory.Create("filestorage");
-            var file = await _utility.GetFileAsync();
-            var name = "folder/file.png";
-            var contentType = "images/png";
-            var metadata = new Dictionary<string, string>()
-            {
-                { "name", "ale" }
-            };
-            var tags = new Dictionary<string, string>()
-            {
-                { "version", "1" }
-            };
-            var response = await _contentRepository.ExistAsync(name).NoContext();
-            if (response)
-            {
-                await _contentRepository.DeleteAsync(name).NoContext();
-                response = await _contentRepository.ExistAsync(name).NoContext();
-            }
-            Assert.False(response);
-            response = await _contentRepository.UploadAsync(name, file.ToArray(), new ContentRepositoryOptions
-            {
-                HttpHeaders = new ContentRepositoryHttpHeaders
-                {
-                    ContentType = contentType
-                },
-                Metadata = metadata,
-                Tags = tags
-            }, true).NoContext();
-            Assert.True(response);
-            response = await _contentRepository.ExistAsync(name).NoContext();
-            Assert.True(response);
-            var options = await _contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
-            Assert.NotNull(options.Uri);
-            foreach (var x in metadata)
-            {
-                Assert.Equal(x.Value, options.Options.Metadata[x.Key]);
-            }
-            foreach (var x in tags)
-            {
-                Assert.Equal(x.Value, options.Options.Tags[x.Key]);
-            }
-            Assert.Equal(contentType, options.Options.HttpHeaders.ContentType);
-            metadata.Add("ale2", "single");
-            response = await _contentRepository.SetPropertiesAsync(name, new ContentRepositoryOptions
-            {
-                HttpHeaders = new ContentRepositoryHttpHeaders
-                {
-                    ContentType = contentType
-                },
-                Metadata = metadata,
-                Tags = tags
-            }).NoContext();
-            Assert.True(response);
-            options = await _contentRepository.GetPropertiesAsync(name, ContentInformationType.All).NoContext();
-            Assert.Equal("single", options.Options.Metadata["ale2"]);
-            response = await _contentRepository.DeleteAsync(name).NoContext();
-            Assert.True(response);
-            response = await _contentRepository.ExistAsync(name).NoContext();
-            Assert.False(response);
-        }
-    }
+`FileStorageConnectionSettings` exposes:
+
+| Property | Notes |
+| --- | --- |
+| `ConnectionString` | used when present |
+| `EndpointUri` | used for managed identity mode |
+| `ManagedIdentityClientId` | null means `DefaultAzureCredential`; otherwise `ManagedIdentityCredential` |
+| `ShareName` | used in connection-string mode |
+| `Prefix` | prepended to every logical path and pre-created as directories |
+| `ClientOptions` | passed to `ShareClient` |
+| `ClientCreateOptions` | used when creating the share |
+| `Permissions` | passed to `SetAccessPolicyAsync(...)` |
+| `Conditions` | passed to `SetAccessPolicyAsync(...)` |
+| `IsPublic` | present on the settings type, but not used by the current implementation |
+
+## Managed identity note
+
+In managed identity mode, the provider constructs the client as:
+
+```csharp
+new ShareClient(settings.EndpointUri, credential, settings.ClientOptions)
+```
+
+So `EndpointUri` needs to point to the share itself. In that path, `ShareName` is ignored.
+
+## Provider behavior
+
+- `UploadAsync` creates intermediate directories if they do not exist
+- `SetPropertiesAsync` maps HTTP headers and metadata
+- `GetPropertiesAsync` reads headers and metadata
+- `Tags` are not supported and stay `null`
+
+Compared with Blob Storage, this provider is more directory-oriented and less metadata-rich.
+
+## Important caveats
+
+### Listing is not recursive
+
+`ListAsync(...)` enumerates a single directory scope and skips directory entries. It does not recursively walk nested folders the way the SharePoint provider does.
+
+### `overwrite` is effectively ignored
+
+If the file already exists, `UploadAsync(...)` resizes it and uploads the new bytes regardless of the `overwrite` parameter.
+
+If you need strict create-only behavior, check `ExistAsync(...)` first.
+
+### Path and URI semantics are inconsistent
+
+The current implementation returns different shapes depending on the method:
+
+- `DownloadAsync` returns `Path = path` and `Uri = path`
+- `GetPropertiesAsync` returns `Path = fileClient.Name`
+- `ListAsync` returns `Uri = fileClient.Uri.ToString()` and a relative path
+
+So treat `Path` and `Uri` as provider-defined output rather than a normalized contract.
+
+## When to use this provider
+
+Use it when you want:
+
+- Azure File Share as the backing store
+- directory-style organization
+- native file headers and metadata
+- automatic directory creation during upload
+
+It is less appropriate when you need native tag support or Blob-like path semantics.

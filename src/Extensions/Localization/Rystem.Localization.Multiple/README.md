@@ -34,7 +34,7 @@ The current package metadata in `src/Extensions/Localization/Rystem.Localization
 
 - package id: `Rystem.Extensions.Localization.Multiple`
 - version: `7.0.0`
-- target framework: `net10.0`
+- target framework: `net11.0`
 
 The package builds on top of:
 

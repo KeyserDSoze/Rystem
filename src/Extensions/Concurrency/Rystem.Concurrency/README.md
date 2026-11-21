@@ -37,7 +37,7 @@ Optional distributed backend:
 dotnet add package Rystem.Concurrency.Redis
 ```
 
-The current `10.x` package targets `net10.0` and builds on top of [`Rystem.DependencyInjection`](https://github.com/KeyserDSoze/Rystem/blob/master/src/Core/Rystem.DependencyInjection/README.md).
+The current `10.x` package targets `net11.0` and builds on top of [`Rystem.DependencyInjection`](https://github.com/KeyserDSoze/Rystem/blob/master/src/Core/Rystem.DependencyInjection/README.md).
 
 ## Package Architecture
 

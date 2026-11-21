@@ -1,552 +1,262 @@
-# Rystem TypeScript Generator
+﻿# Rystem.RepositoryFramework.TypescriptGenerator
 
-CLI tool to generate TypeScript types and services from C# Rystem Repository/CQRS models.
+`Rystem.RepositoryFramework.TypescriptGenerator` is a .NET CLI tool that inspects C# Repository Framework models and emits a TypeScript client layer for `rystem.repository.client`.
+
+It generates:
+
+- TypeScript model files
+- raw/clean mappers when JSON names or date types require them
+- transformers for models and complex keys
+- `bootstrap/repositorySetup.ts`
+- `services/repositoryLocator.ts`
 
 ## Installation
 
-### Global Installation (recommended)
-
 ```bash
+# global
 dotnet tool install -g Rystem.RepositoryFramework.TypescriptGenerator
-```
 
-### Local Installation (per-project)
-
-```bash
-dotnet new tool-manifest # if you don't have one already
+# local
+dotnet new tool-manifest
 dotnet tool install Rystem.RepositoryFramework.TypescriptGenerator
 ```
 
-### Update
+The tool command name is:
 
 ```bash
-# Global
-dotnet tool update -g Rystem.RepositoryFramework.TypescriptGenerator
-
-# Local
-dotnet tool update Rystem.RepositoryFramework.TypescriptGenerator
+rystem-ts
 ```
 
-### Uninstall
+## Prerequisites
+
+- .NET 10 SDK
+- the frontend package `rystem.repository.client`
 
 ```bash
-# Global
-dotnet tool uninstall -g Rystem.RepositoryFramework.TypescriptGenerator
-
-# Local
-dotnet tool uninstall Rystem.RepositoryFramework.TypescriptGenerator
+npm install rystem.repository.client
 ```
 
-## Usage
+## What the tool actually does
 
-### Basic Syntax
+The generator builds your target project, loads the produced assembly, analyzes the requested model and key types with reflection, then writes TypeScript files to the destination folder.
+
+Practical consequence:
+
+- generation is not metadata-only
+- your target project must build successfully
+
+## Command
 
 ```bash
-rystem-ts generate --dest <destination> --models <model-definitions> [options]
+rystem-ts generate --dest <destination> --models <definitions> [options]
 ```
 
 ### Options
 
-| Option | Alias | Required | Description |
-|--------|-------|----------|-------------|
-| `--dest` | `-d` | ✅ | Destination folder for generated TypeScript files |
-| `--models` | `-m` | ✅ | Repository definitions (see format below) |
-| `--project` | `-p` | ❌ | Path to C# project (.csproj) or assembly (.dll) |
-| `--overwrite` | | ❌ | Overwrite existing files (default: `true`) |
-| `--include-deps` | | ❌ | Include project dependencies in type scanning (default: `false`) |
-| `--deps-prefix` | | ❌ | Only load dependencies starting with this prefix (e.g., `MyCompany.`) |
+| Option | Alias | Required | Notes |
+| --- | --- | --- | --- |
+| `--dest` | `-d` | yes | Output folder |
+| `--models` | `-m` | yes | Repository definitions |
+| `--project` | `-p` | recommended | Path to the `.csproj` to build |
+| `--overwrite` |  | no | Defaults to `true` |
+| `--include-deps` |  | no | Also scan built dependencies in the output folder |
+| `--deps-prefix` |  | no | Filter dependency loading by prefix when `--include-deps` is enabled |
 
-### Model Definition Format
+## Model definition format
 
-The `--models` option accepts repository definitions in the following format:
-
-```
-"{Model,Key,Type,Factory,BackendFactory},{Model2,Key2,Type2,Factory2,}"
+```text
+"{Model,Key,Type[,Factory[,BackendFactory]]},{Model2,Key2,Type2,...}"
 ```
 
-**Fields:**
-- **ModelName**: Name of the C# entity class. Can be simple (`Calendar`) or fully qualified (`Fantacalcio.Domain.Calendar`)
-- **KeyName**: Name of the key type. Can be simple (`LeagueKey`) or fully qualified (`Fantacalcio.Domain.LeagueKey`)
-- **RepositoryType**: One of `Repository`, `Query`, or `Command`
-- **FactoryName**: Client-side name used in `RepositoryLocator.{factoryName}` (optional, defaults to ModelName)
-- **BackendFactoryName**: Backend factory name used in API path (optional)
+Fields:
 
-**API Path Generation:**
-- If **BackendFactoryName is empty** (e.g., `{Rank,RankKey,Repository,rank,}`) → path = `Rank` (just ModelName)
-- If **BackendFactoryName is set** (e.g., `{Rank,RankKey,Repository,rank,rank}`) → path = `Rank/rank` (ModelName/BackendFactory)
+- `Model`: C# model type name, simple or fully qualified
+- `Key`: C# key type name or primitive like `string`, `Guid`, `int`
+- `Type`: `Repository`, `Query`, or `Command`
+- `Factory`: optional client-side registration name; defaults to `Model`
+- `BackendFactory`: optional server factory segment appended to the generated API path
 
-> **Note:** If multiple types with the same name exist in different namespaces, you must use the fully qualified name (with namespace) to avoid ambiguity.
+Legacy bracket form like `[{...},{...}]` is also accepted.
 
-### Examples
-
-#### Single Repository (no backend factory - path will be just ModelName)
+## Examples
 
 ```bash
 rystem-ts generate \
-  --dest ./src/api \
-  --models "{User,Guid,Repository,users,}"
+  --project ./src/MyApi/MyApi.csproj \
+  --dest ./src/generated/repository \
+  --models "{User,Guid,Repository,users}"
 ```
-
-This generates `x.path = 'User'` and `x.name = 'users'`.
-
-#### With Backend Factory Name (path will be ModelName/BackendFactory)
 
 ```bash
 rystem-ts generate \
-  --dest ./src/api \
-  --models "{User,Guid,Repository,users,users}"
-```
-
-This generates `x.path = 'User/users'` and `x.name = 'users'`.
-
-#### Multiple Repositories with Mixed Backend Factories
-
-```bash
-rystem-ts generate \
-  --dest ./src/api \
-  --models "{Calendar,LeagueKey,Repository,serieA,serieA},{Team,Guid,Query,teams,},{Match,int,Command,matches,matches}"
-```
-
-This generates:
-- Calendar: `x.path = 'Calendar/serieA'`, `x.name = 'serieA'`
-- Team: `x.path = 'Team'`, `x.name = 'teams'`
-- Match: `x.path = 'Match/matches'`, `x.name = 'matches'`
-
-#### With Fully Qualified Names (Namespaces)
-
-Use fully qualified names when you have types with the same name in different namespaces:
-
-```bash
-rystem-ts generate \
-  --dest ./src/api \
-  --models "{Fantacalcio.Domain.Calendar,Fantacalcio.Domain.LeagueKey,Repository,serieA}"
-```
-
-#### With Generic Types
-
-The tool supports generic types with both user-friendly and .NET reflection syntax:
-
-**User-friendly syntax** (recommended):
-
-```bash
-rystem-ts generate \
-  --dest ./src/api \
-  --models "{EntityVersions<Timeline>,Guid,Repository,versionedtimelines,}"
-```
-
-**.NET Reflection syntax** (auto-detected):
-
-```bash
-rystem-ts generate \
-  --dest ./src/api \
-  --models "{EntityVersions`1[[GhostWriter.Business.Timeline]],Guid,Repository,versionedtimelines,}"
-```
-
-Both syntaxes will generate:
-```typescript
-// TypeScript output
-export interface EntityVersions<Timeline> {
-  // ...
-}
-```
-
-**Fully qualified generic types**:
-
-```bash
-rystem-ts generate \
-  --dest ./src/api \
-  --models "{MyCompany.Infrastructure.EntityVersions<MyCompany.Domain.Timeline>,Guid,Repository,versionedtimelines,}"
-```
-
-#### With Specific Project
-
-```bash
-rystem-ts generate \
-  --dest ./src/api \
-  --models "{Product,int,Repository,products}" \
-  --project ./src/MyApp.Core/MyApp.Core.csproj
-```
-
-#### Disable Overwrite
-
-```bash
-rystem-ts generate \
-  --dest ./src/api \
-  --models "{Order,Guid,Repository,orders}" \
-  --overwrite false
-```
-
-#### With Project Dependencies
-
-When your models reference types from other projects or NuGet packages:
-
-```bash
-rystem-ts generate \
-  --dest ./src/api \
-  --models "{Order,OrderKey,Repository,orders,orders}" \
-  --project ./src/MyApp.Api/MyApp.Api.csproj \
-  --include-deps
-```
-
-This will scan all DLLs in the output directory (except system assemblies).
-
-#### With Dependency Prefix Filter
-
-To only load dependencies from your company/organization:
-
-```bash
-rystem-ts generate \
-  --dest ./src/api \
-  --models "{Order,OrderKey,Repository,orders,orders}" \
-  --project ./src/MyApp.Api/MyApp.Api.csproj \
+  --project ./src/MyApi/MyApi.csproj \
+  --dest ./src/generated/repository \
+  --models "{Calendar,LeagueKey,Repository,serieA,serieA},{Team,Guid,Query,teams}" \
   --include-deps \
   --deps-prefix "MyCompany."
 ```
 
-This will only load:
-- ✅ `MyCompany.Core.dll`
-- ✅ `MyCompany.Domain.dll`
-- ❌ `Newtonsoft.Json.dll` (skipped)
-- ❌ `Microsoft.Extensions.dll` (skipped)
+## Output structure
 
-## Generated Output
+The generator writes these folders:
 
-The tool generates the following structure:
-
-```
-📁 <destination>/
-├── 📁 types/
-│   ├── calendar.ts           # Raw + Clean interfaces + Mappers
-│   ├── leaguekey.ts
-│   ├── team.ts
-│   └── dayofweek.ts          # Enums
-├── 📁 transformers/
-│   ├── CalendarTransformer.ts    # ITransformer<Calendar>
-│   ├── LeagueKeyTransformer.ts   # ITransformer<LeagueKey>
-│   └── index.ts
-├── 📁 bootstrap/
-│   └── repositorySetup.ts    # RepositoryServices configuration with transformers
-└── 📁 services/
-    └── repositoryLocator.ts  # RepositoryLocator.{factoryName} -> IRepository
+```text
+<destination>/
+  types/
+    DateMappers.ts
+    <lowercase-model-file>.ts
+    index.ts
+  transformers/
+    <ModelName>Transformer.ts
+    index.ts               # only when transformers are emitted
+  bootstrap/
+    repositorySetup.ts
+  services/
+    repositoryLocator.ts
 ```
 
-### Generated Types
+Notes:
 
-#### Types (`types/*.ts`)
+- model filenames are lowercase base names, not necessarily exact CLR names
+- `transformers/index.ts` is written only when there are transformers to export
 
-For each C# model, the tool generates:
+## Generated TypeScript model shape
+
+Depending on the analyzed type, each `types/*.ts` file can contain:
+
+- TypeScript `enum`s
+- raw interfaces that match wire JSON names
+- clean interfaces with camel-cased property names
+- raw/clean mapper functions
+- helper classes for nested arrays and dictionaries
+
+The generator emits raw + clean models only when it needs them, mainly for:
+
+- `System.Text.Json` `[JsonPropertyName]` differences
+- `DateTime`, `DateTimeOffset`, or `DateOnly`
+
+## Type mapping behavior
+
+Important mappings from the current implementation:
+
+- `string`, `char` -> `string`
+- numeric primitives and `decimal` -> `number`
+- `bool` -> `boolean`
+- `Guid` -> `string`
+- `DateTime`, `DateTimeOffset`, `DateOnly` -> raw `string`, clean `Date`
+- `TimeSpan`, `TimeOnly` -> `string`
+- non-primitive custom objects -> generated interfaces
+- arrays -> `T[]`
+- dictionaries -> `Record<K, V>`
+- enums -> numeric TypeScript `enum`
+
+Non-primitive nullable/reference handling is simplified on the TypeScript side, so review emitted optional properties when null-vs-missing distinctions matter.
+
+## Generic types
+
+The generator understands open and closed generics.
+
+- it emits the open generic model file once
+- closed generic repository registrations reuse that base model
+- generated bootstrap/transformers pass mapper functions for generic arguments when needed
+
+## Generated bootstrap
+
+`bootstrap/repositorySetup.ts` wires `RepositoryServices` for you.
 
 ```typescript
-// Raw interface (matches JSON from API)
-export interface CalendarRaw {
-  league_id: string;           // Uses JsonPropertyName if present
-  start_date: string;          // Dates as strings
-  teams: TeamRaw[];
-}
+import { setupRepositoryServices } from "./bootstrap/repositorySetup";
 
-// Clean interface (TypeScript-friendly)
-export interface Calendar {
-  leagueId: string;            // camelCase names
-  startDate: Date;             // Proper Date type
-  teams: Team[];
-}
-
-// Mapper function
-export function mapCalendar(raw: CalendarRaw): Calendar {
-  return {
-    leagueId: raw.league_id,
-    startDate: new Date(raw.start_date),
-    teams: raw.teams.map(mapTeam),
-  };
-}
-```
-
-#### Common Types (`services/common.ts`)
-
-```typescript
-export interface Entity<T, TKey> {
-  key: TKey;
-  value: T | null;
-}
-
-export interface State<T> {
-  isOk: boolean;
-  message?: string;
-  value?: T;
-}
-
-export interface Page<T, TKey> {
-  items: Entity<T, TKey>[];
-  totalCount: number;
-  pageSize: number;
-  pageIndex: number;
-  totalPages: number;
-}
-
-export interface BatchOperation<T, TKey> {
-  command: 'insert' | 'update' | 'delete';
-  key: TKey;
-  value?: T;
-}
-```
-
-#### Services (`services/*.service.ts`)
-
-```typescript
-export class SerieAService {
-  private baseUrl: string;
-  
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
-  }
-
-  // Query methods
-  async get(key: LeagueKey): Promise<Calendar | null> { ... }
-  async query(options?: QueryOptions): Promise<Entity<Calendar, LeagueKey>[]> { ... }
-  async page(pageIndex: number, pageSize: number): Promise<Page<Calendar, LeagueKey>> { ... }
-  async exist(key: LeagueKey): Promise<State<boolean>> { ... }
-  async count(): Promise<number> { ... }
-
-  // Command methods (Repository/Command only)
-  async insert(key: LeagueKey, value: Calendar): Promise<State<Calendar>> { ... }
-  async update(key: LeagueKey, value: Calendar): Promise<State<Calendar>> { ... }
-  async delete(key: LeagueKey): Promise<State<boolean>> { ... }
-  async batch(operations: BatchOperation<Calendar, LeagueKey>[]): Promise<BatchResult[]> { ... }
-}
-```
-
-#### Transformers (`transformers/*.ts`)
-
-Transformers implement `ITransformer<T>` from `rystem.repository.client` to convert between Raw and Clean types:
-
-```typescript
-import type { ITransformer } from 'rystem.repository.client';
-import type { Calendar, CalendarRaw } from '../types/calendar';
-import { mapRawCalendarToCalendar, mapCalendarToRawCalendar } from '../types/calendar';
-
-export const CalendarTransformer: ITransformer<Calendar> = {
-  fromPlain: (plain: CalendarRaw): Calendar => mapRawCalendarToCalendar(plain),
-  toPlain: (instance: Calendar): CalendarRaw => mapCalendarToRawCalendar(instance),
-};
-```
-
-#### Bootstrap Setup (`bootstrap/repositorySetup.ts`)
-
-The bootstrap file configures `RepositoryServices` with transformers for automatic JSON conversion:
-
-```typescript
-import { RepositoryServices } from 'rystem.repository.client';
-import type { RepositoryEndpoint } from 'rystem.repository.client';
-import { CalendarTransformer } from '../transformers/CalendarTransformer';
-import { LeagueKeyTransformer } from '../transformers/LeagueKeyTransformer';
-
-export interface RepositoryConfig {
-  baseUrl: string;
-  headersEnricher?: (...) => Promise<HeadersInit>;
-  errorHandler?: (...) => Promise<boolean>;
-}
-
-export const setupRepositoryServices = (config: RepositoryConfig): void => {
-  const services = RepositoryServices.Create(config.baseUrl);
-
-  services.addRepository<Calendar, LeagueKey>(x => {
-    x.name = 'calendar';
-    x.path = 'calendar';
-    x.transformer = CalendarTransformer;       // Auto-converts model
-    x.keyTransformer = LeagueKeyTransformer;   // Auto-converts key
-    x.complexKey = true;
-    if (config.headersEnricher) x.addHeadersEnricher(config.headersEnricher);
-    if (config.errorHandler) x.addErrorHandler(config.errorHandler);
-  });
-};
-```
-
-#### Repository Locator (`repositoryLocator.ts`)
-
-Provides strongly-typed access to all configured repositories:
-
-```typescript
-import { RepositoryServices } from 'rystem.repository.client';
-import type { IRepository, IQuery, ICommand } from 'rystem.repository.client';
-import type { Calendar } from './types/calendar';
-import type { LeagueKey } from './types/leaguekey';
-
-export const RepositoryLocator = {
-  get calendar(): IRepository<Calendar, LeagueKey> {
-    return RepositoryServices.Repository<Calendar, LeagueKey>('calendar');
-  },
-  get teams(): IQuery<Team, string> {
-    return RepositoryServices.Query<Team, string>('teams');
-  },
-  get orders(): ICommand<Order, number> {
-    return RepositoryServices.Command<Order, number>('orders');
-  },
-} as const;
-```
-
-**Usage:**
-
-```typescript
-import { setupRepositoryServices } from './bootstrap/repositorySetup';
-import { RepositoryLocator } from './repositoryLocator';
-
-// 1. Setup once at app startup
 setupRepositoryServices({
-  baseUrl: 'https://api.example.com/api/',
-  headersEnricher: async () => ({
-    Authorization: `Bearer ${getToken()}`
+  baseUrl: "https://localhost:7058/api/",
+});
+```
+
+The generated config surface is intentionally small:
+
+```typescript
+setupRepositoryServices({
+  baseUrl: "https://localhost:7058/api/",
+  headersEnricher: async (endpoint, uri, method, headers, body) => ({
+    ...headers,
+    Authorization: `Bearer ${getToken()}`,
   }),
   errorHandler: async (endpoint, uri, method, headers, body, err) => {
     if (err?.status === 401) {
       await refreshToken();
-      return true; // Retry
+      return true;
     }
     return false;
-  }
+  },
 });
-
-// 2. Use anywhere in your app with full type safety
-const calendar = await RepositoryLocator.calendar.get({ leagueId: 'serie-a', season: 2024 });
-const allTeams = await RepositoryLocator.teams.query().toListAsync();
-await RepositoryLocator.orders.insert({ orderId: 123 }, { /* order data */ });
 ```
 
-## Repository Types
+## Generated repository locator
 
-| Type | Query Methods | Command Methods |
-|------|---------------|-----------------|
-| `Repository` | ✅ get, query, page, exist, count | ✅ insert, update, delete, batch |
-| `Query` | ✅ get, query, page, exist, count | ❌ |
-| `Command` | ❌ | ✅ insert, update, delete, batch |
-
-## C# Model Requirements
-
-### Basic Model
-
-```csharp
-public class User
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; }
-    public DateTime CreatedAt { get; set; }
-}
-```
-
-### With JsonPropertyName (for Raw types)
-
-```csharp
-public class User
-{
-    [JsonPropertyName("user_id")]
-    public Guid Id { get; set; }
-    
-    [JsonPropertyName("full_name")]
-    public string Name { get; set; }
-    
-    [JsonPropertyName("created_at")]
-    public DateTime CreatedAt { get; set; }
-}
-```
-
-### Custom Key Types
-
-```csharp
-public record LeagueKey(string LeagueId, int Season);
-```
-
-### Enums
-
-```csharp
-public enum OrderStatus
-{
-    Pending = 0,
-    Processing = 1,
-    Completed = 2,
-    Cancelled = 3
-}
-```
-
-## Integration with Rystem Repository API
-
-This tool is designed to work with [Rystem.RepositoryFramework.Api.Server](../RepositoryFramework.Api.Server/README.md).
-
-### Server Setup
-
-```csharp
-// Program.cs
-builder.Services.AddRepository<Calendar, LeagueKey>(settings =>
-{
-    settings.WithEntityFramework<AppDbContext>();
-});
-
-// Expose as REST API
-app.UseEndpointsForRepositoryPattern();
-```
-
-### Client Usage
+`services/repositoryLocator.ts` exposes typed accessors over `RepositoryServices`.
 
 ```typescript
-// Setup (once at app startup)
-Services.configure({ 
-  baseUrl: 'https://localhost:5001/api' 
+import { RepositoryLocator } from "./services/repositoryLocator";
+
+const user = await RepositoryLocator.users.get("some-id");
+const items = await RepositoryLocator.users.query().execute();
+await RepositoryLocator.users.insert("some-id", userToSave);
+```
+
+It generates the correct client registration method based on the descriptor type:
+
+- `Repository` -> `addRepository`
+- `Query` -> `addQuery`
+- `Command` -> `addCommand`
+
+## Server-side alignment
+
+The generated paths are meant for Repository Framework API endpoints.
+
+Typical server setup:
+
+```csharp
+builder.Services.AddRepository<User, Guid>(repositoryBuilder =>
+{
+    repositoryBuilder.WithInMemory();
 });
 
-// Use anywhere in your app
-const calendars = await Services.serieA.query();
-const calendar = await Services.serieA.get({ leagueId: 'serie-a', season: 2024 });
+builder.Services.AddApiFromRepositoryFramework().WithPath("api");
 
-// Create/Update
-await Services.serieA.insert(
-  { leagueId: 'serie-a', season: 2025 },
-  { startDate: new Date(), teams: [] }
-);
+var app = builder.Build();
+app.UseApiFromRepositoryFramework().WithNoAuthorization();
 ```
 
-## Troubleshooting
+## Important caveats
 
-### "Project file not found"
+### `--project` is effectively required in most real runs
 
-Make sure the `--project` path is correct, or run the command from a directory containing a `.csproj` file.
+The CLI can auto-discover a `.csproj` only when exactly one exists in the current directory. In practice, passing `--project` explicitly is the reliable path.
 
-### "Multiple .csproj files found"
+### `.dll` input is not a true standalone flow today
 
-Specify which project to use with `--project`:
+The option text says `--project` can point to a `.csproj` or `.dll`, but the pipeline still performs `dotnet build` logic around a project path. Treat `.csproj` as the supported input.
 
-```bash
-rystem-ts generate --dest ./src/api --models "{User,Guid,Repository,users}" --project ./src/MyApp.Core.csproj
-```
+### The tool always builds in `Release`
 
-### "Model not found in assembly"
+It invokes `dotnet build -c Release --no-restore` before analyzing output.
 
-Ensure:
-1. The model class is `public`
-2. The project has been built (`dotnet build`)
-3. The model name matches exactly (case-sensitive)
+### Generated config surface is smaller than the runtime supports
 
-### "Multiple types found with name 'X'"
+The emitted `RepositoryConfig` only covers:
 
-This error occurs when you have multiple classes with the same name in different namespaces:
+- `baseUrl`
+- `headersEnricher`
+- `errorHandler`
 
-```
-Multiple types found with name 'Calendar'. Please use the fully qualified name:
-  - Fantacalcio.Domain.Calendar
-  - OtherProject.Models.Calendar
-```
+If you need runtime settings like custom `uri`, casing, or key separator tweaks, you may need to extend the generated bootstrap manually.
 
-**Solution:** Use the fully qualified name (with namespace) in your `--models` argument:
+## When to use this tool
 
-```bash
-# Instead of:
---models "{Calendar,LeagueKey,Repository,serieA}"
+Use it when you want:
 
-# Use:
---models "{Fantacalcio.Domain.Calendar,Fantacalcio.Domain.LeagueKey,Repository,serieA}"
-```
+- TypeScript models kept in sync with Repository Framework DTOs
+- ready-made `rystem.repository.client` bootstrap code
+- generated transformers for dates, JSON-name differences, and complex keys
 
-## Contributing
-
-This tool is part of the [Rystem](https://github.com/KeyserDSoze/Rystem) framework.
-
-## License
-
-MIT License - see the main repository for details.
+If you need full control over the frontend surface, treat the generated files as a starting point and commit only the parts you want to keep stable.

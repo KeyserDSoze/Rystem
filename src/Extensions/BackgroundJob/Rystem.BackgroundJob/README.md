@@ -28,7 +28,7 @@ The best source-backed examples for this package are the package implementation 
 dotnet add package Rystem.BackgroundJob
 ```
 
-The current `10.x` package targets `net10.0` and builds on top of:
+The current `10.x` package targets `net11.0` and builds on top of:
 
 - `Cronos`
 - `Rystem.Concurrency`

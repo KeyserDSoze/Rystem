@@ -31,7 +31,7 @@ The strongest source-backed examples are the package implementation itself and t
 dotnet add package Rystem.Test.XUnit
 ```
 
-The current `10.x` package targets `net10.0` and references:
+The current `10.x` package targets `net11.0` and references:
 
 - `Microsoft.NET.Test.Sdk`
 - `Microsoft.AspNetCore.TestHost`

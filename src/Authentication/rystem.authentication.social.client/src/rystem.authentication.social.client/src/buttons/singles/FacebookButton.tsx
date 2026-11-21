@@ -4,7 +4,7 @@ import { FacebookLoginButton } from "../graphics/FacebookLoginButton";
 const SDK_URL: string = 'https://connect.facebook.net/en_EN/sdk.js';
 const _window: any = window;
 
-export const FacebookButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
+export const FacebookButton = ({ className = '', }: SocialButtonProps): React.JSX.Element => {
 const settings = getSocialLoginSettings();
     if (settings.facebook.clientId) {
         const redirectUri = buildRedirectUri(settings);

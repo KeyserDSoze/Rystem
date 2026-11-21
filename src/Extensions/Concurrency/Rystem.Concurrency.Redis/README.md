@@ -31,7 +31,7 @@ Only the storage backend changes.
 dotnet add package Rystem.Concurrency.Redis
 ```
 
-The current `10.x` package targets `net10.0` and builds on top of:
+The current `10.x` package targets `net11.0` and builds on top of:
 
 - `StackExchange.Redis`
 - [`Rystem.Concurrency`](https://github.com/KeyserDSoze/Rystem/blob/master/src/Extensions/Concurrency/Rystem.Concurrency/README.md)

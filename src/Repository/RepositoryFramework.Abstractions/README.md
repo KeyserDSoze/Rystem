@@ -37,7 +37,7 @@ The current package metadata in `src/Repository/RepositoryFramework.Abstractions
 
 - package id: `Rystem.RepositoryFramework.Abstractions`
 - version: `10.0.6`
-- target framework: `net10.0`
+- target framework: `net11.0`
 
 This package builds on top of `Rystem.DependencyInjection`.
 

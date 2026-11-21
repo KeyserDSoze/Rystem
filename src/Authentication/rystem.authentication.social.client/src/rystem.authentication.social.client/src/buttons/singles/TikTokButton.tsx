@@ -1,7 +1,7 @@
 ﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings, buildRedirectUri } from "../..";
 import { TikTokLoginButton } from "../graphics/TikTokLoginButton";
 
-export const TikTokButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
+export const TikTokButton = ({ className = '', }: SocialButtonProps): React.JSX.Element => {
 const settings = getSocialLoginSettings();
     if (settings.tiktok.clientId) {
         const redirectUri = buildRedirectUri(settings);

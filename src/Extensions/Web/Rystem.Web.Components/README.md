@@ -32,7 +32,7 @@ The current package metadata in `src/Extensions/Web/Rystem.Web.Components/Rystem
 
 - package id: `Rystem.Web.Components`
 - version: `3.1.33`
-- target framework: `net10.0`
+- target framework: `net11.0`
 
 The package builds on top of:
 

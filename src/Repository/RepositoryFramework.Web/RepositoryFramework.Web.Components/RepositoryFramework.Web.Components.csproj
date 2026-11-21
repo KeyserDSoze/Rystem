@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-        <TargetFramework>net10.0</TargetFramework>
+        <TargetFramework>net11.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IncludeSymbols>true</IncludeSymbols>
@@ -20,7 +20,7 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <RepositoryUrl>https://github.com/KeyserDSoze/Rystem/tree/master/src/Repository/RepositoryFramework.Web/RepositoryFramework.Web.Components</RepositoryUrl>
         <PackageId>Rystem.RepositoryFramework.Web.Components</PackageId>
-        <Version>10.1.0-beta.3</Version>
+        <Version>11.1.0-beta.3</Version>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
         <StaticWebAssetBasePath>_content/$(PackageId)</StaticWebAssetBasePath>
@@ -33,8 +33,8 @@
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.11" />
-        <PackageReference Include="Radzen.Blazor" Version="11.2.7" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="11.0.0" />
+        <PackageReference Include="Radzen.Blazor" Version="13.2.1" />
     </ItemGroup>
     <Choose>
         <When Condition=" '$(Configuration)'=='Debug' ">
@@ -45,7 +45,7 @@
         </When>
         <When Condition=" '$(Configuration)'!='Debug' ">
             <ItemGroup>
-                <PackageReference Include="Rystem.RepositoryFramework.Abstractions" Version="10.1.0-beta.3" />
+                <PackageReference Include="Rystem.RepositoryFramework.Abstractions" Version="11.1.0-beta.3" />
                 <PackageReference Include="Rystem.Extensions.Localization.Multiple" Version="7.0.0" />
             </ItemGroup>
         </When>

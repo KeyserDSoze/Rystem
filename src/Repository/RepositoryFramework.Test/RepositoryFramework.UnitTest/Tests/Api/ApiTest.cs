@@ -20,8 +20,9 @@ using RepositoryFramework.Test.Repository;
 using RepositoryFramework.UnitTest;
 using Xunit;
 
-[assembly: CollectionBehavior(DisableTestParallelization = true)]
+
 [assembly: TestCollectionOrderer(typeof(PriorityOrderer))]
+[assembly: Xunit.v3.Parallelization(Mode = Xunit.Sdk.ParallelMode.None)]
 
 namespace RepositoryFramework.UnitTest.Tests.Api
 {

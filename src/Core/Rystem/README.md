@@ -28,7 +28,7 @@ For brevity, short snippets sometimes use obvious sample types such as `User`, `
 dotnet add package Rystem
 ```
 
-The current `10.x` package targets `net10.0`.
+The current `10.x` package targets `net11.0`.
 
 After installation, most APIs are available through standard `using` directives that match the namespace they extend. The main exception is `ReflectionHelper`, which lives in `Rystem.Reflection`.
 

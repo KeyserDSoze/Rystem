@@ -10,7 +10,7 @@ const scopeData = {
     profile: { essential: true },
 };
 
-export const AmazonButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
+export const AmazonButton = ({ className = '', }: SocialButtonProps): React.JSX.Element => {
 const settings = getSocialLoginSettings();
     if (settings.amazon.clientId) {
         const redirectUri = buildRedirectUri(settings);

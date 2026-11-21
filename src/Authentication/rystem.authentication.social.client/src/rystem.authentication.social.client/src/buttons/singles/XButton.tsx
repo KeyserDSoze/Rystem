@@ -1,7 +1,7 @@
 ﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings, buildRedirectUri } from "../..";
 import { XLoginButton } from "../graphics/XLoginButton";
 
-export const XButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
+export const XButton = ({ className = '', }: SocialButtonProps): React.JSX.Element => {
 const settings = getSocialLoginSettings();
     if (settings.x.clientId) {
         const redirectUri = buildRedirectUri(settings);

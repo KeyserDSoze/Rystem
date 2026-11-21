@@ -162,9 +162,9 @@ The voice path reads `FoundryLocalManager.Instance` directly. In practice, regis
 
 Available models depend on your platform and hardware. `foundry model list` is the source of truth for what your machine can actually run.
 
-### This package also targets `net10.0`
+### This package also targets `net11.0`
 
-Like the rest of the PlayFramework area, this package currently targets `net10.0`.
+Like the rest of the PlayFramework area, this package currently targets `net11.0`.
 
 ## Grounded by source files
 

@@ -1,7 +1,7 @@
 ﻿import { CreateSocialButton, ProviderType, SocialButtonProps, getSocialLoginSettings, buildRedirectUri } from "../..";
 import { PinterestLoginButton } from "../graphics/PinterestLoginButton";
 
-export const PinterestButton = ({ className = '', }: SocialButtonProps): JSX.Element => {
+export const PinterestButton = ({ className = '', }: SocialButtonProps): React.JSX.Element => {
 const settings = getSocialLoginSettings();
     if (settings.pinterest.clientId) {
         const redirectUri = buildRedirectUri(settings);

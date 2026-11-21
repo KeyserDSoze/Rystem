@@ -155,7 +155,7 @@ The MCP server content is dynamically loaded from markdown files in `/mcp/{tools
 
 ---
 
-**Last Updated**: 2026-03-05  
+**Last Updated**: 2026-11-21  
 **MCP Protocol Version**: 2024-11-05  
 **Documentation**: https://rystem.net  
 **MCP Server**: https://rystem.cloud/mcp

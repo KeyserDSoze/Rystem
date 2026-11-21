@@ -75,7 +75,7 @@ namespace Rystem.Api
                                     operation.RequestBody = new OpenApiRequestBody
                                     {
                                         Required = true,
-                                        Content = new Dictionary<string, OpenApiMediaType>()
+                                        Content = new Dictionary<string, IOpenApiMediaType>()
                                     };
                                     operation.RequestBody.Content.Add(
                                         "multipart/form-data", new OpenApiMediaType
@@ -107,7 +107,7 @@ namespace Rystem.Api
                                 operation.RequestBody = new OpenApiRequestBody
                                 {
                                     Required = parameter.IsRequired,
-                                    Content = new Dictionary<string, OpenApiMediaType>()
+                                    Content = new Dictionary<string, IOpenApiMediaType>()
                                     {
                                         {
                                             parameter.IsArrayOfBytes ? "string" : "application/json", new OpenApiMediaType

@@ -28,7 +28,7 @@ The best real examples for this package come from the source itself and the unit
 dotnet add package Rystem.Queue
 ```
 
-The current `10.x` package targets `net10.0` and builds on top of [`Rystem.BackgroundJob`](https://github.com/KeyserDSoze/Rystem/blob/master/src/Extensions/BackgroundJob/Rystem.BackgroundJob/README.md).
+The current `10.x` package targets `net11.0` and builds on top of [`Rystem.BackgroundJob`](https://github.com/KeyserDSoze/Rystem/blob/master/src/Extensions/BackgroundJob/Rystem.BackgroundJob/README.md).
 
 ## Package Architecture
 

@@ -1,6 +1,7 @@
 import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Menu, X, Github, BookOpen, Code2, Package } from 'lucide-react'
+import { Menu, X, BookOpen, Code2, Package } from 'lucide-react'
+import { Github } from './Github'
 import { useState } from 'react'
 
 interface LayoutProps {

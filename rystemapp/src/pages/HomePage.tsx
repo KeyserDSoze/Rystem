@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { BookOpen, Code2, Github, Rocket, Package } from 'lucide-react'
+import { BookOpen, Code2, Rocket, Package } from 'lucide-react'
+import { Github } from '../components/Github'
 
 export default function HomePage() {
   return (

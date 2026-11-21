@@ -42,7 +42,7 @@ concurrency:
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
-  DOTNET_VERSION: 10.x
+  DOTNET_VERSION: 11.x
 
 jobs:
   prepare:

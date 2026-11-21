@@ -12,7 +12,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, createWriteStream } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import archiver from 'archiver';
+import { ZipArchive } from 'archiver';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '..');
@@ -70,7 +70,7 @@ function trunc(s: string, max: number): string {
 function writeZip(zipPath: string, entries: Array<{ name: string; content: string }>): Promise<void> {
     return new Promise((resolve, reject) => {
         const out = createWriteStream(zipPath);
-        const archive = archiver('zip', { zlib: { level: 9 } });
+        const archive = new ZipArchive({ zlib: { level: 9 } });
 
         out.on('close', resolve);
         archive.on('error', reject);

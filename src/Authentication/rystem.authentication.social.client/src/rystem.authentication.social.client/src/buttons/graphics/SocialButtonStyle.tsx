@@ -4,5 +4,5 @@
     iconColor: string;
     color: string;
     text: string;
-    icon: (configuration: SocialButtonStyle) => JSX.Element;
+    icon: (configuration: SocialButtonStyle) => React.JSX.Element;
 }

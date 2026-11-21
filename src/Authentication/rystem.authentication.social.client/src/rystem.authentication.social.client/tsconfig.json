@@ -10,6 +10,7 @@
     "strict": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
+    "noUncheckedSideEffectImports": false,
     "noImplicitAny": false
   },
   "include": [

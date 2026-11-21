@@ -56,7 +56,7 @@
   {
     "id": "get-rystem-docs-ai",
     "name": "Rystem - Get Rystem Docs / Ai",
-    "description": "Rystem Framework docs: 🎮 Rystem PlayFramework, Rystem.PlayFramework.Adapters, Rystem.PlayFramework.Adapters.FoundryLocal. Use for ai questions in Rystem.",
+    "description": "Rystem Framework docs: Rystem.PlayFramework, Rystem.PlayFramework.Adapters, Rystem.PlayFramework.Adapters.FoundryLocal. Use for ai questions in Rystem.",
     "category": "ai",
     "tool": "get-rystem-docs",
     "docCount": 3,
@@ -65,7 +65,7 @@
   {
     "id": "get-rystem-docs-api",
     "name": "Rystem - Get Rystem Docs / Api",
-    "description": "Rystem Framework docs: api/api-client-authentication-blazorserver, api/api-client-authentication-blazorwasm, api/api, api/api-client and 1 more. Use for api questions in Rystem.",
+    "description": "Rystem Framework docs: Rystem.Api.Client.Authentication.BlazorServer, Rystem.Api.Client.Authentication.BlazorWasm, Rystem.Api, Rystem.Api.Client and 1 more. Use for api questions in Rystem.",
     "category": "api",
     "tool": "get-rystem-docs",
     "docCount": 5,
@@ -74,7 +74,7 @@
   {
     "id": "get-rystem-docs-authentication",
     "name": "Rystem - Get Rystem Docs / Authentication",
-    "description": "Rystem Framework docs: authentication/authentication-social, authentication/authentication-social-abstractions, authentication/authentication-social-blazor. Use for authentication questions in Rystem.",
+    "description": "Rystem Framework docs: Rystem.Authentication.Social, Rystem.Authentication.Social.Abstractions, Rystem.Authentication.Social.Blazor. Use for authentication questions in Rystem.",
     "category": "authentication",
     "tool": "get-rystem-docs",
     "docCount": 3,
@@ -83,7 +83,7 @@
   {
     "id": "get-rystem-docs-core",
     "name": "Rystem - Get Rystem Docs / Core",
-    "description": "Rystem Framework docs: Table of Contents, core/dependencyinjection, core/dependencyinjection-web. Use for core questions in Rystem.",
+    "description": "Rystem Framework docs: core/rystem, core/dependencyinjection, core/dependencyinjection-web. Use for core questions in Rystem.",
     "category": "core",
     "tool": "get-rystem-docs",
     "docCount": 3,
@@ -101,7 +101,7 @@
   {
     "id": "get-rystem-docs-localization",
     "name": "Rystem - Get Rystem Docs / Localization",
-    "description": "Rystem Framework docs: Rystem Localization Library. Use for localization questions in Rystem.",
+    "description": "Rystem Framework docs: Rystem.Localization. Use for localization questions in Rystem.",
     "category": "localization",
     "tool": "get-rystem-docs",
     "docCount": 1,

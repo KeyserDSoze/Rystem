@@ -98,7 +98,7 @@ namespace Rystem.Api
                                                 operation.RequestBody = new OpenApiRequestBody
                                                 {
                                                     Required = true,
-                                                    Content = new Dictionary<string, OpenApiMediaType>()
+                                                    Content = new Dictionary<string, IOpenApiMediaType>()
                                                 };
                                             }
                                             if (!operation.RequestBody.Content.ContainsKey(MultipartFormData))
@@ -125,7 +125,7 @@ namespace Rystem.Api
                                             operation.RequestBody = new OpenApiRequestBody
                                             {
                                                 Required = parameter.IsRequired,
-                                                Content = new Dictionary<string, OpenApiMediaType>()
+                                                Content = new Dictionary<string, IOpenApiMediaType>()
                                                 {
                                                     {
                                                         parameter.Type.GetContentType(), new OpenApiMediaType

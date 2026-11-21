@@ -19,12 +19,11 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
     minify: 'terser',
-    target: 'ES2022',
+    target: 'es2022',
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-        },
+        manualChunks: (id: string) =>
+          /node_modules[\\/](react|react-dom)[\\/]/.test(id) ? 'vendor' : undefined,
       },
     },
   },

@@ -28,7 +28,7 @@ The current package metadata in `src/Repository/RepositoryFramework.Api.Server/R
 
 - package id: `Rystem.RepositoryFramework.Api.Server`
 - version: `10.0.6`
-- target framework: `net10.0`
+- target framework: `net11.0`
 - framework reference: `Microsoft.AspNetCore.App`
 - Swagger package: `Swashbuckle.AspNetCore` `10.1.4`
 

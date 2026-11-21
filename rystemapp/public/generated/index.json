@@ -43,6 +43,127 @@
     ]
   },
   {
+    "id": "AI",
+    "name": "AI",
+    "title": "AI",
+    "type": "category",
+    "children": [
+      {
+        "id": "AI/Rystem.PlayFramework",
+        "name": "PlayFramework",
+        "title": "PlayFramework",
+        "path": "AI/Rystem.PlayFramework/README.md",
+        "type": "file",
+        "packageName": "Rystem.PlayFramework",
+        "packageType": "nuget"
+      },
+      {
+        "id": "AI/Rystem.PlayFramework/observability",
+        "name": "observability",
+        "title": "observability",
+        "path": "AI/Rystem.PlayFramework/observability/README.md",
+        "type": "file",
+        "packageName": "observability",
+        "packageType": "nuget"
+      },
+      {
+        "id": "AI/Rystem.PlayFramework/observability/grafana",
+        "name": "grafana",
+        "title": "grafana",
+        "path": "AI/Rystem.PlayFramework/observability/grafana/README.md",
+        "type": "file",
+        "packageName": "grafana",
+        "packageType": "nuget"
+      },
+      {
+        "id": "PlayFramework",
+        "name": "PlayFramework",
+        "title": "PlayFramework",
+        "type": "folder",
+        "children": [
+          {
+            "id": "AI/Rystem.PlayFramework.Adapters",
+            "name": "Adapters",
+            "title": "Adapters",
+            "path": "AI/Rystem.PlayFramework.Adapters/README.md",
+            "type": "file",
+            "packageName": "Rystem.PlayFramework.Adapters",
+            "packageType": "nuget"
+          },
+          {
+            "id": "PlayFramework.Adapters",
+            "name": "Adapters",
+            "title": "Adapters",
+            "type": "folder",
+            "children": [
+              {
+                "id": "AI/Rystem.PlayFramework.Adapters.FoundryLocal",
+                "name": "FoundryLocal",
+                "title": "FoundryLocal",
+                "path": "AI/Rystem.PlayFramework.Adapters.FoundryLocal/README.md",
+                "type": "file",
+                "packageName": "Rystem.PlayFramework.Adapters.FoundryLocal",
+                "packageType": "nuget"
+              }
+            ]
+          },
+          {
+            "id": "AI/Test/Rystem.PlayFramework.Api",
+            "name": "Api",
+            "title": "Api",
+            "path": "AI/Test/Rystem.PlayFramework.Api/README.md",
+            "type": "file",
+            "packageName": "Rystem.PlayFramework.Api",
+            "packageType": "nuget"
+          }
+        ]
+      },
+      {
+        "id": "playframework",
+        "name": "playframework",
+        "title": "playframework",
+        "type": "folder",
+        "children": [
+          {
+            "id": "playframework.client",
+            "name": "client",
+            "title": "client",
+            "type": "folder",
+            "children": [
+              {
+                "id": "AI/Rystem.PlayFramework.Client",
+                "name": "testapp",
+                "title": "testapp",
+                "path": "AI/Rystem.PlayFramework.Client/README.md",
+                "type": "file",
+                "packageName": "rystem.playframework.client.testapp",
+                "packageType": "npm"
+              }
+            ]
+          },
+          {
+            "id": "AI/Rystem.PlayFramework.Client/src/rystem",
+            "name": "client",
+            "title": "client",
+            "path": "AI/Rystem.PlayFramework.Client/src/rystem/README.md",
+            "type": "file",
+            "packageName": "rystem.playframework.client",
+            "packageType": "npm"
+          }
+        ]
+      },
+      {
+        "id": "AI/Test/Rystem.PlayFramework.Test/TestData",
+        "name": "TestData",
+        "title": "TestData",
+        "path": "AI/Test/Rystem.PlayFramework.Test/TestData/README.md",
+        "type": "file",
+        "packageName": "TestData",
+        "packageType": "nuget"
+      }
+    ]
+  },
+  {
     "id": "Api",
     "name": "Api",
     "title": "Api",
@@ -159,21 +280,12 @@
         "type": "folder",
         "children": [
           {
-            "id": "Authentication/rystem.authentication.social.react",
-            "name": "react",
-            "title": "react",
-            "path": "Authentication/rystem.authentication.social.react/README.md",
+            "id": "Authentication/rystem.authentication.social.client/src/rystem.authentication.social.client",
+            "name": "client",
+            "title": "client",
+            "path": "Authentication/rystem.authentication.social.client/src/rystem.authentication.social.client/README.md",
             "type": "file",
-            "packageName": "rystem.authentication.social.react",
-            "packageType": "npm"
-          },
-          {
-            "id": "Authentication/rystem.authentication.social.react/src/rystem.authentication.social.react",
-            "name": "react",
-            "title": "react",
-            "path": "Authentication/rystem.authentication.social.react/src/rystem.authentication.social.react/README.md",
-            "type": "file",
-            "packageName": "rystem.authentication.social.react",
+            "packageName": "rystem.authentication.social.client",
             "packageType": "npm"
           }
         ]
@@ -648,6 +760,15 @@
         "path": "Repository/RepositoryFramework.MigrationTools/README.md",
         "type": "file",
         "packageName": "Rystem.RepositoryFramework.MigrationTools",
+        "packageType": "nuget"
+      },
+      {
+        "id": "Repository/RepositoryFramework.Tools.TypescriptGenerator",
+        "name": "TypescriptGenerator",
+        "title": "TypescriptGenerator",
+        "path": "Repository/RepositoryFramework.Tools.TypescriptGenerator/README.md",
+        "type": "file",
+        "packageName": "Rystem.RepositoryFramework.TypescriptGenerator",
         "packageType": "nuget"
       },
       {
